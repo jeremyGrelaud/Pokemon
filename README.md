@@ -3,6 +3,8 @@ Recreating pokemon game in python
 
 A lot left to do
 
+Implement a save system in a json probably
+
 add effects to every move
 implement the stats manipulation in combat due to move effects
 add objects effects
