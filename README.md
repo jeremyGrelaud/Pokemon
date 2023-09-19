@@ -15,3 +15,6 @@ I already predefined elite4 and gym trainers for kanto but that's all
 
 
 Optimize and clarify the code 
+
+
+Complete the prototype of the graphical interface for combats
