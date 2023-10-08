@@ -1,3 +1,5 @@
+#the class trainer with all the basic actions he can do ... I should add a function  useitems and maybe buy items ....
+
 from pokemon import All_Pokemons, find_pokemon_by_name
 
 

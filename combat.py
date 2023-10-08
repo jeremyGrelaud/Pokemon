@@ -1,3 +1,6 @@
+#works for basic combat between 2 pokemons with weaknesses due to the move types and pokemon types
+#But it still lacks the effects of moves like paralysis, confusion ...
+
 import random
 from pokemon import All_Pokemons, create_copy_pokemon, create_pokemon, find_pokemon_by_name, level_up
 from trainer import Trainer

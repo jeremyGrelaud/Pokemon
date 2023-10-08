@@ -1,3 +1,5 @@
+#work in progress it's only a beginning. Haven't figured out all the classes I should use yet ...
+
 class Item:
   def __init__(self, name, description):
     self.name = name

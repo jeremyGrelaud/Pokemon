@@ -1,3 +1,5 @@
+#new file with the class move definition and also the class allmoves containing all moves of the first generation and more
+
 ##############################Move###################################
 class Move:
   def __init__(self, name, pp, attack_power, accuracy, move_type, effect):

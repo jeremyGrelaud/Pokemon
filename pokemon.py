@@ -1,3 +1,6 @@
+#main big file where all pokemons are initialized with their stats, types ... and also which moves they can learn and when do they evolve...
+
+
 from moves import All_Moves, display_pokemon_moves, find_move, get_move_info_in_line
 import random
 

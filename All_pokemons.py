@@ -1,4 +1,4 @@
-#c'était un fichier de test faut déplacer dans pokemon après sinon import circulaire toi même tu sais
+#old test file content moved in pokemon.py to avoid circular import
 
 """
 import time

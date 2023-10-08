@@ -1,3 +1,7 @@
+#A file that allows to launch sucessive random encounters with a predifined trainer and predifined pokemons. It continues while the pokemons aren't all fainted
+
+
+
 import random
 from items import All_Items, get_item_by_name
 

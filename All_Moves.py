@@ -1,4 +1,4 @@
-
+#old testing file content moved in moves.py
 """
 import time
 from moves import Move

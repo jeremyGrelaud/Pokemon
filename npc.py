@@ -1,3 +1,5 @@
+#template for NPC including gymleaders  elite4 trainers and others characters like professor oak or random wildtrainers
+
 from pokemon import All_Pokemons, Pokemon, create_copy_pokemon, find_pokemon_by_name
 
 

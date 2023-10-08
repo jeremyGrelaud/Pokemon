@@ -1,3 +1,5 @@
+#Just a starting screen menu for now 
+
 import pygame
 
 # Initialize Pygame
