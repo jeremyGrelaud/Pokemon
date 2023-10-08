@@ -24,7 +24,7 @@ def draw_menu():
   screen.blit(bg_image, (0, 0))
 
   # Draw a start game button
-  start_button_text = font.render("Start Game", True, (255, 255, 255))
+  start_button_text = font.render("Start Game", True, (220, 36, 36))
   start_button_rect = start_button_text.get_rect()
   start_button_rect.center = (420, 450)
   screen.blit(start_button_text, start_button_rect)
