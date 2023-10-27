@@ -243,6 +243,7 @@ def game_progression(trainer):
 
 
 ###############################TESTS###########################################
+"""
 pokemon_list = All_Pokemons().pokemon_list
 
 pikachu = find_pokemon_by_name("Pikachu", pokemon_list)
@@ -260,3 +261,5 @@ player = Trainer("Ash", [squirtle1, pikachu1])
 #combat = encounter_wild_pokemon(player)
 
 game_progression(player)
+
+"""
