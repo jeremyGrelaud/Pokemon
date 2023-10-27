@@ -1,4 +1,7 @@
 # Pokemon
+For education purpose only
+
+
 Recreating pokemon game in python
 
 A lot left to do
