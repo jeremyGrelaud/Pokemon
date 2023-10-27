@@ -9,96 +9,31 @@ from pokemon import *
 from trainer import *
 from random_encounters import generate_random_wild_pokemon
 
-def GUI_encounter(player, wild_pokemon):
 
-    # initialize pygame
-    pygame.init()
-
-    # set up the window
-    WIDTH = 640
-    HEIGHT = 480
-    window = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption('Pokemon Combat')
-
-    # set up the colors
-    WHITE = (255, 255, 255)
-    BLACK = (0, 0, 0)
-    RED = (255, 0, 0)
-    YELLOW = (255, 255, 0)
-    GREEN = (0, 255, 0)
-
-    # load the images
-    #specify the path
-    image_path = os.getcwd()+"/sprites_gen1/"
-    
-
-    pokemon_image = pygame.image.load(image_path+player.pokemon_list[0].name+".png")
-    enemy_pokemon_image = pygame.image.load(image_path+wild_pokemon.name+".png")
-
-    # Load the background image
-    background_image = pygame.image.load("background.png")
-
-    # Resize the image to fit the window
-    background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
+def drawing_pokemons_info(window, current_pokemon, wild_pokemon):
+        
+        #retrieving the values
+        pokemon_name = current_pokemon.name
+        pokemon_level = current_pokemon.level
+        pokemon_health = current_pokemon.hp
+        pokemon_max_health = current_pokemon.max_hp
 
 
-    # set up the fonts
-    font = pygame.font.Font('freesansbold.ttf', 16)
+        enemy_pokemon_name = wild_pokemon.name
+        enemy_pokemon_level = wild_pokemon.level
+        enemy_pokemon_health = wild_pokemon.hp
+        enemy_pokemon_max_health = wild_pokemon.max_hp
 
-    # set up the initial values
-    current_pokemon = player.pokemon_list[0]
+        # set up the colors
+        WHITE = (255, 255, 255)
+        BLACK = (0, 0, 0)
+        RED = (255, 0, 0)
+        YELLOW = (255, 255, 0)
+        GREEN = (0, 255, 0)
 
-    pokemon_name = current_pokemon.name
-    pokemon_level = current_pokemon.level
-    pokemon_health = current_pokemon.hp
-    pokemon_max_health = current_pokemon.max_hp
-
-
-    enemy_pokemon_name = wild_pokemon.name
-    enemy_pokemon_level = wild_pokemon.level
-    enemy_pokemon_health = wild_pokemon.hp
-    enemy_pokemon_max_health = wild_pokemon.max_hp
-
-
-    # set up the rects
-    # Symétrie verticale
-    pokemon_image = pygame.transform.flip(pokemon_image, True, False)
-    pokemon_image_rect = pokemon_image.get_rect()
-    enemy_pokemon_image_rect = enemy_pokemon_image.get_rect()
-
-    # Center the images vertically
-    pokemon_image_rect.centery = (HEIGHT // 2) * 1.55
-    enemy_pokemon_image_rect.centery = HEIGHT // 2.3
-
-    # Calculate the horizontal positions to center the images
-    pokemon_image_rect.centerx = WIDTH // 4 
-    enemy_pokemon_image_rect.centerx = WIDTH * 3 // 4
-
-
-    # Create a clock to control the framerate
-    clock = pygame.time.Clock()
-
-    # main game loop
-    running = True
-    while running:
-
-        # handle events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        # fill the background
-        window.fill(WHITE)
-        # Draw the background image
-        window.blit(background_image, (0, 0))
-
-        # draw the sprites
-        window.blit(pokemon_image, pokemon_image_rect)
-        window.blit(enemy_pokemon_image, enemy_pokemon_image_rect)
-
-
-
-
+        # set up the fonts
+        font = pygame.font.Font('freesansbold.ttf', 16)
+        
         # Draw player Pokemon health bar
         pokemon_health_bar_rect = pygame.Rect(350, 400, 250, 30)
         pygame.draw.rect(window, WHITE, pokemon_health_bar_rect)
@@ -142,6 +77,80 @@ def GUI_encounter(player, wild_pokemon):
         enemy_pokemon_name_and_level_text_rect.bottom = enemy_pokemon_health_bar_rect.top - 5
         window.blit(enemy_pokemon_name_and_level_text, enemy_pokemon_name_and_level_text_rect)
 
+
+
+
+def GUI_encounter(player, wild_pokemon):
+
+    # initialize pygame
+    pygame.init()
+
+    # set up the window
+    WIDTH = 640
+    HEIGHT = 480
+    window = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption('Pokemon Combat')
+
+    # set up the colors
+    WHITE = (255, 255, 255)
+
+    # load the images
+    #specify the path
+    image_path = os.getcwd()+"/sprites_gen1/"
+    
+    pokemon_image = pygame.image.load(image_path+player.pokemon_list[0].name+".png")
+    enemy_pokemon_image = pygame.image.load(image_path+wild_pokemon.name+".png")
+
+    # Load the background image
+    background_image = pygame.image.load("background.png")
+
+    # Resize the image to fit the window
+    background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
+
+
+    #Defining the current pokemon of the player
+    current_pokemon = player.pokemon_list[0]
+
+
+    #################### Centering both sprites #######################
+    pokemon_image = pygame.transform.flip(pokemon_image, True, False)
+    pokemon_image_rect = pokemon_image.get_rect()
+    enemy_pokemon_image_rect = enemy_pokemon_image.get_rect()
+
+    # Center the images vertically
+    pokemon_image_rect.centery = (HEIGHT // 2) * 1.55
+    enemy_pokemon_image_rect.centery = HEIGHT // 2.3
+
+    # Calculate the horizontal positions to center the images
+    pokemon_image_rect.centerx = WIDTH // 4 
+    enemy_pokemon_image_rect.centerx = WIDTH * 3 // 4
+    #################### Centering both sprites #######################
+
+
+
+    # Create a clock to control the framerate
+    clock = pygame.time.Clock()
+
+    # main game loop
+    running = True
+    while running:
+
+        # handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # fill the background
+        window.fill(WHITE)
+        # Draw the background image
+        window.blit(background_image, (0, 0))
+
+        # draw the sprites
+        window.blit(pokemon_image, pokemon_image_rect)
+        window.blit(enemy_pokemon_image, enemy_pokemon_image_rect)
+
+        #draw the health bars, pokemon name, level ...
+        drawing_pokemons_info(window, current_pokemon, wild_pokemon)
 
 
         # Update the display
