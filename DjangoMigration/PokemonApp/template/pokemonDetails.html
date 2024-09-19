@@ -1,0 +1,33 @@
+{% extends "base.html" %} {% load static %} {% block title %}
+<title>Pokemon home</title>
+{% endblock title %} {% block content %}
+<!-- Begin Page Content -->
+<div class="col-lg-12 mb-4">
+  <!-- Alerts -->
+  <div class="card shadow mb-4">
+    <div class="card-header py-3">
+      <h6 class="m-0 font-weight-bold text-primary">Pokemon</h6>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive text-center tableBody">
+            <h2>{{Pokemon.name}}</h2>
+            <br>
+            {{Pokemon}}
+
+            <img src="{% static '/img/sprites_gen1/'%}{{Pokemon.name}}.png">
+
+
+        <hr class="sidebar-divider mb-4" />
+
+        <h2>{{ Pokemon.name }}'s base moves</h2>
+        <ul>
+            {% for move in Pokemon.moves.all %}
+                <li>{{ move }}</li>
+            {% endfor %}
+        </ul>
+     
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
