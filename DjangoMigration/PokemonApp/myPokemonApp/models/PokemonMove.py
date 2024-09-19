@@ -29,10 +29,6 @@ class PokemonMove(models.Model):
     return str(strMove)
 
         
-
-
-
-
   def use(self, user, opponent):
       """Use the move and apply its effects to the user and opponent."""
       print(f'{user.name} used {self.name}!')
