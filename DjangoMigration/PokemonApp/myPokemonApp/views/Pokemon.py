@@ -70,4 +70,13 @@ class PokemonView(generic.DeleteView):
         print(f"[+] {PokemonObj}")
     
         context['Pokemon'] = PokemonObj
+
+        # Utiliser la relation inverse pour obtenir les LearnableMove
+        learnable_moves = PokemonObj.learnable_moves.all()
+        # Obtenir les évolutions
+        evolutions = PokemonObj.evolutions.all()
+
+        context['learnable_moves'] = learnable_moves
+        context['evolutions'] = evolutions
+        
         return context    

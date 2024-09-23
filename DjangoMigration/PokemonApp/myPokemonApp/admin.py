@@ -9,7 +9,22 @@ class PokemonAdmin(admin.ModelAdmin):
     list_display_links = ["name"]
     readonly_fields = ["name"]
     search_fields = ["name"]
+@admin.register(PokemonLearnableMove)
+class PokemonLearnableMoveAdmin(admin.ModelAdmin):
+    list_display = ["pokemon_name", "move_name", "LearnableAtLevel"]
+    readonly_fields = ["pokemon", "move", "LearnableAtLevel"]
+    search_fields = ["pokemon", "move", "LearnableAtLevel"]
 
-#admin.site.register(Pokemon)
+    def pokemon_name(self, obj):
+        return obj.pokemon.name
+    pokemon_name.short_description = 'Pokemon Name'
+
+    def move_name(self, obj):
+        return obj.move.name
+    move_name.short_description = 'Move Name'
+
+
 admin.site.register(PokemonMove)
 admin.site.register(PokemonType)
+admin.site.register(Trainer)
+admin.site.register(PlayablePokemon)

@@ -5,4 +5,4 @@ This is where you import your tasks files in order to use them in your Django ap
 *Then they will be imported when the models tasks is called.*\n
 """
 
-from .initializeDatabase import scriptToInitializeDatabse
+from .initializeDatabase import scriptToInitializeDatabase

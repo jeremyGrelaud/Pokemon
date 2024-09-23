@@ -25,7 +25,35 @@
                 <li>{{ move }}</li>
             {% endfor %}
         </ul>
-     
+
+
+        <hr class="sidebar-divider mb-4" />
+
+        <h2>{{ Pokemon.name }}'s learnable moves</h2>
+        <ul>
+            {% for learnable_move in learnable_moves %}
+                <li>{{ learnable_move.move.name }} (Level {{ learnable_move.LearnableAtLevel }})</li>
+            {% endfor %}
+        </ul>
+
+
+
+        <hr class="sidebar-divider mb-4" />
+
+        <h2>{{ Pokemon.name }}'s evolution</h2>
+        <ul>
+            {% for evolution in evolutions %}
+                <img src="{% static '/img/sprites_gen1/'%}{{evolution.evolvesTo.name}}.png">
+                
+                <p><strong><i class="fa fa-external-link"></i></strong> <a
+                  href="/pokemon/{{evolution.evolvesTo.id}}" target="_blank">{{evolution.evolvesTo.name}} (Level {{ evolution.evolutionLevel }})  </a>
+                </p>
+          
+      
+            {% endfor %}
+        </ul>
+
+
       </div>
     </div>
   </div>

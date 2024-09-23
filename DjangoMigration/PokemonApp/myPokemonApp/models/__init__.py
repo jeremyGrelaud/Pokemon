@@ -9,3 +9,7 @@ This is where you import your models files in order to use them in your Django a
 from .Pokemon import Pokemon
 from .PokemonMove import PokemonMove
 from .PokemonType import PokemonType
+from .Trainer import Trainer
+from .PlayablePokemon import PlayablePokemon
+from .PokemonLearnableMove import PokemonLearnableMove
+from .PokemonEvolution import PokemonEvolution

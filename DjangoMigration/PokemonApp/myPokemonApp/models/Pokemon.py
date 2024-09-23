@@ -41,4 +41,3 @@ class Pokemon(models.Model):
                         f"Special Defense: {self.specialDefense}\n"+\
                         f"Speed: {self.speed}"
         return str(strPokemon)
-

@@ -24,3 +24,12 @@ Complete the prototype of the graphical interface for combats
 
 
 # ADD exceptions, try and catch  when I will make the main game loop ...
+
+
+python manage.py makemigrations
+python manage.py migrate
+
+Pour initialiser la DB une seule fois faire :
+```
+python manage.py shell -c "from myPokemonApp.models import *; from myPokemonApp.tasks import *; scriptToInitializeDatabase()"
+```
