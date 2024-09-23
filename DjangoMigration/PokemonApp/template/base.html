@@ -124,24 +124,7 @@
             >
               <i class="fa fa-bars"></i>
             </button>
-
-            <!-- Topbar Search -->
-            {% if user.is_authenticated %}
-              <div class="dropdown text-center ml-auto">
-                <div class="btn-group">
-                  <a class="btn btn-sm btn-success dropdown-toggle" id="dropdownMenu" role="button" data-toggle="dropdown" aria-expanded="false">Context : {{ request.user.contact.activeBusinessUnit | default_if_none:"All"}}</a>
-                  <ul id="changeBu" class="dropdown-menu" style="will-change: transform; min-width: 20rem; left: 50%; transform: translateX(-50%);">
-                    <input type="text" class="form-control text-sm text-center" id="buFilter" placeholder="Filter" autocomplete="off">
-                    <button class="dropdown-item text-center mt-2" name="changeBu" value="-1">All</button>
-                    <div class="dropdown-divider"></div>
-                    {% for bu in request.user.contact.businessUnit.all|dictsort:"pk" %}
-                      <button class="dropdown-item" name="changeBu" value="{{forloop.counter}}">{{bu}}</button>
-                    {% endfor %}
-                  </ul>
-                </div>
-              </div>
-            {% endif %}
-
+            
             <!-- Topbar Navbar -->
             <ul class="navbar-nav ml-auto">
               <!-- Nav Item - Search Dropdown (Visible Only XS) -->

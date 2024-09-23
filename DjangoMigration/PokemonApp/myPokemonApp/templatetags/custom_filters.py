@@ -11,6 +11,43 @@ import django_tables2 as tables
 
 register = template.Library()
 
+
+@register.filter(name="removeFromURL")
+def removeFromURL(fullUrlPath, argToRemove):
+    """Reads full URL Path and remove 'argToRemove' from path
+    ex: toto.com/?vendor=tata -> toto.com/?"""
+    # Chunk : /cve/?vendor=microsoft&product=windows&searchQuery=
+    
+    # 1. Clean url 
+    fullUrlPath = bleach.clean(fullUrlPath, tags=[], attributes={})
+
+    # 2. Retrieve args
+    urlPath, *urlArgs = fullUrlPath.split("?")
+
+    # 3. If multiple '?', it is unusual access -> return current page
+    if len(urlArgs)!=1:
+        return fullUrlPath
+    
+    # 4. Iterate througt args
+    # Chunk vendor=microsoft
+    newUrlArgs = []
+    for arg in urlArgs[0].split("&amp;"):
+        key, *value = arg.split("=")
+
+        # 5. If multiple '=', it is unusual access -> return current page
+        if len(value) != 1: 
+            return fullUrlPath
+        
+        # 6. If not to remove, then add to arg paths
+        if key!=argToRemove:
+            if key=="page":
+                newUrlArgs.append("page=1") 
+            else:
+                newUrlArgs.append(arg) 
+    
+    return f"{urlPath}?{'&'.join(newUrlArgs)}"
+
+
 @register.tag
 def optimized_render_table(parser, token):
     bits = token.split_contents()

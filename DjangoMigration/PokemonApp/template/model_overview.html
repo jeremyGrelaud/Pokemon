@@ -8,29 +8,36 @@
   <div class="card shadow mb-2">
     <div class="card-body">
       <form method="GET" class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 my-2 my-md-0 mw-100 navbar-search" id="searchForm">
-        <div class="input-group">
-            <input
-                type="text"
-                class="form-control bg-light border-0 small"
-                placeholder="Search for..."
-                aria-label="Search"
-                aria-describedby="basic-addon2"
-                name="searchQuery"
-                id="searchQuery"
-            />
-            <div class="input-group-append">
-                <button class="btn btn-primary" type="submit" form="searchForm">
-                    <i class="fas fa-search fa-sm"></i>
+
+        <div class="row">
+          <div class="input-group">
+              <input
+                  type="text"
+                  class="form-control bg-light border-0 small"
+                  placeholder="Search for..."
+                  aria-label="Search"
+                  aria-describedby="basic-addon2"
+                  name="searchQuery"
+                  id="searchQuery"
+              />
+              <div class="input-group-append">
+                  <button class="btn btn-primary" type="submit" form="searchForm">
+                      <i class="fas fa-search fa-sm"></i>
+                  </button>
+              </div>
+          </div>
+          <div class="ml-3">
+            {% if searchQuery %}
+              <a href="{{request.get_full_path|removeFromURL:'searchQuery'|safe}}">
+                <button class="btn btn-pokemon" type="button">
+                  {{searchQuery}}
+                  <i class="fas fa-times fa-sm"></i>
                 </button>
-            </div>
-          {% if searchQuery %}
-          <a href="?searchQuery=">
-           <button class="btn btn-danger mx-2" type="button">
-              <i class="fas fa-times fa-fw fa-sm"></i>{{searchQuery|safe}}
-            </button>
-          </a>
-          {% endif %}
+              </a>
+            {% endif %}
+          </div>
         </div>
+
       </form>
     </div>
   </div>

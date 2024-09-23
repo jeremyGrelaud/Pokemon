@@ -46,8 +46,7 @@ class PokemonOverView(GenericOverview):
         paginatedObjects = self.GenericTable(pageObjects)
 
         
-        #table.paginate(page=self.request.GET.get("page", 1), per_page=10)
-
+        context["searchQuery"] = searchQuery
         context['table'] = paginatedObjects
         context['pageObjects'] = pageObjects
         

@@ -26,7 +26,24 @@ class PokemonMoveOverView(GenericOverview):
         table = self.GenericTable(self.get_queryset())
         table.paginate(page=self.request.GET.get("page", 1), per_page=10)
 
-        context['table'] = table
+        # Custom filters
+        pokemonMoveFilter = Q()
+        searchQuery = bleach.clean(self.request.GET.get('searchQuery', ''), tags=[], attributes={})
+
+        if searchQuery:
+            pokemonMoveFilter.add(Q(name__icontains=searchQuery), Q.AND)
+
+
+        paginator = Paginator(PokemonMove.objects.filter(pokemonMoveFilter).distinct().order_by("id"), 10)
+        pageNumber = self.request.GET.get("page", 1)
+        pageObjects = paginator.get_page(pageNumber)
+        paginatedObjects = self.GenericTable(pageObjects)
+
+
+        context["searchQuery"] = searchQuery
+        context['table'] = paginatedObjects
+        context['pageObjects'] = pageObjects
+
         return context
 
 
