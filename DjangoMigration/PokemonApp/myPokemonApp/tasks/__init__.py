@@ -6,3 +6,6 @@ This is where you import your tasks files in order to use them in your Django ap
 """
 
 from .initializeDatabase import scriptToInitializeDatabase
+from .initializeItemsAndNpcs import run_full_initialization
+from .initShops import initShops
+from .initPokeCenters import scriptToInitializePokeCenters

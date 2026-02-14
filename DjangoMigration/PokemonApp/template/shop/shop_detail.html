@@ -237,43 +237,6 @@ function getCookie(name) {
 
 const csrftoken = getCookie('csrftoken');
 
-// Toast Notification System
-function showToast(message, type = 'success') {
-  const icons = {
-    success: 'check-circle',
-    error: 'exclamation-circle',
-    info: 'info-circle',
-    warning: 'exclamation-triangle'
-  };
-  
-  const colors = {
-    success: 'success',
-    error: 'danger',
-    info: 'info',
-    warning: 'warning'
-  };
-  
-  const toast = $(`
-    <div class="toast" role="alert" data-delay="3000">
-      <div class="toast-header bg-${colors[type]} text-white">
-        <i class="fas fa-${icons[type]} mr-2"></i>
-        <strong class="mr-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
-        <button type="button" class="ml-2 mb-1 close text-white" data-dismiss="toast">
-          <span>&times;</span>
-        </button>
-      </div>
-      <div class="toast-body">
-        ${message}
-      </div>
-    </div>
-  `);
-  
-  $('#toast-container').append(toast);
-  toast.toast('show');
-  
-  setTimeout(() => toast.remove(), 4000);
-}
-
 // Buy Item Function
 function buyItem(shopInventoryId, itemName, unitPrice) {
   const quantityInput = $(`.buy-quantity[data-shop-inventory-id="${shopInventoryId}"]`);

@@ -54,12 +54,12 @@ urlpatterns = [
 
     # Combat graphique
     path('battle/<int:pk>/play/', views.BattleGameView.as_view(), name='BattleGameView'),
-    path('battle/<int:pk>/action/', views.battle_action_view, name='BattleActionView'),
+    path('battle/<int:pk>/action/', views.battle_action_view, name='BattleActionView'),    
+
     path('battle/create/', views.BattleCreateView.as_view(), name='BattleCreateView'),
 
-
-    path('get_trainer_items/', views.get_trainer_items, name='GetTrainerItems'),
-    path('get_trainer_team/', views.get_trainer_team, name='GetTrainerTeam'),
+    path('get_trainer_items/', views.GetTrainerItems, name='GetTrainerItems'),
+    path('get_trainer_team/', views.GetTrainerTeam, name='GetTrainerTeam'),
 
 
     # NOUVELLES ROUTES API
@@ -74,4 +74,17 @@ urlpatterns = [
     path('api/shop/buy/', views.buy_item_api, name='BuyItemAPI'),
     path('api/shop/sell/', views.sell_item_api, name='SellItemAPI'),
     path('transactions/', views.transaction_history_view, name='TransactionHistoryView'),
+
+
+
+    # Liste des centres
+    path('pokemon-centers/', views.PokemonCenterListView.as_view(), name='PokemonCenterListView'),
+    # Détails d'un centre
+    path('pokemon-center/<int:pk>/', views.PokemonCenterDetailView.as_view(), name='PokemonCenterDetailView'),
+    # API - Soigner l'équipe
+    path('api/pokemon-center/heal/', views.heal_team_api, name='HealTeamAPI'),
+    # API - Accès PC
+    path('api/pokemon-center/pc/', views.access_pc_from_center_api, name='AccessPCAPI'),
+    # Historique
+    path('pokemon-center/history/', views.center_history_view, name='CenterHistoryView'),
 ]

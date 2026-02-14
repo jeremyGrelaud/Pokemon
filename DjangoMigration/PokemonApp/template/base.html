@@ -17,7 +17,7 @@
     <!-- Custom styles -->
     <link href="{% static 'css/sb-admin-2.css'%}" rel="stylesheet" />
     <link href="{% static 'css/pokemon-types.css'%}" rel="stylesheet" />
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
   </head>
@@ -106,6 +106,14 @@
           </a>
         </li>
 
+        <!-- Centre Pokémon -->
+        <li class="nav-item {% if 'PokemonCenter' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'PokemonCenterListView' %}">
+            <i class="fas fa-hospital"></i>
+            <span>Centre Pokémon</span>
+          </a>
+        </li>
+
 
         <div class="text-center d-none d-md-inline mt-4">
           <button class="rounded-circle border-0" id="sidebarToggle"></button>
@@ -191,6 +199,9 @@
       </div>
     </div>
 
+    {% block css %}
+    {% endblock css %}
+
     {% block js %}
     <!-- Bootstrap core JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.0/js/bootstrap.bundle.min.js"></script>
@@ -198,7 +209,7 @@
     
     <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
-    
+
     <script>
       // Toggle sidebar
       $("#sidebarToggle, #sidebarToggleTop").on('click', function(e) {
@@ -206,6 +217,11 @@
         $(".sidebar").toggleClass("toggled");
       });
     </script>
+
+    <!-- Toast Notification System -->
+    <link rel="stylesheet" href="{% static 'css/toast-notifications.css' %}">
+    <script src="{% static 'js/toast-notifications.js' %}"></script>
+
     {% endblock js %}
   </body>
 </html>

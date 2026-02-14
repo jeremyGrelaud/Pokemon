@@ -16,7 +16,8 @@ import logging
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
+
 
 from myPokemonApp.gameUtils import check_battle_end
 
@@ -433,7 +434,8 @@ class DashboardView(generic.TemplateView):
 class BattleGameView(generic.DetailView):
     """Vue du combat en mode graphique"""
     model = Battle
-    template_name = "battle/battle_game.html"
+    # template_name = "battle/battle_game.html"
+    template_name = "battle/battle_game_v2.html"
     context_object_name = 'battle'
     
     def get_queryset(self):
@@ -762,44 +764,127 @@ def get_object_or_create_wild_trainer():
     )
     return trainer
 
-@login_required
-def get_trainer_items(request):
-    trainer_id = request.GET.get('trainer_id')
-
-    inventory = TrainerInventory.objects.filter(
-        trainer=Trainer.objects.get(pk=trainer_id),
-        quantity__gt=0
-    )
-
-    items = []
-    
-    if not inventory.exists():
-        return JsonResponse({})
-    
-    
-    items = []
-    # Récupérer les objets du sac du dresseur
-    for item in inventory:
-        items.append({'id': item.pk , 'name': item.item.name, 'quantity':item.quantity })
-
-    return JsonResponse({'items': items})
+# ============================================================================
+# API - GET TRAINER TEAM ( seulement les 6 de l'équipe)
+# ============================================================================
 
 @login_required
-def get_trainer_team(request):
+@require_http_methods(["GET"])
+def GetTrainerTeam(request):
+    """
+    Retourne l'équipe du dresseur (6 Pokémon max)
+    Filtre sur is_in_party=True pour n'avoir que l'équipe active
+    """
     trainer_id = request.GET.get('trainer_id')
     exclude_pokemon_id = request.GET.get('exclude_pokemon_id')
-    # Récupérer les Pokémon de l'équipe (hors Pokémon actuel)
-    trainersPokemons = PlayablePokemon.objects.filter(
-        trainer=Trainer.objects.get(pk=trainer_id),
-    ).exclude(pk=exclude_pokemon_id)
-
-    team = []
-    for poke in trainersPokemons:
-        team.append(
-            {'id': poke.pk, 'nickname': poke.nickname, 'species': {'name' : poke.species.name }, 'level': poke.level, 'current_hp': poke.current_hp, 'max_hp': poke.max_hp}
-        )
     
-    return JsonResponse({'team': team})
+    trainer = get_object_or_404(Trainer, pk=trainer_id)
+    
+    # IMPORTANT: Filtrer sur is_in_party=True pour avoir SEULEMENT l'équipe (6 max)
+    team = trainer.pokemon_team.filter(is_in_party=True)
+    
+    if exclude_pokemon_id:
+        team = team.exclude(pk=exclude_pokemon_id)
+    
+    team_data = []
+    for pokemon in team:
+        team_data.append({
+            'id': pokemon.id,
+            'nickname': pokemon.nickname,
+            'species': {
+                'name': pokemon.species.name,
+                'id': pokemon.species.id
+            },
+            'level': pokemon.level,
+            'current_hp': pokemon.current_hp,
+            'max_hp': pokemon.max_hp,
+            'status_condition': pokemon.status_condition
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'team': team_data
+    })
+
+
+# ============================================================================
+# API - GET TRAINER ITEMS
+# ============================================================================
+
+@login_required
+@require_http_methods(["GET"])
+def GetTrainerItems(request):
+    """Retourne les objets du dresseur avec leurs quantités"""
+    trainer_id = request.GET.get('trainer_id')
+    trainer = get_object_or_404(Trainer, pk=trainer_id)
+    
+    inventory = TrainerInventory.objects.filter(trainer=trainer, quantity__gt=0)
+    
+    items_data = []
+    for inv in inventory:
+        items_data.append({
+            'id': inv.id,
+            'name': inv.item.name,
+            'quantity': inv.quantity,
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'items': items_data
+    })
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def calculate_damage(attacker, defender, move):
+    """Calcule les dégâts d'une attaque (formule simplifiée Gen 1)"""
+    if not move.power:
+        return 0
+    
+    # Formule simplifiée
+    level = attacker.level
+    attack = attacker.attack if move.damage_class == 'physical' else attacker.special_attack
+    defense = defender.defense if move.damage_class == 'physical' else defender.special_defense
+    power = move.power
+    
+    damage = ((2 * level / 5 + 2) * power * attack / defense / 50) + 2
+    
+    # Variation aléatoire (85-100%)
+    import random
+    damage = int(damage * random.randint(85, 100) / 100)
+    
+    return max(1, damage)
+
+
+def calculate_exp_reward(battle):
+    """Calcule l'XP gagnée (formule Gen 1)"""
+    base_exp = battle.opponent_pokemon.species.base_experience or 100
+    level = battle.opponent_pokemon.level
+    
+    # Formule Gen 1 simplifiée
+    exp = (base_exp * level) / 7
+    
+    # Bonus si dresseur
+    if battle.opponent_trainer:
+        exp = int(exp * 1.5)
+    
+    return int(exp)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

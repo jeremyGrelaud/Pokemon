@@ -1,0 +1,999 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+<title>Combat - {{ battle.player_pokemon.species.name }} VS {{ battle.opponent_pokemon.species.name }}</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Battle Scene Container -->
+<!-- Options: grass, water, cave -->
+<div class="battle-scene" data-terrain="grass">
+  
+  <!-- Background Layer -->
+  <div class="battle-background">
+    <div class="weather-effect" id="weather-container"></div>
+    <div class="particles-background" id="particles-bg"></div>
+  </div>
+
+
+  <!-- Zone de combat (sprites et plateformes) -->
+  <div class="battlefield">
+    
+    <!-- LIGNE 1: ADVERSAIRE (Info gauche + Sprite droite) -->
+    <div class="row align-items-center opponent-row">
+      <!-- Colonne Info Adversaire (gauche) -->
+      <div class="col-6 d-flex justify-content-start">
+        <div class="info-bar opponent-bar">
+          <div class="info-content">
+            <div class="name-level-row">
+              <span class="pokemon-name" id="opponent-name">
+                {% if battle.opponent_pokemon.nickname %}
+                  {{ battle.opponent_pokemon.nickname }}
+                {% else %}
+                  {{ battle.opponent_pokemon.species.name }}
+                {% endif %}
+              </span>
+              <span class="pokemon-gender">♂</span>
+              <span class="pokemon-level" id="opponent-level">Niv.{{ battle.opponent_pokemon.level }}</span>
+            </div>
+            
+            <!-- HP Bar -->
+            <div class="hp-section">
+              <div class="hp-label">HP</div>
+              <div class="hp-bar-wrapper">
+                <div class="hp-bar">
+                  {% widthratio battle.opponent_pokemon.current_hp battle.opponent_pokemon.max_hp 100 as opp_hp_percent %}
+                  <div class="hp-bar-fill {% if opp_hp_percent > 50 %}hp-high{% elif opp_hp_percent > 20 %}hp-medium{% else %}hp-low{% endif %}" 
+                      id="opponent-hp-bar"
+                      style="width: {{ opp_hp_percent }}%">
+                    <div class="hp-bar-shine"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status Icon -->
+            <div class="status-container" id="opponent-status">
+              {% if battle.opponent_pokemon.status_condition %}
+              <span class="status-badge status-{{ battle.opponent_pokemon.status_condition }}">
+                {{ battle.opponent_pokemon.get_status_condition_display|upper }}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Colonne Sprite Adversaire (droite) -->
+      <div class="col-6 d-flex justify-content-end">
+        <div class="battle-side opponent-side">
+          <div class="pokemon-platform opponent-platform"></div>
+          <div class="pokemon-container opponent-container" id="opponent-container">
+            <div class="pokemon-shadow"></div>
+            <img class="pokemon-sprite opponent-sprite"
+                id="opponent-sprite"
+                src="{% static 'img/sprites_gen1/' %}{{ battle.opponent_pokemon.species.name }}.png"
+                alt="{{ battle.opponent_pokemon.species.name }}"
+                onerror="this.src='{% static 'img/pokeball.png' %}'">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIGNE 2: JOUEUR (Sprite gauche + Info droite) -->
+    <div class="row align-items-center player-row">
+      <!-- Colonne Sprite Joueur (gauche) -->
+      <div class="col-6 d-flex justify-content-start">
+        <div class="battle-side player-side">
+          <div class="pokemon-platform player-platform"></div>
+          <div class="pokemon-container player-container" id="player-container">
+            <div class="pokemon-shadow"></div>
+            <img class="pokemon-sprite player-sprite"
+                id="player-sprite"
+                src="{% static 'img/sprites_gen1/' %}{{ battle.player_pokemon.species.name }}.png"
+                alt="{{ battle.player_pokemon.species.name }}"
+                onerror="this.src='{% static 'img/pokeball.png' %}'">
+          </div>
+        </div>
+      </div>
+
+      <!-- Colonne Info Joueur (droite) -->
+      <div class="col-6 d-flex justify-content-end">
+        <div class="info-bar player-bar">
+          <div class="info-content">
+            <div class="name-level-row">
+              <span class="pokemon-name" id="player-name">
+                {% if battle.player_pokemon.nickname %}
+                  {{ battle.player_pokemon.nickname }}
+                {% else %}
+                  {{ battle.player_pokemon.species.name }}
+                {% endif %}
+              </span>
+              <span class="pokemon-gender">♂</span>
+              <span class="pokemon-level" id="player-level">Niv.{{ battle.player_pokemon.level }}</span>
+            </div>
+            
+            <!-- HP Bar -->
+            <div class="hp-section">
+              <div class="hp-label">HP</div>
+              <div class="hp-bar-wrapper">
+                <div class="hp-bar">
+                  {% widthratio battle.player_pokemon.current_hp battle.player_pokemon.max_hp 100 as player_hp_percent %}
+                  <div class="hp-bar-fill {% if player_hp_percent > 50 %}hp-high{% elif player_hp_percent > 20 %}hp-medium{% else %}hp-low{% endif %}" 
+                      id="player-hp-bar"
+                      style="width: {{ player_hp_percent }}%">
+                    <div class="hp-bar-shine"></div>
+                  </div>
+                </div>
+                <div class="hp-text">
+                  <span id="player-hp-current">{{ battle.player_pokemon.current_hp }}</span>/<span id="player-hp-max">{{ battle.player_pokemon.max_hp }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- EXP Bar (Player only) -->
+            <div class="exp-section">
+              <div class="exp-bar">
+                {% widthratio battle.player_pokemon.current_experience battle.player_pokemon.experience_for_next_level 100 as exp_percent %}
+                <div class="exp-bar-fill" style="width: {{ exp_percent|default:0 }}%"></div>
+              </div>
+            </div>
+
+            <!-- Status Icon -->
+            <div class="status-container" id="player-status">
+              {% if battle.player_pokemon.status_condition %}
+              <span class="status-badge status-{{ battle.player_pokemon.status_condition }}">
+                {{ battle.player_pokemon.get_status_condition_display|upper }}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calque des effets (par-dessus tout) -->
+    <div class="effects-layer" id="effects-layer">
+      <canvas id="attack-canvas" width="800" height="600"></canvas>
+    </div>
+  </div>
+
+
+
+  <!-- UI Layer -->
+  <div class="battle-ui">
+    
+    <!-- Battle Log (Compact) -->
+    <div class="battle-log-compact" id="battle-log-compact">
+      <div class="log-messages" id="log-messages"></div>
+    </div>
+
+    <!-- Action Menu -->
+    <div class="action-panel" id="action-panel">
+      
+      <!-- Main Menu -->
+      <div class="menu-container" id="main-menu">
+        <div class="menu-grid">
+          <button class="action-btn action-fight" onclick="showMoves()">
+            <i class="fas fa-fist-raised"></i>
+            <span>Combat</span>
+          </button>
+          <button class="action-btn action-pokemon" onclick="showTeam()">
+            <i class="fas fa-users"></i>
+            <span>Pokémon</span>
+          </button>
+          <button class="action-btn action-bag" onclick="showItems()">
+            <i class="fas fa-shopping-bag"></i>
+            <span>Sac</span>
+          </button>
+          <button class="action-btn action-run" onclick="tryRun()">
+            <i class="fas fa-running"></i>
+            <span>Fuite</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Moves Menu -->
+      <div class="menu-container" id="moves-menu" style="display: none;">
+        <div class="menu-header">
+          <h4>Choisissez une attaque</h4>
+          <button class="btn-back" onclick="showMainMenu()">
+            <i class="fas fa-arrow-left"></i> Retour
+          </button>
+        </div>
+        <div class="moves-grid">
+          {% for move_instance in battle.player_pokemon.pokemonmoveinstance_set.all %}
+          <button class="move-btn move-type-{{ move_instance.move.type.name }}" 
+                  onclick="useMove('{{ move_instance.move.id }}')"
+                  {% if move_instance.current_pp == 0 %}disabled{% endif %}>
+            <div class="move-header">
+              <span class="move-name">{{ move_instance.move.name }}</span>
+              <span class="move-pp">PP: {{ move_instance.current_pp }}/{{ move_instance.move.pp }}</span>
+            </div>
+            <div class="move-footer">
+              <span class="move-type-badge type-{{ move_instance.move.type.name }}">
+                {{ move_instance.move.type.name|upper }}
+              </span>
+              <span class="move-power">
+                {% if move_instance.move.power %}PWR: {{ move_instance.move.power }}{% else %}—{% endif %}
+              </span>
+            </div>
+          </button>
+          {% empty %}
+          <p class="text-muted">Aucune attaque disponible</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Items Menu -->
+      <div class="menu-container" id="items-menu" style="display: none;">
+        <div class="menu-header">
+          <h4>Choisissez un objet</h4>
+          <button class="btn-back" onclick="showMainMenu()">
+            <i class="fas fa-arrow-left"></i> Retour
+          </button>
+        </div>
+        <div class="items-list" id="items-list">
+          <p class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</p>
+        </div>
+      </div>
+
+      <!-- Team Menu -->
+      <div class="menu-container" id="team-menu" style="display: none;">
+        <div class="menu-header">
+          <h4>Choisissez un Pokémon</h4>
+          <button class="btn-back" onclick="showMainMenu()">
+            <i class="fas fa-arrow-left"></i> Retour
+          </button>
+        </div>
+        <div class="team-list" id="team-list">
+          <p class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal de Switch Forcé (quand Pokemon KO) -->
+<div class="modal fade" id="forced-switch-modal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="fas fa-exclamation-triangle"></i> Pokémon K.O. !
+        </h5>
+      </div>
+      <div class="modal-body">
+        <p class="text-center mb-3">
+          <strong id="fainted-pokemon-name"></strong> est K.O. !<br>
+          Choisissez un Pokémon pour le remplacer.
+        </p>
+        <div id="forced-switch-list">
+          <!-- Team list will be loaded here -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Victoire -->
+<div class="modal fade" id="victory-modal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-success">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="fas fa-trophy"></i> VICTOIRE !
+        </h5>
+      </div>
+      <div class="modal-body text-center">
+        <i class="fas fa-trophy fa-5x text-warning mb-3"></i>
+        <h4>Vous avez gagné le combat !</h4>
+        <p id="victory-exp-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" onclick="window.location.reload()">
+          <i class="fas fa-check"></i> Continuer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Défaite -->
+<div class="modal fade" id="defeat-modal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-danger">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="fas fa-times-circle"></i> DÉFAITE
+        </h5>
+      </div>
+      <div class="modal-body text-center">
+        <i class="fas fa-times-circle fa-5x text-danger mb-3"></i>
+        <h4>Vous avez perdu le combat...</h4>
+        <p>Tous vos Pokémon sont K.O.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="window.location.href='{% url 'home' %}'">
+          <i class="fas fa-home"></i> Retour
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Fuite -->
+<div class="modal fade" id="fled-modal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title">
+          <i class="fas fa-running"></i> FUITE
+        </h5>
+      </div>
+      <div class="modal-body text-center">
+        <i class="fas fa-running fa-5x text-warning mb-3"></i>
+        <h4>Vous avez fui le combat !</h4>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-warning" onclick="window.location.href='{% url 'home' %}'">
+          <i class="fas fa-home"></i> Retour
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Audio Elements (preload) -->
+<audio id="bgm-battle" loop preload="auto">
+  <source src="{% static 'sounds/bgm/battle_wild.mp3' %}" type="audio/mpeg">
+</audio>
+
+{% endblock content %}
+
+
+{% block css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/battle-animations.css' %}">
+{% endblock css %}
+
+
+{% block js %}
+{{ block.super }}
+<script src="{% static 'js/battle-effects.js' %}"></script>
+<script src="{% static 'js/audio-manager.js' %}"></script>
+
+<script>
+// ============================================================================
+// GLOBAL VARIABLES
+// ============================================================================
+
+let battleEffects;
+let audioManager;
+const battleId = {{ battle.id }};
+const csrfToken = '{{ csrf_token }}';
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+$(document).ready(function() {
+  console.log('🎮 Battle Scene V2 Loaded');
+  
+  // Initialize systems
+  battleEffects = new BattleEffects(document.getElementById('attack-canvas'));
+  audioManager = new AudioManager();
+  
+  // Start BGM
+  {% if battle.battle_type == 'gym' %}
+    audioManager.playBGM('battle_gym');
+  {% elif battle.battle_type == 'trainer' %}
+    audioManager.playBGM('battle_trainer');
+  {% else %}
+    audioManager.playBGM('battle_wild');
+  {% endif %}
+  
+  // Entry animations
+  setTimeout(() => {
+    $('#opponent-container').addClass('slide-in-opponent');
+    $('#player-container').addClass('slide-in-player');
+  }, 100);
+  
+  // Initial log
+  addBattleLog('Le combat commence !');
+  
+  // Play Pokemon cries
+  setTimeout(() => {
+    audioManager.playCry('{{ battle.opponent_pokemon.species.id }}');
+  }, 500);
+  
+  setTimeout(() => {
+    audioManager.playCry('{{ battle.player_pokemon.species.id }}');
+  }, 1500);
+});
+
+// ============================================================================
+// MENU NAVIGATION
+// ============================================================================
+
+function showMainMenu() {
+  $('.menu-container').hide();
+  $('#main-menu').fadeIn(200);
+  audioManager.playSFX('ui/select');
+}
+
+function showMoves() {
+  $('.menu-container').hide();
+  $('#moves-menu').fadeIn(200);
+  audioManager.playSFX('ui/select');
+}
+
+function showItems() {
+  $('.menu-container').hide();
+  $('#items-menu').fadeIn(200);
+  loadItems();
+  audioManager.playSFX('ui/select');
+}
+
+function showTeam() {
+  $('.menu-container').hide();
+  $('#team-menu').fadeIn(200);
+  loadTeam();
+  audioManager.playSFX('ui/select');
+}
+
+// ============================================================================
+// BATTLE ACTIONS
+// ============================================================================
+
+function useMove(moveId) {
+  $('button').prop('disabled', true);
+  audioManager.playSFX('ui/confirm');
+  
+  // Get move data
+  const moveBtn = $(event.target).closest('.move-btn');
+  const moveName = moveBtn.find('.move-name').text();
+  const moveType = moveBtn.attr('class').match(/move-type-(\w+)/)[1];
+  
+  addBattleLog(`${$('#player-name').text()} utilise ${moveName} !`);
+  
+  // Animate attack
+  const playerPos = getElementCenter($('#player-sprite'));
+  const opponentPos = getElementCenter($('#opponent-sprite'));
+  
+  // Play attack animation
+  $('#player-sprite').addClass('attacking');
+  setTimeout(() => $('#player-sprite').removeClass('attacking'), 600);
+  
+  // Determine attack category from move power
+  const movePower = moveBtn.find('.move-power').text();
+  const isPhysical = movePower.includes('PWR');
+  
+  const cleanedMoveName = moveName.replace(/\s+/g, '').toLowerCase(); //lower + removed whitespaces
+
+  if (isPhysical) {
+    setTimeout(() => {
+      battleEffects.physicalAttack(playerPos, opponentPos, 'slash');
+      // audioManager.playSFX('attacks/slash');
+      audioManager.playSFX(`attacks/${cleanedMoveName}`);
+    }, 300);
+  } else {
+    setTimeout(() => {
+      battleEffects.specialAttack(playerPos, opponentPos, moveType);
+      // audioManager.playSFX('attacks/special');
+      audioManager.playSFX(`attacks/${cleanedMoveName}`);
+    }, 300);
+  }
+  
+  // Send to server
+  setTimeout(() => {
+    $.post('{% url "BattleActionView" battle.id %}', {
+      action: 'attack',
+      move_id: moveId,
+      csrfmiddlewaretoken: csrfToken
+    })
+    .done(function(data) {
+      updateBattleState(data);
+    })
+    .fail(function(xhr) {
+      console.error('Attack failed:', xhr);
+      addBattleLog('Erreur lors de l\'attaque');
+      $('button').prop('disabled', false);
+    });
+  }, 1500);
+}
+
+
+function switchPokemon(pokemonId) {
+  $('button').prop('disabled', true);
+  
+  $.post('{% url "BattleActionView" battle.id %}', {
+    action: 'switch',
+    pokemon_id: pokemonId,
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    // Animate switch
+    $('#player-sprite').addClass('fade-out');
+    setTimeout(() => {
+      updateBattleState(data);
+      $('#player-sprite').removeClass('fade-out');
+    }, 500);
+  })
+  .fail(function(xhr) {
+    console.error('Switch failed:', xhr);
+    addBattleLog('Erreur lors du changement');
+    $('button').prop('disabled', false);
+  });
+}
+
+function useItem(itemId) {
+  $('button').prop('disabled', true);
+  
+  $.post('{% url "BattleActionView" battle.id %}', {
+    action: 'item',
+    item_id: itemId,
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    updateBattleState(data);
+    if (!data.battle_ended) {
+      loadItems();
+    }
+  })
+  .fail(function(xhr) {
+    console.error('Item use failed:', xhr);
+    addBattleLog('Erreur lors de l\'utilisation de l\'objet');
+    $('button').prop('disabled', false);
+  });
+}
+
+function tryRun() {
+  if (!confirm('Voulez-vous vraiment fuir le combat ?')) {
+    return;
+  }
+  
+  $.post('{% url "BattleActionView" battle.id %}', {
+    action: 'flee',
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    if (data.fled) {
+      addBattleLog('Vous avez fui le combat !');
+      setTimeout(() => {
+        window.location.href = '{% url "home" %}';
+      }, 2000);
+    } else {
+      addBattleLog('Impossible de fuir !');
+      updateBattleState(data);
+    }
+  })
+  .fail(function(xhr) {
+    console.error('Flee failed:', xhr);
+    addBattleLog('Erreur');
+  });
+}
+
+// ============================================================================
+// DATA LOADING
+// ============================================================================
+
+function loadItems() {
+  $('#items-list').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</p>');
+  
+  $.get('{% url "GetTrainerItems" %}', {
+    trainer_id: '{{ battle.player_trainer.id }}'
+  })
+  .done(function(data) {
+    if (!data.items || data.items.length === 0) {
+      $('#items-list').html('<p class="text-center text-muted">Aucun objet disponible</p>');
+      return;
+    }
+    
+    let html = '<div class="items-grid">';
+    data.items.forEach(item => {
+      html += `
+        <button class="item-btn" onclick="useItem(${item.id})">
+          <div class="item-icon">
+            <i class="fas fa-flask"></i>
+          </div>
+          <div class="item-info">
+            <span class="item-name">${item.name}</span>
+            <span class="item-qty">x${item.quantity}</span>
+          </div>
+        </button>
+      `;
+    });
+    html += '</div>';
+    
+    $('#items-list').html(html);
+  })
+  .fail(function() {
+    $('#items-list').html('<p class="text-center text-danger">Erreur de chargement</p>');
+  });
+}
+
+function loadTeam() {
+  $('#team-list').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</p>');
+  
+  $.get('{% url "GetTrainerTeam" %}', {
+    trainer_id: '{{ battle.player_trainer.id }}',
+    exclude_pokemon_id: '{{ battle.player_pokemon.id }}'
+  })
+  .done(function(data) {
+    if (!data.team || data.team.length === 0) {
+      $('#team-list').html('<p class="text-center text-muted">Aucun autre Pokémon disponible</p>');
+      return;
+    }
+    
+    let html = '<div class="team-grid">';
+    data.team.forEach(pokemon => {
+      const hpPercent = (pokemon.current_hp / pokemon.max_hp) * 100;
+      const hpClass = hpPercent > 50 ? 'hp-high' : (hpPercent > 20 ? 'hp-medium' : 'hp-low');
+      const isKO = pokemon.current_hp === 0;
+      
+      html += `
+        <button class="team-btn ${isKO ? 'disabled' : ''}" 
+                onclick="switchPokemon(${pokemon.id})"
+                ${isKO ? 'disabled' : ''}>
+          <div class="team-info">
+            <div class="team-name">${pokemon.nickname || pokemon.species.name}</div>
+            <div class="team-level">Niv. ${pokemon.level}</div>
+          </div>
+          <div class="team-hp">
+            <div class="hp-bar-mini">
+              <div class="hp-bar-fill-mini ${hpClass}" style="width: ${hpPercent}%"></div>
+            </div>
+            <small>${pokemon.current_hp}/${pokemon.max_hp}</small>
+          </div>
+        </button>
+      `;
+    });
+    html += '</div>';
+    
+    $('#team-list').html(html);
+  })
+  .fail(function() {
+    $('#team-list').html('<p class="text-center text-danger">Erreur de chargement</p>');
+  });
+}
+
+// ============================================================================
+// BATTLE STATE UPDATE
+// ============================================================================
+
+function updateBattleState(data) {
+  console.log('Updating battle state:', data);
+  
+  // Vérifier si le switch a changé le Pokémon
+  // Update Pokemon data
+  if (data.player_pokemon) {
+    updatePokemonDisplay('player', data.player_pokemon);
+  }
+  
+  if (data.opponent_pokemon) {
+    updatePokemonDisplay('opponent', data.opponent_pokemon);
+  }
+  
+  // Update HP
+  if (data.player_hp !== undefined) {
+    updateHP('player', data.player_hp, data.player_max_hp);
+  }
+  
+  if (data.opponent_hp !== undefined) {
+    updateHP('opponent', data.opponent_hp, data.opponent_max_hp);
+  }
+  
+  // Add logs
+  if (data.log && data.log.length > 0) {
+    data.log.forEach(msg => addBattleLog(msg));
+  }
+  
+  // Check battle end
+  if (data.battle_ended) {
+    handleBattleEnd(data);
+  } else {
+    $('button').prop('disabled', false);
+    showMainMenu();
+  }
+}
+
+function updatePokemonDisplay(side, pokemonData) {
+  const sprite = $(`#${side}-sprite`);
+  const name = $(`#${side}-name`);
+  const level = $(`#${side}-level`);
+  
+  // IMPORTANT: Retirer la classe fainted si présente (fix du bug de sprite invisible)
+  sprite.removeClass('fainted fade-out taking-damage');
+  
+  // Update sprite
+  const newSrc = "{% static 'img/sprites_gen1/' %}" + pokemonData.species_name + ".png";
+  sprite.attr('src', newSrc)
+    .on('error', function() {
+      $(this).attr('src', "{% static 'img/pokeball.png' %}");
+    });
+  
+  // Update name and level
+  name.text(pokemonData.name);
+  level.text('Niv.' + pokemonData.level);
+  
+  // Update HP
+  updateHP(side, pokemonData.current_hp, pokemonData.max_hp, true);
+}
+
+function updateHP(side, current, max, skipDamageAnimation = false) {
+  const percent = Math.floor((current / max) * 100);
+  const bar = $(`#${side}-hp-bar`);
+  
+  // Animate width
+  bar.css('width', percent + '%');
+  
+  // Update color class
+  bar.removeClass('hp-high hp-medium hp-low');
+  if (percent > 50) {
+    bar.addClass('hp-high');
+  } else if (percent > 20) {
+    bar.addClass('hp-medium');
+  } else {
+    bar.addClass('hp-low');
+  }
+  
+  // Update text (player only)
+  if (side === 'player') {
+    $('#player-hp-current').text(current);
+    $('#player-hp-max').text(max);
+  }
+  
+  // Damage animation (sauf si skip - pour éviter animation lors du switch)
+  const sprite = $(`#${side}-sprite`);
+  if (!skipDamageAnimation && current < max) {
+    sprite.addClass('taking-damage');
+    setTimeout(() => sprite.removeClass('taking-damage'), 600);
+  }
+  
+  // Check if fainted
+  if (current === 0 && side === 'player') {
+    sprite.addClass('fainted');
+    audioManager.playSFX('battle/faint');
+    
+    // Afficher le modal de switch forcé après l'animation
+    setTimeout(() => {
+      showForcedSwitchModal();
+    }, 1500); // Attendre la fin de l'animation faint
+  } else if (current === 0) {
+    sprite.addClass('fainted');
+    audioManager.playSFX('battle/faint');
+  }
+}
+
+function handleBattleEnd(data) {
+  console.log('🏁 Battle ended:', data);
+  
+  // Arrêter la musique
+  if (audioManager) {
+    audioManager.stopBGM();
+  }
+  
+  // Désactiver tous les boutons
+  $('button').prop('disabled', true);
+  
+  if (data.result === 'victory') {
+    // VICTOIRE
+    addBattleLog('🎉 Vous avez gagné le combat !');
+    
+    if (battleEffects) {
+      battleEffects.createVictoryEffect();
+    }
+    
+    if (audioManager) {
+      audioManager.playVictory();
+    }
+    
+    // Afficher modal victoire
+    if (data.exp_gained) {
+      $('#victory-exp-message').text(`Votre Pokémon a gagné ${data.exp_gained} EXP !`);
+    }
+    
+    setTimeout(() => {
+      $('#victory-modal').modal('show');
+    }, 1500);
+    
+  } else if (data.result === 'defeat') {
+    // DEFAITE
+    addBattleLog('💀 Vous avez perdu le combat...');
+    
+    if (audioManager) {
+      audioManager.playDefeat();
+    }
+    
+    setTimeout(() => {
+      $('#defeat-modal').modal('show');
+    }, 1500);
+    
+  } else if (data.result === 'fled') {
+    // FUITE
+    addBattleLog('🏃 Vous avez fui le combat !');
+    
+    setTimeout(() => {
+      $('#fled-modal').modal('show');
+    }, 1000);
+    
+  } else if (data.winner_id == '{{ battle.player_trainer.id }}') {
+    // Fallback victoire (ancien format)
+    addBattleLog('🎉 Vous avez gagné le combat !');
+    if (battleEffects) battleEffects.createVictoryEffect();
+    if (audioManager) audioManager.playVictory();
+    
+    setTimeout(() => {
+      $('#victory-modal').modal('show');
+    }, 1500);
+    
+  } else {
+    // Fallback défaite ou reload
+    setTimeout(() => {
+      location.reload();
+    }, 3000);
+  }
+}
+
+// ============================================================================
+// UI HELPERS
+// ============================================================================
+
+function addBattleLog(message) {
+  const log = $('#log-messages');
+  const entry = $(`<div class="log-entry">${message}</div>`);
+  log.prepend(entry);
+  
+  // Limit to 10 messages
+  if (log.children().length > 10) {
+    log.children().last().remove();
+  }
+  
+  // Auto-scroll
+  log.parent().scrollTop(0);
+}
+
+function getElementCenter(element) {
+  const offset = element.offset();
+  const width = element.width();
+  const height = element.height();
+  
+  return {
+    x: offset.left + width / 2,
+    y: offset.top + height / 2
+  };
+}
+
+// ============================================================================
+// FORCED SWITCH MODAL (quand Pokemon KO)
+// ============================================================================
+
+function showForcedSwitchModal() {
+  console.log('🚨 Forced switch modal triggered');
+  
+  // Afficher le nom du Pokemon KO
+  $('#fainted-pokemon-name').text($('#player-name').text());
+  
+  // Charger la liste de l'équipe
+  $('#forced-switch-list').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</p>');
+  
+  $.get('{% url "GetTrainerTeam" %}', {
+    trainer_id: '{{ battle.player_trainer.id }}',
+    exclude_pokemon_id: '{{ battle.player_pokemon.id }}'
+  })
+  .done(function(data) {
+    if (!data.team || data.team.length === 0) {
+      $('#forced-switch-list').html('<p class="text-center text-danger">Aucun Pokémon disponible - Vous allez perdre!</p>');
+      
+      // Auto-perdre après 3 secondes si pas de Pokemon
+      setTimeout(() => {
+        location.reload();
+      }, 3000);
+      return;
+    }
+    
+    // Filtrer seulement les Pokemon vivants
+    const alivePokemon = data.team.filter(p => p.current_hp > 0);
+    
+    if (alivePokemon.length === 0) {
+      $('#forced-switch-list').html('<p class="text-center text-danger">Tous vos Pokémon sont K.O. - Défaite!</p>');
+      setTimeout(() => {
+        location.reload();
+      }, 3000);
+      return;
+    }
+    
+    let html = '<div class="list-group">';
+    alivePokemon.forEach(pokemon => {
+      const hpPercent = (pokemon.current_hp / pokemon.max_hp) * 100;
+      const hpClass = hpPercent > 50 ? 'success' : (hpPercent > 20 ? 'warning' : 'danger');
+      
+      html += `
+        <button class="list-group-item list-group-item-action" 
+                onclick="forcedSwitch(${pokemon.id})">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="mb-1"><strong>${pokemon.nickname || pokemon.species.name}</strong></h6>
+              <small>Niv. ${pokemon.level}</small>
+            </div>
+            <div class="text-right">
+              <div class="progress" style="width: 100px; height: 10px;">
+                <div class="progress-bar bg-${hpClass}" style="width: ${hpPercent}%"></div>
+              </div>
+              <small>${pokemon.current_hp}/${pokemon.max_hp} HP</small>
+            </div>
+          </div>
+        </button>
+      `;
+    });
+    html += '</div>';
+    
+    $('#forced-switch-list').html(html);
+  })
+  .fail(function() {
+    $('#forced-switch-list').html('<p class="text-center text-danger">Erreur de chargement</p>');
+  });
+  
+  // Afficher le modal (Bootstrap)
+  $('#forced-switch-modal').modal('show');
+}
+
+function forcedSwitch(pokemonId) {
+  console.log('⚡ Forced switch to Pokemon ID:', pokemonId);
+  
+  // Désactiver tous les boutons du modal
+  $('#forced-switch-list button').prop('disabled', true);
+  
+  // Faire le switch
+  $.post('{% url "BattleActionView" battle.id %}', {
+    action: 'switch',
+    pokemon_id: pokemonId,
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    // Fermer le modal
+    $('#forced-switch-modal').modal('hide');
+    
+    // Animer le nouveau Pokemon qui entre
+    $('#player-sprite').removeClass('fainted').addClass('fade-out');
+    
+    setTimeout(() => {
+      // Mettre à jour l'affichage
+      updateBattleState(data);
+      
+      // Retirer fade-out et réafficher
+      $('#player-sprite').removeClass('fade-out');
+      
+      addBattleLog(`${data.player_pokemon.name} entre au combat !`);
+    }, 500);
+  })
+  .fail(function(xhr) {
+    console.error('Forced switch failed:', xhr);
+    addBattleLog('Erreur lors du changement');
+    $('#forced-switch-list button').prop('disabled', false);
+  });
+}
+
+// ============================================================================
+// KEYBOARD SHORTCUTS
+// ============================================================================
+
+$(document).keydown(function(e) {
+  if ($('#main-menu').is(':visible')) {
+    switch(e.key) {
+      case '1': showMoves(); break;
+      case '2': showTeam(); break;
+      case '3': showItems(); break;
+      case '4': tryRun(); break;
+    }
+  } else if (e.key === 'Escape') {
+    showMainMenu();
+  }
+});
+
+</script>
+{% endblock js %}

@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+<title>{{ center.name }} - Centre Pokémon</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'PokemonCenterListView' %}">Centres Pokémon</a></li>
+    <li class="breadcrumb-item active">{{ center.name }}</li>
+  </ol>
+</nav>
+
+<!-- Center Header -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-lg border-0 pokemon-center-header">
+      <div class="card-body text-white">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h1 class="display-4 mb-2">
+              <i class="fas fa-plus-circle"></i> {{ center.name }}
+            </h1>
+            <p class="lead mb-2">{{ center.location }}</p>
+            <p class="mb-0">
+              {% if center.healing_cost == 0 %}
+                <span class="badge badge-success p-2">
+                  <i class="fas fa-heart"></i> Soins Gratuits
+                </span>
+              {% else %}
+                <span class="badge badge-warning p-2">
+                  <i class="fas fa-coins"></i> {{ center.healing_cost }}₽ par soin
+                </span>
+              {% endif %}
+            </p>
+          </div>
+          <div class="col-md-4 text-center">
+            <div class="p-3">
+              <i class="fas fa-hospital fa-5x pulse-animation"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Center Interface -->
+<div class="row">
+  <!-- Nurse Joy Section -->
+  <div class="col-lg-8 mb-4">
+    <div class="card shadow-lg border-0 nurse-card">
+      <div class="card-body">
+        <!-- Nurse Joy -->
+        <div class="nurse-section text-center mb-4">
+          <div class="nurse-sprite-container mb-3">
+            {% if center.nurse_sprite %}
+              <img src="{% static center.nurse_sprite %}" alt="{{ center.nurse_name }}" class="nurse-sprite">
+            {% else %}
+              <i class="fas fa-user-nurse fa-5x text-danger"></i>
+            {% endif %}
+          </div>
+          
+          <h3 class="mb-3">{{ center.nurse_name }}</h3>
+          
+          <!-- Dialogue Box -->
+          <div class="dialogue-box">
+            <div class="dialogue-arrow"></div>
+            <p id="nurse-dialogue" class="mb-0">{{ greeting }}</p>
+          </div>
+        </div>
+
+        <!-- Healing Machine -->
+        <div class="healing-machine-container">
+          <div class="healing-machine">
+            <div class="machine-top">
+              <div class="machine-light" id="machine-light"></div>
+              <div class="machine-screen">
+                <span id="machine-status">Prêt</span>
+              </div>
+            </div>
+            
+            <div class="machine-pokeball-slots" id="pokeball-slots">
+              {% for pokemon in team %}
+              <div class="pokeball-slot" data-pokemon-id="{{ pokemon.id }}">
+                <i class="fas fa-circle pokeball-icon"></i>
+                <small class="d-block mt-1">{{ pokemon.species.name }}</small>
+              </div>
+              {% empty %}
+              <div class="text-muted">Aucun Pokémon</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Heal Button -->
+          {% if team %}
+          <div class="text-center mt-4">
+            {% if team_needs_healing %}
+              <button id="heal-btn" class="btn btn-lg btn-success btn-heal-team" data-center-id="{{ center.id }}">
+                <i class="fas fa-plus-circle"></i> Soigner Mon Équipe
+                {% if center.healing_cost > 0 %}
+                  <span class="badge badge-light ml-2">{{ center.healing_cost }}₽</span>
+                {% endif %}
+              </button>
+            {% else %}
+              <button class="btn btn-lg btn-secondary" disabled>
+                <i class="fas fa-check-circle"></i> Équipe en Pleine Forme !
+              </button>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="alert alert-warning mt-3">
+            <i class="fas fa-exclamation-triangle"></i>
+            Vous n'avez aucun Pokémon dans votre équipe !
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side Panel -->
+  <div class="col-lg-4 mb-4">
+    <!-- Team Status -->
+    <div class="card shadow mb-4">
+      <div class="card-header bg-primary text-white">
+        <h6 class="mb-0">
+          <i class="fas fa-users"></i> État de l'Équipe
+        </h6>
+      </div>
+      <div class="card-body">
+        {% if team %}
+          {% for pokemon in team %}
+          <div class="team-pokemon-status mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>{{ pokemon.species.name }}</strong>
+              <span class="badge badge-secondary">Niv. {{ pokemon.level }}</span>
+            </div>
+            
+            <!-- HP Bar -->
+            <div class="mb-1">
+              <div class="d-flex justify-content-between small">
+                <span>HP</span>
+                <span>{{ pokemon.current_hp }}/{{ pokemon.max_hp }}</span>
+              </div>
+              <div class="hp-bar-mini">
+                {% widthratio pokemon.current_hp pokemon.max_hp 100 as hp_percent %}
+                <div class="hp-bar-fill-mini 
+                  {% if hp_percent > 50 %}bg-success
+                  {% elif hp_percent > 20 %}bg-warning
+                  {% else %}bg-danger{% endif %}"
+                  style="width: {{ hp_percent }}%">
+                </div>
+              </div>
+            </div>
+
+            <!-- Status -->
+            {% if pokemon.status_condition %}
+            <div class="mt-1">
+              <span class="badge badge-danger">
+                {{ pokemon.get_status_condition_display }}
+              </span>
+            </div>
+            {% endif %}
+
+            <!-- Needs Healing Indicator -->
+            {% if pokemon.current_hp < pokemon.max_hp or pokemon.status_condition %}
+            <div class="mt-2">
+              <small class="text-warning">
+                <i class="fas fa-exclamation-circle"></i> A besoin de soins
+              </small>
+            </div>
+            {% else %}
+            <div class="mt-2">
+              <small class="text-success">
+                <i class="fas fa-check-circle"></i> En pleine forme
+              </small>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-center text-muted">Aucun Pokémon</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- PC Access -->
+    <div class="card shadow mb-4 border-info">
+      <div class="card-body text-center">
+        <i class="fas fa-database fa-3x text-info mb-3"></i>
+        <h5>Accès PC</h5>
+        <p class="text-muted small">Gérez votre collection de Pokémon</p>
+        <a href="{% url 'MyTeamView' %}" class="btn btn-info btn-block">
+          <i class="fas fa-desktop"></i> Ouvrir le PC
+        </a>
+      </div>
+    </div>
+
+    <!-- Recent Visits -->
+    {% if recent_visits %}
+    <div class="card shadow">
+      <div class="card-header bg-secondary text-white">
+        <h6 class="mb-0">
+          <i class="fas fa-history"></i> Visites Récentes
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="list-group list-group-flush">
+          {% for visit in recent_visits %}
+          <div class="list-group-item px-0">
+            <div class="d-flex justify-content-between">
+              <small>{{ visit.visited_at|date:"d/m/Y H:i" }}</small>
+              <small class="text-success">{{ visit.pokemon_healed }} soignés</small>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <a href="{% url 'CenterHistoryView' %}" class="btn btn-sm btn-outline-secondary btn-block mt-2">
+          Voir Tout l'Historique
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Back Button -->
+<div class="mb-4">
+  <a href="{% url 'PokemonCenterListView' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Retour aux Centres
+  </a>
+  <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-home"></i> Dashboard
+  </a>
+</div>
+
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+
+<script>
+// CSRF Token
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+// Healing Animation
+function startHealingAnimation() {
+  const slots = document.querySelectorAll('.pokeball-slot');
+  const light = document.getElementById('machine-light');
+  const status = document.getElementById('machine-status');
+  const healBtn = document.getElementById('heal-btn');
+  
+  // Désactiver le bouton
+  healBtn.disabled = true;
+  healBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Soin en cours...';
+  
+  // Allumer la lumière
+  light.classList.add('active');
+  status.textContent = 'Soin en cours...';
+  
+  // Animer les Pokéballs
+  let delay = 0;
+  // Son de soin Only once
+  playHealSound();
+  slots.forEach((slot, index) => {
+    setTimeout(() => {
+      slot.classList.add('healing');
+      
+     
+    }, delay);
+    delay += 500;
+  });
+  
+  return delay;
+}
+
+function playHealSound() {
+  const audio = new Audio('{% static "sounds/pokemon_center_heal.mp3" %}');
+  audio.play();
+}
+
+
+function completeHealing(message, healedCount) {
+  const light = document.getElementById('machine-light');
+  const status = document.getElementById('machine-status');
+  const dialogue = document.getElementById('nurse-dialogue');
+  
+  // Retirer l'animation de soin
+  document.querySelectorAll('.pokeball-slot').forEach(slot => {
+    slot.classList.remove('healing');
+    slot.classList.add('healed');
+  });
+  
+  // Éteindre la lumière
+  light.classList.remove('active');
+  light.classList.add('complete');
+  
+  status.textContent = 'Terminé !';
+  
+  // Mettre à jour le dialogue
+  dialogue.textContent = message;
+  
+  // Toast notification
+  showSuccessToast(`${healedCount} Pokémon soignés !`);
+  
+  // Recharger après 2 secondes
+  setTimeout(() => {
+    location.reload();
+  }, 2000);
+}
+
+// Heal Team Button
+document.addEventListener('DOMContentLoaded', function() {
+  const healBtn = document.getElementById('heal-btn');
+  
+  if (healBtn) {
+    healBtn.addEventListener('click', function() {
+      const centerId = this.dataset.centerId;
+      
+      // Animation de soin
+      const animationDuration = startHealingAnimation();
+      
+      // Attendre la fin de l'animation avant la requête
+      setTimeout(() => {
+        fetch('/api/pokemon-center/heal/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+          },
+          body: JSON.stringify({
+            center_id: centerId
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            completeHealing(data.message, data.healed_count);
+            
+            if (data.cost > 0) {
+              showInfoToast(`Coût: ${data.cost}₽`);
+            }
+          } else {
+            showErrorToast(data.error);
+            // Réactiver le bouton
+            healBtn.disabled = false;
+            healBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Soigner Mon Équipe';
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          showErrorToast('Erreur lors du soin');
+          healBtn.disabled = false;
+          healBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Soigner Mon Équipe';
+        });
+      }, animationDuration + 500);
+    });
+  }
+});
+</script>
+
+<style>
+/* Pokemon Center Header */
+.pokemon-center-header {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+/* Nurse Card */
+.nurse-card {
+  background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+}
+
+.nurse-sprite {
+  max-width: 200px;
+  height: auto;
+}
+
+/* Dialogue Box */
+.dialogue-box {
+  position: relative;
+  background: white;
+  border: 3px solid #333;
+  border-radius: 15px;
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.dialogue-arrow {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 15px solid #333;
+}
+
+.dialogue-arrow::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: -12px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 12px solid white;
+}
+
+/* Healing Machine */
+.healing-machine {
+  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.machine-top {
+  background: #34495e;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.machine-light {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #95a5a6;
+  transition: all 0.3s;
+}
+
+.machine-light.active {
+  background: #f39c12;
+  box-shadow: 0 0 20px #f39c12;
+  animation: pulse-light 1s infinite;
+}
+
+.machine-light.complete {
+  background: #27ae60;
+  box-shadow: 0 0 20px #27ae60;
+}
+
+@keyframes pulse-light {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.machine-screen {
+  background: #2c3e50;
+  color: #2ecc71;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+}
+
+.machine-pokeball-slots {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.pokeball-slot {
+  background: white;
+  border: 3px solid #34495e;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.pokeball-icon {
+  font-size: 30px;
+  color: #e74c3c;
+}
+
+.pokeball-slot.healing {
+  animation: shake 0.5s infinite, glow 1s infinite;
+  border-color: #f39c12;
+}
+
+.pokeball-slot.healed {
+  border-color: #27ae60;
+  background: #d5f4e6;
+}
+
+@keyframes shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 10px #f39c12; }
+  50% { box-shadow: 0 0 20px #f39c12; }
+}
+
+.pulse-animation {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* HP Bar Mini */
+.hp-bar-mini {
+  height: 10px;
+  background: #e9ecef;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.hp-bar-fill-mini {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+/* Heal Button Animation */
+.btn-heal-team {
+  animation: pulse-button 2s infinite;
+}
+
+@keyframes pulse-button {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+  50% { box-shadow: 0 0 20px 5px rgba(40, 167, 69, 0); }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .pokeball-slot {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .pokeball-icon {
+    font-size: 20px;
+  }
+  
+  .dialogue-box {
+    max-width: 100%;
+  }
+}
+</style>
+{% endblock js %}

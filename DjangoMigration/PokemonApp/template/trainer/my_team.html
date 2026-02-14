@@ -337,15 +337,14 @@ function healPokemon(pokemonId) {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
-      alert('Pokémon soigné avec succès!');
-      location.reload();
+      showSuccessToast('Pokémon soigné avec succès!');
+      setTimeout(() => location.reload(), 1500);
     } else {
-      alert('Erreur: ' + data.error);
+      showErrorToast('Erreur: ' + data.error);
     }
   })
   .catch(error => {
-    console.error('Error:', error);
-    alert('Erreur lors du soin du Pokémon');
+    showErrorToast('Erreur lors du soin du Pokémon');
   });
 }
 
@@ -365,15 +364,14 @@ function healAllPokemon() {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
-      alert(`${data.healed_count} Pokémon soignés!`);
-      location.reload();
+      showSuccessToast(`${data.healed_count} Pokémon soignés!`);
+      setTimeout(() => location.reload(), 1500);
     } else {
-      alert('Erreur: ' + data.error);
+      showErrorToast('Erreur: ' + data.error);
     }
   })
   .catch(error => {
-    console.error('Error:', error);
-    alert('Erreur lors du soin de l\'équipe');
+    showErrorToast('Erreur lors du soin de l\'équipe');
   });
 }
 
@@ -396,15 +394,15 @@ function sendToPC(pokemonId) {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
-      alert('Pokémon envoyé au PC!');
-      location.reload();
+      showSuccessToast('Pokémon envoyé au PC!');
+      setTimeout(() => location.reload(), 1500);
     } else {
-      alert('Erreur: ' + data.error);
+      showErrorToast('Erreur: ' + data.error);
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('Erreur lors du transfert');
+    showErrorToast('Erreur lors du transfert');
   });
 }
 
@@ -423,15 +421,14 @@ function addToParty(pokemonId) {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
-      alert('Pokémon ajouté à l\'équipe!');
-      location.reload();
+      showSuccessToast('Pokémon ajouté à l\'équipe!');
+      setTimeout(() => location.reload(), 1500);
     } else {
-      alert('Erreur: ' + data.error);
+      showErrorToast('Erreur: ' + data.error);
     }
   })
   .catch(error => {
-    console.error('Error:', error);
-    alert('Erreur lors de l\'ajout');
+    showErrorToast('Erreur lors de l\'ajout');
   });
 }
 
