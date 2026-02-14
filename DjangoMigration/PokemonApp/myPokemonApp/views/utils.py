@@ -54,21 +54,6 @@ def user_is_authenticated(function):
                 return function(request, *args, **kwargs)
     return wrapper
 
-def user_is_analyst(function):
-    if len(function.__qualname__.split("."))> 1:
-        def wrapper(self, request, *args, **kwargs):
-            if not request.user.is_authenticated or not User.objects.get(id=request.user.id).groups.filter(name="analyst").exists():
-                return render(request, '404.html')
-            else:
-                return function(self, request, *args, **kwargs)
-    else:
-        def wrapper(request, *args, **kwargs):
-            if not request.user.is_authenticated or not User.objects.get(id=request.user.id).groups.filter(name="analyst").exists():
-                return render(request, '404.html')
-            else:
-                return function(request, *args, **kwargs)
-    return wrapper
-
 def user_is_superuser(function):
     if len(function.__qualname__.split("."))> 1:
         def wrapper(self, request, *args, **kwargs):
@@ -83,25 +68,3 @@ def user_is_superuser(function):
             else:
                 return function(request, *args, **kwargs)
     return wrapper
-
-def user_is_not_onboarded(function):
-    if len(function.__qualname__.split("."))> 1:
-        def wrapper(self, request, *args, **kwargs):
-            if request.user.contact.isOnboarded():
-                return render(request, '404.html')
-            else:
-                return function(self, request, *args, **kwargs)
-    else:
-        def wrapper(request, *args, **kwargs):
-            if request.user.contact.isOnboarded():
-                return render(request, '404.html')
-            else:
-                return function(request, *args, **kwargs)
-    return wrapper
-
-
-
-class GenericOverview(generic.ListView):
-    """ Generic overview used for everyone """
-    template_name = "model_overview.html"
-    

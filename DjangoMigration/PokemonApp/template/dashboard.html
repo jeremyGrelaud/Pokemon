@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% load static %} {% load custom_filters %}
+
+{% block title %}
+<title>Dashboard - Pokémon Gen 1</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+  {% if user.is_superuser %}
+  <a href="/admin" target="_blank" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+    <i class="fas fa-cogs fa-sm text-white-50"></i> Admin
+  </a>
+  {% endif %}
+</div>
+
+<!-- Content Row -->
+<div class="row">
+  <!-- Total Pokémon -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-primary shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Pokémon Capturés</div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_caught }} / {{ total_pokemon }}</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Équipe Actuelle -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-success shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Équipe Actuelle</div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ team_size }} / 6</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-users fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Badges -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-info shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Badges</div>
+            <div class="row no-gutters align-items-center">
+              <div class="col-auto">
+                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ badges }} / 8</div>
+              </div>
+              <div class="col">
+                <div class="progress progress-sm mr-2">
+                  <div class="progress-bar bg-info" role="progressbar" 
+                       style="width: {{ badges|mul:12.5 }}%" 
+                       aria-valuenow="{{ badges }}" aria-valuemin="0" aria-valuemax="8"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-trophy fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Argent -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-warning shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Argent</div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ trainer.money|default:0 }}₽</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-coins fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Content Row -->
+<div class="row">
+  <!-- Prochain Objectif -->
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow mb-4">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Prochain Objectif</h6>
+      </div>
+      <div class="card-body">
+        {% if next_gym %}
+        <div class="text-center">
+          <h4 class="mb-3">{{ next_gym.gym_name }}</h4>
+          <p class="mb-2"><strong>Champion:</strong> {{ next_gym.trainer.username }}</p>
+          <p class="mb-2">
+            <strong>Type:</strong> 
+            <span class="badge badge-type-{{ next_gym.specialty_type.name }}">
+              {{ next_gym.specialty_type.name }}
+            </span>
+          </p>
+          <p class="mb-2"><strong>Ville:</strong> {{ next_gym.gym_city }}</p>
+          <p class="mb-3"><strong>Badge:</strong> {{ next_gym.badge_name }}</p>
+          <a href="{% url 'GymLeaderDetailView' next_gym.id %}" class="btn btn-primary">
+            <i class="fas fa-info-circle"></i> Voir Détails
+          </a>
+        </div>
+        {% elif badges >= 8 %}
+        <div class="text-center">
+          <i class="fas fa-crown fa-3x text-warning mb-3"></i>
+          <h4>Tous les badges obtenus!</h4>
+          <p>Direction la Ligue Pokémon!</p>
+        </div>
+        {% else %}
+        <div class="text-center">
+          <p>Commence ton aventure!</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Derniers Combats -->
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow mb-4">
+      <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Derniers Combats</h6>
+        <a href="{% url 'BattleListView' %}" class="btn btn-sm btn-primary">Voir tout</a>
+      </div>
+      <div class="card-body">
+        {% if recent_battles %}
+        <div class="list-group">
+          {% for battle in recent_battles %}
+          <a href="{% url 'BattleDetailView' battle.id %}" class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between">
+              <h6 class="mb-1">
+                {% if battle.battle_type == 'wild' %}
+                  <i class="fas fa-leaf text-success"></i> Pokémon Sauvage
+                {% elif battle.battle_type == 'trainer' %}
+                  <i class="fas fa-user text-info"></i> {{ battle.opponent_trainer.username }}
+                {% elif battle.battle_type == 'gym' %}
+                  <i class="fas fa-trophy text-warning"></i> {{ battle.opponent_trainer.username }}
+                {% endif %}
+              </h6>
+              <small>{{ battle.created_at|timesince }}</small>
+            </div>
+            <p class="mb-1">
+              {% if battle.winner == trainer %}
+                <span class="badge badge-success">Victoire</span>
+              {% elif battle.winner %}
+                <span class="badge badge-danger">Défaite</span>
+              {% else %}
+                <span class="badge badge-secondary">En cours</span>
+              {% endif %}
+            </p>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-center text-muted">Aucun combat pour le moment</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+  <div class="col-12">
+    <div class="card shadow mb-4">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Actions Rapides</h6>
+      </div>
+      <div class="card-body">
+        <div class="row text-center">
+          <div class="col-md-3 mb-3">
+            <a href="{% url 'PokemonOverView' %}" class="btn btn-lg btn-block btn-outline-primary">
+              <i class="fas fa-book fa-2x mb-2"></i><br>
+              Pokédex
+            </a>
+          </div>
+          <div class="col-md-3 mb-3">
+            <a href="{% url 'MyTeamView' %}" class="btn btn-lg btn-block btn-outline-success">
+              <i class="fas fa-users fa-2x mb-2"></i><br>
+              Mon Équipe
+            </a>
+          </div>
+          <div class="col-md-3 mb-3">
+            <a href="{% url 'GymLeaderListView' %}" class="btn btn-lg btn-block btn-outline-warning">
+              <i class="fas fa-trophy fa-2x mb-2"></i><br>
+              Arènes
+            </a>
+          </div>
+          <div class="col-md-3 mb-3">
+            <a href="{% url 'ItemListView' %}" class="btn btn-lg btn-block btn-outline-info">
+              <i class="fas fa-shopping-bag fa-2x mb-2"></i><br>
+              Objets
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+<script>
+  // Ajout d'un filtre pour multiplication dans les templates
+  // (déjà géré côté serveur dans ce cas)
+</script>
+{% endblock js %}

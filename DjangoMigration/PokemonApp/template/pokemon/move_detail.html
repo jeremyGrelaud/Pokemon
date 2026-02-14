@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}<title>{{ move.name }} - Capacité</title>{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">{{ move.name }}</h1>
+
+<div class="card shadow mb-4">
+  <div class="card-body">
+    <p><strong>Type:</strong> <span class="badge badge-type-{{ move.type.name }}">{{ move.type.name }}</span></p>
+    <p><strong>Catégorie:</strong> {{ move.get_category_display }}</p>
+    <p><strong>Puissance:</strong> {{ move.power|default:"—" }}</p>
+    <p><strong>Précision:</strong> {{ move.accuracy }}%</p>
+    <p><strong>PP:</strong> {{ move.pp }}</p>
+    {% if move.effect %}
+    <p><strong>Effet:</strong> {{ move.effect }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<a href="{% url 'PokemonMoveOverView' %}" class="btn btn-secondary">← Retour</a>
+{% endblock %}

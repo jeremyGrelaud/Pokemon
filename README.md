@@ -1,35 +1,36 @@
+# Credits
+
+For trainer sprites credit to pokemon showdown : https://play.pokemonshowdown.com/sprites/trainers/?filter=credited
+
+
+
 # Pokemon
 For education purpose only
 
 
 Recreating pokemon game in python
 
-A lot left to do
+TODO :
 
-Implement a save system in a json probably   (a lot to do)
-
-add effects to every move
-implement the stats manipulation in combat due to move effects
-add objects effects
-
-add NPC , TOWNS, ZONES ...
-
-I already predefined elite4 and gym trainers for kanto but that's all
-
-
-Optimize and clarify the code 
+- Full Toast system
+- Better Pokemon Center
+- Save Game data options
+- Fix battle 'GUI'
+- Battle Animations
+- Better Capture System with ball throw animation ...
+- Stats & Achievements
+- Map System ?
+- Implement different game mods ?
 
 
-Complete the prototype of the graphical interface for combats
 
-
-# ADD exceptions, try and catch  when I will make the main game loop ...
-
+# Databse setup
 
 python manage.py makemigrations
 python manage.py migrate
+python manage.py createsuperuser
 
-Pour initialiser la DB une seule fois faire :
+To init database in one command :
 ```
-python manage.py shell -c "from myPokemonApp.models import *; from myPokemonApp.tasks import *; scriptToInitializeDatabase()"
+python manage.py shell -c "from myPokemonApp.tasks.initializeDatabase import scriptToInitializeDatabase; from myPokemonApp.tasks.initializeItemsAndNpcs import run_full_initialization; scriptToInitializeDatabase(); run_full_initialization(); from myPokemonApp.tasks.initShops import initShops; initShops();"
 ```

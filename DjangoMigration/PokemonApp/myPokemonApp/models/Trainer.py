@@ -3,7 +3,126 @@
 """
 
 from django.db import models
-
+from .Item import Item
+from .PokemonMove import PokemonMove
+from .PokemonType import PokemonType
 class Trainer(models.Model):
-    username = models.TextField()
-    isNPC = models.BooleanField(default=False)
+    """Dresseur de base"""
+    
+    TRAINER_TYPES = [
+        ('player', 'Joueur'),
+        ('rival', 'Rival'),
+        ('gym_leader', 'Champion d\'Arène'),
+        ('elite_four', 'Conseil des 4'),
+        ('champion', 'Maître'),
+        ('trainer', 'Dresseur'),
+        ('wild', 'Sauvage'),
+    ]
+    
+    username = models.CharField(max_length=50)
+    trainer_type = models.CharField(max_length=20, choices=TRAINER_TYPES)
+    
+    # Inventaire
+    money = models.IntegerField(default=3000)
+    
+    # Badges
+    badges = models.IntegerField(default=0)
+    
+    # Position dans le jeu (pour les NPCs)
+    location = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Pour les NPCs
+    is_defeated = models.BooleanField(default=False)
+    can_rebattle = models.BooleanField(default=False)
+    
+    # Dialogue
+    intro_text = models.TextField(blank=True, null=True)
+    defeat_text = models.TextField(blank=True, null=True)
+    victory_text = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        verbose_name = "Dresseur"
+        verbose_name_plural = "Dresseurs"
+    
+    def __str__(self):
+        return f"{self.username} ({self.get_trainer_type_display()})"
+    
+    def has_available_pokemon(self):
+        """Vérifie si le dresseur a des Pokémon non KO"""
+        return self.pokemon_team.filter(current_hp__gt=0).exists()
+    
+    def get_reward(self):
+        """Calcule la récompense à donner en cas de défaite"""
+        if self.trainer_type == 'gym_leader':
+            return 1000 + (self.badges * 500)
+        elif self.trainer_type == 'elite_four':
+            return 5000
+        elif self.trainer_type == 'champion':
+            return 10000
+        else:
+            highest_level = self.pokemon_team.aggregate(
+                models.Max('level')
+            )['level__max'] or 1
+            return highest_level * 100
+
+
+
+
+class GymLeader(models.Model):
+    """Champion d'Arène avec informations spécifiques"""
+    
+    trainer = models.OneToOneField(
+        Trainer,
+        on_delete=models.CASCADE,
+        related_name='gym_info'
+    )
+    
+    gym_name = models.CharField(max_length=50)
+    gym_city = models.CharField(max_length=50)
+    badge_name = models.CharField(max_length=50)
+    specialty_type = models.ForeignKey(
+        PokemonType,
+        on_delete=models.CASCADE,
+        related_name='gym_leaders'
+    )
+    
+    badge_order = models.IntegerField(unique=True)  # 1-8
+    
+    # TM donné en récompense
+    tm_reward = models.ForeignKey(
+        PokemonMove,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    
+    class Meta:
+        verbose_name = "Champion d'Arène"
+        verbose_name_plural = "Champions d'Arène"
+        ordering = ['badge_order']
+    
+    def __str__(self):
+        return f"{self.trainer.username} - {self.gym_name} ({self.gym_city})"
+
+
+
+
+class TrainerInventory(models.Model):
+    """Inventaire d'un dresseur"""
+    
+    trainer = models.ForeignKey(
+        Trainer,
+        on_delete=models.CASCADE,
+        related_name='inventory'
+    )
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1)
+    
+    class Meta:
+        unique_together = ['trainer', 'item']
+        verbose_name = "Inventaire"
+    
+    def __str__(self):
+        return f"{self.trainer.username} - {self.item.name} x{self.quantity}"
+
+

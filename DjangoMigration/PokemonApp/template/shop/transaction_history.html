@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+<title>Historique des Achats - Pokémon Gen 1</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0 text-gray-800">
+    <i class="fas fa-receipt text-primary"></i> Historique des Transactions
+  </h1>
+  <div>
+    <span class="badge badge-warning p-2" style="font-size: 1.1rem;">
+      <i class="fas fa-coins"></i> {{ trainer.money }}₽
+    </span>
+  </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+  <div class="col-xl-4 col-md-6 mb-4">
+    <div class="card border-left-danger shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+              Total Dépensé
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_spent }}₽</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4 col-md-6 mb-4">
+    <div class="card border-left-success shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+              Total Gagné (Ventes)
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_earned }}₽</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-hand-holding-usd fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4 col-md-6 mb-4">
+    <div class="card border-left-info shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+              Bilan Net
+            </div>
+            <div class="h5 mb-0 font-weight-bold {% if total_earned > total_spent %}text-success{% else %}text-danger{% endif %}">
+              {% widthratio total_earned 1 1 as earned %}
+              {% widthratio total_spent 1 1 as spent %}
+              {{ earned|add:spent|floatformat:0 }}₽
+            </div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3">
+    <h6 class="m-0 font-weight-bold text-primary">
+      <i class="fas fa-list"></i> Dernières Transactions
+    </h6>
+  </div>
+  <div class="card-body">
+    {% if transactions %}
+    <div class="table-responsive">
+      <table class="table table-hover" id="transactionsTable">
+        <thead class="thead-light">
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Objet</th>
+            <th>Quantité</th>
+            <th>Prix Unitaire</th>
+            <th>Total</th>
+            <th>Boutique</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for transaction in transactions %}
+          <tr class="{% if transaction.transaction_type == 'buy' %}table-danger{% else %}table-success{% endif %}">
+            <td>
+              <small>{{ transaction.created_at|date:"d/m/Y H:i" }}</small>
+            </td>
+            <td>
+              {% if transaction.transaction_type == 'buy' %}
+                <span class="badge badge-danger">
+                  <i class="fas fa-shopping-cart"></i> Achat
+                </span>
+              {% else %}
+                <span class="badge badge-success">
+                  <i class="fas fa-hand-holding-usd"></i> Vente
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              <strong>{{ transaction.item.name }}</strong>
+              <br>
+              <small class="text-muted">{{ transaction.item.get_item_type_display }}</small>
+            </td>
+            <td>
+              <span class="badge badge-info">x{{ transaction.quantity }}</span>
+            </td>
+            <td>{{ transaction.unit_price }}₽</td>
+            <td>
+              <strong class="{% if transaction.transaction_type == 'buy' %}text-danger{% else %}text-success{% endif %}">
+                {% if transaction.transaction_type == 'buy' %}-{% else %}+{% endif %}{{ transaction.total_price }}₽
+              </strong>
+            </td>
+            <td>
+              {% if transaction.shop %}
+                {{ transaction.shop.name }}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="fas fa-receipt fa-4x text-muted mb-3"></i>
+      <h4 class="text-muted">Aucune transaction</h4>
+      <p class="text-muted">Vos achats et ventes apparaîtront ici.</p>
+      <a href="{% url 'ShopListView' %}" class="btn btn-primary">
+        <i class="fas fa-store"></i> Visiter les Boutiques
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Back Button -->
+<div class="mb-4">
+  <a href="{% url 'ShopListView' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Retour aux Boutiques
+  </a>
+  <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-home"></i> Dashboard
+  </a>
+</div>
+
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+
+<!-- DataTables for better table functionality -->
+<script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
+
+<script>
+$(document).ready(function() {
+  {% if transactions %}
+  $('#transactionsTable').DataTable({
+    "order": [[0, "desc"]],  // Trier par date décroissante
+    "pageLength": 25,
+    "language": {
+      "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json"
+    }
+  });
+  {% endif %}
+});
+</script>
+
+<style>
+.border-left-danger {
+  border-left: 4px solid #dc3545;
+}
+
+.border-left-success {
+  border-left: 4px solid #28a745;
+}
+
+.border-left-info {
+  border-left: 4px solid #17a2b8;
+}
+
+.table-danger {
+  background-color: rgba(220, 53, 69, 0.05);
+}
+
+.table-success {
+  background-color: rgba(40, 167, 69, 0.05);
+}
+</style>
+{% endblock js %}

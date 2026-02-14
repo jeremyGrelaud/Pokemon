@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}<title>Mes Combats</title>{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4"><i class="fas fa-fist-raised"></i> Historique des Combats</h1>
+
+
+
+<a href="{% url 'BattleCreateView' %}" class="btn btn-sm btn-primary">Nouveau combat</a>
+
+
+
+<div class="card shadow mb-4">
+  <div class="card-body">
+    {% if battles %}
+    <div class="list-group">
+      {% for battle in battles %}
+      <a href="{% url 'BattleDetailView' battle.id %}" class="list-group-item list-group-item-action">
+        <div class="d-flex justify-content-between">
+          <h6>{{ battle.get_battle_type_display }} - {{ battle.created_at|date:"d/m/Y H:i" }}</h6>
+          {% if battle.winner == request.user.trainer %}
+          <span class="badge badge-success">Victoire</span>
+          {% elif battle.winner %}
+          <span class="badge badge-danger">Défaite</span>
+          {% else %}
+          <span class="badge badge-warning">En cours</span>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-center text-muted">Aucun combat</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

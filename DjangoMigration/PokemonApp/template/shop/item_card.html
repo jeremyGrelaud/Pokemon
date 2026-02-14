@@ -1,0 +1,148 @@
+{% load static %} {% load custom_filters %}
+
+<!-- Item Card Component -->
+<div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+  <div class="card item-card h-100 shadow-sm position-relative">
+    
+    <!-- Badges -->
+    {% if inventory_item.discount_percentage > 0 %}
+    <span class="badge-discount">
+      -{{ inventory_item.discount_percentage }}%
+    </span>
+    {% endif %}
+    
+    {% if inventory_item.is_new %}
+    <span class="badge badge-info" style="position: absolute; top: 10px; left: 10px;">
+      NOUVEAU
+    </span>
+    {% endif %}
+
+    
+    {% if not inventory_item|is_available_for_trainer:trainer  %}
+    <span class="badge badge-locked" style="position: absolute; top: 10px; left: 10px;">
+      <i class="fas fa-lock"></i> Nécessite {{ inventory_item.unlock_badge_required }} badges
+      
+    </span>
+    {% endif %}
+
+    <div class="card-body">
+      <!-- Item Icon -->
+      <div class="text-center mb-3">
+        {% if inventory_item.item.item_type == 'potion' %}
+          <i class="fas fa-flask fa-4x text-danger"></i>
+        {% elif inventory_item.item.item_type == 'pokeball' %}
+          <i class="fas fa-circle fa-4x text-primary"></i>
+        {% elif inventory_item.item.item_type == 'evolution' %}
+          <i class="fas fa-gem fa-4x text-success"></i>
+        {% elif inventory_item.item.item_type == 'status' %}
+          <i class="fas fa-plus-circle fa-4x text-info"></i>
+        {% else %}
+          <i class="fas fa-box fa-4x text-secondary"></i>
+        {% endif %}
+      </div>
+
+      <!-- Item Name -->
+      <h5 class="text-center mb-2">{{ inventory_item.item.name }}</h5>
+
+      <!-- Item Type Badge -->
+      <div class="text-center mb-3">
+        <span class="badge badge-secondary">
+          {{ inventory_item.item.get_item_type_display }}
+        </span>
+      </div>
+
+      <!-- Description -->
+      <p class="small text-muted text-center mb-3" style="min-height: 60px;">
+        {{ inventory_item.item.description|truncatewords:15 }}
+      </p>
+
+      <!-- Stock Info -->
+      {% if inventory_item.stock != -1 %}
+      <div class="text-center mb-2">
+        <small class="text-muted">
+          <i class="fas fa-boxes"></i> Stock: 
+          <strong class="{% if inventory_item.stock < 5 %}text-danger{% else %}text-success{% endif %}">
+            {{ inventory_item.stock }}
+          </strong>
+        </small>
+      </div>
+      {% endif %}
+
+      <!-- Price Section -->
+      <div class="text-center mb-3">
+        {% if inventory_item.discount_percentage > 0 %}
+        <div>
+          <span class="text-muted" style="text-decoration: line-through;">
+            {{ inventory_item.item.price }}₽
+          </span>
+        </div>
+        {% endif %}
+        
+        <h4 class="mb-0 text-primary">
+          <i class="fas fa-coins"></i> 
+          <span class="item-price" data-shop-inventory-id="{{ inventory_item.id }}">
+            {{ inventory_item.get_final_price }}₽
+          </span>
+        </h4>
+        <small class="text-muted">Prix unitaire</small>
+      </div>
+
+      <!-- Quantity Selector -->
+      <div class="form-group mb-3">
+        <label class="small font-weight-bold">Quantité :</label>
+        <input type="number" 
+               class="form-control form-control-sm buy-quantity" 
+               min="1" 
+               max="{% if inventory_item.stock == -1 %}99{% else %}{{ inventory_item.stock }}{% endif %}" 
+               value="1"
+               data-shop-inventory-id="{{ inventory_item.id }}"
+               data-unit-price="{{ inventory_item.get_final_price }}"
+               {% if not inventory_item|is_available_for_trainer:trainer  %}disabled{% endif %}>
+      </div>
+
+      <!-- Total Price -->
+      <div class="text-center mb-3">
+        <strong>Total : </strong>
+        <span class="text-success total-price" data-shop-inventory-id="{{ inventory_item.id }}">
+          {{ inventory_item.get_final_price }}₽
+        </span>
+      </div>
+
+      <!-- Buy Button -->
+      {% if inventory_item|is_available_for_trainer:trainer  %}
+        {% if inventory_item.has_stock %}
+          <button class="btn btn-primary btn-block btn-buy" 
+                  onclick="buyItem({{ inventory_item.id }}, '{{ inventory_item.item.name }}', {{ inventory_item.get_final_price }})"
+                  data-shop-inventory-id="{{ inventory_item.id }}">
+            <i class="fas fa-shopping-cart"></i> Acheter
+          </button>
+        {% else %}
+          <button class="btn btn-secondary btn-block" disabled>
+            <i class="fas fa-times"></i> Rupture de Stock
+          </button>
+        {% endif %}
+      {% else %}
+        <button class="btn btn-secondary btn-block" disabled>
+          <i class="fas fa-lock"></i> Verrouillé
+        </button>
+      {% endif %}
+
+      <!-- Item Effects (if any) -->
+      {% if inventory_item.item.item_type == 'potion' and inventory_item.item.heal_amount > 0 %}
+      <div class="mt-2 text-center">
+        <small class="text-success">
+          <i class="fas fa-heart"></i> Restaure {{ inventory_item.item.heal_amount }} HP
+        </small>
+      </div>
+      {% endif %}
+
+      {% if inventory_item.item.item_type == 'pokeball' %}
+      <div class="mt-2 text-center">
+        <small class="text-info">
+          <i class="fas fa-percentage"></i> Taux: x{{ inventory_item.item.catch_rate_modifier }}
+        </small>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
