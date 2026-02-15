@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}<title>Sélection de Sauvegarde</title>{% endblock title %}
+
+{% block content %}
+<div class="container mt-5">
+  <h1 class="text-center mb-5">
+    <i class="fas fa-save"></i> Choisissez une Sauvegarde
+  </h1>
+
+  <div class="row">
+    {% for save_slot in saves %}
+    <div class="col-md-4 mb-4">
+      <div class="card save-slot {% if save_slot.exists %}save-exists{% else %}save-empty{% endif %}">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-folder"></i> Slot {{ save_slot.slot }}
+          </h5>
+        </div>
+        
+        <div class="card-body">
+          {% if save_slot.exists %}
+            <!-- Save existante -->
+            <h6 class="card-title">{{ save_slot.save.save_name }}</h6>
+            
+            <div class="save-info mt-3">
+              <p class="mb-2">
+                <i class="fas fa-map-marker-alt text-info"></i> 
+                <strong>{{ save_slot.save.current_location }}</strong>
+              </p>
+              
+              <p class="mb-2">
+                <i class="fas fa-clock text-warning"></i> 
+                {{ save_slot.save.get_play_time_display }}
+              </p>
+              
+              <p class="mb-2">
+                <i class="fas fa-medal text-success"></i> 
+                {{ save_slot.save.badges_count }} Badge{{ save_slot.save.badges_count|pluralize }}
+              </p>
+              
+              <p class="mb-2">
+                <i class="fas fa-book text-danger"></i> 
+                Pokédex: {{ save_slot.save.pokedex_caught }}/151
+              </p>
+              
+              <p class="text-muted small mt-3">
+                <i class="fas fa-calendar"></i> 
+                {{ save_slot.save.last_saved|timesince }}
+              </p>
+            </div>
+            
+            <div class="mt-4">
+              <a href="{% url 'save_load' save_slot.save.id %}" 
+                 class="btn btn-success btn-block">
+                <i class="fas fa-play"></i> Recharger cette sauvegarde
+              </a>
+              
+              <a href="{% url 'save_create' save_slot.slot %}" 
+                 class="btn btn-warning btn-block mt-2">
+                <i class="fas fa-sync"></i> Nouvelle Partie
+              </a>
+            </div>
+            
+          {% else %}
+            <!-- Slot vide -->
+            <div class="text-center py-5">
+              <i class="fas fa-plus-circle fa-5x text-muted mb-3"></i>
+              <p class="text-muted">Aucune sauvegarde</p>
+              
+              <a href="{% url 'save_create' save_slot.slot %}" 
+                 class="btn btn-primary mt-3">
+                <i class="fas fa-file"></i> Nouvelle Partie
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  
+  <div class="text-center mt-4">
+    <a href="{% url 'home' %}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left"></i> Retour
+    </a>
+  </div>
+</div>
+
+<style>
+.save-slot {
+  transition: all 0.3s ease;
+  height: 100%;
+  min-height: 400px;
+}
+
+.save-slot:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.save-empty {
+  border: 2px dashed #ccc;
+}
+
+.save-exists {
+  border: 2px solid #28a745;
+}
+
+.save-info p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>
+{% endblock %}

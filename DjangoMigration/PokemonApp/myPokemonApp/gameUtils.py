@@ -100,6 +100,7 @@ def learn_moves_up_to_level(pokemon, level):
     """
     Fait apprendre au Pokémon toutes les capacités jusqu'au niveau donné
     Garde seulement les 4 dernières
+    pokemon : PlayablePokemon
     """
     from .models.PlayablePokemon import PokemonMoveInstance
     
@@ -114,13 +115,22 @@ def learn_moves_up_to_level(pokemon, level):
     
     # Garder les 4 dernières capacités
     final_moves = moves_to_learn[-4:] if len(moves_to_learn) > 4 else moves_to_learn
-    
-    for learnable_move in final_moves:
-        PokemonMoveInstance.objects.create(
+
+
+    # Copier les moves
+    for move_instance in pokemon.pokemonmoveinstance_set.all():
+        # Check if the move already exists for the captured Pokémon
+        exists = PokemonMoveInstance.objects.filter(
             pokemon=pokemon,
-            move=learnable_move.move,
-            current_pp=learnable_move.move.pp
-        )
+            move=move_instance.move
+        ).exists()
+
+        if not exists:
+            PokemonMoveInstance.objects.get_or_create(
+                pokemon=pokemon,
+                move=move_instance.move,
+                current_pp=move_instance.current_pp,
+            )
 
 
 def catch_pokemon(wild_pokemon, trainer, pokeball_item):
@@ -399,7 +409,9 @@ def create_gym_leader(username, gym_name, city, badge_name, specialty_type, badg
         intro_text=f"Bienvenue à l'arène de {city}! Je suis {username}, champion de type {specialty_type.name}!",
         defeat_text=f"Tu m'as battu... Tu mérites le badge {badge_name}!",
         victory_text=f"Tu n'es pas encore prêt pour mon badge!",
-        can_rebattle=True
+        can_rebattle=True,
+        is_npc=True,  # Default value 
+        npc_class="GymLeader",
     )
     
     # Créer les infos de l'arène
@@ -458,7 +470,9 @@ def create_npc_trainer(username, trainer_type, location, team_data, intro_text=N
         intro_text=intro_text or f"{username} veut combattre!",
         defeat_text="J'ai perdu...",
         victory_text="J'ai gagné!",
-        can_rebattle=False
+        can_rebattle=False,
+        is_npc=True,  # Default value 
+        npc_class="Gamin", #Default
     )
     
     for i, poke_data in enumerate(team_data, 1):
@@ -505,7 +519,9 @@ def create_rival(username, player_trainer):
         defeat_text="Tu t'améliores... Mais je serai toujours meilleur!",
         victory_text="Haha! J'ai gagné comme toujours!",
         can_rebattle=True,
-        money=0  # Le rival ne donne pas d'argent
+        money=0,  # Le rival ne donne pas d'argent
+        is_npc=True,  # Default value 
+        npc_class="Rival",
     )
     
     return rival

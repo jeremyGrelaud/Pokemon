@@ -39,6 +39,11 @@ class Trainer(models.Model):
     intro_text = models.TextField(blank=True, null=True)
     defeat_text = models.TextField(blank=True, null=True)
     victory_text = models.TextField(blank=True, null=True)
+
+    is_npc = models.BooleanField(default=False)
+    npc_class = models.CharField(max_length=50, blank=True)  # "Gamin", "Scout", etc.
+    sprite_name = models.CharField(max_length=100, blank=True)
+
     
     class Meta:
         verbose_name = "Dresseur"
@@ -65,8 +70,10 @@ class Trainer(models.Model):
             )['level__max'] or 1
             return highest_level * 100
 
-
-
+    def get_full_title(self):
+        if self.npc_class:
+            return f"{self.npc_class} {self.username}"
+        return self.username
 
 class GymLeader(models.Model):
     """Champion d'Arène avec informations spécifiques"""
