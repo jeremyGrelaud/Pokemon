@@ -702,3 +702,61 @@ def calculate_pokemon_stats_with_nature(pokemon):
         setattr(pokemon, decreased, int(current_value * 0.9))
     
     pokemon.save()
+
+
+def opponent_switch_pokemon(battle):
+    """Switch adversaire vers prochain Pokémon vivant"""
+    if not battle.opponent_trainer:
+        return None
+    
+    alive_pokemon = battle.opponent_trainer.pokemon_team.filter(
+        is_in_party=True,
+        current_hp__gt=0
+    ).exclude(id=battle.opponent_pokemon.id)
+    
+    if not alive_pokemon.exists():
+        return None
+    
+    new_pokemon = alive_pokemon.first()
+    battle.opponent_pokemon = new_pokemon
+    battle.save()
+    
+    return new_pokemon
+
+
+def calculate_exp_gain(defeated_pokemon, battle_type='wild'):
+    """Calcule XP selon formule Gen 1"""
+    base_exp = defeated_pokemon.species.base_experience or 100
+    level = defeated_pokemon.level
+    exp = int((base_exp * level) / 7)
+    
+    if battle_type == 'trainer':
+        exp = int(exp * 1.5)
+    
+    return exp
+
+
+def apply_exp_gain(pokemon, exp_amount):
+    """Applique XP et gère level-ups"""
+    result = {
+        'exp_gained': exp_amount,
+        'level_up': False,
+        'new_level': pokemon.level,
+        'learned_moves': []
+    }
+    
+    pokemon.current_exp = (pokemon.current_exp or 0) + exp_amount
+    
+    while pokemon.current_exp >= pokemon.exp_for_next_level():
+        pokemon.current_exp -= pokemon.exp_for_next_level()
+        pokemon.level += 1
+        result['level_up'] = True
+        result['new_level'] = pokemon.level
+        
+        pokemon.calculate_stats()
+        pokemon.current_hp = pokemon.max_hp
+        
+        # Apprendre nouvelles attaques (TODO: gérer 4 max)
+    
+    pokemon.save()
+    return result

@@ -12,6 +12,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import  require_http_methods
 from myPokemonApp.gameUtils import check_battle_end, heal_team
 from django.db.models import Q
+from myPokemonApp.gameUtils import apply_exp_gain, calculate_exp_gain, opponent_switch_pokemon
 
 from ..models import *
 
@@ -110,10 +111,28 @@ def battle_action_view(request, pk):
     # Fonction helper pour créer response_data complète
     def build_response_data(battle):
         """Construit la réponse JSON avec TOUTES les infos"""
+        
+        # Récupérer moves
+        moves_data = []
+        for move_instance in battle.player_pokemon.pokemonmoveinstance_set.all():
+            moves_data.append({
+                'id': move_instance.move.id,
+                'name': move_instance.move.name,
+                'type': move_instance.move.type.name,
+                'power': move_instance.move.power,
+                'current_pp': move_instance.current_pp,
+                'max_pp': move_instance.move.max_pp
+            })
+        
+        # Calculer EXP%
+        exp_percent = 0
+        if battle.player_pokemon.exp_for_next_level():
+            current_exp = battle.player_pokemon.current_exp or 0
+            exp_percent = int((current_exp / battle.player_pokemon.exp_for_next_level()) * 100)
+        
         return {
             'success': True,
             'log': [],
-            # Player Pokemon - Info complète
             'player_pokemon': {
                 'id': battle.player_pokemon.id,
                 'name': battle.player_pokemon.nickname or battle.player_pokemon.species.name,
@@ -122,6 +141,10 @@ def battle_action_view(request, pk):
                 'current_hp': battle.player_pokemon.current_hp,
                 'max_hp': battle.player_pokemon.max_hp,
                 'status': battle.player_pokemon.status_condition,
+                'current_exp': battle.player_pokemon.current_exp or 0,
+                'exp_for_next_level': battle.player_pokemon.exp_for_next_level() or 100,
+                'exp_percent': exp_percent,
+                'moves': moves_data  # IMPORTANT !
             },
             # Opponent Pokemon - Info complète
             'opponent_pokemon': {
@@ -165,7 +188,42 @@ def battle_action_view(request, pk):
             
             # Exécuter le tour
             battle.execute_turn(player_action, opponent_action)
-            
+
+            if battle.opponent_pokemon.current_hp == 0:
+                # Distribution XP
+                battle_type = 'trainer' if battle.opponent_trainer else 'wild'
+                exp_amount = calculate_exp_gain(battle.opponent_pokemon, battle_type)
+                exp_result = apply_exp_gain(battle.player_pokemon, exp_amount)
+                
+                response_data['log'].append(f"+{exp_amount} EXP")
+                
+                if exp_result['level_up']:
+                    response_data['log'].append(f"Level {exp_result['new_level']} !")
+                
+                # IMPORTANT: Vérifier switch adversaire
+                if battle.opponent_trainer:
+                    new_opponent = opponent_switch_pokemon(battle)
+                    
+                    if new_opponent:
+                        response_data['log'].append(f"Adversaire envoie {new_opponent.species.name} !")
+                        response_data = build_response_data(battle)  # Rebuild
+                    else:
+                        # Victoire !
+                        battle.is_active = False
+                        battle.winner = battle.player_trainer
+                        battle.save()
+                        
+                        response_data['battle_ended'] = True
+                        response_data['result'] = 'victory'
+                else:
+                    # Combat sauvage - victoire directe
+                    battle.is_active = False
+                    battle.winner = battle.player_trainer
+                    battle.save()
+                    
+                    response_data['battle_ended'] = True
+                    response_data['result'] = 'victory'
+                        
         elif action_type == 'flee':
             # Tenter de fuir
             success = battle.attempt_flee()

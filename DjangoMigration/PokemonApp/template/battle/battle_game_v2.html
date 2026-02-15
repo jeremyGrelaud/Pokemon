@@ -135,7 +135,7 @@
             <!-- EXP Bar (Player only) -->
             <div class="exp-section">
               <div class="exp-bar">
-                {% widthratio battle.player_pokemon.current_experience battle.player_pokemon.experience_for_next_level 100 as exp_percent %}
+                {% widthratio battle.player_pokemon.current_exp battle.player_pokemon.exp_for_next_level 100 as exp_percent %}
                 <div class="exp-bar-fill" style="width: {{ exp_percent|default:0 }}%"></div>
               </div>
             </div>
@@ -701,6 +701,7 @@ function updateBattleState(data) {
   }
 }
 
+// Modifier updatePokemonDisplay
 function updatePokemonDisplay(side, pokemonData) {
   const sprite = $(`#${side}-sprite`);
   const name = $(`#${side}-name`);
@@ -722,7 +723,18 @@ function updatePokemonDisplay(side, pokemonData) {
   
   // Update HP
   updateHP(side, pokemonData.current_hp, pokemonData.max_hp, true);
+  
+  // Update moves on swicth
+  if (side === 'player' && pokemonData.moves) {
+    updateMovesMenu(pokemonData.moves);
+  }
+  
+  // Update exp bar
+  if (side === 'player' && pokemonData.exp_percent !== undefined) {
+    updateExpBar(pokemonData.exp_percent);
+  }
 }
+
 
 function updateHP(side, current, max, skipDamageAnimation = false) {
   const percent = Math.floor((current / max) * 100);
@@ -768,6 +780,43 @@ function updateHP(side, current, max, skipDamageAnimation = false) {
     audioManager.playSFX('battle/faint');
   }
 }
+
+// Mettre à jour moves
+function updateMovesMenu(moves) {
+  const movesGrid = $('.moves-grid');
+  movesGrid.empty();
+  
+  if (!moves || moves.length === 0) {
+    movesGrid.html('<p>Aucune attaque</p>');
+    return;
+  }
+  
+  moves.forEach(move => {
+    const disabled = move.current_pp === 0 ? 'disabled' : '';
+    const html = `
+      <button class="move-btn move-type-${move.type}" 
+              onclick="useMove(${move.id})" ${disabled}>
+        <div class="move-header">
+          <span class="move-name">${move.name}</span>
+          <span class="move-pp">PP: ${move.current_pp}/${move.max_pp}</span>
+        </div>
+        <div class="move-footer">
+          <span class="move-type-badge type-${move.type}">${move.type}</span>
+          <span class="move-power">${move.power ? 'PWR: ' + move.power : '—'}</span>
+        </div>
+      </button>
+    `;
+    movesGrid.append(html);
+  });
+}
+
+
+// Mettre à jour EXP bar
+function updateExpBar(expPercent) {
+  $('.exp-bar-fill').css('width', expPercent + '%');
+}
+
+
 
 function handleBattleEnd(data) {
   console.log('🏁 Battle ended:', data);
