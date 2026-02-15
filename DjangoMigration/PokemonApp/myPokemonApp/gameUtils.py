@@ -924,11 +924,18 @@ def capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shake
     # Copier les moves
     for move_instance in opponent.pokemonmoveinstance_set.all():
         from myPokemonApp.models import PokemonMoveInstance
-        PokemonMoveInstance.objects.get_or_create(
+        # Check if the move already exists for the captured Pokémon
+        exists = PokemonMoveInstance.objects.filter(
             pokemon=captured,
-            move=move_instance.move,
-            current_pp=move_instance.current_pp,
-        )
+            move=move_instance.move
+        ).exists()
+
+        if not exists:
+            PokemonMoveInstance.objects.get_or_create(
+                pokemon=captured,
+                move=move_instance.move,
+                current_pp=move_instance.current_pp,
+            )
     
     # Vérifier si c'est le premier de cette espèce
     is_first = not trainer.pokemon_team.filter(species=opponent.species).exclude(id=captured.id).exists()
