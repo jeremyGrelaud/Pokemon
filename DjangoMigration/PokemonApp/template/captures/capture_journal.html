@@ -186,10 +186,10 @@ const ctx = document.getElementById('capturesChart').getContext('2d');
 new Chart(ctx, {
   type: 'line',
   data: {
-    labels: '{{ chart_labels|safe }}',
+    labels: {{ chart_labels|safe }},
     datasets: [{
       label: 'Captures',
-      data: '{{ chart_data|safe }}',
+      data: {{ chart_data|safe }},
       borderColor: '#4CAF50',
       backgroundColor: 'rgba(76, 175, 80, 0.1)',
       tension: 0.4
