@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+<title>Nouveau Combat</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0 text-gray-800">
+    <i class="fas fa-plus-circle text-success"></i> Nouveau Combat
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-lg-8 offset-lg-2">
+    <!-- Wild Battle Card -->
+    <div class="card shadow mb-4">
+      <div class="card-header py-3 bg-success text-white">
+        <h6 class="m-0 font-weight-bold">
+          <i class="fas fa-leaf"></i> Combat Sauvage
+        </h6>
+      </div>
+      <div class="card-body">
+        <p>Affrontez un Pokémon sauvage de niveau similaire à votre équipe.</p>
+        
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          Pokémon actif: <strong>{{ player_pokemon.species.name }}</strong> (Niv. {{ player_pokemon.level }})
+        </div>
+
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="battle_type" value="wild">
+          <button type="submit" class="btn btn-success btn-lg btn-block">
+            <i class="fas fa-play"></i> Chercher un Pokémon Sauvage
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Gym Battle Card -->
+    <div class="card shadow mb-4">
+      <div class="card-header py-3 bg-warning text-white">
+        <h6 class="m-0 font-weight-bold">
+          <i class="fas fa-trophy"></i> Combat d'Arène
+        </h6>
+      </div>
+      <div class="card-body">
+        <p>Choisissez un Champion d'Arène à défier.</p>
+        
+        {% if gym_leaders %}
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="battle_type" value="gym">
+          
+          <div class="form-group">
+            <label for="gym_leader">Sélectionnez un Champion:</label>
+            <select class="form-control" name="gym_leader" id="gym_leader" required>
+              <option value="">-- Choisir --</option>
+              {% for gym in gym_leaders %}
+              <option value="{{ gym.id }}">
+                {{ gym.gym_name }} - {{ gym.trainer.username }} ({{ gym.specialty_type.name }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-warning btn-lg btn-block">
+            <i class="fas fa-fist-raised"></i> Défier le Champion
+          </button>
+        </form>
+        {% else %}
+        <p class="text-center text-muted">Aucun champion disponible</p>
+        <a href="{% url 'GymLeaderListView' %}" class="btn btn-info">
+          Voir les Champions d'Arène
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Quick Start -->
+    <div class="card shadow border-primary">
+      <div class="card-body text-center">
+        <h5 class="mb-3">Démarrage Rapide</h5>
+        <p class="text-muted">Combattez un Pokémon sauvage immédiatement</p>
+        
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="battle_type" value="wild">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-bolt"></i> COMBAT RAPIDE
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="mt-4 text-center">
+      <a href="{% url 'home' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Annuler
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock content %}

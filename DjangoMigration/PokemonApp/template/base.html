@@ -1,0 +1,234 @@
+{% load static %} {% load i18n %}
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link rel="icon" href="{% static 'img/pokeball.png'%}" />
+    
+    {% block title %}
+    <title>Pokémon Gen 1</title>
+    {% endblock title %}
+
+    <!-- Fonts -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" type="text/css" />
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet" />
+    
+    <!-- Custom styles -->
+    <link href="{% static 'css/sb-admin-2.css'%}" rel="stylesheet" />
+    <link href="{% static 'css/pokemon-types.css'%}" rel="stylesheet" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
+  </head>
+
+  <body id="page-top">
+    <div id="wrapper">
+      {% block sidebar %}
+      <!-- Sidebar -->
+      <ul class="navbar-nav bg-gradient-danger sidebar sidebar-dark accordion" id="accordionSidebar">
+        <!-- Brand -->
+        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{% url 'home'%}">
+          <img class="sidebar-brand-img" src="{% static 'img/pokeball.png'%}" style="width: 40px; height: 40px;" />
+          <div class="sidebar-brand-text mx-3">Pokémon Gen 1</div>
+        </a>
+
+        <hr class="sidebar-divider my-0" />
+        
+        {% if user.is_authenticated %}
+        <!-- Dashboard -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'home'%}">
+            <i class="fas fa-fw fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+
+        <hr class="sidebar-divider" />
+        <div class="sidebar-heading">Pokémon</div>
+
+        <!-- Pokédex -->
+        <li class="nav-item {% if 'Pokemon' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'PokemonOverView' %}">
+            <i class="fas fa-book"></i>
+            <span>Pokédex</span>
+          </a>
+        </li>
+
+        <!-- Capacités -->
+        <li class="nav-item {% if 'Move' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'PokemonMoveOverView' %}">
+            <i class="fas fa-bolt"></i>
+            <span>Capacités</span>
+          </a>
+        </li>
+
+        <hr class="sidebar-divider" />
+        <div class="sidebar-heading">Mon Jeu</div>
+
+        <!-- Mon Équipe -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'MyTeamView' %}">
+            <i class="fas fa-users"></i>
+            <span>Mon Équipe</span>
+          </a>
+        </li>
+
+        <!-- Combats -->
+        <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'BattleListView' %}">
+            <i class="fas fa-fist-raised"></i>
+            <span>Combats</span>
+          </a>
+        </li>
+
+        <!-- Champions d'Arène -->
+        <li class="nav-item {% if 'Gym' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'GymLeaderListView' %}">
+            <i class="fas fa-trophy"></i>
+            <span>Arènes</span>
+          </a>
+        </li>
+
+        <!-- Objets -->
+        <li class="nav-item {% if 'Item' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'ItemListView' %}">
+            <i class="fas fa-shopping-bag"></i>
+            <span>Objets</span>
+          </a>
+        </li>
+
+        <!-- Boutiques -->
+        <li class="nav-item {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'ShopListView' %}">
+            <i class="fas fa-shopping-cart"></i>
+            <span>Boutiques</span>
+          </a>
+        </li>
+
+        <!-- Centre Pokémon -->
+        <li class="nav-item {% if 'PokemonCenter' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'PokemonCenterListView' %}">
+            <i class="fas fa-hospital"></i>
+            <span>Centre Pokémon</span>
+          </a>
+        </li>
+
+        <!-- Centre Pokémon -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'CaptureJournalView' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'CaptureJournalView' %}">
+            <i class="fas fa-hospital"></i>
+            <span>Journal de captures</span>
+          </a>
+        </li>
+
+        <div class="text-center d-none d-md-inline mt-4">
+          <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+        
+        {% else %}
+        <!-- Non connecté -->
+        <li class="nav-item active">
+          <a class="nav-link" href="{% url 'home'%}">
+            <i class="fas fa-fw fa-info-circle"></i>
+            <span>Informations</span>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+      {% endblock sidebar %}
+
+      <!-- Content Wrapper -->
+      <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+          {% block topbar %}
+          <!-- Topbar -->
+          <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+            <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+              <i class="fa fa-bars"></i>
+            </button>
+
+            <ul class="navbar-nav ml-auto">
+              <!-- User Info -->
+              <li class="nav-item dropdown no-arrow">
+                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
+                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{user.username}}</span>
+                  <img class="img-profile rounded-circle" src="{% static 'img/pokeball.png'%}" />
+                </a>
+                <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+                  {% if user.is_authenticated %}
+                    {% if user.is_superuser %}
+                      <a class="dropdown-item" href="/admin" target="_blank">
+                        <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Admin Django
+                      </a>
+                      <div class="dropdown-divider"></div>
+                    {% endif %}
+                    <a class="dropdown-item" href="{% url 'MyTeamView' %}">
+                      <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                      Mon Profil
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="/logout">
+                      <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                      Déconnexion
+                    </a>
+                  {% else %}
+                    <a class="dropdown-item" href="/login">
+                      <i class="fas fa-sign-in-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                      Connexion
+                    </a>
+                  {% endif %}
+                </div>
+              </li>
+            </ul>
+          </nav>
+          {% endblock topbar %}
+
+          <!-- Page Content -->
+          <div class="container-fluid">
+            {% block content %}
+            <!-- Le contenu des pages -->
+            {% endblock content %}
+          </div>
+        </div>
+
+        {% block footer %}
+        <footer class="sticky-footer bg-white">
+          <div class="container my-auto">
+            <div class="copyright text-center my-auto">
+              <span>Pokémon Gen 1 &copy; <script>document.write(new Date().getFullYear())</script></span>
+            </div>
+          </div>
+        </footer>
+        {% endblock footer %}
+      </div>
+    </div>
+
+    {% block css %}
+    {% endblock css %}
+
+    {% block js %}
+    <!-- Bootstrap core JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.0/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/sb-admin-2.min.js'%}"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
+
+    <script>
+      // Toggle sidebar
+      $("#sidebarToggle, #sidebarToggleTop").on('click', function(e) {
+        $("body").toggleClass("sidebar-toggled");
+        $(".sidebar").toggleClass("toggled");
+      });
+    </script>
+
+    <!-- Toast Notification System -->
+    <link rel="stylesheet" href="{% static 'css/toast-notifications.css' %}">
+    <script src="{% static 'js/toast-notifications.js' %}"></script>
+
+    {% endblock js %}
+  </body>
+</html>

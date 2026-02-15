@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% load static %} {% load custom_filters %}
+
+{% block title %}
+<title>{{ pokemon.name }} - Pokédex</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'PokemonOverView' %}">Pokédex</a></li>
+    <li class="breadcrumb-item active">{{ pokemon.name }}</li>
+  </ol>
+</nav>
+
+<!-- Main Card -->
+<div class="row">
+  <div class="col-lg-4 mb-4">
+    <!-- Pokémon Info Card -->
+    <div class="card shadow mb-4">
+      <div class="card-header py-3 text-center bg-gradient-primary text-white">
+        <h4 class="m-0 font-weight-bold">#{{ pokemon.pokedex_number|stringformat:"03d" }} {{ pokemon.name }}</h4>
+      </div>
+      <div class="card-body text-center">
+        <!-- Sprite -->
+        <img src="{% static 'img/sprites_gen1/' %}{{ pokemon.name }}.png" 
+             alt="{{ pokemon.name }}"
+             class="pokemon-sprite mb-3"
+             onerror="this.src='{% static 'img/pokeball.png' %}'">
+        
+        <!-- Types -->
+        <div class="mb-3">
+          <span class="badge badge-type-{{ pokemon.primary_type.name }} p-2 mr-1">
+            {{ pokemon.primary_type.name|upper }}
+          </span>
+          {% if pokemon.secondary_type %}
+          <span class="badge badge-type-{{ pokemon.secondary_type.name }} p-2">
+            {{ pokemon.secondary_type.name|upper }}
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="row text-center">
+          <div class="col-6 mb-2">
+            <small class="text-muted">Taux Capture</small><br>
+            <strong>{{ pokemon.catch_rate }}</strong>
+          </div>
+          <div class="col-6 mb-2">
+            <small class="text-muted">Exp Base</small><br>
+            <strong>{{ pokemon.base_experience }}</strong>
+          </div>
+          <div class="col-12">
+            <small class="text-muted">Total Stats</small><br>
+            <h5 class="text-primary">{{ total_stats }}</h5>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Évolutions -->
+    {% if evolutions_from or evolutions_to %}
+    <div class="card shadow mb-4">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+          <i class="fas fa-arrow-right"></i> Évolutions
+        </h6>
+      </div>
+      <div class="card-body">
+        {% if evolutions_to %}
+        <h6 class="text-muted">Évolue depuis :</h6>
+        {% for evo in evolutions_to %}
+        <div class="mb-2">
+          <a href="{% url 'PokemonDetailView' evo.pokemon.id %}" class="text-decoration-none">
+            <img src="{% static 'img/sprites_gen1/' %}{{ evo.pokemon.name }}.png" 
+                 style="width: 48px; height: 48px;"
+                 onerror="this.src='{% static 'img/pokeball.png' %}'">
+            {{ evo.pokemon.name }}
+          </a>
+          <small class="text-muted">
+            ({{ evo.get_method_display }}
+            {% if evo.level %} niv.{{ evo.level }}{% endif %})
+          </small>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if evolutions_from %}
+        <h6 class="text-muted mt-3">Évolue en :</h6>
+        {% for evo in evolutions_from %}
+        <div class="mb-2">
+          <a href="{% url 'PokemonDetailView' evo.evolves_to.id %}" class="text-decoration-none">
+            <img src="{% static 'img/sprites_gen1/' %}{{ evo.evolves_to.name }}.png" 
+                 style="width: 48px; height: 48px;"
+                 onerror="this.src='{% static 'img/pokeball.png' %}'">
+            {{ evo.evolves_to.name }}
+          </a>
+          <small class="text-muted">
+            ({{ evo.get_method_display }}
+            {% if evo.level %} niv.{{ evo.level }}{% endif %})
+          </small>
+        </div>
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-8 mb-4">
+    <!-- Stats de Base -->
+    <div class="card shadow mb-4">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+          <i class="fas fa-chart-bar"></i> Stats de Base
+        </h6>
+      </div>
+      <div class="card-body">
+        <!-- HP -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between">
+            <span>HP</span>
+            <strong>{{ pokemon.base_hp }}</strong>
+          </div>
+          <div class="stat-bar">
+            <div class="stat-bar-fill" style="width: {{ pokemon.base_hp|mul:0.4 }}%"></div>
+          </div>
+        </div>
+
+        <!-- Attack -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between">
+            <span>Attaque</span>
+            <strong>{{ pokemon.base_attack }}</strong>
+          </div>
+          <div class="stat-bar">
+            <div class="stat-bar-fill" style="width: {{ pokemon.base_attack|mul:0.4 }}%"></div>
+          </div>
+        </div>
+
+        <!-- Defense -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between">
+            <span>Défense</span>
+            <strong>{{ pokemon.base_defense }}</strong>
+          </div>
+          <div class="stat-bar">
+            <div class="stat-bar-fill" style="width: {{ pokemon.base_defense|mul:0.4 }}%"></div>
+          </div>
+        </div>
+
+        <!-- Special Attack -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between">
+            <span>Attaque Spéciale</span>
+            <strong>{{ pokemon.base_special_attack }}</strong>
+          </div>
+          <div class="stat-bar">
+            <div class="stat-bar-fill" style="width: {{ pokemon.base_special_attack|mul:0.4 }}%"></div>
+          </div>
+        </div>
+
+        <!-- Special Defense -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between">
+            <span>Défense Spéciale</span>
+            <strong>{{ pokemon.base_special_defense }}</strong>
+          </div>
+          <div class="stat-bar">
+            <div class="stat-bar-fill" style="width: {{ pokemon.base_special_defense|mul:0.4 }}%"></div>
+          </div>
+        </div>
+
+        <!-- Speed -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between">
+            <span>Vitesse</span>
+            <strong>{{ pokemon.base_speed }}</strong>
+          </div>
+          <div class="stat-bar">
+            <div class="stat-bar-fill" style="width: {{ pokemon.base_speed|mul:0.4 }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Capacités Apprises -->
+    <div class="card shadow mb-4">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+          <i class="fas fa-bolt"></i> Capacités Apprises
+        </h6>
+      </div>
+      <div class="card-body">
+        {% if learnable_moves %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead>
+              <tr>
+                <th>Niveau</th>
+                <th>Capacité</th>
+                <th>Type</th>
+                <th>Catégorie</th>
+                <th>Puissance</th>
+                <th>Précision</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lm in learnable_moves %}
+              <tr>
+                <td><strong>{{ lm.level_learned }}</strong></td>
+                <td>
+                  <a href="{% url 'PokemonMoveDetailView' lm.move.id %}">
+                    {{ lm.move.name }}
+                  </a>
+                </td>
+                <td>
+                  <span class="badge badge-type-{{ lm.move.type.name }}">
+                    {{ lm.move.type.name }}
+                  </span>
+                </td>
+                <td>{{ lm.move.get_category_display }}</td>
+                <td>{{ lm.move.power|default:"—" }}</td>
+                <td>{{ lm.move.accuracy }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">Aucune capacité apprise par niveau</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Back Link -->
+<a href="{% url 'PokemonOverView' %}" class="btn btn-secondary">
+  <i class="fas fa-arrow-left"></i> Retour au Pokédex
+</a>
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+<script>
+  // Animation des barres de stats
+  $(document).ready(function() {
+    $('.stat-bar-fill').each(function() {
+      let width = $(this).css('width');
+      $(this).css('width', '0');
+      $(this).animate({width: width}, 1000);
+    });
+  });
+</script>
+{% endblock js %}

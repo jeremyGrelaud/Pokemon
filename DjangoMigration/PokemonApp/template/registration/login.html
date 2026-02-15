@@ -1,0 +1,29 @@
+{% extends "base.html" %} {% load static %} {% load i18n %}
+{% block title %}
+<title>PokemonApp • Login</title>
+{% endblock title %} 
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-xl-4 col-lg-12 col-md-9">
+        <div class="card o-hidden border-0 shadow-lg my-5">
+            <div class="card-body p-0">
+                <div class="p-5 col-xl-12">
+                    <div class="text-center">
+                        <h1 class="h4 text-gray-900 mb-4">My custom Login template</h1>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button class="btn btn-pokemon btn-user btn-block" type="submit">Login</button>
+                    </form>
+                   
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock content %}

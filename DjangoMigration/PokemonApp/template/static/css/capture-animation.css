@@ -1,0 +1,299 @@
+/* ============================================================================
+   CAPTURE ANIMATION SYSTEM
+   ============================================================================ */
+
+.capture-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.capture-container {
+  position: relative;
+  width: 400px;
+  height: 400px;
+}
+
+/* Pokémon en train d'être capturé */
+.capture-pokemon {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 150px;
+  image-rendering: pixelated;
+  animation: pokemon-captured 0.8s ease forwards;
+}
+
+@keyframes pokemon-captured {
+  0% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(-50%) scale(0.3);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateX(-50%) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Poké Ball */
+.pokeball-capture {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background-image: url('/static/img/pokeballSprites/Dream_Poké_Ball_Sprite.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
+}
+
+/* Différents types de balls */
+.pokeball-capture.superball {
+  background-image: url('/static/img/pokeballSprites/Bag_Great_Ball_SV_Sprite.png');
+}
+
+.pokeball-capture.ultraball {
+  background-image: url('/static/img/pokeballSprites/Dream_Ultra_Ball_Sprite.png');
+}
+
+.pokeball-capture.masterball {
+  background-image: url('/static/img/pokeballSprites/Dream_Master_Ball_Sprite.png');
+}
+
+/* TODO complete with other balls */
+
+/* Animation de lancer */
+@keyframes pokeball-throw {
+  0% {
+    top: 100%;
+    left: 0%;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(720deg);
+  }
+  100% {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(1080deg);
+  }
+}
+
+.pokeball-capture.throwing {
+  animation: pokeball-throw 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animation de capture (3 shakes) */
+@keyframes pokeball-shake {
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+  25% { transform: translate(-50%, -50%) rotate(-15deg); }
+  75% { transform: translate(-50%, -50%) rotate(15deg); }
+}
+
+.pokeball-capture.shaking {
+  animation: pokeball-shake 0.5s ease-in-out;
+}
+
+/* Animation de succès */
+@keyframes pokeball-success {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { 
+    transform: translate(-50%, -50%) scale(1.3);
+    filter: brightness(1.5) drop-shadow(0 0 30px #ffd700);
+  }
+  100% { 
+    transform: translate(-50%, -50%) scale(1);
+    filter: brightness(1) drop-shadow(0 10px 20px rgba(0,0,0,0.5));
+  }
+}
+
+.pokeball-capture.success {
+  animation: pokeball-success 0.6s ease;
+}
+
+/* Animation d'échec */
+@keyframes pokeball-break {
+  0% { 
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% { 
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% { 
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+}
+
+.pokeball-capture.failed {
+  animation: pokeball-break 0.5s ease forwards;
+}
+
+/* Pokémon qui s'échappe */
+@keyframes pokemon-escape {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+.capture-pokemon.escaping {
+  animation: pokemon-escape 0.5s ease forwards;
+}
+
+/* Message de capture */
+.capture-message {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 15px 30px;
+  border-radius: 10px;
+  font-weight: bold;
+  font-size: 18px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  animation: messageSlide 0.3s ease;
+}
+
+@keyframes messageSlide {
+  from {
+    bottom: 20px;
+    opacity: 0;
+  }
+  to {
+    bottom: 50px;
+    opacity: 1;
+  }
+}
+
+.capture-message.success {
+  color: #2ecc71;
+  border: 3px solid #2ecc71;
+}
+
+.capture-message.failed {
+  color: #e74c3c;
+  border: 3px solid #e74c3c;
+}
+
+/* Étoiles de succès */
+.capture-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #ffd700;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  animation: starBurst 1s ease-out forwards;
+}
+
+@keyframes starBurst {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Barre de probabilité */
+.capture-probability {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.probability-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.probability-bar {
+  height: 20px;
+  background: #ecf0f1;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.probability-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e74c3c 0%, #f39c12 50%, #2ecc71 100%);
+  border-radius: 10px;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.probability-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+.probability-text {
+  text-align: center;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #2c3e50;
+}

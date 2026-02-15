@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static %}
+{% load django_tables2 %}
+
+{% block title %}
+<title>Pokédex - Pokémon Gen 1</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0 text-gray-800">
+    <i class="fas fa-book text-primary"></i> Pokédex
+  </h1>
+  <div class="text-muted">
+    {{ total_count }} Pokémon
+  </div>
+</div>
+
+<!-- Filters Card -->
+<div class="card shadow mb-4">
+  <div class="card-body">
+    <form method="GET" id="filterForm" class="form-inline">
+      <div class="row w-100">
+        <!-- Search -->
+        <div class="col-md-4 mb-2">
+          <div class="input-group w-100">
+            <input type="text" class="form-control" name="searchQuery" 
+                   placeholder="Rechercher..." value="{{ searchQuery }}">
+            <div class="input-group-append">
+              <button class="btn btn-primary" type="submit">
+                <i class="fas fa-search"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Type Filter -->
+        <div class="col-md-3 mb-2">
+          <select class="form-control w-100" name="typeFilter" onchange="this.form.submit()">
+            <option value="">Tous les types</option>
+            {% for type in types %}
+            <option value="{{ type.name }}" {% if typeFilter == type.name %}selected{% endif %}>
+              {{ type.name|capfirst }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Generation Filter -->
+        <div class="col-md-2 mb-2">
+          <select class="form-control w-100" name="genFilter" onchange="this.form.submit()">
+            <option value="all" {% if genFilter == 'all' %}selected{% endif %}>Toutes</option>
+            <option value="gen1" {% if genFilter == 'gen1' %}selected{% endif %}>Gen 1</option>
+          </select>
+        </div>
+
+        <!-- Reset -->
+        <div class="col-md-3 mb-2">
+          {% if searchQuery or typeFilter or genFilter != 'all' %}
+          <a href="{% url 'PokemonOverView' %}" class="btn btn-secondary w-100">
+            <i class="fas fa-times"></i> Réinitialiser
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Pokémon Table -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3">
+    <h6 class="m-0 font-weight-bold text-primary">Liste des Pokémon</h6>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      {% render_table table 'table.html' %}
+    </div>
+  </div>
+</div>
+
+<!-- Back Link -->
+<a href="{% url 'home' %}">&larr; Retour au Dashboard</a>
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+<script>
+  // Auto-submit on filter change
+  $('select[name="typeFilter"], select[name="genFilter"]').change(function() {
+    $('#filterForm').submit();
+  });
+</script>
+{% endblock js %}

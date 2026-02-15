@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}<title>Journal de Captures</title>{% endblock title %}
+
+{% block content %}
+<div class="container mt-4">
+  
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1>
+        <i class="fas fa-book"></i> Journal de Captures
+      </h1>
+      <p class="text-muted">Historique complet de vos captures</p>
+    </div>
+  </div>
+
+  <!-- Statistiques -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
+          <h3>{{ stats.total_captures }}</h3>
+          <small class="text-muted">Captures Totales</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-star fa-2x text-info mb-2"></i>
+          <h3>{{ stats.unique_species }}</h3>
+          <small class="text-muted">Espèces Uniques</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+          <h3>{{ stats.success_rate }}%</h3>
+          <small class="text-muted">Taux de Réussite</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <i class="fas fa-fire fa-2x text-danger mb-2"></i>
+          <h3>{{ stats.critical_catches }}</h3>
+          <small class="text-muted">Captures Critiques</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="get" class="row">
+        <div class="col-md-3">
+          <input type="text" name="search" class="form-control" 
+                 placeholder="Rechercher..." value="{{ request.GET.search }}">
+        </div>
+        <div class="col-md-3">
+          <select name="ball" class="form-control">
+            <option value="">Toutes les balls</option>
+            <option value="pokeball">Poké Ball</option>
+            <option value="superball">Super Ball</option>
+            <option value="hyperball">Hyper Ball</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select name="period" class="form-control">
+            <option value="">Toute période</option>
+            <option value="today">Aujourd'hui</option>
+            <option value="week">Cette semaine</option>
+            <option value="month">Ce mois</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-filter"></i> Filtrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Liste des captures -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">Captures Récentes</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th>Pokémon</th>
+              <th>Niveau</th>
+              <th>Ball Utilisée</th>
+              <th>Date</th>
+              <th>Tentatives</th>
+              <th>Badges</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in captures %}
+            <tr>
+              <td>
+                <img src="{% static 'img/sprites_gen1/' %}{{ entry.pokemon.species.name }}.png" 
+                     width="40" class="mr-2"
+                     onerror="this.src='{% static 'img/pokeball.png' %}'">
+                <strong>{{ entry.pokemon.species.name }}</strong>
+                {% if entry.is_first_catch %}
+                <span class="badge badge-warning ml-2">
+                  <i class="fas fa-star"></i> Premier
+                </span>
+                {% endif %}
+                {% if entry.is_critical_catch %}
+                <span class="badge badge-danger ml-2">
+                  <i class="fas fa-bolt"></i> Critique
+                </span>
+                {% endif %}
+              </td>
+              <td>Niv. {{ entry.level_at_capture }}</td>
+              <td>
+                <img src="{% static 'img/' %}{{ entry.ball_used.name|lower }}.png" 
+                     width="25" class="mr-1"
+                     onerror="this.src='{% static 'img/pokeball.png' %}'">
+                {{ entry.ball_used.name }}
+              </td>
+              <td>{{ entry.captured_at|date:"d/m/Y H:i" }}</td>
+              <td>
+                <span class="badge badge-secondary">
+                  {{ entry.attempts_before_success }} essai{{ entry.attempts_before_success|pluralize }}
+                </span>
+              </td>
+              <td>
+                {% if entry.is_first_catch %}
+                <i class="fas fa-star text-warning" title="Premier capturé"></i>
+                {% endif %}
+                {% if entry.is_critical_catch %}
+                <i class="fas fa-bolt text-danger" title="Capture critique"></i>
+                {% endif %}
+                {% if entry.is_shiny %}
+                <i class="fas fa-gem text-info" title="Shiny"></i>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-muted">
+                Aucune capture pour le moment
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Graphique -->
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5 class="mb-0">Évolution des Captures</h5>
+    </div>
+    <div class="card-body">
+      <canvas id="capturesChart" height="80"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3"></script>
+<script>
+// Graphique des captures
+const ctx = document.getElementById('capturesChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: {{ chart_labels|safe }},
+    datasets: [{
+      label: 'Captures',
+      data: {{ chart_data|safe }},
+      borderColor: '#4CAF50',
+      backgroundColor: 'rgba(76, 175, 80, 0.1)',
+      tension: 0.4
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1
+        }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+<title>Historique Centres Pokémon - Pokémon Gen 1</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0 text-gray-800">
+    <i class="fas fa-history text-danger"></i> Historique des Centres Pokémon
+  </h1>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'PokemonCenterListView' %}">Centres Pokémon</a></li>
+    <li class="breadcrumb-item active">Historique</li>
+  </ol>
+</nav>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+  <!-- Total Visits -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-primary shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+              Visites Totales
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_visits }}</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-hospital fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Healed -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-success shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+              Pokémon Soignés
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_healed }}</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-heart fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Spent -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-warning shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+              Argent Dépensé
+            </div>
+            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_spent }}₽</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-coins fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Favorite Center -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-info shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row no-gutters align-items-center">
+          <div class="col mr-2">
+            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+              Centre Favori
+            </div>
+            <div class="h6 mb-0 font-weight-bold text-gray-800">
+              {% if favorite_center %}
+                {{ favorite_center.center__name|truncatewords:3 }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            {% if favorite_center %}
+            <small class="text-muted">{{ favorite_center.visit_count }} visites</small>
+            {% endif %}
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-star fa-2x text-gray-300"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Visits Timeline -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3 d-flex justify-content-between align-items-center">
+    <h6 class="m-0 font-weight-bold text-primary">
+      <i class="fas fa-calendar-alt"></i> Historique des Visites
+    </h6>
+    
+    <!-- Filter/Sort Options -->
+    <div class="btn-group btn-group-sm" role="group">
+      <button type="button" class="btn btn-outline-primary active" data-filter="all">
+        Tout
+      </button>
+      <button type="button" class="btn btn-outline-primary" data-filter="today">
+        Aujourd'hui
+      </button>
+      <button type="button" class="btn btn-outline-primary" data-filter="week">
+        Cette Semaine
+      </button>
+    </div>
+  </div>
+  
+  <div class="card-body">
+    {% if visits %}
+    <!-- Timeline -->
+    <div class="timeline">
+      {% for visit in visits %}
+      <div class="timeline-item" data-date="{{ visit.visited_at|date:'Y-m-d' }}">
+        <div class="timeline-marker bg-danger">
+          <i class="fas fa-plus"></i>
+        </div>
+        <div class="timeline-content">
+          <div class="card mb-3 border-left-danger">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <!-- Date & Time -->
+                <div class="col-md-2">
+                  <div class="text-center">
+                    <div class="h5 mb-0 text-danger">
+                      {{ visit.visited_at|date:"d" }}
+                    </div>
+                    <small class="text-muted">
+                      {{ visit.visited_at|date:"M Y" }}
+                    </small>
+                    <div class="mt-1">
+                      <small class="badge badge-secondary">
+                        {{ visit.visited_at|date:"H:i" }}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Center Info -->
+                <div class="col-md-4">
+                  <h6 class="mb-1">
+                    <i class="fas fa-hospital text-danger"></i>
+                    {{ visit.center.name }}
+                  </h6>
+                  <small class="text-muted">
+                    <i class="fas fa-map-marker-alt"></i>
+                    {{ visit.center.location }}
+                  </small>
+                </div>
+
+                <!-- Healing Stats -->
+                <div class="col-md-3">
+                  <div class="d-flex align-items-center">
+                    <i class="fas fa-users fa-2x text-success mr-3"></i>
+                    <div>
+                      <div class="h5 mb-0 text-success">{{ visit.pokemon_healed }}</div>
+                      <small class="text-muted">Pokémon soignés</small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Cost -->
+                <div class="col-md-2">
+                  <div class="text-center">
+                    {% if visit.cost > 0 %}
+                    <div class="h5 mb-0 text-warning">{{ visit.cost }}₽</div>
+                    <small class="text-muted">Coût</small>
+                    {% else %}
+                    <span class="badge badge-success p-2">
+                      GRATUIT
+                    </span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!-- Action -->
+                <div class="col-md-1">
+                  <a href="{% url 'PokemonCenterDetailView' visit.center.id %}" 
+                     class="btn btn-sm btn-outline-danger"
+                     title="Revisiter ce centre">
+                    <i class="fas fa-redo"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Load More Button -->
+    {% if visits|length >= 50 %}
+    <div class="text-center mt-4">
+      <button class="btn btn-outline-primary">
+        <i class="fas fa-chevron-down"></i> Charger Plus
+      </button>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-5">
+      <i class="fas fa-clipboard-list fa-5x text-muted mb-3"></i>
+      <h4 class="text-muted">Aucune visite enregistrée</h4>
+      <p class="text-muted mb-4">
+        Vous n'avez pas encore visité de Centre Pokémon.
+      </p>
+      <a href="{% url 'PokemonCenterListView' %}" class="btn btn-danger">
+        <i class="fas fa-hospital"></i> Visiter un Centre
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Monthly Stats Chart -->
+{% if visits %}
+<div class="row">
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+          <i class="fas fa-chart-line"></i> Visites par Mois
+        </h6>
+      </div>
+      <div class="card-body">
+        <canvas id="visitsChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+          <i class="fas fa-chart-pie"></i> Centres les Plus Visités
+        </h6>
+      </div>
+      <div class="card-body">
+        <canvas id="centersChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Back Button -->
+<div class="mb-4">
+  <a href="{% url 'PokemonCenterListView' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Retour aux Centres
+  </a>
+  <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-home"></i> Dashboard
+  </a>
+</div>
+
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+
+<style>
+/* Timeline Styles */
+.timeline {
+  position: relative;
+  padding: 20px 0;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 50px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e9ecef;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 100px;
+  margin-bottom: 0;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: 38px;
+  top: 20px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.timeline-content {
+  padding: 10px 0;
+}
+
+.border-left-danger {
+  border-left: 4px solid #e74c3c;
+}
+
+.border-left-primary {
+  border-left: 4px solid #4e73df;
+}
+
+.border-left-success {
+  border-left: 4px solid #1cc88a;
+}
+
+.border-left-warning {
+  border-left: 4px solid #f6c23e;
+}
+
+.border-left-info {
+  border-left: 4px solid #36b9cc;
+}
+
+/* Hover Effects */
+.timeline-item:hover .timeline-content .card {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transform: translateX(5px);
+  transition: all 0.3s ease;
+}
+
+/* Filter Active */
+.btn-group .btn.active {
+  background-color: #4e73df;
+  color: white;
+  border-color: #4e73df;
+}
+
+/* Responsive Timeline */
+@media (max-width: 768px) {
+  .timeline::before {
+    left: 20px;
+  }
+  
+  .timeline-item {
+    padding-left: 60px;
+  }
+  
+  .timeline-marker {
+    left: 8px;
+  }
+}
+</style>
+
+<script>
+$(document).ready(function() {
+  // Filter buttons
+  $('.btn-group button[data-filter]').on('click', function() {
+    const filter = $(this).data('filter');
+    
+    // Update active state
+    $('.btn-group button').removeClass('active');
+    $(this).addClass('active');
+    
+    // Filter timeline items
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    $('.timeline-item').each(function() {
+      const itemDate = new Date($(this).data('date'));
+      let show = true;
+      
+      if (filter === 'today') {
+        show = itemDate.toDateString() === today.toDateString();
+      } else if (filter === 'week') {
+        show = itemDate >= weekAgo;
+      }
+      
+      $(this).toggle(show);
+    });
+  });
+
+  {% if visits %}
+  // Chart.js - Visits per Month
+  const visitsCtx = document.getElementById('visitsChart');
+  if (visitsCtx) {
+    // Prepare data (you'll need to pass this from Django)
+    new Chart(visitsCtx, {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
+        datasets: [{
+          label: 'Visites',
+          data: [5, 8, 12, 15, 10, 14],
+          borderColor: '#e74c3c',
+          backgroundColor: 'rgba(231, 76, 60, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 5
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Chart.js - Centers Distribution
+  const centersCtx = document.getElementById('centersChart');
+  if (centersCtx) {
+    new Chart(centersCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Bourg Palette', 'Jadielle', 'Carmin sur Mer'],
+        datasets: [{
+          data: [{{ favorite_center.visit_count|default:0 }}, 5, 3],
+          backgroundColor: [
+            '#e74c3c',
+            '#3498db',
+            '#2ecc71'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    });
+  }
+  {% endif %}
+});
+</script>
+{% endblock js %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}<title>Champions d'Arène</title>{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4"><i class="fas fa-trophy"></i> Champions d'Arène</h1>
+
+<div class="row">
+  {% for gym in gym_leaders %}
+  <div class="col-md-6 mb-4">
+    <div class="card shadow">
+      <div class="card-body">
+        <h5>{{ gym.gym_name }} - {{ gym.gym_city }}</h5>
+        <p><strong>Champion:</strong> {{ gym.trainer.username }}</p>
+        <p><strong>Type:</strong> <span class="badge badge-type-{{ gym.specialty_type.name }}">{{ gym.specialty_type.name }}</span></p>
+        <p><strong>Badge:</strong> {{ gym.badge_name }} (Badge #{{ gym.badge_order }})</p>
+        <a href="{% url 'GymLeaderDetailView' gym.id %}" class="btn btn-primary">Voir Détails</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
