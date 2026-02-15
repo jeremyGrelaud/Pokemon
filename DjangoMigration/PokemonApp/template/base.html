@@ -20,6 +20,23 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
+
+    <!-- Auto-save -->
+    {% if has_active_save %}
+      <script>
+      function autoSave() {
+        fetch('{% url "auto_save" active_save.id %}', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+          }
+        });
+      }
+
+      setInterval(autoSave, 5 * 60 * 1000);
+      </script>
+    {% endif %}
+
   </head>
 
   <body id="page-top">
@@ -122,6 +139,14 @@
           </a>
         </li>
 
+        <!-- Liste de sauveagrdes  -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'save_select' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'save_select' %}">
+            <i class="fas fa-save"></i>
+            <span>Liste des sauvegardes</span>
+          </a>
+        </li>
+
         <div class="text-center d-none d-md-inline mt-4">
           <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -169,6 +194,21 @@
                       <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                       Mon Profil
                     </a>
+                    <!-- Manual save button  -->
+                    {% if has_active_save %}
+                    <a class="dropdown-item" onclick="manualSave()">
+                      <i class="fas fa-save fa-sm fa-fw mr-2 text-gray-400"></i>
+                      Sauvegarder
+                      <script>
+                        function manualSave() {
+                          fetch('{% url "save_game" active_save.id %}')
+                            .then(response => response.json())
+                            .then(data => alert('[+] ' + data.message));
+                        }
+                      </script>
+                    </a>
+                    {% endif %}
+
                     <div class="dropdown-divider"></div>
                     <a class="dropdown-item" href="/logout">
                       <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>

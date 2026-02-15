@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}<title>Résultat du Combat</title>{% endblock title %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      
+      {% if player_won %}
+      <!-- VICTOIRE -->
+      <div class="card border-success">
+        <div class="card-header bg-success text-white text-center">
+          <h2 class="mb-0">
+            <i class="fas fa-trophy"></i> Victoire !
+          </h2>
+        </div>
+        <div class="card-body text-center">
+          <h4 class="mb-4">
+            Vous avez battu {{ opponent.get_full_title }} !
+          </h4>
+          
+          <div class="dialogue-box mb-4 p-3 bg-light rounded">
+            <i class="fas fa-quote-left"></i>
+            <em>{{ dialogue }}</em>
+            <i class="fas fa-quote-right"></i>
+          </div>
+          
+          {% if money_earned > 0 %}
+          <div class="alert alert-success">
+            <i class="fas fa-coins"></i>
+            <strong>Vous gagnez {{ money_earned }}₽ !</strong>
+          </div>
+          {% endif %}
+          
+          <div class="mt-4">
+            <a href="{% url 'BattleCreateView' %}" class="btn btn-primary">
+              <i class="fas fa-redo"></i> Nouveau Combat
+            </a>
+            <a href="{% url 'home' %}" class="btn btn-secondary">
+              <i class="fas fa-home"></i> Retour
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      {% else %}
+      <!-- DÉFAITE -->
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white text-center">
+          <h2 class="mb-0">
+            <i class="fas fa-times-circle"></i> Défaite...
+          </h2>
+        </div>
+        <div class="card-body text-center">
+          <h4 class="mb-4">
+            {{ opponent.get_full_title }} vous a battu...
+          </h4>
+          
+          <div class="dialogue-box mb-4 p-3 bg-light rounded">
+            <i class="fas fa-quote-left"></i>
+            <em>{{ dialogue }}</em>
+            <i class="fas fa-quote-right"></i>
+          </div>
+          
+          <div class="mt-4">
+            <a href="{% url 'pokemon_center' %}" class="btn btn-warning">
+              <i class="fas fa-hospital"></i> Centre Pokémon
+            </a>
+            <a href="{% url 'home' %}" class="btn btn-secondary">
+              <i class="fas fa-home"></i> Retour
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      
+    </div>
+  </div>
+</div>
+
+<style>
+.dialogue-box {
+  border-left: 4px solid #3498db;
+  font-size: 16px;
+  line-height: 1.6;
+}
+</style>
+{% endblock %}

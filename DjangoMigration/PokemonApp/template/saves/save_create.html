@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}<title>Nouvelle Sauvegarde</title>{% endblock title %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-plus"></i> Nouvelle Partie - Slot {{ slot }}
+          </h5>
+        </div>
+        
+        <div class="card-body">
+          {% if existing %}
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Attention !</strong> Une sauvegarde existe déjà dans ce slot.
+            Elle sera écrasée.
+          </div>
+          {% endif %}
+          
+          <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+              <label for="save_name">Nom de la sauvegarde</label>
+              <input type="text" 
+                     id="save_name"
+                     name="save_name" 
+                     class="form-control" 
+                     placeholder="Mon Aventure"
+                     maxlength="100"
+                     required>
+              <small class="form-text text-muted">
+                Choisissez un nom pour identifier cette partie
+              </small>
+            </div>
+            
+            <div class="mt-4">
+              <button type="submit" class="btn btn-success btn-block">
+                <i class="fas fa-check"></i> Créer la Sauvegarde
+              </button>
+              
+              <a href="{% url 'save_select' %}" class="btn btn-secondary btn-block mt-2">
+                <i class="fas fa-times"></i> Annuler
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

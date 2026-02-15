@@ -56,7 +56,7 @@ urlpatterns = [
     path('battle/<int:pk>/play/', views.BattleGameView.as_view(), name='BattleGameView'),
     path('battle/<int:pk>/action/', views.battle_action_view, name='BattleActionView'),    
 
-    path('battle/create/', views.BattleCreateView.as_view(), name='BattleCreateView'),
+    # path('battle/create/', views.BattleCreateView.as_view(), name='BattleCreateView'),
 
     path('get_trainer_items/', views.GetTrainerItems, name='GetTrainerItems'),
     path('get_trainer_team/', views.GetTrainerTeam, name='GetTrainerTeam'),
@@ -77,15 +77,25 @@ urlpatterns = [
     path('captures/', views.CaptureViews.capture_journal_view, name='CaptureJournalView'),
 
 
-
-    # Liste des centres
+    # Centres pokemon
     path('pokemon-centers/', views.PokemonCenterListView.as_view(), name='PokemonCenterListView'),
-    # Détails d'un centre
     path('pokemon-center/<int:pk>/', views.PokemonCenterDetailView.as_view(), name='PokemonCenterDetailView'),
-    # API - Soigner l'équipe
-    path('api/pokemon-center/heal/', views.heal_team_api, name='HealTeamAPI'),
-    # API - Accès PC
-    path('api/pokemon-center/pc/', views.access_pc_from_center_api, name='AccessPCAPI'),
-    # Historique
     path('pokemon-center/history/', views.center_history_view, name='CenterHistoryView'),
+    path('api/pokemon-center/heal/', views.heal_team_api, name='HealTeamAPI'),
+    path('api/pokemon-center/pc/', views.access_pc_from_center_api, name='AccessPCAPI'),
+
+    # Sauvegardes
+    path('saves/', views.save_select_view, name='save_select'),
+    path('saves/create/<int:slot>/', views.save_create_view, name='save_create'),
+    path('saves/load/<int:save_id>/', views.save_load_view, name='save_load'),
+    path('saves/<int:save_id>/save/', views.save_game_view, name='save_game'),
+    path('saves/<int:save_id>/auto-save/', views.auto_save_view, name='auto_save'),
+    
+    # Combats
+    path('battle/create/', views.battle_create_view, name='BattleCreateView'),
+    path('battle/wild/challenge/', views.battle_create_wild_view, name='create_wild_battle'),
+    path('battle/trainer/<int:trainer_id>/challenge/', views.battle_create_trainer_view, name='battle_create_trainer'),
+    path('battle/gym/challenge/', views.battle_create_gym_view, name='create_gym_battle'),
+    path('battle/<int:battle_id>/trainer/complete/', views.battle_trainer_complete_view, name='battle_trainer_complete'),
+
 ]

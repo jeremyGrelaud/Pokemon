@@ -10,12 +10,13 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.http import  require_http_methods
-from myPokemonApp.gameUtils import check_battle_end, heal_team
+from myPokemonApp.gameUtils import check_battle_end, heal_team, learn_moves_up_to_level
 from django.db.models import Q
 from myPokemonApp.gameUtils import apply_exp_gain, calculate_exp_gain, opponent_switch_pokemon
 from myPokemonApp.gameUtils import attempt_pokemon_capture, calculate_capture_rate
-
+from django.contrib import messages
 from ..models import *
+import random
 
 
 # ============================================================================
@@ -310,7 +311,7 @@ def battle_action_view(request, pk):
                     'capture_rate': capture_rate,
                     'start_animation': True
                 }
-                
+
                 # Le client va afficher l'animation, puis rappeler l'API avec 'confirm_capture'
                 return JsonResponse(response_data)
             
@@ -416,106 +417,106 @@ def battle_action_view(request, pk):
 # CRÉER UN NOUVEAU COMBAT
 # ============================================================================
 
-@method_decorator(login_required, name='dispatch')
-class BattleCreateView(generic.View):
-    """Créer un nouveau combat"""
+# @method_decorator(login_required, name='dispatch')
+# class BattleCreateView(generic.View):
+#     """Créer un nouveau combat"""
     
-    def get(self, request):
-        """Afficher le formulaire de création de combat"""
-        trainer = get_object_or_404(Trainer, username=request.user.username)
+#     def get(self, request):
+#         """Afficher le formulaire de création de combat"""
+#         trainer = get_object_or_404(Trainer, username=request.user.username)
         
-        # Récupérer le premier Pokémon de l'équipe
-        player_pokemon = trainer.pokemon_team.filter(
-            is_in_party=True,
-            current_hp__gt=0
-        ).first()
+#         # Récupérer le premier Pokémon de l'équipe
+#         player_pokemon = trainer.pokemon_team.filter(
+#             is_in_party=True,
+#             current_hp__gt=0
+#         ).first()
         
-        if not player_pokemon:
-            return redirect('MyTeamView')
+#         if not player_pokemon:
+#             return redirect('MyTeamView')
         
 
-        fightableGymLeaders = list()
-        for gymLeader in GymLeader.objects.all():
-            if gymLeader.isChallengableByPlayer(player=trainer):
-                fightableGymLeaders.append(gymLeader)
+#         fightableGymLeaders = list()
+#         for gymLeader in GymLeader.objects.all():
+#             if gymLeader.isChallengableByPlayer(player=trainer):
+#                 fightableGymLeaders.append(gymLeader)
         
-        context = {
-            'trainer': trainer,
-            'player_pokemon': player_pokemon,
-            'gym_leaders': fightableGymLeaders
-        }
+#         context = {
+#             'trainer': trainer,
+#             'player_pokemon': player_pokemon,
+#             'gym_leaders': fightableGymLeaders
+#         }
         
-        return render(request, 'battle/battle_create.html', context)
+#         return render(request, 'battle/battle_create.html', context)
     
-    def post(self, request):
-        """Créer le combat"""
-        trainer = get_object_or_404(Trainer, username=request.user.username)
+#     def post(self, request):
+#         """Créer le combat"""
+#         trainer = get_object_or_404(Trainer, username=request.user.username)
         
-        # Récupérer le premier Pokémon de l'équipe
-        player_pokemon = trainer.pokemon_team.filter(
-            is_in_party=True,
-            current_hp__gt=0
-        ).first()
+#         # Récupérer le premier Pokémon de l'équipe
+#         player_pokemon = trainer.pokemon_team.filter(
+#             is_in_party=True,
+#             current_hp__gt=0
+#         ).first()
         
-        if not player_pokemon:
-            return redirect('MyTeamView')
+#         if not player_pokemon:
+#             return redirect('MyTeamView')
         
-        # Type de combat
-        battle_type = request.POST.get('battle_type', 'wild')
+#         # Type de combat
+#         battle_type = request.POST.get('battle_type', 'wild')
         
-        # Créer un Pokémon adversaire (sauvage ou dresseur)
-        if battle_type == 'wild':
-            # Pokémon sauvage aléatoire
-            import random
+#         # Créer un Pokémon adversaire (sauvage ou dresseur)
+#         if battle_type == 'wild':
+#             # Pokémon sauvage aléatoire
+#             import random
             
-            wild_species = Pokemon.objects.order_by('?').first()
-            wild_level = random.randint(
-                max(1, player_pokemon.level - 3),
-                player_pokemon.level + 3
-            )
+#             wild_species = Pokemon.objects.order_by('?').first()
+#             wild_level = random.randint(
+#                 max(1, player_pokemon.level - 3),
+#                 player_pokemon.level + 3
+#             )
             
-            # Créer le Pokémon sauvage
-            wild_pokemon = PlayablePokemon.objects.create(
-                species=wild_species,
-                trainer=get_object_or_create_wild_trainer(),
-                level=wild_level,
-                original_trainer='Wild'
-            )
+#             # Créer le Pokémon sauvage
+#             wild_pokemon = PlayablePokemon.objects.create(
+#                 species=wild_species,
+#                 trainer=get_object_or_create_wild_trainer(),
+#                 level=wild_level,
+#                 original_trainer='Wild'
+#             )
             
-            # Créer le combat
-            battle = Battle.objects.create(
-                battle_type='wild',
-                player_trainer=trainer,
-                opponent_trainer=None,
-                player_pokemon=player_pokemon,
-                opponent_pokemon=wild_pokemon
-            )
+#             # Créer le combat
+#             battle = Battle.objects.create(
+#                 battle_type='wild',
+#                 player_trainer=trainer,
+#                 opponent_trainer=None,
+#                 player_pokemon=player_pokemon,
+#                 opponent_pokemon=wild_pokemon
+#             )
         
-        elif battle_type == 'gym':
-            # Combat d'arène
-            gym_leader_id = request.POST.get('gym_leader')
+#         elif battle_type == 'gym':
+#             # Combat d'arène
+#             gym_leader_id = request.POST.get('gym_leader')
             
-            gym_leader = get_object_or_404(GymLeader, pk=gym_leader_id)
+#             gym_leader = get_object_or_404(GymLeader, pk=gym_leader_id)
 
-            # Fully heal Gym leader Team at the begining of the fight
-            heal_team(gym_leader.trainer)
+#             # Fully heal Gym leader Team at the begining of the fight
+#             heal_team(gym_leader.trainer)
             
-            # Récupérer le premier Pokémon du champion
-            opponent_pokemon = gym_leader.trainer.pokemon_team.first()
+#             # Récupérer le premier Pokémon du champion
+#             opponent_pokemon = gym_leader.trainer.pokemon_team.first()
             
-            if not opponent_pokemon:
-                return redirect('GymLeaderListView')
+#             if not opponent_pokemon:
+#                 return redirect('GymLeaderListView')
             
-            battle = Battle.objects.create(
-                battle_type='gym',
-                player_trainer=trainer,
-                opponent_trainer=gym_leader.trainer,
-                player_pokemon=player_pokemon,
-                opponent_pokemon=opponent_pokemon
-            )
+#             battle = Battle.objects.create(
+#                 battle_type='gym',
+#                 player_trainer=trainer,
+#                 opponent_trainer=gym_leader.trainer,
+#                 player_pokemon=player_pokemon,
+#                 opponent_pokemon=opponent_pokemon
+#             )
         
-        # Rediriger vers le combat
-        return redirect('BattleGameView', pk=battle.id)
+#         # Rediriger vers le combat
+#         return redirect('BattleGameView', pk=battle.id)
 
 
 def get_object_or_create_wild_trainer():
@@ -525,6 +526,371 @@ def get_object_or_create_wild_trainer():
         defaults={'trainer_type': 'wild'}
     )
     return trainer
+
+
+
+
+# ============================================================================
+# BATTLE CREATE VIEW (Vue principale avec 3 onglets)
+# ============================================================================
+
+@login_required
+def battle_create_view(request):
+    """
+    Vue de création de combat avec 3 onglets:
+    1. Pokémon Sauvage
+    2. Dresseurs NPC
+    3. Champions d'Arène
+    """
+    
+    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    
+    # Save active (via context processor)
+    # Mais on peut aussi la récupérer manuellement:
+    try:
+        save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+    except:
+        save = None
+    
+    # Tous les Pokémon pour wild
+    all_pokemon = Pokemon.objects.all().order_by('pokedex_number')
+    
+    # Dresseurs NPC
+    npc_trainers = Trainer.objects.filter(
+        is_npc=True,
+        trainer_type='trainer'
+    ).order_by('location', 'username')
+    
+    # Locations et classes uniques pour filtres
+    trainer_locations = list(npc_trainers.values_list('location', flat=True).distinct())
+    trainer_classes = list(npc_trainers.values_list('npc_class', flat=True).distinct())
+    trainer_classes = [c for c in trainer_classes if c]  # Retirer les vides
+    
+    # Gym Leaders
+    try:
+        fightableGymLeaders = list()
+        for gymLeader in GymLeader.objects.all():
+            if gymLeader.isChallengableByPlayer(player=player_trainer):
+                fightableGymLeaders.append(gymLeader)
+    except:
+        fightableGymLeaders = []
+    
+    context = {
+        'all_pokemon': all_pokemon,
+        'npc_trainers': npc_trainers,
+        'trainer_locations': trainer_locations,
+        'trainer_classes': trainer_classes,
+        'gym_leaders': fightableGymLeaders,
+        'save': save
+    }
+    
+    return render(request, 'battle/battle_create.html', context)
+
+
+# ============================================================================
+# WILD BATTLE - ALÉATOIRE
+# ============================================================================
+
+@login_required
+def battle_create_wild_view(request):
+    """
+    Créer un combat contre un Pokémon sauvage ALÉATOIRE
+    
+    Logique:
+    1. Choisir un Pokémon aléatoire de niveau approprié
+    2. Créer un Trainer "wild" temporaire
+    3. Créer le Pokémon sauvage
+    4. Lancer le combat
+    """
+    
+    if request.method != 'POST':
+        return redirect('BattleCreateView')
+    
+    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    
+    # Vérifier que le joueur a un Pokémon
+    player_pokemon = player_trainer.pokemon_team.filter(
+        is_in_party=True,
+        current_hp__gt=0
+    ).first()
+    
+    if not player_pokemon:
+        messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
+        return redirect('pokemon_center')
+    
+    # ===== LOGIQUE ALÉATOIRE =====
+    
+    # Option 1: Pokémon spécifique fourni (pour debug)
+    pokemon_id = request.POST.get('pokemon_id')
+    level = int(request.POST.get('level', 5))
+    
+    if pokemon_id:
+        # Mode manuel (pour tests)
+        wild_species = get_object_or_404(Pokemon, pk=pokemon_id)
+    else:
+        # Mode ALÉATOIRE (recommandé)
+        # Choisir en fonction du niveau du joueur
+        player_level = player_pokemon.level
+        
+        # Filtrer par niveau approprié (± 3 niveaux)
+        # On peut aussi filtrer par zone si vous avez un système de zones
+        
+        # Pour l'instant: Pokémon totalement aléatoire
+        all_wild_pokemon = Pokemon.objects.all()
+        
+        if not all_wild_pokemon.exists():
+            messages.error(request, "Aucun Pokémon sauvage disponible !")
+            return redirect('BattleCreateView')
+        
+        wild_species = random.choice(all_wild_pokemon)
+        
+        # Niveau aléatoire autour du niveau du joueur
+        min_level = max(1, player_level - 3)
+        max_level = player_level + 3
+        level = random.randint(min_level, max_level)
+    
+    # ===== CRÉER LE POKÉMON SAUVAGE =====
+    wild_pokemon = PlayablePokemon.objects.create(
+        species=wild_species,
+        level=level,
+        trainer=get_object_or_create_wild_trainer(),
+        is_in_party=True,
+        original_trainer='Wild'
+    )
+
+    
+    # Calculer stats
+    wild_pokemon.calculate_stats()
+    wild_pokemon.current_hp = wild_pokemon.max_hp
+    wild_pokemon.save()
+    
+    # Ajouter des moves 
+    learn_moves_up_to_level(wild_pokemon, wild_pokemon.level)
+
+    # Si pas de moves appris, donner Tackle
+    if not wild_pokemon.pokemonmoveinstance_set.exists():
+        tackle = PokemonMove.objects.filter(name__icontains='Charge').first()
+        if not tackle:
+            tackle = PokemonMove.objects.first()
+        
+        if tackle:
+            PokemonMoveInstance.objects.create(
+                pokemon=wild_pokemon,
+                move=tackle,
+                current_pp=tackle.pp,
+            )
+    
+    # ===== CRÉER LE COMBAT =====
+    
+    battle = Battle.objects.create(
+        player_trainer=player_trainer,
+        opponent_trainer=None,
+        player_pokemon=player_pokemon,
+        opponent_pokemon=wild_pokemon,
+        is_active=True
+    )
+    
+    messages.success(request, f"Un {wild_species.name} sauvage de niveau {level} apparaît !")
+    
+    return redirect('BattleGameView', pk=battle.id)
+
+
+# ============================================================================
+# TRAINER BATTLE
+# ============================================================================
+
+@login_required
+def battle_create_trainer_view(request, trainer_id):
+    """
+    Créer un combat contre un dresseur NPC
+    """
+    
+    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    opponent_trainer = get_object_or_404(Trainer, pk=trainer_id, is_npc=True)
+
+    heal_team(opponent_trainer)
+    
+    # Vérifier save
+    try:
+        save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+    except:
+        save = None
+    
+    # Vérifier si déjà battu
+    if save and save.is_trainer_defeated(opponent_trainer.id):
+        if not opponent_trainer.can_rebattle:
+            messages.warning(request, f"Vous avez déjà battu {opponent_trainer.get_full_title()}")
+            return redirect('BattleCreateView')
+    
+    # Vérifier Pokémon du joueur
+    player_pokemon = player_trainer.pokemon_team.filter(
+        is_in_party=True,
+        current_hp__gt=0
+    ).first()
+    
+    if not player_pokemon:
+        messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
+        return redirect('pokemon_center')
+    
+    # Vérifier Pokémon de l'adversaire
+    opponent_pokemon = opponent_trainer.pokemon_team.filter(
+        is_in_party=True,
+        current_hp__gt=0
+    ).first()
+    
+    if not opponent_pokemon:
+        messages.error(request, "Ce dresseur n'a pas d'équipe configurée !")
+        return redirect('BattleCreateView')
+    
+    # Créer le combat
+    battle = Battle.objects.create(
+        player_trainer=player_trainer,
+        opponent_trainer=opponent_trainer,
+        player_pokemon=player_pokemon,
+        opponent_pokemon=opponent_pokemon,
+        is_active=True
+    )
+    
+    messages.info(request, opponent_trainer.intro_text or f"Vous affrontez {opponent_trainer.get_full_title()} !")
+    
+    return redirect('BattleGameView', pk=battle.id)
+
+
+# ============================================================================
+# GYM LEADER BATTLE
+# ============================================================================
+
+@login_required
+def battle_create_gym_view(request):
+    """
+    Créer un combat contre un Champion d'Arène
+    """
+    
+    if request.method != 'POST':
+        return redirect('BattleCreateView')
+    
+    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    gym_leader_id = request.POST.get('gym_leader_id')
+    
+    try:
+        gym_leader = GymLeader.objects.select_related('trainer').get(pk=gym_leader_id)
+    except GymLeader.DoesNotExist:
+        messages.error(request, "Champion d'Arène introuvable !")
+        return redirect('BattleCreateView')
+    
+    opponent_trainer = gym_leader.trainer
+    heal_team(opponent_trainer)
+    
+    # Vérifier si le joueur peut défier ce champion
+    if not gym_leader.isChallengableByPlayer(player_trainer):
+        required_badges = gym_leader.badge_order - 1
+        messages.warning(
+            request,
+            f"Vous devez avoir au moins {required_badges} badge(s) pour défier {opponent_trainer.username}"
+        )
+        return redirect('BattleCreateView')
+    
+    # Vérifier Pokémon du joueur
+    player_pokemon = player_trainer.pokemon_team.filter(
+        is_in_party=True,
+        current_hp__gt=0
+    ).first()
+    
+    if not player_pokemon:
+        messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
+        return redirect('pokemon_center')
+    
+    # Pokémon du champion
+    opponent_pokemon = opponent_trainer.pokemon_team.filter(
+        is_in_party=True,
+        current_hp__gt=0
+    ).first()
+    
+    if not opponent_pokemon:
+        messages.error(request, "Le Champion n'a pas d'équipe configurée !")
+        return redirect('BattleCreateView')
+    
+    # Créer le combat
+    battle = Battle.objects.create(
+        player_trainer=player_trainer,
+        opponent_trainer=opponent_trainer,
+        player_pokemon=player_pokemon,
+        opponent_pokemon=opponent_pokemon,
+        is_active=True
+    )
+    
+    messages.info(
+        request,
+        opponent_trainer.intro_text or f"Vous défiez {opponent_trainer.username}, Champion d'Arène de {gym_leader.gym_city} !"
+    )
+    
+    return redirect('BattleGameView', pk=battle.id)
+
+
+# ============================================================================
+# BATTLE COMPLETE (Après combat)
+# ============================================================================
+
+@login_required
+def battle_trainer_complete_view(request, battle_id):
+    """
+    Appelé après un combat contre un dresseur NPC
+    Affiche le résultat et distribue les récompenses
+    """
+    
+    battle = get_object_or_404(Battle, pk=battle_id)
+    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    
+    if battle.player_trainer != player_trainer:
+        return redirect('home')
+    
+    # Résultat
+    player_won = battle.winner == player_trainer
+    opponent = battle.opponent_trainer
+    
+    # Récompense
+    money_earned = 0
+    if player_won and opponent and opponent.trainer_type != 'wild':
+        money_earned = opponent.get_reward()
+        player_trainer.money += money_earned
+        player_trainer.save()
+    
+    # Historique
+    try:
+        TrainerBattleHistory.objects.create(
+            player=player_trainer,
+            opponent=opponent,
+            player_won=player_won,
+            battle=battle,
+            money_earned=money_earned
+        )
+    except:
+        pass
+    
+    # Marquer dans save
+    try:
+        save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+        if save and player_won and opponent:
+            save.add_defeated_trainer(opponent.id)
+    except:
+        pass
+    
+    # Dialogue
+    if player_won:
+        dialogue = opponent.defeat_text or "Vous avez gagné..."
+    else:
+        dialogue = opponent.victory_text or "J'ai gagné !"
+    
+    context = {
+        'battle': battle,
+        'opponent': opponent,
+        'player_won': player_won,
+        'money_earned': money_earned,
+        'dialogue': dialogue
+    }
+    
+    return render(request, 'battle/battle_trainer_complete.html', context)
+
 
 # ============================================================================
 # API - GET TRAINER TEAM ( seulement les 6 de l'équipe)
