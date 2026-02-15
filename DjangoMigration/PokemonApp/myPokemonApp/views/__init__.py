@@ -7,3 +7,4 @@ from .PokemonMovesViews import *
 from .ItemViews import *
 from .TeamViews import *
 from .PokedexViews import *
+from .CaptureViews import *

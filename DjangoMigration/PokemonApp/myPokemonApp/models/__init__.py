@@ -17,3 +17,4 @@ from .Item import Item
 from .Battle import Battle
 from .ShopModel import Shop, ShopInventory, Transaction
 from .PokemonCenter import PokemonCenter, CenterVisit, NurseDialogue
+from .CaptureSystem import *

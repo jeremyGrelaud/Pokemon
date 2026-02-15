@@ -114,6 +114,13 @@
           </a>
         </li>
 
+        <!-- Centre Pokémon -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'CaptureJournalView' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'CaptureJournalView' %}">
+            <i class="fas fa-hospital"></i>
+            <span>Journal de captures</span>
+          </a>
+        </li>
 
         <div class="text-center d-none d-md-inline mt-4">
           <button class="rounded-circle border-0" id="sidebarToggle"></button>

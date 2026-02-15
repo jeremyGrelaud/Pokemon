@@ -142,23 +142,15 @@ class Battle(models.Model):
         player_using_item = player_action.get('type') == 'item'
         opponent_using_item = opponent_action.get('type') == 'item'
         
+        if player_action.get('type') == 'PokeBall':
+            pass # we implemented logic before this call 
+        
         if player_using_item:
             item = player_action.get('item')
             target = player_action.get('target')
-            
-            # Pokeball = tentative de capture
-            if item.item_type == 'pokeball':
-                from myPokemonApp.gameUtils import use_item_in_battle
-                success, msg = use_item_in_battle(item, target, self)
-                self.add_to_log(msg)
-                
-                if success and not self.is_active:
-                    # Combat terminé par capture
-                    return True
-            else:
-                # Potion, antidote, etc.
-                result = item.use_on_pokemon(target)
-                self.add_to_log(result)
+            # Potion, antidote, etc.
+            result = item.use_on_pokemon(target)
+            self.add_to_log(result)
         
         if opponent_using_item:
             item = opponent_action.get('item')
@@ -237,7 +229,7 @@ class Battle(models.Model):
 
     def execute_action(self, attacker, defender, action):
         """Exécute une action (attaque, changement, objet, fuite)"""
-        print(f"actiuon : {action}")
+        print(f"actiuon : {action} / defender : {defender} / attacker : {attacker}")
 
         action_type = action.get('type')
         
@@ -248,9 +240,6 @@ class Battle(models.Model):
         elif action_type == 'switch':
             new_pokemon = action.get('pokemon')
             self.switch_pokemon(attacker, new_pokemon)
-
-        # elif action_type ==  'item':
-        #     use_item_in_battle(item, opponent_poke, battle)
         
         elif action_type == 'flee':
             self.attempt_flee()

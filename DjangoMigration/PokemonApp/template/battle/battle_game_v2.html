@@ -358,6 +358,7 @@
 {% block css %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/battle-animations.css' %}">
+<link rel="stylesheet" href="{% static 'css/capture-animation.css' %}">
 {% endblock css %}
 
 
@@ -365,6 +366,7 @@
 {{ block.super }}
 <script src="{% static 'js/battle-effects.js' %}"></script>
 <script src="{% static 'js/audio-manager.js' %}"></script>
+<script src="{% static 'js/capture-system.js' %}"></script>
 
 <script>
 // ============================================================================
@@ -380,12 +382,16 @@ const csrfToken = '{{ csrf_token }}';
 // INITIALIZATION
 // ============================================================================
 
+// Initialiser le système
+let captureSystem = null;
+
 $(document).ready(function() {
   console.log('🎮 Battle Scene V2 Loaded');
   
   // Initialize systems
   battleEffects = new BattleEffects(document.getElementById('attack-canvas'));
   audioManager = new AudioManager();
+  captureSystem = new CaptureSystem();
   
   // Start BGM
   {% if battle.battle_type == 'gym' %}
@@ -530,6 +536,27 @@ function switchPokemon(pokemonId) {
   });
 }
 
+// function useItem(itemId) {
+//   $('button').prop('disabled', true);
+  
+//   $.post('{% url "BattleActionView" battle.id %}', {
+//     action: 'item',
+//     item_id: itemId,
+//     csrfmiddlewaretoken: csrfToken
+//   })
+//   .done(function(data) {
+//     updateBattleState(data);
+//     if (!data.battle_ended) {
+//       loadItems();
+//     }
+//   })
+//   .fail(function(xhr) {
+//     console.error('Item use failed:', xhr);
+//     addBattleLog('Erreur lors de l\'utilisation de l\'objet');
+//     $('button').prop('disabled', false);
+//   });
+// }
+
 function useItem(itemId) {
   $('button').prop('disabled', true);
   
@@ -539,6 +566,14 @@ function useItem(itemId) {
     csrfmiddlewaretoken: csrfToken
   })
   .done(function(data) {
+    if (data.capture_attempt.start_animation) {
+      // CAPTURE !
+      initiateCaptureSequence(itemId);
+    } else {
+      // Item normal (potion, antidote, etc.)
+     // useRegularItem(itemId);
+    }
+
     updateBattleState(data);
     if (!data.battle_ended) {
       loadItems();
@@ -1000,6 +1035,7 @@ function forcedSwitch(pokemonId) {
   // Faire le switch
   $.post('{% url "BattleActionView" battle.id %}', {
     action: 'switch',
+    type: 'forcedSwitch',
     pokemon_id: pokemonId,
     csrfmiddlewaretoken: csrfToken
   })
@@ -1043,6 +1079,101 @@ $(document).keydown(function(e) {
     showMainMenu();
   }
 });
+
+
+// ============================================================================
+// SYSTÈME DE CAPTURE
+// ============================================================================
+
+
+async function initiateCaptureSequence(itemId) {
+  // Fermer le menu items
+  showMainMenu();
+  
+  // Demander au serveur les infos pour la capture
+  const response = await $.post('{% url "BattleActionView" battle.id %}', {
+    action: 'item',
+    item_id: itemId,
+    csrfmiddlewaretoken: csrfToken
+  });
+  
+  if (response.capture_attempt) {
+    // Lancer l'animation
+    const result = await captureSystem.attemptCapture(
+      response.capture_attempt.pokemon,
+      response.capture_attempt.ball_type,
+      response.capture_attempt.capture_rate
+    );
+    
+    // Confirmer la capture au serveur
+    const finalResult = await $.post('{% url "BattleActionView" battle.id %}', {
+      action: 'confirm_capture',
+      item_id: itemId,
+      csrfmiddlewaretoken: csrfToken
+    });
+    
+    // Traiter le résultat
+    if (finalResult.capture_result && finalResult.capture_result.success) {
+      // SUCCÈS !
+      addBattleLog(finalResult.capture_result.message);
+      
+      if (audioManager) {
+        audioManager.playSFX('capture/success');
+      }
+      
+      // Afficher modal de succès
+      setTimeout(() => {
+        showCaptureSuccessModal(finalResult.capture_result);
+      }, 500);
+    } else {
+      // ÉCHEC
+      addBattleLog(finalResult.capture_result.message);
+      
+      if (audioManager) {
+        audioManager.playSFX('capture/failed');
+      }
+      
+      // Continuer le combat
+      updateBattleState(finalResult);
+      $('button').prop('disabled', false);
+    }
+  }
+}
+
+function showCaptureSuccessModal(captureData) {
+  const modal = `
+    <div class="modal fade" id="capture-success-modal" tabindex="-1" data-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-success">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">
+              <i class="fas fa-trophy"></i> Pokémon Capturé !
+            </h5>
+          </div>
+          <div class="modal-body text-center">
+            <i class="fas fa-check-circle fa-5x text-success mb-3"></i>
+            <h4>${captureData.captured_pokemon.species.name} capturé !</h4>
+            <p class="mb-2">Niveau ${captureData.captured_pokemon.level}</p>
+            ${captureData.is_first_catch ? '<p class="text-warning"><i class="fas fa-star"></i> Premier capturé !</p>' : ''}
+            <hr>
+            <p class="text-muted small">Le Pokémon a été envoyé dans votre PC</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-success" onclick="window.location.href='{% url 'home' %}'">
+              <i class="fas fa-home"></i> Retour
+            </button>
+            <button type="button" class="btn btn-primary" onclick="window.location.href='/pc/'">
+              <i class="fas fa-laptop"></i> Voir le PC
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  $('body').append(modal);
+  $('#capture-success-modal').modal('show');
+}
 
 </script>
 {% endblock js %}

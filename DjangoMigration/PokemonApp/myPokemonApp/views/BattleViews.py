@@ -13,6 +13,7 @@ from django.views.decorators.http import  require_http_methods
 from myPokemonApp.gameUtils import check_battle_end, heal_team
 from django.db.models import Q
 from myPokemonApp.gameUtils import apply_exp_gain, calculate_exp_gain, opponent_switch_pokemon
+from myPokemonApp.gameUtils import attempt_pokemon_capture, calculate_capture_rate
 
 from ..models import *
 
@@ -164,9 +165,22 @@ def battle_action_view(request, pk):
             'battle_ended': False
         }
     
+
+    def opponentAiMove(battle, player_action):
+        opponent_moves = battle.opponent_pokemon.moves.all()
+        if opponent_moves:
+            import random
+            opponent_move = random.choice(opponent_moves)
+            opponent_action = {'type': 'attack', 'move': opponent_move}
+        else:
+            struggle_move = get_object_or_404(PokemonMove, name="Struggle")
+            opponent_action = {'type': 'attack', 'move': struggle_move}
+        
+        # Exécuter le tour (qui va utiliser l'objet)
+        battle.execute_turn(player_action, opponent_action)
+
     response_data = build_response_data(battle)
 
-    print(response_data)
     
     try:
         if action_type == 'attack':
@@ -243,19 +257,22 @@ def battle_action_view(request, pk):
                 pk=pokemon_id, 
                 trainer=trainer
             )
-            
+
             player_action = {'type': 'switch', 'pokemon': new_pokemon}
-            
-            # L'adversaire attaque
-            opponent_moves = battle.opponent_pokemon.moves.all()
-            if opponent_moves:
-                import random
-                opponent_move = random.choice(opponent_moves)
-                opponent_action = {'type': 'attack', 'move': opponent_move}
+
+            if request.POST.get('type') and request.POST.get('type') == 'forcedSwitch':
+                opponent_action = {}
             else:
-                struggle_move = get_object_or_404(PokemonMove, name="Struggle")
-                opponent_action = {'type': 'attack', 'move': struggle_move}
-            
+                # L'adversaire attaque
+                opponent_moves = battle.opponent_pokemon.moves.all()
+                if opponent_moves:
+                    import random
+                    opponent_move = random.choice(opponent_moves)
+                    opponent_action = {'type': 'attack', 'move': opponent_move}
+                else:
+                    struggle_move = get_object_or_404(PokemonMove, name="Struggle")
+                    opponent_action = {'type': 'attack', 'move': struggle_move}
+                
             # Exécuter le tour (qui va faire le switch)
             battle.execute_turn(player_action, opponent_action)
             
@@ -265,14 +282,38 @@ def battle_action_view(request, pk):
                 pk=request.POST.get('item_id')
             )
             item = selected_inventory_item.item
-            
-            if item.item_type == 'pokeball': 
-                # Capture
-                player_action = {
-                    'type': 'item', 
-                    'item': item, 
-                    'target': battle.opponent_pokemon
+
+
+            if item.item_type == 'pokeball':
+                # CAPTURE
+                if battle.opponent_trainer:
+                    # On ne peut pas capturer les Pokémon de dresseurs
+                    response_data['log'] = ["Vous ne pouvez pas capturer le Pokémon d'un dresseur !"]
+                    return JsonResponse(response_data)
+                
+                # Calculer le taux avant pour l'afficher
+                hp_percent = battle.opponent_pokemon.current_hp / battle.opponent_pokemon.max_hp
+                capture_rate = calculate_capture_rate(
+                    battle.opponent_pokemon,
+                    item,
+                    hp_percent,
+                    battle.opponent_pokemon.status_condition
+                )
+                
+                # Retourner les données pour l'animation AVANT de faire la vraie capture
+                response_data['capture_attempt'] = {
+                    'pokemon': {
+                        'species_name': battle.opponent_pokemon.species.name,
+                        'level': battle.opponent_pokemon.level,
+                    },
+                    'ball_type': item.name.lower().replace(' ', ''),  # 'pokeball', 'superball', etc.
+                    'capture_rate': capture_rate,
+                    'start_animation': True
                 }
+                
+                # Le client va afficher l'animation, puis rappeler l'API avec 'confirm_capture'
+                return JsonResponse(response_data)
+            
             else:
                 # Soin/Antidote sur son Pokémon
                 player_action = {
@@ -280,26 +321,58 @@ def battle_action_view(request, pk):
                     'item': item, 
                     'target': battle.player_pokemon
                 }
+
+        elif action_type == 'confirm_capture':
+            # Le client a fini l'animation, faire la vraie capture
+            selected_inventory_item = TrainerInventory.objects.get(
+                pk=request.POST.get('item_id')
+            )
+            item = selected_inventory_item.item
+            trainer = battle.player_trainer
             
-            # L'adversaire attaque
-            opponent_moves = battle.opponent_pokemon.moves.all()
-            if opponent_moves:
-                import random
-                opponent_move = random.choice(opponent_moves)
-                opponent_action = {'type': 'attack', 'move': opponent_move}
+            result = attempt_pokemon_capture(battle, item, trainer)
+            
+            # Déduire la ball de l'inventaire
+            inventory = TrainerInventory.objects.get(trainer=trainer, item=item)
+            inventory.quantity -= 1
+            if inventory.quantity == 0:
+                inventory.delete()
             else:
-                struggle_move = get_object_or_404(PokemonMove, name="Struggle")
-                opponent_action = {'type': 'attack', 'move': struggle_move}
+                inventory.save()
+
+
+            player_action = {'type': 'PokeBall'}
+            # L'adversaire attaque
+            opponentAiMove(battle, player_action)
             
-            # Exécuter le tour (qui va utiliser l'objet)
-            captured = battle.execute_turn(player_action, opponent_action)
+            response_data['capture_result'] = result
+            response_data['battle_ended'] = result['success']
             
-            # Réduire l'inventaire
-            from myPokemonApp.gameUtils import remove_item_from_trainer
-            remove_item_from_trainer(battle.player_trainer, item, 1)
+            if result['success']:
+                response_data['result'] = 'capture'
+                response_data['log'] = [result['message']]
+            else:
+                response_data['log'] = [result['message']]
             
-            if captured:
-                response_data['battle_ended'] = True
+            return JsonResponse(response_data)
+
+            
+            # if item.item_type == 'pokeball': 
+            #     # Capture
+            #     player_action = {
+            #         'type': 'item', 
+            #         'item': item, 
+            #         'target': battle.opponent_pokemon
+            #     }
+            # else:
+            #     # Soin/Antidote sur son Pokémon
+            #     player_action = {
+            #         'type': 'item', 
+            #         'item': item, 
+            #         'target': battle.player_pokemon
+            #     }
+            
+
         
         # Rafraîchir battle depuis DB
         battle.refresh_from_db()

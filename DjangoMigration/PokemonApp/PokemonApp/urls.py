@@ -73,6 +73,9 @@ urlpatterns = [
     path('api/shop/sell/', views.sell_item_api, name='SellItemAPI'),
     path('transactions/', views.transaction_history_view, name='TransactionHistoryView'),
 
+    # Capture journal
+    path('captures/', views.CaptureViews.capture_journal_view, name='CaptureJournalView'),
+
 
 
     # Liste des centres

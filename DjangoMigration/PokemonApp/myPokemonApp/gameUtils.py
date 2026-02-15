@@ -5,7 +5,9 @@ Helpers pour la création de Pokémon, combats, NPCs, etc.
 """
 
 import random
+import math
 from django.db.models import Q
+from .models import PokeballItem
 
 
 # ============================================================================
@@ -760,3 +762,223 @@ def apply_exp_gain(pokemon, exp_amount):
     
     pokemon.save()
     return result
+
+
+
+"""
+Logique de capture Gen 1
+"""
+
+def calculate_capture_rate(pokemon, ball, pokemon_hp_percent, pokemon_status=None):
+    """
+    Calcule le taux de capture selon la formule Gen 1
+    
+    Args:
+        pokemon: PlayablePokemon ou Pokemon (opponent)
+        ball: PokeballItem (ou Item si pas de stats)
+        pokemon_hp_percent: % HP restants (0.0-1.0)
+        pokemon_status: 'sleep', 'freeze', 'burn', etc.
+    
+    Returns:
+        float: Taux de capture (0.0-1.0)
+    """
+    
+    # Master Ball = capture garantie
+    try:
+        pokeball_stats = PokeballItem.objects.get(item=ball)
+        if pokeball_stats.guaranteed_capture:
+            return 1.0
+    except PokeballItem.DoesNotExist:
+        pokeball_stats = None
+    
+    # Taux de capture de base du Pokémon (0-255 dans Gen 1)
+    if hasattr(pokemon, 'species'):
+        base_catch_rate = pokemon.species.catch_rate or 45
+    else:
+        base_catch_rate = pokemon.catch_rate or 45
+    
+    # Multiplicateur de la ball
+    ball_multiplier = 1.0
+    if pokeball_stats:
+        ball_multiplier = pokeball_stats.item.catch_rate_modifier
+        
+        # Bonus type
+        if pokeball_stats.bonus_on_type:
+            if hasattr(pokemon, 'species'):
+                pokemon_types = pokemon.species.types.all()
+            else:
+                pokemon_types = pokemon.types.all()
+            
+            if pokeball_stats.bonus_on_type in pokemon_types:
+                ball_multiplier *= 1.5
+        
+        # Bonus status
+        if pokeball_stats.bonus_on_status and pokemon_status == pokeball_stats.bonus_on_status:
+            ball_multiplier *= 1.5
+    
+    # Modificateur HP
+    # Formule Gen 1: (HPmax * 3 - HPcurrent * 2) / (HPmax * 3)
+    hp_modifier = (3 - 2 * pokemon_hp_percent) / 3
+    hp_modifier = max(0.1, min(1.0, hp_modifier))
+    
+    # Modificateur status
+    status_modifier = 1.0
+    if pokemon_status == 'sleep' or pokemon_status == 'freeze':
+        status_modifier = 2.0
+    elif pokemon_status in ['burn', 'poison', 'paralysis']:
+        status_modifier = 1.5
+    
+    # Formule Gen 1 simplifiée
+    # a = (((HPmax * 3 - HPcurrent * 2) * CatchRate * BallRate) / (HPmax * 3)) + StatusBonus
+    a = ((hp_modifier * base_catch_rate * ball_multiplier) / 255) * status_modifier
+    
+    # La probabilité finale
+    capture_probability = min(1.0, a)
+    
+    return capture_probability
+
+
+def attempt_pokemon_capture(battle, ball_item, trainer):
+    """
+    Tente de capturer le Pokémon adverse
+    
+    Returns:
+        dict: {
+            'success': bool,
+            'capture_rate': float,
+            'shakes': int,
+            'message': str,
+            'captured_pokemon': PlayablePokemon or None
+        }
+    """
+    
+    opponent = battle.opponent_pokemon
+    
+    # Calculer HP%
+    hp_percent = opponent.current_hp / opponent.max_hp
+    
+    # Calculer taux de capture
+    capture_rate = calculate_capture_rate(
+        opponent,
+        ball_item,
+        hp_percent,
+        opponent.status_condition
+    )
+    
+    # Enregistrer la tentative
+    from myPokemonApp.models import CaptureAttempt
+    attempt = CaptureAttempt.objects.create(
+        trainer=trainer,
+        pokemon_species=opponent.species,
+        ball_used=ball_item,
+        pokemon_level=opponent.level,
+        pokemon_hp_percent=hp_percent,
+        pokemon_status=opponent.status_condition,
+        capture_rate=capture_rate,
+        battle=battle,
+        success=False,  # Sera mis à jour
+        shakes=0
+    )
+    
+    # Master Ball = succès garanti
+    try:
+        pokeball_stats = PokeballItem.objects.get(item=ball_item)
+        if pokeball_stats.guaranteed_capture:
+            return capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shakes=0)
+    except PokeballItem.DoesNotExist:
+        pass
+    
+    # Système de shakes (3 max)
+    shakes = 0
+    for shake in range(3):
+        if random.random() < capture_rate:
+            shakes += 1
+        else:
+            # Échappement
+            attempt.shakes = shakes
+            attempt.save()
+            
+            return {
+                'success': False,
+                'capture_rate': capture_rate,
+                'shakes': shakes,
+                'message': f"{opponent.species.name} s'est échappé après {shakes} shake(s) !",
+                'captured_pokemon': None
+            }
+    
+    # Les 3 shakes ont réussi = CAPTURE !
+    return capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shakes=3)
+
+
+def capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shakes):
+    """Gère la capture réussie d'un Pokémon"""
+    
+    from myPokemonApp.models import PlayablePokemon, CaptureJournal
+    
+    # Créer le nouveau PlayablePokemon pour le trainer
+    captured = PlayablePokemon.objects.create(
+        species=opponent.species,
+        nickname=None,  # Pas de surnom par défaut
+        level=opponent.level,
+        trainer=trainer,
+        current_hp=opponent.current_hp,
+        max_hp=opponent.max_hp,
+        attack=opponent.attack,
+        defense=opponent.defense,
+        special_attack=opponent.special_attack,
+        special_defense=opponent.special_defense,
+        speed=opponent.speed,
+        status_condition=opponent.status_condition,
+        is_in_party=False,  # Pas dans l'équipe par défaut (PC)
+        current_experience=0,
+        experience_for_next_level=100
+    )
+    
+    # Copier les moves
+    for move_instance in opponent.pokemonmoveinstance_set.all():
+        from myPokemonApp.models import PokemonMoveInstance
+        PokemonMoveInstance.objects.create(
+            pokemon=captured,
+            move=move_instance.move,
+            current_pp=move_instance.current_pp,
+            max_pp=move_instance.max_pp
+        )
+    
+    # Vérifier si c'est le premier de cette espèce
+    is_first = not trainer.pokemon_team.filter(species=opponent.species).exclude(id=captured.id).exists()
+    
+    # Créer l'entrée de journal
+    journal_entry = CaptureJournal.objects.create(
+        trainer=trainer,
+        pokemon=captured,
+        ball_used=ball_item,
+        level_at_capture=opponent.level,
+        hp_at_capture=opponent.current_hp,
+        is_first_catch=is_first,
+        is_critical_catch=(shakes == 0),  # Capture critique si 0 shake
+        attempts_before_success=1  # TODO: Compter les vraies tentatives
+    )
+    
+    # Mettre à jour l'attempt
+    attempt.success = True
+    attempt.shakes = shakes
+    attempt.save()
+    
+    # Terminer le combat
+    battle.is_active = False
+    battle.winner = trainer
+    battle.save()
+    
+    message = f"Vous avez capturé {opponent.species.name} !"
+    if is_first:
+        message += " (Premier capturé !)"
+    
+    return {
+        'success': True,
+        'capture_rate': attempt.capture_rate,
+        'shakes': shakes,
+        'message': message,
+        'captured_pokemon': captured,
+        'is_first_catch': is_first,
+        'journal_entry': journal_entry
+    }
