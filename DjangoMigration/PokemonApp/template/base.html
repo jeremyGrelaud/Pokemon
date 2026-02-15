@@ -196,17 +196,10 @@
                     </a>
                     <!-- Manual save button  -->
                     {% if has_active_save %}
-                    <a class="dropdown-item" onclick="manualSave()">
-                      <i class="fas fa-save fa-sm fa-fw mr-2 text-gray-400"></i>
-                      Sauvegarder
-                      <script>
-                        function manualSave() {
-                          fetch('{% url "save_game" active_save.id %}')
-                            .then(response => response.json())
-                            .then(data => alert('[+] ' + data.message));
-                        }
-                      </script>
-                    </a>
+                      <a class="dropdown-item" href="#" data-toggle="modal" data-target="#saveModal">
+                        <i class="fas fa-save fa-sm fa-fw mr-2 text-gray-400"></i>
+                        Sauvegarder
+                      </a>
                     {% endif %}
 
                     <div class="dropdown-divider"></div>
@@ -245,6 +238,113 @@
         {% endblock footer %}
       </div>
     </div>
+
+    <!-- Save Modal -->
+    {% if has_active_save %}
+    <div class="modal fade" id="saveModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="fas fa-save"></i> Sauvegarder la Partie
+            </h5>
+            <button type="button" class="close text-white" data-dismiss="modal">
+              <span>&times;</span>
+            </button>
+          </div>
+          
+          <div class="modal-body">
+            <p class="mb-3">Choisissez sur quel slot sauvegarder :</p>
+            
+            <div class="list-group" id="saveSlotsList">
+              <div class="text-center py-3">
+                <div class="spinner-border text-primary"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    // Charger les slots
+    $('#saveModal').on('show.bs.modal', function () {
+      fetch('{% url "save_slots_list" %}')
+        .then(r => r.json())
+        .then(data => {
+          const container = $('#saveSlotsList');
+          container.empty();
+          
+          data.slots.forEach(slot => {
+            const item = $(`
+              <a href="#" class="list-group-item list-group-item-action ${slot.is_current ? 'active' : ''}">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-1">
+                      <i class="fas fa-folder${slot.exists ? '' : '-plus'}"></i>
+                      Slot ${slot.slot}: ${slot.name}
+                    </h6>
+                    ${slot.exists ? `
+                      <small>
+                        <i class="fas fa-clock"></i> ${slot.play_time} |
+                        <i class="fas fa-medal"></i> ${slot.badges} badge(s) |
+                        <i class="fas fa-coins"></i> ${slot.money}₽
+                      </small>
+                    ` : '<small class="text-muted">Vide</small>'}
+                  </div>
+                  ${slot.is_current ? '<span class="badge badge-success">Actuel</span>' : ''}
+                </div>
+              </a>
+            `);
+            
+            item.click(function(e) {
+              e.preventDefault();
+              saveToSlot(slot.slot, slot.save_id);
+            });
+            
+            container.append(item);
+          });
+        });
+    });
+
+    function saveToSlot(slotNum, saveId) {
+      if (!saveId) {
+        // Créer nouveau slot
+        const name = prompt(`Nom pour Slot ${slotNum}:`, `Aventure ${slotNum}`);
+        if (!name) return;
+        
+        $.post(`/saves/create/${slotNum}/quick/`, {
+          csrfmiddlewaretoken: '{{ csrf_token }}',
+          save_name: name
+        }, function(data) {
+          if (data.success) {
+            alert(`Sauvegardé dans Slot ${slotNum} !`);
+            $('#saveModal').modal('hide');
+            location.reload();
+          }
+        });
+      } else {
+        // Sauvegarder dans slot existant
+        fetch(`/saves/${saveId}/save/`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              alert(`Sauvegardé dans Slot ${slotNum} !`);
+              $('#saveModal').modal('hide');
+              location.reload();
+            }
+          });
+      }
+    }
+    </script>
+    {% endif %}
+
 
     {% block css %}
     {% endblock css %}

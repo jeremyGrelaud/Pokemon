@@ -75,23 +75,38 @@ class GameSave(models.Model):
         """Vérifie un flag d'événement"""
         return self.story_flags.get(flag_name, False)
     
-    # Propriétés calculées depuis Trainer
+    # Propriétés calculées depuis la snapshot
     @property
     def badges_count(self):
+        """Lit depuis le snapshot, pas le trainer"""
+        if self.game_snapshot and 'trainer' in self.game_snapshot:
+            return self.game_snapshot['trainer'].get('badges', 0)
         return self.trainer.badges
     
     @property
     def money(self):
+        """Lit depuis le snapshot"""
+        if self.game_snapshot and 'trainer' in self.game_snapshot:
+            return self.game_snapshot['trainer'].get('money', 0)
         return self.trainer.money
     
     @property
     def pokedex_caught(self):
+        """Compte les Pokémon du snapshot"""
+        if self.game_snapshot and 'pokemon_team' in self.game_snapshot:
+            return len(self.game_snapshot['pokemon_team'])
         return self.trainer.pokemon_team.count()
     
     @property
     def pokedex_seen(self):
+        """Compte les espèces uniques du snapshot"""
+        if self.game_snapshot and 'pokemon_team' in self.game_snapshot:
+            species_ids = set()
+            for poke in self.game_snapshot['pokemon_team']:
+                species_ids.add(poke.get('species_id'))
+            return len(species_ids)
         return self.trainer.pokemon_team.values('species').distinct().count()
-
+    
 
 class TrainerBattleHistory(models.Model):
     """

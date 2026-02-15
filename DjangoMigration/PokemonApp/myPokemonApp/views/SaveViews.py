@@ -335,3 +335,73 @@ def auto_save_view(request, save_id):
         'success': True,
         'snapshot_created': True
     })
+
+
+@login_required
+def save_slots_list_view(request):
+    """API JSON pour le modal de sauvegarde"""
+    
+    trainer = get_object_or_404(Trainer, username=request.user.username)
+    active_save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+    
+    slots = []
+    for slot_num in range(1, 4):
+        save = GameSave.objects.filter(trainer=trainer, slot=slot_num).first()
+        
+        slot_data = {
+            'slot': slot_num,
+            'exists': save is not None,
+            'is_current': save == active_save if save else False,
+            'save_id': save.id if save else None,
+            'name': save.save_name if save else f'Slot {slot_num}',
+        }
+        
+        if save:
+            slot_data.update({
+                'play_time': save.get_play_time_display(),
+                'badges': save.badges_count,
+                'money': save.money,
+                'location': save.current_location
+            })
+        
+        slots.append(slot_data)
+    
+    return JsonResponse({'success': True, 'slots': slots})
+
+
+@login_required
+def save_create_quick_view(request, slot):
+    """Créer rapidement une sauvegarde (pour modal)"""
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'})
+    
+    trainer = get_object_or_404(Trainer, username=request.user.username)
+    save_name = request.POST.get('save_name', f'Aventure {slot}')
+    
+    # Supprimer ancienne save
+    existing = GameSave.objects.filter(trainer=trainer, slot=slot).first()
+    if existing:
+        existing.delete()
+    
+    # Créer save
+    save = GameSave.objects.create(
+        trainer=trainer,
+        slot=slot,
+        save_name=save_name,
+        current_location='Bourg Palette',
+        play_time=0,
+        story_flags={},
+        defeated_trainers=[]
+    )
+    
+    # Snapshot
+    snapshot = create_game_snapshot(trainer, save)
+    save.game_snapshot = snapshot
+    save.save()
+    
+    return JsonResponse({
+        'success': True,
+        'save_id': save.id,
+        'message': f"Sauvegarde '{save_name}' créée !"
+    })

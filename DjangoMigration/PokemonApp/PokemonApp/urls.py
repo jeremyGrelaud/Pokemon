@@ -90,6 +90,9 @@ urlpatterns = [
     path('saves/load/<int:save_id>/', views.save_load_view, name='save_load'),
     path('saves/<int:save_id>/save/', views.save_game_view, name='save_game'),
     path('saves/<int:save_id>/auto-save/', views.auto_save_view, name='auto_save'),
+    # API pour modal de sauvegarde
+    path('saves/slots/list/', views.save_slots_list_view, name='save_slots_list'),
+    path('saves/create/<int:slot>/quick/', views.save_create_quick_view, name='save_create_quick'),
     
     # Combats
     path('battle/create/', views.battle_create_view, name='BattleCreateView'),

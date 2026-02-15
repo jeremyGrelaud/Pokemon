@@ -22,7 +22,10 @@ TODO :
 - Implement different game mods ?
 - Take into account spawn rates for in the wild encounters
 - possibily use showdown battle background gen 3> instead of pure css https://play.pokemonshowdown.com/fx/
-
+- Rework html views of battle histories and take into account multiple pokemon opponents in recap for trainer battle
+- Give reward money at the end of a trainer fight
+- Display correct Victory or Defeat modal at the end of a fight and redirect to pokemon center or combat creation page/combat recap page
+- Sur les combats de trainer à multiples pokemon on obtient de l'exp que sur le dernier kill et en plus c'est en double le gain d'exp
 
 
 # Setup
