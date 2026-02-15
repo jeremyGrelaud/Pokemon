@@ -14,10 +14,6 @@
   <div>
     <span class="badge badge-primary p-2">{{ trainer.badges }} badges</span>
     <span class="badge badge-warning p-2">{{ trainer.money }}₽</span>
-    <!-- NOUVEAU: Bouton pour soigner toute l'équipe -->
-    <button class="btn btn-success" onclick="healAllPokemon()">
-      <i class="fas fa-plus-circle"></i> Soigner Tout
-    </button>
   </div>
 </div>
 
@@ -175,12 +171,6 @@
                     <i class="fas fa-info-circle"></i> Détails
                   </a>
                   
-                  <!-- Bouton Soigner -->
-                  <button class="btn btn-outline-success" 
-                          onclick="healPokemon({{ pokemon.id }})">
-                    <i class="fas fa-heart"></i> Soigner
-                  </button>
-                  
                   <!-- Bouton Envoyer au PC -->
                   <button class="btn btn-outline-warning" 
                           onclick="sendToPC({{ pokemon.id }})"
@@ -317,63 +307,6 @@ function getCookie(name) {
 }
 
 const csrftoken = getCookie('csrftoken');
-
-// NOUVEAU: Fonction pour soigner un Pokémon
-function healPokemon(pokemonId) {
-  if (!confirm('Voulez-vous soigner ce Pokémon (HP et PP complets) ?')) {
-    return;
-  }
-  
-  fetch('/api/heal-pokemon/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': csrftoken
-    },
-    body: JSON.stringify({
-      pokemon_id: pokemonId
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessToast('Pokémon soigné avec succès!');
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      showErrorToast('Erreur: ' + data.error);
-    }
-  })
-  .catch(error => {
-    showErrorToast('Erreur lors du soin du Pokémon');
-  });
-}
-
-// NOUVEAU: Fonction pour soigner tous les Pokémon
-function healAllPokemon() {
-  if (!confirm('Voulez-vous soigner toute votre équipe ?')) {
-    return;
-  }
-  
-  fetch('/api/heal-all-pokemon/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': csrftoken
-    }
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessToast(`${data.healed_count} Pokémon soignés!`);
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      showErrorToast('Erreur: ' + data.error);
-    }
-  })
-  .catch(error => {
-    showErrorToast('Erreur lors du soin de l\'équipe');
-  });
-}
 
 // NOUVEAU: Fonction pour envoyer un Pokémon au PC
 function sendToPC(pokemonId) {

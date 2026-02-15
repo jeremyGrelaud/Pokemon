@@ -12,7 +12,6 @@ Recreating pokemon game in python
 
 TODO :
 
-- Full Toast system
 - Better Pokemon Center
 - Save Game data options
 - Fix battle 'GUI'
@@ -24,7 +23,9 @@ TODO :
 
 
 
-# Databse setup
+# Setup
+
+pip install -r requirements.txt 
 
 python manage.py makemigrations
 python manage.py migrate

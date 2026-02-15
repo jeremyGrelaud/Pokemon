@@ -17,9 +17,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.views.decorators.http import require_POST, require_http_methods
-
-
-from myPokemonApp.gameUtils import check_battle_end
+from myPokemonApp.gameUtils import check_battle_end, deposit_pokemon, heal_team
 
 
 
@@ -466,6 +464,10 @@ def battle_action_view(request, pk):
     API pour exécuter les actions de combat
     Retourne du JSON pour mise à jour en temps réel
     """
+
+    #TODO missing pokemon switch of the opponent if he has multiple pokemons
+
+
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
@@ -681,9 +683,16 @@ class BattleCreateView(generic.View):
         if not player_pokemon:
             return redirect('MyTeamView')
         
+
+        fightableGymLeaders = list()
+        for gymLeader in GymLeader.objects.all():
+            if gymLeader.isChallengableByPlayer(player=trainer):
+                fightableGymLeaders.append(gymLeader)
+        
         context = {
             'trainer': trainer,
-            'player_pokemon': player_pokemon
+            'player_pokemon': player_pokemon,
+            'gym_leaders': fightableGymLeaders
         }
         
         return render(request, 'battle/battle_create.html', context)
@@ -737,6 +746,9 @@ class BattleCreateView(generic.View):
             gym_leader_id = request.POST.get('gym_leader')
             
             gym_leader = get_object_or_404(GymLeader, pk=gym_leader_id)
+
+            # Fully heal Gym leader Team at the begining of the fight
+            heal_team(gym_leader.trainer)
             
             # Récupérer le premier Pokémon du champion
             opponent_pokemon = gym_leader.trainer.pokemon_team.first()
@@ -834,61 +846,6 @@ def GetTrainerItems(request):
     })
 
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-def calculate_damage(attacker, defender, move):
-    """Calcule les dégâts d'une attaque (formule simplifiée Gen 1)"""
-    if not move.power:
-        return 0
-    
-    # Formule simplifiée
-    level = attacker.level
-    attack = attacker.attack if move.damage_class == 'physical' else attacker.special_attack
-    defense = defender.defense if move.damage_class == 'physical' else defender.special_defense
-    power = move.power
-    
-    damage = ((2 * level / 5 + 2) * power * attack / defense / 50) + 2
-    
-    # Variation aléatoire (85-100%)
-    import random
-    damage = int(damage * random.randint(85, 100) / 100)
-    
-    return max(1, damage)
-
-
-def calculate_exp_reward(battle):
-    """Calcule l'XP gagnée (formule Gen 1)"""
-    base_exp = battle.opponent_pokemon.species.base_experience or 100
-    level = battle.opponent_pokemon.level
-    
-    # Formule Gen 1 simplifiée
-    exp = (base_exp * level) / 7
-    
-    # Bonus si dresseur
-    if battle.opponent_trainer:
-        exp = int(exp * 1.5)
-    
-    return int(exp)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @login_required
 @require_POST
 def heal_pokemon_api(request):
@@ -930,39 +887,6 @@ def heal_pokemon_api(request):
 
 @login_required
 @require_POST
-def heal_all_pokemon_api(request):
-    """
-    API pour soigner tous les Pokémon de l'équipe
-    """
-    try:
-        trainer = get_object_or_404(Trainer, username=request.user.username)
-        
-        # Récupérer tous les Pokémon de l'équipe
-        team_pokemon = trainer.pokemon_team.filter(is_in_party=True)
-        
-        healed_count = 0
-        for pokemon in team_pokemon:
-            pokemon.heal()
-            pokemon.cure_status()
-            pokemon.restore_all_pp()
-            pokemon.reset_combat_stats()
-            healed_count += 1
-        
-        return JsonResponse({
-            'success': True,
-            'healed_count': healed_count,
-            'message': f'{healed_count} Pokémon ont été soignés!'
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=400)
-
-
-@login_required
-@require_POST
 def send_to_pc_api(request):
     """
     API pour envoyer un Pokémon au PC
@@ -991,9 +915,7 @@ def send_to_pc_api(request):
             })
         
         # Envoyer au PC
-        pokemon.is_in_party = False
-        pokemon.party_position = None
-        pokemon.save()
+        deposit_pokemon(pokemon)
         
         # Réorganiser les positions
         reorganize_party_positions(trainer)

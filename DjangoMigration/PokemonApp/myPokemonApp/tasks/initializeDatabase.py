@@ -770,9 +770,6 @@ def scriptToInitializeDatabase():
     
     logging.info(f"[+] {len(pokemon_dict)} Pokémon créés/vérifiés")
 
-
-    #TODO Init PokemonLearnableMove objects &  PokemonEvolution
-
     # ============================================================================
     # ÉTAPE X: CRÉER LES ÉVOLUTIONS DES POKÉMON
     # ============================================================================

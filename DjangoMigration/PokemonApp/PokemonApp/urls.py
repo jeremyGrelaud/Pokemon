@@ -63,8 +63,6 @@ urlpatterns = [
 
 
     # NOUVELLES ROUTES API
-    path('api/heal-pokemon/', views.heal_pokemon_api, name='HealPokemonAPI'),
-    path('api/heal-all-pokemon/', views.heal_all_pokemon_api, name='HealAllPokemonAPI'),
     path('api/send-to-pc/', views.send_to_pc_api, name='SendToPCAPI'),
     path('api/add-to-party/', views.add_to_party_api, name='AddToPartyAPI'),
 

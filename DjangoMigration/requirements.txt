@@ -1,5 +1,3 @@
-#TODO:django-location-field
-#TODO:django-simple-history
 beautifulsoup4==4.12.3
 bleach==6.1.0
 Django==4.2.13

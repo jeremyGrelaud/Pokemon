@@ -103,7 +103,13 @@ class GymLeader(models.Model):
     
     def __str__(self):
         return f"{self.trainer.username} - {self.gym_name} ({self.gym_city})"
-
+    
+    def isChallengableByPlayer(self, player):
+        if not self.trainer.is_defeated:
+            required_badges = self.badge_order - 1
+            if player.badges >= required_badges:
+                return True
+        return  False
 
 
 
