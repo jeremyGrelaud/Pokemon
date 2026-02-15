@@ -20,6 +20,8 @@ TODO :
 - Stats & Achievements
 - Map System ?
 - Implement different game mods ?
+- Take into account spawn rates for in the wild encounters
+- possibily use showdown battle background gen 3> instead of pure css https://play.pokemonshowdown.com/fx/
 
 
 
@@ -34,5 +36,5 @@ python manage.py createsuperuser
 To init database in one command :
 ```
 python manage.py shell -c "from myPokemonApp.tasks.initializeDatabase import scriptToInitializeDatabase; from myPokemonApp.tasks.initializeItemsAndNpcs import run_full_initialization; scriptToInitializeDatabase(); run_full_initialization(); from myPokemonApp.tasks.initShops import initShops; initShops(); from myPokemonApp.tasks.initPokeCenters import scrip
-tToInitializePokeCenters; scriptToInitializePokeCenters();"
+tToInitializePokeCenters; scriptToInitializePokeCenters();from myPokemonApp.tasks.initPokeballItem import scriptToInitNewPokeBalls; scriptToInitNewPokeBalls();"
 ```

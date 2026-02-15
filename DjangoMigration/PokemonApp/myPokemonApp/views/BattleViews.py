@@ -330,7 +330,7 @@ def battle_action_view(request, pk):
             item = selected_inventory_item.item
             trainer = battle.player_trainer
             
-            result = attempt_pokemon_capture(battle, item, trainer)
+            result = attempt_pokemon_capture(battle, ball_item=item, trainer=trainer)
             
             # Déduire la ball de l'inventaire
             inventory = TrainerInventory.objects.get(trainer=trainer, item=item)

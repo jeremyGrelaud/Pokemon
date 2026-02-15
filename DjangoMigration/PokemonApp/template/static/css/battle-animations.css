@@ -132,7 +132,7 @@
   margin-left: 5vw;
 }
 
-/* Pokemon Platforms */
+Pokemon Platforms
 .pokemon-platform {
   position: absolute;
   width: 150px;
@@ -144,15 +144,68 @@
     transparent 70%
   );
   border-radius: 50%;
-  bottom: -10px;
+  bottom: -40px;
   left: 50%;
   transform: translateX(-50%) perspective(400px) rotateX(65deg);
+}
+
+/* Plateforme de combat Pokémon - Version améliorée */
+.pokemon-platform {
+  position: absolute;
+  width: 10vw;
+  height: 20vh;
+  background:
+    /* Texture de terre/herbe */
+    linear-gradient(
+      to bottom,
+      #5a9d58 0%,
+      #4a7d48 50%,
+      #3a5d38 100%
+    ),
+    /* Effet de relief */
+    radial-gradient(
+      ellipse at center,
+      rgba(255, 255, 255, 0.3) 0%,
+      rgba(255, 255, 255, 0.1) 30%,
+      transparent 70%
+    ),
+    /* Bords irréguliers pour un effet naturel */
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="50" viewBox="0 0 180 50"><path d="M0,10 Q30,0 60,15 Q90,5 120,20 Q150,10 180,15 L180,50 L0,50 Z" fill="rgba(0,0,0,0.2)"/></svg>');
+  border-radius: 50%;
+  bottom: -135px;
+  left: 50%;
+  transform: translateX(-50%) perspective(500px) rotateX(70deg);
+  box-shadow:
+    0 0 15px rgba(0, 0, 0, 0.4),
+    inset 0 0 10px rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+/* Effet de brillance pour simuler l'herbe humide */
+.pokemon-platform::after {
+  content: "";
+  position: absolute;
+  top: 5%;
+  left: 10%;
+  width: 80%;
+  height: 20%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  opacity: 0.6;
+  transform: rotate(-10deg);
 }
 
 /* Pokemon Container */
 .pokemon-container {
   position: relative;
   display: inline-block;
+  z-index: 20; /* Doit être > à celui de .pokemon-platform (10) */
 }
 
 .pokemon-shadow {
@@ -168,6 +221,7 @@
     transparent
   );
   border-radius: 50%;
+  z-index: 1; /* Peut être 1, car le parent a déjà un z-index: 20 */
 }
 
 /* Pokemon Sprites */
@@ -219,11 +273,11 @@
 
 @keyframes slide-in-player {
   from {
-    transform: scaleX(-1) translateX(-300px) translateY(100px);
+    transform: scaleX(1) translateX(-300px) translateY(100px);
     opacity: 0;
   }
   to {
-    transform: scaleX(-1) translateX(0) translateY(0);
+    transform: scaleX(1) translateX(0) translateY(0);
     opacity: 1;
   }
 }

@@ -9,3 +9,4 @@ from .initializeDatabase import scriptToInitializeDatabase
 from .initializeItemsAndNpcs import run_full_initialization
 from .initShops import initShops
 from .initPokeCenters import scriptToInitializePokeCenters
+from  .initPokeballItem import scriptToInitNewPokeBalls
