@@ -25,7 +25,7 @@
       </div>
       <div class="card-body text-center">
         <!-- Sprite -->
-        <img src="{% static 'img/sprites_gen1/' %}{{ pokemon.name }}.png" 
+        <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.name|lowerPokemonFileNames }}.png" 
              alt="{{ pokemon.name }}"
              class="pokemon-sprite mb-3"
              onerror="this.src='{% static 'img/pokeball.png' %}'">
@@ -74,7 +74,7 @@
         {% for evo in evolutions_to %}
         <div class="mb-2">
           <a href="{% url 'PokemonDetailView' evo.pokemon.id %}" class="text-decoration-none">
-            <img src="{% static 'img/sprites_gen1/' %}{{ evo.pokemon.name }}.png" 
+            <img src="{% static 'img/sprites_gen5/normal/' %}{{ evo.pokemon.name|lowerPokemonFileNames }}.png" 
                  style="width: 48px; height: 48px;"
                  onerror="this.src='{% static 'img/pokeball.png' %}'">
             {{ evo.pokemon.name }}
@@ -92,7 +92,7 @@
         {% for evo in evolutions_from %}
         <div class="mb-2">
           <a href="{% url 'PokemonDetailView' evo.evolves_to.id %}" class="text-decoration-none">
-            <img src="{% static 'img/sprites_gen1/' %}{{ evo.evolves_to.name }}.png" 
+            <img src="{% static 'img/sprites_gen5/normal/' %}{{ evo.evolves_to.name|lowerPokemonFileNames }}.png" 
                  style="width: 48px; height: 48px;"
                  onerror="this.src='{% static 'img/pokeball.png' %}'">
             {{ evo.evolves_to.name }}

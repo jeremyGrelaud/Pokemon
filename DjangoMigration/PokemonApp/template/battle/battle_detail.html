@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static %} {% load custom_filters %}
 
 {% block title %}
 <title>Combat - Détails</title>
@@ -79,7 +79,7 @@
       <div class="card-body">
         {% if battle.player_pokemon %}
         <div class="text-center mb-3">
-          <img src="{% static 'img/sprites_gen1/' %}{{ battle.player_pokemon.species.name }}.png" 
+          <img src="{% static 'img/sprites_gen5/normal/' %}{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png" 
                alt="{{ battle.player_pokemon.species.name }}"
                style="width: 120px; height: 120px;"
                onerror="this.src='{% static 'img/pokeball.png' %}'">
@@ -179,7 +179,7 @@
       <div class="card-body">
         {% if battle.opponent_pokemon %}
         <div class="text-center mb-3">
-          <img src="{% static 'img/sprites_gen1/' %}{{ battle.opponent_pokemon.species.name }}.png" 
+          <img src="{% static 'img/sprites_gen5/normal/' %}{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png" 
                alt="{{ battle.opponent_pokemon.species.name }}"
                style="width: 120px; height: 120px;"
                onerror="this.src='{% static 'img/pokeball.png' %}'">

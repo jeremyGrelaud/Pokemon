@@ -10,3 +10,5 @@ from .initializeItemsAndNpcs import run_full_initialization
 from .initShops import initShops
 from .initPokeCenters import scriptToInitializePokeCenters
 from  .initPokeballItem import scriptToInitNewPokeBalls
+from .initKantoMaps import init_kanto_map
+from .initAchievments import init_achievements

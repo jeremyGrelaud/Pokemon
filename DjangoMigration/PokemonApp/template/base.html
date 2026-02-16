@@ -139,11 +139,19 @@
           </a>
         </li>
 
-        <!-- Liste de sauveagrdes  -->
+        <!-- Liste de sauvegardes  -->
         <li class="nav-item {% if request.resolver_match.url_name == 'save_select' %}active{% endif %}">
           <a class="nav-link" href="{% url 'save_select' %}">
             <i class="fas fa-save"></i>
             <span>Liste des sauvegardes</span>
+          </a>
+        </li>
+
+        <!-- Maps  -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'map_view' %}">
+            <i class="fas fa-map-location-dot"></i>
+            <span>Maps</span>
           </a>
         </li>
 
@@ -194,6 +202,18 @@
                       <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                       Mon Profil
                     </a>
+                    <!-- ACHIEVEMENTS WIDGET -->
+                    <div class="dropdown-divider"></div>
+                    <h6 class="dropdown-header">
+                      <i class="fas fa-trophy text-warning"></i> Succès
+                    </h6>
+                    
+                    <div id="achievements-widget">
+                      <div class="dropdown-item-text">
+                        <small class="text-muted">Chargement...</small>
+                      </div>
+                    </div>
+
                     <!-- Manual save button  -->
                     {% if has_active_save %}
                       <a class="dropdown-item" href="#" data-toggle="modal" data-target="#saveModal">
@@ -238,6 +258,22 @@
         {% endblock footer %}
       </div>
     </div>
+
+
+    <!--  ACHIEVEMENTS WIDGET LOADER  -->
+    {% if user.is_authenticated %}
+    <script>
+    // Charger le widget achievements au clic du dropdown
+    $('#userDropdown').on('click', function() {
+      // Charger seulement si pas déjà chargé
+      if ($('#achievements-widget').find('.text-muted').length > 0) {
+        $.get('{% url "achievements_widget" %}', function(data) {
+          $('#achievements-widget').html(data);
+        });
+      }
+    });
+    </script>
+    {% endif %}
 
     <!-- Save Modal -->
     {% if has_active_save %}

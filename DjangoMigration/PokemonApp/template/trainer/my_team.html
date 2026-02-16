@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static %} {% load custom_filters %}
 
 {% block title %}
 <title>Mon Équipe - Pokémon Gen 1</title>
@@ -66,7 +66,7 @@
             <div class="card pokemon-card h-100">
               <div class="card-body">
                 <div class="text-center mb-2">
-                  <img src="{% static 'img/sprites_gen1/' %}{{ pokemon.species.name }}.png" 
+                  <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png" 
                        alt="{{ pokemon.species.name }}"
                        class="pokemon-sprite"
                        onerror="this.src='{% static 'img/pokeball.png' %}'">
@@ -210,7 +210,7 @@
           <div class="col-md-3 col-lg-2 mb-3">
             <div class="card text-center pokemon-pc-card" style="cursor: pointer;">
               <div class="card-body p-2">
-                <img src="{% static 'img/sprites_gen1/' %}{{ pokemon.species.name }}.png" 
+                <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png" 
                      alt="{{ pokemon.species.name }}"
                      style="width: 64px; height: 64px;"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">

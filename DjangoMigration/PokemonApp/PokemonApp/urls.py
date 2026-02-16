@@ -101,4 +101,15 @@ urlpatterns = [
     path('battle/gym/challenge/', views.battle_create_gym_view, name='create_gym_battle'),
     path('battle/<int:battle_id>/trainer/complete/', views.battle_trainer_complete_view, name='battle_trainer_complete'),
 
+    # Maps
+    path('map/', views.map_view, name='map_view'),
+    path('map/zone/<int:zone_id>/', views.zone_detail_view, name='zone_detail'),
+    path('map/travel/<int:zone_id>/', views.travel_to_zone_view, name='travel_to_zone'),
+    path('map/encounter/<int:zone_id>/', views.wild_encounter_view, name='wild_encounter'),
+
+    # Achievements
+    path('achievements/', views.achievements_list_view, name='achievements_list'),
+    path('achievements/widget/', views.achievements_widget_view, name='achievements_widget'),
+
+
 ]

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static %} {% load custom_filters %}
 
 {% block title %}
 <title>Combat - {{ battle.player_pokemon.species.name }} VS {{ battle.opponent_pokemon.species.name }}</title>
@@ -73,7 +73,7 @@
             <div class="pokemon-shadow"></div>
             <img class="pokemon-sprite opponent-sprite"
                 id="opponent-sprite"
-                src="{% static 'img/sprites_gen1/' %}{{ battle.opponent_pokemon.species.name }}.png"
+                src="{% static 'img/sprites_gen5/normal/' %}{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
                 alt="{{ battle.opponent_pokemon.species.name }}"
                 onerror="this.src='{% static 'img/pokeball.png' %}'">
           </div>
@@ -91,7 +91,7 @@
             <div class="pokemon-shadow"></div>
             <img class="pokemon-sprite player-sprite"
                 id="player-sprite"
-                src="{% static 'img/sprites_gen1/' %}{{ battle.player_pokemon.species.name }}.png"
+                src="{% static 'img/sprites_gen5/back/' %}{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
                 alt="{{ battle.player_pokemon.species.name }}"
                 onerror="this.src='{% static 'img/pokeball.png' %}'">
           </div>
@@ -736,6 +736,21 @@ function updateBattleState(data) {
   }
 }
 
+function lowerPokemonFileNames(str) {
+    // Convertir en minuscules
+    let result = str.toLowerCase();
+    // Supprimer tout ce qui n'est pas alphanumérique
+    // Vérifie la présence des symboles et les remplacer par "-m" ou "-f"
+    if (str.includes('♂')) {
+        result = result.replace(/♂/g, '').replace(/[^a-z0-9]/g, '') + 'm';
+    } else if (str.includes('♀')) {
+        result = result.replace(/♀/g, '').replace(/[^a-z0-9]/g, '') + 'f';
+    } else {
+        result = result.replace(/[^a-z0-9]/g, '');
+    }
+    return result;
+}
+
 // Modifier updatePokemonDisplay
 function updatePokemonDisplay(side, pokemonData) {
   const sprite = $(`#${side}-sprite`);
@@ -746,7 +761,14 @@ function updatePokemonDisplay(side, pokemonData) {
   sprite.removeClass('fainted fade-out taking-damage');
   
   // Update sprite
-  const newSrc = "{% static 'img/sprites_gen1/' %}" + pokemonData.species_name + ".png";
+  let newSrc;
+  if (side === 'player') {
+    newSrc = "{% static 'img/sprites_gen5/back/' %}" + lowerPokemonFileNames(pokemonData.species_name) + ".png";
+  }
+  else {
+    newSrc = "{% static 'img/sprites_gen5/normal/' %}" + lowerPokemonFileNames(pokemonData.species_name)+ ".png";
+  }
+
   sprite.attr('src', newSrc)
     .on('error', function() {
       $(this).attr('src', "{% static 'img/pokeball.png' %}");

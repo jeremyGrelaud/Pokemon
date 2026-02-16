@@ -3,6 +3,21 @@
  * Gère les animations et la logique de capture
  */
 
+function lowerPokemonFileNames(str) {
+    // Convertir en minuscules
+    let result = str.toLowerCase();
+    // Supprimer tout ce qui n'est pas alphanumérique
+    // Vérifie la présence des symboles et les remplacer par "-m" ou "-f"
+    if (str.includes('♂')) {
+        result = result.replace(/♂/g, '').replace(/[^a-z0-9]/g, '') + 'm';
+    } else if (str.includes('♀')) {
+        result = result.replace(/♀/g, '').replace(/[^a-z0-9]/g, '') + 'f';
+    } else {
+        result = result.replace(/[^a-z0-9]/g, '');
+    }
+    return result;
+}
+
 class CaptureSystem {
   constructor() {
     this.overlay = null;
@@ -37,7 +52,7 @@ class CaptureSystem {
         <div class="capture-probability">${probability} %</div>
         
         <!-- Pokémon -->
-        <img class="capture-pokemon" src='/static/img/sprites_gen1/${pokemonData.species_name}.png'  onerror="this.src='/static/img/pokeball.png'">
+        <img class="capture-pokemon" src='/static/img/sprites_gen5/normal/${lowerPokemonFileNames(pokemonData.species_name)}.png'  onerror="this.src='/static/img/pokeball.png'">
         
         <!-- Poké Ball -->
         <div class="pokeball-capture ${ballType}"></div>

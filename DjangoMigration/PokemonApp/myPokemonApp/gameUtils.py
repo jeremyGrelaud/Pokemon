@@ -7,8 +7,8 @@ Helpers pour la création de Pokémon, combats, NPCs, etc.
 import random
 import math
 from django.db.models import Q
-from .models import PokeballItem
-
+from myPokemonApp.views.AchievementViews import trigger_achievements_after_capture
+from myPokemonApp.models import *
 
 # ============================================================================
 # CRÉATION DE POKÉMON
@@ -981,6 +981,9 @@ def capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shake
     message = f"Vous avez capturé {opponent.species.name} !"
     if is_first:
         message += " (Premier capturé !)"
+
+    # TRIGGER ACHIEVEMENTS
+    notifications = trigger_achievements_after_capture(trainer)
     
     return {
         'success': True,
@@ -989,5 +992,78 @@ def capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shake
         'message': message,
         'captured_pokemon': {'name':captured.species.name, 'level' : captured.level } ,
         'is_first_catch': is_first,
+        'achievement_notifications' : notifications # Stocker dans le contexte pour afficher après TODO
         # 'journal_entry': journal_entry
     }
+
+
+"""
+Système de rencontre aléatoire avec spawn rates
+"""
+
+def get_random_wild_pokemon(zone, encounter_type='grass'):
+    """
+    Génère un Pokémon sauvage aléatoire selon les spawn rates
+    
+    Args:
+        zone: Zone actuelle
+        encounter_type: 'grass', 'water', 'fishing', 'cave'
+    
+    Returns:
+        tuple: (Pokemon species, level) ou (None, None)
+    """
+    
+    # Récupérer tous les spawns de cette zone
+    spawns = WildPokemonSpawn.objects.filter(
+        zone=zone,
+        encounter_type=encounter_type
+    )
+    
+    if not spawns.exists():
+        return None, None
+    
+    # Normaliser les spawn rates (total = 100%)
+    total_rate = sum(spawn.spawn_rate for spawn in spawns)
+    
+    if total_rate == 0:
+        return None, None
+    
+    # Tirage aléatoire
+    roll = random.uniform(0, total_rate)
+    cumulative = 0
+    
+    for spawn in spawns:
+        cumulative += spawn.spawn_rate
+        if roll <= cumulative:
+            # Ce Pokémon est choisi !
+            level = random.randint(spawn.level_min, spawn.level_max)
+            return spawn.pokemon, level
+    
+    # Fallback (ne devrait jamais arriver)
+    first_spawn = spawns.first()
+    level = random.randint(first_spawn.level_min, first_spawn.level_max)
+    return first_spawn.pokemon, level
+
+
+def get_encounter_chance(zone, encounter_type='grass'):
+    """
+    Détermine s'il y a une rencontre (pour système de marche)
+    
+    Returns:
+        bool: True si rencontre
+    """
+    
+    # Taux de base: 10% par pas dans les herbes
+    base_rate = {
+        'grass': 10.0,
+        'water': 20.0,
+        'fishing': 40.0,
+        'cave': 15.0
+    }
+    
+    chance = base_rate.get(encounter_type, 10.0)
+    
+    # Repel items peuvent modifier ça
+    # TODO
+    
+    return random.random() * 100 < chance

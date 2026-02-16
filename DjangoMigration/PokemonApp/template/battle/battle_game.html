@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static %} {% load custom_filters %}
 
 {% block title %}
 <title>Combat - {{ battle.player_pokemon.species.name }} VS {{ battle.opponent_pokemon.species.name }}</title>
@@ -332,7 +332,7 @@
 
       <!-- Pokemon Sprite -->
       <img id="opponent-sprite"
-           src="{% static 'img/sprites_gen1/' %}{{ battle.opponent_pokemon.species.name }}.png"
+           src="{% static 'img/sprites_gen5/normal/' %}{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
            alt="{{ battle.opponent_pokemon.species.name }}"
            class="pokemon-sprite-opponent"
            onerror="this.src='{% static 'img/pokeball.png' %}'">
@@ -389,7 +389,7 @@
 
       <!-- Pokemon Sprite -->
       <img id="player-sprite"
-        src="{% static 'img/sprites_gen1/' %}{{ battle.player_pokemon.species.name }}.png"
+        src="{% static 'img/sprites_gen5/normal/' %}{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
         alt="{{ battle.player_pokemon.species.name }}"
         class="pokemon-sprite-player"
         onerror="this.src='{% static 'img/pokeball.png' %}'">
@@ -767,6 +767,22 @@
     }
   }
 
+  function lowerPokemonFileNames(str) {
+      // Convertir en minuscules
+      let result = str.toLowerCase();
+      // Supprimer tout ce qui n'est pas alphanumérique
+      // Vérifie la présence des symboles et les remplacer par "-m" ou "-f"
+      if (str.includes('♂')) {
+          result = result.replace(/♂/g, '').replace(/[^a-z0-9]/g, '') + 'm';
+      } else if (str.includes('♀')) {
+          result = result.replace(/♀/g, '').replace(/[^a-z0-9]/g, '') + 'f';
+      } else {
+          result = result.replace(/[^a-z0-9]/g, '');
+      }
+      return result;
+  }
+
+
   function updatePokemon(side, pokemonData) {
     /**
      * Met à jour complètement un Pokémon (sprite, nom, HP, niveau)
@@ -775,7 +791,7 @@
     const prefix = side; // 'player' ou 'opponent'
     
     // Mettre à jour le sprite
-    const newSpriteSrc = "{% static 'img/sprites_gen1/' %}" + pokemonData.species_name + ".png";
+    const newSpriteSrc = "{% static 'img/sprites_gen5/normal/' %}" + lowerPokemonFileNames(pokemonData.species_name) + ".png";
     $(`#${prefix}-sprite`).attr('src', newSpriteSrc)
       .on('error', function() {
         $(this).attr('src', "{% static 'img/pokeball.png' %}");
