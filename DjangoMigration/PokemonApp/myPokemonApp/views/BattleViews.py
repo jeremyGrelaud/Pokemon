@@ -9,15 +9,26 @@ from django.views import generic
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
-from django.views.decorators.http import  require_http_methods
-from myPokemonApp.gameUtils import check_battle_end, heal_team, learn_moves_up_to_level
+from django.views.decorators.http import require_http_methods
 from django.db.models import Q
-from myPokemonApp.gameUtils import apply_exp_gain, calculate_exp_gain, opponent_switch_pokemon
-from myPokemonApp.gameUtils import attempt_pokemon_capture, calculate_capture_rate
 from django.contrib import messages
 from ..models import *
 import random
+
 from myPokemonApp.views.AchievementViews import trigger_achievements_after_battle
+from myPokemonApp.gameUtils import (
+    check_battle_end,
+    heal_team,
+    learn_moves_up_to_level,
+    apply_exp_gain,
+    calculate_exp_gain,
+    opponent_switch_pokemon,
+    attempt_pokemon_capture,
+    calculate_capture_rate,
+    get_first_alive_pokemon,
+    get_or_create_wild_trainer,
+)
+
 
 
 # ============================================================================
@@ -610,10 +621,7 @@ def battle_create_wild_view(request):
     player_trainer = get_object_or_404(Trainer, username=request.user.username)
     
     # Vérifier que le joueur a un Pokémon
-    player_pokemon = player_trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).first()
+    player_pokemon = get_first_alive_pokemon(player_trainer)
     
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
@@ -629,14 +637,8 @@ def battle_create_wild_view(request):
         # Mode manuel (pour tests)
         wild_species = get_object_or_404(Pokemon, pk=pokemon_id)
     else:
-        # Mode ALÉATOIRE (recommandé)
-        # Choisir en fonction du niveau du joueur
+        # Mode ALÉATOIRE - niveau autour du joueur (±3)
         player_level = player_pokemon.level
-        
-        # Filtrer par niveau approprié (± 3 niveaux)
-        # On peut aussi filtrer par zone si vous avez un système de zones
-        
-        # Pour l'instant: Pokémon totalement aléatoire
         all_wild_pokemon = Pokemon.objects.all()
         
         if not all_wild_pokemon.exists():
@@ -644,22 +646,17 @@ def battle_create_wild_view(request):
             return redirect('BattleCreateView')
         
         wild_species = random.choice(all_wild_pokemon)
-        
-        # Niveau aléatoire autour du niveau du joueur
-        min_level = max(1, player_level - 3)
-        max_level = player_level + 3
-        level = random.randint(min_level, max_level)
+        level = random.randint(max(1, player_level - 3), player_level + 3)
     
     # ===== CRÉER LE POKÉMON SAUVAGE =====
     wild_pokemon = PlayablePokemon.objects.create(
         species=wild_species,
         level=level,
-        trainer=get_object_or_create_wild_trainer(),
+        trainer=get_or_create_wild_trainer(),
         is_in_party=True,
         original_trainer='Wild'
     )
 
-    
     # Calculer stats
     wild_pokemon.calculate_stats()
     wild_pokemon.current_hp = wild_pokemon.max_hp
@@ -668,12 +665,9 @@ def battle_create_wild_view(request):
     # Ajouter des moves 
     learn_moves_up_to_level(wild_pokemon, wild_pokemon.level)
 
-    # Si pas de moves appris, donner Tackle
+    # Fallback si aucun move appris : donner Charge (Tackle)
     if not wild_pokemon.pokemonmoveinstance_set.exists():
-        tackle = PokemonMove.objects.filter(name__icontains='Charge').first()
-        if not tackle:
-            tackle = PokemonMove.objects.first()
-        
+        tackle = PokemonMove.objects.filter(name__icontains='Charge').first() or PokemonMove.objects.first()
         if tackle:
             PokemonMoveInstance.objects.create(
                 pokemon=wild_pokemon,
@@ -724,20 +718,14 @@ def battle_create_trainer_view(request, trainer_id):
             return redirect('BattleCreateView')
     
     # Vérifier Pokémon du joueur
-    player_pokemon = player_trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).first()
+    player_pokemon = get_first_alive_pokemon(player_trainer)
     
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
         return redirect('pokemon_center')
     
     # Vérifier Pokémon de l'adversaire
-    opponent_pokemon = opponent_trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).first()
+    opponent_pokemon = get_first_alive_pokemon(opponent_trainer)
     
     if not opponent_pokemon:
         messages.error(request, "Ce dresseur n'a pas d'équipe configurée !")
@@ -792,20 +780,14 @@ def battle_create_gym_view(request):
         return redirect('BattleCreateView')
     
     # Vérifier Pokémon du joueur
-    player_pokemon = player_trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).first()
+    player_pokemon = get_first_alive_pokemon(player_trainer)
     
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
         return redirect('pokemon_center')
     
     # Pokémon du champion
-    opponent_pokemon = opponent_trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).first()
+    opponent_pokemon = get_first_alive_pokemon(opponent_trainer)
     
     if not opponent_pokemon:
         messages.error(request, "Le Champion n'a pas d'équipe configurée !")

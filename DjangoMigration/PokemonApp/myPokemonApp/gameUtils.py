@@ -10,21 +10,57 @@ from django.db.models import Q
 from myPokemonApp.views.AchievementViews import trigger_achievements_after_capture
 from myPokemonApp.models import *
 
+
 # ============================================================================
-# CRÉATION DE POKÉMON
+# HELPERS COMMUNS
 # ============================================================================
+
+def get_first_alive_pokemon(trainer):
+    """
+    Retourne le premier Pokémon vivant de l'équipe d'un dresseur.
+    Pattern récurrent dans les views, centralisé ici.
+    """
+    return trainer.pokemon_team.filter(
+        is_in_party=True,
+        current_hp__gt=0
+    ).order_by('party_position').first()
+
+
+def get_or_create_wild_trainer():
+    """
+    Récupère ou crée le Trainer 'Wild' utilisé pour les Pokémon sauvages.
+    """
+    trainer, _ = Trainer.objects.get_or_create(
+        username='Wild',
+        defaults={'trainer_type': 'wild'}
+    )
+    return trainer
+
+
+def copy_moves_to_pokemon(source_pokemon, target_pokemon):
+    """
+    Copie les PokemonMoveInstance d'un Pokémon source vers un Pokémon cible.
+    Utilisé lors de la capture (copie les moves du Pokémon sauvage).
+    Évite les doublons via get_or_create.
+    """
+    from myPokemonApp.models import PokemonMoveInstance
+    for move_instance in source_pokemon.pokemonmoveinstance_set.all():
+        PokemonMoveInstance.objects.get_or_create(
+            pokemon=target_pokemon,
+            move=move_instance.move,
+            defaults={'current_pp': move_instance.current_pp}
+        )
+
+
+
 
 def create_wild_pokemon(species, level, location=None):
     """
     Crée un Pokémon sauvage à un niveau donné
     """
-    from .models import PlayablePokemon, Trainer
+    from .models import PlayablePokemon
     
-    # Créer un "dresseur" sauvage temporaire
-    wild_trainer, _ = Trainer.objects.get_or_create(
-        username="Wild",
-        defaults={'trainer_type': 'wild'}
-    )
+    wild_trainer = get_or_create_wild_trainer()
     
     # IVs aléatoires (0-31)
     ivs = {
@@ -98,39 +134,33 @@ def create_starter_pokemon(species, trainer, nickname=None):
 
 def learn_moves_up_to_level(pokemon, level):
     """
-    Fait apprendre au Pokémon toutes les capacités jusqu'au niveau donné
-    Garde seulement les 4 dernières
+    Fait apprendre au Pokémon toutes les capacités jusqu'au niveau donné.
+    Garde seulement les 4 dernières (comme dans les jeux).
     pokemon : PlayablePokemon
     """
     from .models.PlayablePokemon import PokemonMoveInstance
-    
+
     learnable = pokemon.species.learnable_moves.filter(
         level_learned__lte=level
     ).order_by('level_learned')
-    
-    moves_to_learn = []
+
+    # Dédoublonner (garder la dernière occurrence si un move apparaît à plusieurs niveaux)
+    seen_moves = {}
     for lm in learnable:
-        if lm.move not in [m.move for m in moves_to_learn]:
-            moves_to_learn.append(lm)
-    
-    # Garder les 4 dernières capacités
-    final_moves = moves_to_learn[-4:] if len(moves_to_learn) > 4 else moves_to_learn
+        seen_moves[lm.move_id] = lm  # écrase les doublons, garde le plus récent
 
+    # Garder les 4 dernières capacités apprises
+    all_moves = list(seen_moves.values())
+    final_moves = all_moves[-4:] if len(all_moves) > 4 else all_moves
 
-    # Copier les moves
-    for move_instance in pokemon.pokemonmoveinstance_set.all():
-        # Check if the move already exists for the captured Pokémon
-        exists = PokemonMoveInstance.objects.filter(
+    # Créer les PokemonMoveInstance pour ce Pokémon
+    # (get_or_create évite les doublons si appelé plusieurs fois)
+    for lm in final_moves:
+        PokemonMoveInstance.objects.get_or_create(
             pokemon=pokemon,
-            move=move_instance.move
-        ).exists()
-
-        if not exists:
-            PokemonMoveInstance.objects.get_or_create(
-                pokemon=pokemon,
-                move=move_instance.move,
-                current_pp=move_instance.current_pp,
-            )
+            move=lm.move,
+            defaults={'current_pp': lm.move.pp}
+        )
 
 
 def catch_pokemon(wild_pokemon, trainer, pokeball_item):
@@ -336,10 +366,8 @@ def check_battle_end(battle):
         
         # Distribuer l'expérience
         if battle.opponent_pokemon.is_fainted():
-            exp = calculate_exp_gain(
-                battle.opponent_pokemon,
-                battle.player_pokemon
-            )
+            battle_type = 'wild' if not battle.opponent_trainer else 'trainer'
+            exp = calculate_exp_gain(battle.opponent_pokemon, battle_type)
             battle.player_pokemon.gain_exp(exp)
             battle.add_to_log(f"{battle.player_pokemon} gagne {exp} points d'expérience!")
         
@@ -352,36 +380,7 @@ def check_battle_end(battle):
     return False, None, ""
 
 
-def calculate_exp_gain(defeated_pokemon, winner_pokemon):
-    """
-    Calcule l'expérience gagnée après avoir vaincu un Pokémon
-    Formule Gen 1
-    """
-    # a = 1.5 si dresseur, 1 si sauvage
-    a = 1.5 if defeated_pokemon.trainer.trainer_type != 'wild' else 1.0
-    
-    # b = expérience de base de l'espèce
-    b = defeated_pokemon.species.base_experience
-    
-    # L = niveau du Pokémon vaincu
-    L = defeated_pokemon.level
-    
-    # s = nombre de Pokémon ayant participé (simplifié à 1 pour l'instant)
-    s = 1
-    
-    # e = 1.5 si Lucky Egg, 1 sinon
-    e = 1.0
-    if winner_pokemon.held_item and winner_pokemon.held_item.name == "Lucky Egg":
-        e = 1.5
-    
-    # t = 1.5 si échangé, 1 sinon
-    t = 1.0
-    if winner_pokemon.original_trainer != winner_pokemon.trainer.username:
-        t = 1.5
-    
-    exp = int((a * b * L * e * t) / (7 * s))
-    
-    return exp
+# NOTE: calculate_exp_gain unifiée ci-dessous (signature: defeated_pokemon, battle_type='wild')
 
 
 # ============================================================================
@@ -937,21 +936,8 @@ def capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shake
         current_exp=0,
     )
     
-    # Copier les moves
-    for move_instance in opponent.pokemonmoveinstance_set.all():
-        from myPokemonApp.models import PokemonMoveInstance
-        # Check if the move already exists for the captured Pokémon
-        exists = PokemonMoveInstance.objects.filter(
-            pokemon=captured,
-            move=move_instance.move
-        ).exists()
-
-        if not exists:
-            PokemonMoveInstance.objects.get_or_create(
-                pokemon=captured,
-                move=move_instance.move,
-                current_pp=move_instance.current_pp,
-            )
+    # Copier les moves via helper centralisé
+    copy_moves_to_pokemon(opponent, captured)
     
     # Vérifier si c'est le premier de cette espèce
     is_first = not trainer.pokemon_team.filter(species=opponent.species).exclude(id=captured.id).exists()
