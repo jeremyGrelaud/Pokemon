@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static %} {% load custom_filters %}
 
 {% block title %}<title>Journal de Captures</title>{% endblock title %}
 
@@ -114,7 +114,7 @@
             {% for entry in captures %}
             <tr>
               <td>
-                <img src="{% static 'img/sprites_gen1/' %}{{ entry.pokemon.species.name }}.png" 
+                <img src="{% static 'img/sprites_gen5/normal/' %}{{ entry.pokemon.species.name|lowerPokemonFileNames }}.png" 
                      width="40" class="mr-2"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">
                 <strong>{{ entry.pokemon.species.name }}</strong>

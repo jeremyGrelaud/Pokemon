@@ -236,10 +236,6 @@ Pokemon Platforms
   display: block;
 }
 
-.player-sprite {
-  transform: scaleX(-1);
-}
-
 /* Idle Animations */
 @keyframes pokemon-idle-opponent {
   0%, 100% { transform: translateY(0); }
@@ -247,8 +243,8 @@ Pokemon Platforms
 }
 
 @keyframes pokemon-idle-player {
-  0%, 100% { transform: scaleX(-1) translateY(0); }
-  50% { transform: scaleX(-1) translateY(-12px); }
+  0%, 100% { transform:  translateY(0); }
+  50% { transform:  translateY(-12px); }
 }
 
 .opponent-sprite {
@@ -299,10 +295,10 @@ Pokemon Platforms
 }
 
 @keyframes attack-lunge-player {
-  0% { transform: scaleX(-1) translateX(0) scale(1); }
-  40% { transform: scaleX(-1) translateX(-80px) scale(1.15); }
-  60% { transform: scaleX(-1) translateX(-80px) scale(1.15); }
-  100% { transform: scaleX(-1) translateX(0) scale(1); }
+  0% { transform:  translateX(0) scale(1); }
+  40% { transform:  translateX(-80px) scale(1.15); }
+  60% { transform:  translateX(-80px) scale(1.15); }
+  100% { transform:  translateX(0) scale(1); }
 }
 
 .opponent-sprite.attacking {
@@ -321,9 +317,9 @@ Pokemon Platforms
 }
 
 @keyframes damage-shake-player {
-  0%, 100% { transform: scaleX(-1) translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: scaleX(-1) translateX(-8px); }
-  20%, 40%, 60%, 80% { transform: scaleX(-1) translateX(8px); }
+  0%, 100% { transform:  translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform:  translateX(-8px); }
+  20%, 40%, 60%, 80% { transform:  translateX(8px); }
 }
 
 .opponent-sprite.taking-damage {
@@ -351,12 +347,12 @@ Pokemon Platforms
 
 @keyframes faint-player {
   0% { 
-    transform: scaleX(-1) translateY(0) rotate(0deg); 
+    transform:  translateY(0) rotate(0deg); 
     opacity: 1; 
   }
   50% { opacity: 0.5; }
   100% { 
-    transform: scaleX(-1) translateY(150px) rotate(90deg); 
+    transform:  translateY(150px) rotate(90deg); 
     opacity: 0; 
   }
 }

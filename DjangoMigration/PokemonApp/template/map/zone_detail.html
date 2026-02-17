@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}<title>{{ zone.name }}</title>{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="mb-3">
+    <a href="{% url 'map_view' %}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left"></i> Retour à la carte
+    </a>
+  </div>
+  
+  <div class="card">
+    <div class="card-header bg-primary text-white">
+      <h2 class="mb-0">
+        <i class="fas fa-map-marker-alt"></i> {{ zone.name }}
+      </h2>
+      <p class="mb-0">{{ zone.get_zone_type_display }}</p>
+    </div>
+    
+    <div class="card-body">
+      <p>{{ zone.description }}</p>
+      
+      <div class="mb-3">
+        <span class="badge badge-info">
+          Niveau recommandé: {{ zone.recommended_level_min }}-{{ zone.recommended_level_max }}
+        </span>
+        
+        {% if is_current %}
+        <span class="badge badge-success">
+          <i class="fas fa-check"></i> Vous êtes ici
+        </span>
+        {% endif %}
+      </div>
+      
+      <!-- Actions -->
+      {% if is_current %}
+      <div class="row mb-4">
+        <!-- Rencontre sauvage -->
+        {% if not zone.is_safe_zone %}
+        <div class="col-md-6 mb-3">
+          <div class="card bg-success text-white">
+            <div class="card-body text-center">
+              <h5><i class="fas fa-leaf"></i> Hautes Herbes</h5>
+              <a href="{% url 'wild_encounter' zone.id %}?type=grass" class="btn btn-light">
+                Chercher un Pokémon
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- Centre Pokémon -->
+        {% if zone.has_pokemon_center %}
+        <div class="col-md-6 mb-3">
+          <div class="card bg-info text-white">
+            <div class="card-body text-center">
+              <h5><i class="fas fa-hospital"></i> Centre Pokémon</h5>
+              <a href="{% url 'PokemonCenterListView' %}" class="btn btn-light">
+                Soigner l'équipe
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      
+      <!-- Pokémon sauvages -->
+      {% if wild_spawns %}
+      <h4><i class="fas fa-paw"></i> Pokémon Sauvages</h4>
+      <div class="table-responsive mb-4">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Pokémon</th>
+              <th>Niveau</th>
+              <th>Taux</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for spawn in wild_spawns %}
+            <tr>
+              <td>{{ spawn.pokemon.name }}</td>
+              <td>{{ spawn.level_min }}-{{ spawn.level_max }}</td>
+              <td>
+                <div class="progress" style="width: 100px;">
+                  <div class="progress-bar" style="width: {{ spawn.spawn_rate }}%">
+                    {{ spawn.spawn_rate }}%
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+      
+      <!-- Dresseurs -->
+      {% if trainers %}
+      <h4><i class="fas fa-users"></i> Dresseurs</h4>
+      <div class="list-group mb-4">
+        {% for trainer in trainers %}
+        <a href="{% url 'battle_create_trainer' trainer.id %}" class="list-group-item list-group-item-action">
+          <div class="d-flex justify-content-between">
+            <div>
+              <strong>{{ trainer.get_full_title }}</strong>
+              <br>
+              <small class="text-muted">{{ trainer.intro_text|truncatewords:10 }}</small>
+            </div>
+            <span class="badge badge-danger">
+              <i class="fas fa-fist-raised"></i> Combattre
+            </span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      
+      <!-- Zones connectées -->
+      {% if connections %}
+      <h4><i class="fas fa-route"></i> Zones Adjacentes</h4>
+      <div class="row">
+        {% for conn in connections %}
+        <div class="col-md-6 mb-3">
+          <div class="card">
+            <div class="card-body">
+              <h6>{{ conn.to_zone.name }}</h6>
+              {% if is_current %}
+              <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-arrow-right"></i> Voyager
+              </a>
+              {% else %}
+              <small class="text-muted">Revenez ici pour voyager</small>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      
+    </div>
+  </div>
+</div>
+{% endblock %}

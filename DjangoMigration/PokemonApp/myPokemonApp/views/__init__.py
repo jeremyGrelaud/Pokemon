@@ -9,3 +9,5 @@ from .TeamViews import *
 from .PokedexViews import *
 from .CaptureViews import *
 from .SaveViews import*
+from .MapViews import *
+from .AchievementViews import *

@@ -142,3 +142,12 @@ def floatformat(value, decimal_places=0):
 @register.filter(name='is_available_for_trainer')
 def is_available_for_trainer(item, trainer):
     return item.is_available_for_trainer(trainer)
+
+@register.filter(name='lowerPokemonFileNames')
+def lowerPokemonFileNames(value):
+    # Remplacer les symboles ♂ et ♀ par "m" et "f"
+    value = value.replace('♂', 'm').replace('♀', 'f')
+    value = value.lower()
+    # Supprimer tout ce qui n'est pas alphanumérique
+    value = re.sub(r'[^a-z0-9]', '', value)
+    return value

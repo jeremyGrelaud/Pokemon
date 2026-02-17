@@ -1,0 +1,49 @@
+<!-- Widget achievements pour dropdown -->
+<div class="achievements-dropdown">
+  <h6 class="dropdown-header">
+    <i class="fas fa-trophy"></i> Derniers Succès
+  </h6>
+  
+  {% if recent %}
+    {% for ta in recent %}
+    <div class="dropdown-item-text">
+      <small>
+        <i class="fas fa-check-circle text-success"></i>
+        <strong>{{ ta.achievement.name }}</strong>
+        <br>
+        <span class="text-muted">{{ ta.completed_at|timesince }} ago</span>
+      </small>
+    </div>
+    {% endfor %}
+    <div class="dropdown-divider"></div>
+  {% endif %}
+  
+  <h6 class="dropdown-header">En Cours</h6>
+  
+  {% if in_progress %}
+    {% for ta in in_progress %}
+    <div class="dropdown-item-text">
+      <small>
+        <strong>{{ ta.achievement.name }}</strong>
+        <div class="progress mt-1" style="height: 10px;">
+          <div class="progress-bar bg-info" 
+               style="width: {{ ta.current_progress|floatformat:0 }}%">
+          </div>
+        </div>
+        <span class="text-muted">
+          {{ ta.current_progress }} / {{ ta.achievement.required_value }}
+        </span>
+      </small>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="dropdown-item-text">
+      <small class="text-muted">Aucun succès en cours</small>
+    </div>
+  {% endif %}
+  
+  <div class="dropdown-divider"></div>
+  <a class="dropdown-item" href="{% url 'achievements_list' %}">
+    <i class="fas fa-trophy"></i> Voir tous les succès
+  </a>
+</div>

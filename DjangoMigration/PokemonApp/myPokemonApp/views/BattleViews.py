@@ -17,6 +17,7 @@ from myPokemonApp.gameUtils import attempt_pokemon_capture, calculate_capture_ra
 from django.contrib import messages
 from ..models import *
 import random
+from myPokemonApp.views.AchievementViews import trigger_achievements_after_battle
 
 
 # ============================================================================
@@ -827,6 +828,32 @@ def battle_create_gym_view(request):
     return redirect('BattleGameView', pk=battle.id)
 
 
+
+from myPokemonApp.views.AchievementViews import check_achievement
+#TODO
+# def gym_leader_defeat_view(request, gym_leader_id):
+#     """Après victoire contre un champion"""
+    
+#     # ... code existant ...
+    
+#     # Donner le badge
+#     trainer.badges += 1
+#     trainer.save()
+    
+#     # ===== NOUVEAU: TRIGGER ACHIEVEMENTS =====
+#     # Champion de Arène (1er badge)
+#     result = check_achievement(trainer, 'Champion de Arène')
+#     if result.get('newly_completed'):
+#         messages.success(request, f"🏆 {result['reward_money']}₽ - Premier badge !")
+    
+#     # Maître de la Ligue (8 badges)
+#     if trainer.badges >= 8:
+#         result = check_achievement(trainer, 'Maître de la Ligue')
+#         if result.get('newly_completed'):
+#             messages.success(request, f"🏆 {result['reward_money']}₽ - Tous les badges !")
+
+
+
 # ============================================================================
 # BATTLE COMPLETE (Après combat)
 # ============================================================================
@@ -847,6 +874,18 @@ def battle_trainer_complete_view(request, battle_id):
     # Résultat
     player_won = battle.winner == player_trainer
     opponent = battle.opponent_trainer
+
+    # Trigger Achievements
+    if player_won:
+        notifications = trigger_achievements_after_battle(
+            player_trainer,
+            {'won': True, 'opponent_type': opponent.trainer_type}
+        )
+        
+        # Afficher les notifications
+        for notif in notifications:
+            messages.success(request, f"{notif['title']}: {notif['message']}")
+
     
     # Récompense
     money_earned = 0
