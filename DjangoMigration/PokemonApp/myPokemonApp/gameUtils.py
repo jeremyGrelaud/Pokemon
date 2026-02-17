@@ -41,10 +41,17 @@ def copy_moves_to_pokemon(source_pokemon, target_pokemon):
     """
     Copie les PokemonMoveInstance d'un Pokémon source vers un Pokémon cible.
     Utilisé lors de la capture (copie les moves du Pokémon sauvage).
-    Évite les doublons via get_or_create.
+    Hard cap à 4 moves maximum (règle des jeux Pokémon).
     """
     from myPokemonApp.models import PokemonMoveInstance
-    for move_instance in source_pokemon.pokemonmoveinstance_set.all():
+
+    # Prendre les moves du source, limités à 4
+    source_moves = source_pokemon.pokemonmoveinstance_set.all()[:4]
+
+    for move_instance in source_moves:
+        # Vérifier qu'on ne dépasse pas 4 sur la cible
+        if target_pokemon.pokemonmoveinstance_set.count() >= 4:
+            break
         PokemonMoveInstance.objects.get_or_create(
             pokemon=target_pokemon,
             move=move_instance.move,
@@ -136,6 +143,7 @@ def learn_moves_up_to_level(pokemon, level):
     """
     Fait apprendre au Pokémon toutes les capacités jusqu'au niveau donné.
     Garde seulement les 4 dernières (comme dans les jeux).
+    Respecte la limite de 4 moves même si la fonction est appelée plusieurs fois.
     pokemon : PlayablePokemon
     """
     from .models.PlayablePokemon import PokemonMoveInstance
@@ -144,17 +152,26 @@ def learn_moves_up_to_level(pokemon, level):
         level_learned__lte=level
     ).order_by('level_learned')
 
-    # Dédoublonner (garder la dernière occurrence si un move apparaît à plusieurs niveaux)
+    # Dédoublonner : si un move apparaît à plusieurs niveaux, garder la dernière occurrence
+    # Mais conserver l'ordre d'insertion (= ordre chronologique d'apprentissage)
     seen_moves = {}
     for lm in learnable:
-        seen_moves[lm.move_id] = lm  # écrase les doublons, garde le plus récent
+        seen_moves[lm.move_id] = lm
 
-    # Garder les 4 dernières capacités apprises
+    # Les 4 dernières capacités apprises jusqu'à ce niveau
     all_moves = list(seen_moves.values())
     final_moves = all_moves[-4:] if len(all_moves) > 4 else all_moves
+    final_move_ids = {lm.move_id for lm in final_moves}
 
-    # Créer les PokemonMoveInstance pour ce Pokémon
-    # (get_or_create évite les doublons si appelé plusieurs fois)
+    # Supprimer les moves qui ne font PAS partie du set final
+    # (cas où la fonction est rappelée après un level-up, ou données corrompues)
+    PokemonMoveInstance.objects.filter(
+        pokemon=pokemon
+    ).exclude(
+        move_id__in=final_move_ids
+    ).delete()
+
+    # Ajouter les moves manquants (max 4 au total)
     for lm in final_moves:
         PokemonMoveInstance.objects.get_or_create(
             pokemon=pokemon,
