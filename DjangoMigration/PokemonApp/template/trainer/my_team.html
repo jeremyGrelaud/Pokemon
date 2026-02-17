@@ -101,12 +101,15 @@
                   </div>
                   <div class="hp-bar">
                     {% widthratio pokemon.current_hp pokemon.max_hp 100 as hp_percent %}
-                    <div class="hp-bar-fill 
-                      {% if hp_percent > 50 %}hp-high
-                      {% elif hp_percent > 20 %}hp-medium
-                      {% else %}hp-low{% endif %}"
+                    {% with hp_percent_int=hp_percent|default:0|add:0 %}
+                    <div class="hp-bar-fill
+                      {% if hp_percent_int > 50 %}hp-high
+                      {% elif hp_percent_int > 20 %}hp-medium
+                      {% else %}hp-low
+                      {% endif %}"
                       style="width: {{ hp_percent }}%">
                     </div>
+                    {% endwith %}
                   </div>
                 </div>
 

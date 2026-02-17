@@ -114,13 +114,15 @@
           </div>
           <div class="hp-bar" style="height: 25px;">
             {% widthratio battle.player_pokemon.current_hp battle.player_pokemon.max_hp 100 as hp_percent %}
+            {% with hp_percent_int=hp_percent|default:0|add:0 %}
             <div class="hp-bar-fill 
-              {% if hp_percent > 50 %}hp-high
-              {% elif hp_percent > 20 %}hp-medium
+              {% if hp_percent_int > 50 %}hp-high
+              {% elif hp_percent_int > 20 %}hp-medium
               {% else %}hp-low{% endif %}"
               style="width: {{ hp_percent }}%; line-height: 25px; text-align: center; color: white; font-weight: bold;">
               {{ hp_percent }}%
             </div>
+            {% endwith %}
           </div>
         </div>
 
@@ -214,13 +216,15 @@
           </div>
           <div class="hp-bar" style="height: 25px;">
             {% widthratio battle.opponent_pokemon.current_hp battle.opponent_pokemon.max_hp 100 as opp_hp_percent %}
+            {% with opp_hp_percent_int=opp_hp_percent|default:0|add:0 %}
             <div class="hp-bar-fill 
-              {% if opp_hp_percent > 50 %}hp-high
-              {% elif opp_hp_percent > 20 %}hp-medium
+              {% if opp_hp_percent_int > 50 %}hp-high
+              {% elif opp_hp_percent_int > 20 %}hp-medium
               {% else %}hp-low{% endif %}"
               style="width: {{ opp_hp_percent }}%; line-height: 25px; text-align: center; color: white; font-weight: bold;">
               {{ opp_hp_percent }}%
             </div>
+            {% endwith %}
           </div>
         </div>
 
