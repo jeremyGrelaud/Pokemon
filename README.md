@@ -2,7 +2,8 @@
 
 For trainer sprites credit to pokemon showdown : https://play.pokemonshowdown.com/sprites/trainers/?filter=credited
 To https://bulbapedia.bulbagarden.net for pokeball sprites and refrences to formulas (dmg, exp, catch, ...)
-
+Possibly https://github.com/msikma/pokesprite/tree/master/items for items  & HM sprites
+https://www.pokepedia.fr
 
 # Pokemon
 For education purpose only
