@@ -7,9 +7,8 @@ Helpers pour la création de Pokémon, combats, NPCs, etc.
 import random
 import math
 from django.db.models import Q
-from myPokemonApp.views.AchievementViews import trigger_achievements_after_capture
 from myPokemonApp.models import *
-
+import logging
 
 # ============================================================================
 # HELPERS COMMUNS
@@ -418,7 +417,7 @@ def create_gym_leader(username, gym_name, city, badge_name, specialty_type, badg
     from .models.Trainer import GymLeader
     
     # Créer le dresseur
-    trainer = Trainer.objects.create(
+    trainer, created = Trainer.objects.get_or_create(
         username=username,
         trainer_type='gym_leader',
         location=city,
@@ -429,9 +428,15 @@ def create_gym_leader(username, gym_name, city, badge_name, specialty_type, badg
         is_npc=True,  # Default value 
         npc_class="GymLeader",
     )
+
+    if not created:
+        logging.info(f"[skip] Gym Leader {username} existe deja")
+        gym, _ = GymLeader.objects.get_or_create(trainer=trainer)
+        return trainer, gym
+
     
     # Créer les infos de l'arène
-    gym = GymLeader.objects.create(
+    gym, _ = GymLeader.objects.get_or_create(
         trainer=trainer,
         gym_name=gym_name,
         gym_city=city,
@@ -462,11 +467,16 @@ def create_gym_leader(username, gym_name, city, badge_name, specialty_type, badg
         pokemon.save()
         
         # Apprendre les capacités
+        # get_or_create sur les moves pour eviter UNIQUE constraint
+        seen_moves = set()
         for move in poke_data.get('moves', []):
-            PokemonMoveInstance.objects.create(
+            if move.id in seen_moves:
+                continue
+            seen_moves.add(move.id)
+            PokemonMoveInstance.objects.get_or_create(
                 pokemon=pokemon,
                 move=move,
-                current_pp=move.pp
+                defaults={'current_pp': move.pp}
             )
     
     return trainer, gym
@@ -479,7 +489,7 @@ def create_npc_trainer(username, trainer_type, location, team_data, intro_text=N
     from .models import Trainer, PlayablePokemon
     from .models.PlayablePokemon import PokemonMoveInstance
     
-    trainer = Trainer.objects.create(
+    trainer, created = Trainer.objects.get_or_create(
         username=username,
         trainer_type=trainer_type,
         location=location,
@@ -490,6 +500,10 @@ def create_npc_trainer(username, trainer_type, location, team_data, intro_text=N
         is_npc=True,  # Default value 
         npc_class="Gamin", #Default
     )
+
+    if not created:
+        logging.info(f"[skip] NPC trainer {username} existe deja")
+        return trainer
     
     for i, poke_data in enumerate(team_data, 1):
         pokemon = PlayablePokemon(
@@ -512,11 +526,16 @@ def create_npc_trainer(username, trainer_type, location, team_data, intro_text=N
         pokemon.save()
         
         # Apprendre les capacités
+        # get_or_create sur les moves pour eviter UNIQUE constraint
+        seen_moves = set()
         for move in poke_data.get('moves', []):
-            PokemonMoveInstance.objects.create(
+            if move.id in seen_moves:
+                continue
+            seen_moves.add(move.id)
+            PokemonMoveInstance.objects.get_or_create(
                 pokemon=pokemon,
                 move=move,
-                current_pp=move.pp
+                defaults={'current_pp': move.pp}
             )
     
     return trainer
@@ -934,6 +953,7 @@ def capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shake
     """Gère la capture réussie d'un Pokémon"""
     
     from myPokemonApp.models import PlayablePokemon, CaptureJournal
+    from myPokemonApp.views.AchievementViews import trigger_achievements_after_capture
     
     # Créer le nouveau PlayablePokemon pour le trainer
     captured = PlayablePokemon.objects.create(

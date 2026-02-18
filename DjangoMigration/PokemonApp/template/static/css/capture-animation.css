@@ -62,7 +62,7 @@
   transform: translate(-50%, -50%);
   width: 80px;
   height: 80px;
-  background-image: url('/static/img/pokeballSprites/Dream_Poké_Ball_Sprite.png');
+  background-image: url('/static/img/pokeballSprites/pokeball_Sprite.png');
   background-size: contain;
   background-repeat: no-repeat;
   filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
@@ -70,15 +70,15 @@
 
 /* Différents types de balls */
 .pokeball-capture.superball {
-  background-image: url('/static/img/pokeballSprites/Bag_Great_Ball_SV_Sprite.png');
+  background-image: url('/static/img/pokeballSprites/great ball_Sprite.png');
 }
 
 .pokeball-capture.ultraball {
-  background-image: url('/static/img/pokeballSprites/Dream_Ultra_Ball_Sprite.png');
+  background-image: url('/static/img/pokeballSprites/ultra ball_Sprite.png');
 }
 
 .pokeball-capture.masterball {
-  background-image: url('/static/img/pokeballSprites/Dream_Master_Ball_Sprite.png');
+  background-image: url('/static/img/pokeballSprites/master ball_Sprite.png');
 }
 
 /* TODO complete with other balls */

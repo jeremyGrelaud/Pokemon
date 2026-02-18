@@ -4,10 +4,14 @@ Initialise tous les achievements du jeu
 
 from myPokemonApp.models import Achievement
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 def init_achievements():
     """Crée tous les succès"""
     
-    print("🏆 Initialisation des achievements...")
+    logging.info("🏆 Initialisation des achievements...")
     
     achievements = [
         # ===== COMBAT =====
@@ -166,9 +170,9 @@ def init_achievements():
         )
         if was_created:
             created += 1
-            print(f"  ✅ {data['name']}")
+            logging.info(f"  ✅ {data['name']}")
         else:
-            print(f"  ⏭️  {data['name']}")
+            logging.info(f"  ⏭️  {data['name']}")
     
-    print(f"\n✅ {created} achievements créés sur {len(achievements)}")
+    logging.info(f"\n✅ {created} achievements créés sur {len(achievements)}")
 

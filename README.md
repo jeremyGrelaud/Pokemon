@@ -38,6 +38,5 @@ python manage.py createsuperuser
 
 To init database in one command :
 ```
-python manage.py shell -c "from myPokemonApp.tasks.initializeDatabase import scriptToInitializeDatabase; from myPokemonApp.tasks.initializeItemsAndNpcs import run_full_initialization; scriptToInitializeDatabase(); run_full_initialization(); from myPokemonApp.tasks.initShops import initShops; initShops(); from myPokemonApp.tasks.initPokeCenters import scrip
-tToInitializePokeCenters; scriptToInitializePokeCenters();from myPokemonApp.tasks.initPokeballItem import scriptToInitNewPokeBalls; scriptToInitNewPokeBalls();"
+python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase()"
 ```
