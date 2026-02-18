@@ -1,23 +1,33 @@
 #!/usr/bin/python3
 """
-Fonctions utilitaires pour le jeu Pokémon
-Helpers pour la création de Pokémon, combats, NPCs, etc.
+Fonctions utilitaires pour le jeu Pokemon Gen 1.
+
+Organisation :
+  1. Helpers trainer / pokemon
+  2. Gestion des moves
+  3. Creation de Pokemon  (sauvage, starter, NPC)
+  4. Creation de NPCs et dresseurs
+  5. Combats  (demarrage, IA, XP, fin de combat)
+  6. Serialisation JSON  (pour les API views)
+  7. Capture
+  8. Rencontres sauvages
+  9. Gestion inventaire
+ 10. Utilitaires divers (PC, natures, stats)
 """
 
 import random
-import math
-from django.db.models import Q
-from myPokemonApp.models import *
 import logging
+from myPokemonApp.models import *
 
-# ============================================================================
-# HELPERS COMMUNS
-# ============================================================================
+
+# =============================================================================
+# 1. HELPERS TRAINER / POKEMON
+# =============================================================================
 
 def get_first_alive_pokemon(trainer):
     """
-    Retourne le premier Pokémon vivant de l'équipe d'un dresseur.
-    Pattern récurrent dans les views, centralisé ici.
+    Retourne le premier Pokemon vivant de l'equipe active d'un dresseur.
+    Pattern recurrent centralise ici pour eviter de le reecrire partout.
     """
     return trainer.pokemon_team.filter(
         is_in_party=True,
@@ -26,9 +36,7 @@ def get_first_alive_pokemon(trainer):
 
 
 def get_or_create_wild_trainer():
-    """
-    Récupère ou crée le Trainer 'Wild' utilisé pour les Pokémon sauvages.
-    """
+    """Recupere ou cree le Trainer 'Wild' utilise pour les Pokemon sauvages."""
     trainer, _ = Trainer.objects.get_or_create(
         username='Wild',
         defaults={'trainer_type': 'wild'}
@@ -36,114 +44,19 @@ def get_or_create_wild_trainer():
     return trainer
 
 
-def copy_moves_to_pokemon(source_pokemon, target_pokemon):
-    """
-    Copie les PokemonMoveInstance d'un Pokémon source vers un Pokémon cible.
-    Utilisé lors de la capture (copie les moves du Pokémon sauvage).
-    Hard cap à 4 moves maximum (règle des jeux Pokémon).
-    """
-    from myPokemonApp.models import PokemonMoveInstance
-
-    # Prendre les moves du source, limités à 4
-    source_moves = source_pokemon.pokemonmoveinstance_set.all()[:4]
-
-    for move_instance in source_moves:
-        # Vérifier qu'on ne dépasse pas 4 sur la cible
-        if target_pokemon.pokemonmoveinstance_set.count() >= 4:
-            break
-        PokemonMoveInstance.objects.get_or_create(
-            pokemon=target_pokemon,
-            move=move_instance.move,
-            defaults={'current_pp': move_instance.current_pp}
-        )
-
-
-
-
-def create_wild_pokemon(species, level, location=None):
-    """
-    Crée un Pokémon sauvage à un niveau donné
-    """
-    from .models import PlayablePokemon
-    
-    wild_trainer = get_or_create_wild_trainer()
-    
-    # IVs aléatoires (0-31)
-    ivs = {
-        'iv_hp': random.randint(0, 31),
-        'iv_attack': random.randint(0, 31),
-        'iv_defense': random.randint(0, 31),
-        'iv_special_attack': random.randint(0, 31),
-        'iv_special_defense': random.randint(0, 31),
-        'iv_speed': random.randint(0, 31),
-    }
-    
-    # Créer le Pokémon
-    pokemon = PlayablePokemon(
-        species=species,
-        trainer=wild_trainer,
-        level=level,
-        current_exp=0,
-        original_trainer="Wild",
-        caught_location=location,
-        **ivs
-    )
-    
-    # Calculer les stats
-    pokemon.calculate_stats()
-    pokemon.current_hp = pokemon.max_hp
-    pokemon.save()
-    
-    # Apprendre les capacités appropriées au niveau
-    learn_moves_up_to_level(pokemon, level)
-    
-    return pokemon
-
-
-def create_starter_pokemon(species, trainer, nickname=None):
-    """
-    Crée un Pokémon de départ pour un joueur
-    """
-    from .models import PlayablePokemon
-    
-    # IVs légèrement meilleurs pour les starters
-    ivs = {
-        'iv_hp': random.randint(10, 31),
-        'iv_attack': random.randint(10, 31),
-        'iv_defense': random.randint(10, 31),
-        'iv_special_attack': random.randint(10, 31),
-        'iv_special_defense': random.randint(10, 31),
-        'iv_speed': random.randint(10, 31),
-    }
-    
-    pokemon = PlayablePokemon(
-        species=species,
-        trainer=trainer,
-        nickname=nickname,
-        level=5,
-        current_exp=0,
-        original_trainer=trainer.username,
-        caught_location="Pallet Town",
-        party_position=1,
-        **ivs
-    )
-    
-    pokemon.calculate_stats()
-    pokemon.current_hp = pokemon.max_hp
-    pokemon.save()
-    
-    # Apprendre les capacités de niveau 1-5
-    learn_moves_up_to_level(pokemon, 5)
-    
-    return pokemon
-
+# =============================================================================
+# 2. GESTION DES MOVES
+# =============================================================================
 
 def learn_moves_up_to_level(pokemon, level):
     """
-    Fait apprendre au Pokémon toutes les capacités jusqu'au niveau donné.
-    Garde seulement les 4 dernières (comme dans les jeux).
-    Respecte la limite de 4 moves même si la fonction est appelée plusieurs fois.
-    pokemon : PlayablePokemon
+    Synchronise les PokemonMoveInstance avec les 4 dernieres capacites
+    apprises jusqu'au niveau donne.
+
+    - Deduplique (si un move apparait a plusieurs niveaux, garde le plus recent).
+    - Supprime les moves hors du set final (utile apres level-up ou relance).
+    - Ajoute les moves manquants via get_or_create (idempotent).
+    - Hard cap a 4 moves (regle Gen 1).
     """
     from .models.PlayablePokemon import PokemonMoveInstance
 
@@ -151,26 +64,16 @@ def learn_moves_up_to_level(pokemon, level):
         level_learned__lte=level
     ).order_by('level_learned')
 
-    # Dédoublonner : si un move apparaît à plusieurs niveaux, garder la dernière occurrence
-    # Mais conserver l'ordre d'insertion (= ordre chronologique d'apprentissage)
     seen_moves = {}
     for lm in learnable:
-        seen_moves[lm.move_id] = lm
+        seen_moves[lm.move_id] = lm  # garde la derniere occurrence par move_id
 
-    # Les 4 dernières capacités apprises jusqu'à ce niveau
-    all_moves = list(seen_moves.values())
+    all_moves   = list(seen_moves.values())
     final_moves = all_moves[-4:] if len(all_moves) > 4 else all_moves
-    final_move_ids = {lm.move_id for lm in final_moves}
+    final_ids   = {lm.move_id for lm in final_moves}
 
-    # Supprimer les moves qui ne font PAS partie du set final
-    # (cas où la fonction est rappelée après un level-up, ou données corrompues)
-    PokemonMoveInstance.objects.filter(
-        pokemon=pokemon
-    ).exclude(
-        move_id__in=final_move_ids
-    ).delete()
+    PokemonMoveInstance.objects.filter(pokemon=pokemon).exclude(move_id__in=final_ids).delete()
 
-    # Ajouter les moves manquants (max 4 au total)
     for lm in final_moves:
         PokemonMoveInstance.objects.get_or_create(
             pokemon=pokemon,
@@ -179,733 +82,646 @@ def learn_moves_up_to_level(pokemon, level):
         )
 
 
-def catch_pokemon(wild_pokemon, trainer, pokeball_item):
+def copy_moves_to_pokemon(source_pokemon, target_pokemon):
     """
-    Tente de capturer un Pokémon sauvage
-    Retourne (success: bool, message: str)
+    Copie les PokemonMoveInstance du source vers la cible.
+    Utilise lors de la capture. Hard cap a 4 moves.
     """
-    # Formule de capture Gen 1
-    catch_rate = wild_pokemon.species.catch_rate
-    ball_modifier = pokeball_item.catch_rate_modifier
-    
-    # Modificateur de HP
-    hp_modifier = (3 * wild_pokemon.max_hp - 2 * wild_pokemon.current_hp) / (3 * wild_pokemon.max_hp)
-    
-    # Modificateur de statut
-    status_modifier = 1.0
-    if wild_pokemon.status_condition in ['sleep', 'freeze']:
-        status_modifier = 2.0
-    elif wild_pokemon.status_condition in ['paralysis', 'poison', 'burn']:
-        status_modifier = 1.5
-    
-    # Calcul final
-    capture_value = (catch_rate * ball_modifier * hp_modifier * status_modifier) / 255
-    
-    # Jet aléatoire
-    if random.random() < capture_value:
-        # Capture réussie!
-        wild_pokemon.trainer = trainer
-        wild_pokemon.original_trainer = trainer.username
-        wild_pokemon.pokeball_used = pokeball_item.name
-        wild_pokemon.friendship = 70
-        
-        # Position dans l'équipe
-        party_count = trainer.pokemon_team.filter(is_in_party=True).count()
-        if party_count < 6:
-            wild_pokemon.is_in_party = True
-            wild_pokemon.party_position = party_count + 1
-        else:
-            wild_pokemon.is_in_party = False
-        
-        wild_pokemon.save()
-        
-        return True, f"{wild_pokemon.species.name} a été capturé!"
-    else:
-        # Capture ratée
-        return False, f"{wild_pokemon.species.name} s'est libéré de la ball!"
+    from myPokemonApp.models import PokemonMoveInstance
+
+    for mi in source_pokemon.pokemonmoveinstance_set.all()[:4]:
+        if target_pokemon.pokemonmoveinstance_set.count() >= 4:
+            break
+        PokemonMoveInstance.objects.get_or_create(
+            pokemon=target_pokemon,
+            move=mi.move,
+            defaults={'current_pp': mi.current_pp}
+        )
 
 
-# ============================================================================
-# GESTION DES COMBATS
-# ============================================================================
-
-def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None, battle_type='trainer'):
+def ensure_has_moves(pokemon):
     """
-    Démarre un nouveau combat
+    Garantit qu'un Pokemon a au moins un move.
+    Fallback sur Charge (Tackle) pour les Pokemon sans learnset configure.
+    """
+    from myPokemonApp.models import PokemonMoveInstance
+
+    if not pokemon.pokemonmoveinstance_set.exists():
+        tackle = (
+            PokemonMove.objects.filter(name__icontains='Charge').first()
+            or PokemonMove.objects.first()
+        )
+        if tackle:
+            PokemonMoveInstance.objects.get_or_create(
+                pokemon=pokemon,
+                move=tackle,
+                defaults={'current_pp': tackle.pp}
+            )
+
+
+# =============================================================================
+# 3. CREATION DE POKEMON
+# =============================================================================
+
+def _build_ivs(iv_min=0, iv_max=31):
+    """Genere un dict d'IVs aleatoires entre iv_min et iv_max."""
+    iv_stats = ('iv_hp', 'iv_attack', 'iv_defense',
+                'iv_special_attack', 'iv_special_defense', 'iv_speed')
+    return {stat: random.randint(iv_min, iv_max) for stat in iv_stats}
+
+
+def _finalize_pokemon(pokemon, level):
+    """
+    Calcule les stats, fixe les HP a leur maximum, apprend les moves.
+    Factorise le pattern commun a toutes les creations de Pokemon.
+    """
+    pokemon.calculate_stats()
+    pokemon.current_hp = pokemon.max_hp
+    pokemon.save()
+    learn_moves_up_to_level(pokemon, level)
+    return pokemon
+
+
+def create_wild_pokemon(species, level, location=None):
+    """
+    Cree un Pokemon sauvage avec des IVs aleatoires (0-31) et garantit
+    au moins un move via ensure_has_moves().
+
+    Args:
+        species:  Pokemon (espece)
+        level:    int
+        location: str optionnel (nom de la zone de capture)
+
+    Returns:
+        PlayablePokemon sauvegarde avec stats et moves
+    """
+    from .models import PlayablePokemon
+
+    pokemon = PlayablePokemon(
+        species=species,
+        trainer=get_or_create_wild_trainer(),
+        level=level,
+        current_exp=0,
+        original_trainer='Wild',
+        caught_location=location,
+        is_in_party=True,
+        **_build_ivs(0, 31)
+    )
+    _finalize_pokemon(pokemon, level)
+    ensure_has_moves(pokemon)
+    return pokemon
+
+
+def create_starter_pokemon(species, trainer, nickname=None):
+    """
+    Cree un Pokemon de depart pour un joueur (niveau 5, IVs favorables 10-31).
+    """
+    from .models import PlayablePokemon
+
+    pokemon = PlayablePokemon(
+        species=species,
+        trainer=trainer,
+        nickname=nickname,
+        level=5,
+        current_exp=0,
+        original_trainer=trainer.username,
+        caught_location='Pallet Town',
+        party_position=1,
+        **_build_ivs(10, 31)
+    )
+    return _finalize_pokemon(pokemon, 5)
+
+
+# =============================================================================
+# 4. CREATION DE NPCs ET DRESSEURS
+# =============================================================================
+
+def _create_npc_pokemon(species, trainer, level, username, party_position,
+                        iv_min=0, iv_max=20):
+    """
+    Cree et sauvegarde un PlayablePokemon pour un NPC avec ses stats calculees.
+    Helper interne partage entre create_gym_leader et create_npc_trainer.
+    """
+    from .models import PlayablePokemon
+
+    pokemon = PlayablePokemon(
+        species=species,
+        trainer=trainer,
+        level=level,
+        original_trainer=username,
+        is_in_party=True,
+        party_position=party_position,
+        **_build_ivs(iv_min, iv_max)
+    )
+    pokemon.calculate_stats()
+    pokemon.current_hp = pokemon.max_hp
+    pokemon.save()
+    return pokemon
+
+
+def _assign_npc_moves(pokemon, moves):
+    """
+    Assigne une liste de moves a un Pokemon NPC.
+    get_or_create + deduplication pour eviter les violations UNIQUE constraint.
+    """
+    from .models.PlayablePokemon import PokemonMoveInstance
+
+    seen = set()
+    for move in moves:
+        if move.id in seen:
+            continue
+        seen.add(move.id)
+        PokemonMoveInstance.objects.get_or_create(
+            pokemon=pokemon,
+            move=move,
+            defaults={'current_pp': move.pp}
+        )
+
+
+def create_gym_leader(username, gym_name, city, badge_name,
+                      specialty_type, badge_order, team_data):
+    """
+    Cree un Champion d'Arene avec son equipe. Idempotent (get_or_create).
+
+    team_data = [
+        {'species': Pokemon, 'level': 14, 'moves': [move1, move2]},
+        ...
+    ]
+    """
+    from .models import Trainer
+    from .models.Trainer import GymLeader
+
+    # IMPORTANT : le lookup se fait UNIQUEMENT sur username.
+    # Tous les autres champs vont dans 'defaults' pour eviter que get_or_create
+    # echoue si l'un d'eux differe lors d'une relance.
+    trainer, created = Trainer.objects.get_or_create(
+        username=username,
+        defaults={
+            'trainer_type': 'gym_leader',
+            'location': city,
+            'intro_text': f"Bienvenue a l'arene de {city} ! Je suis {username} !",
+            'defeat_text': f"Tu m'as battu... Tu merites le badge {badge_name} !",
+            'victory_text': "Tu n'es pas encore pret pour mon badge !",
+            'can_rebattle': True,
+            'is_npc': True,
+            'npc_class': 'GymLeader',
+        }
+    )
+
+    if not created:
+        logging.info(f"  [skip] Gym Leader '{username}' existe deja")
+        gym, _ = GymLeader.objects.get_or_create(trainer=trainer)
+        return trainer, gym
+
+    gym, _ = GymLeader.objects.get_or_create(
+        trainer=trainer,
+        defaults={
+            'gym_name': gym_name,
+            'gym_city': city,
+            'badge_name': badge_name,
+            'specialty_type': specialty_type,
+            'badge_order': badge_order,
+        }
+    )
+
+    for i, poke_data in enumerate(team_data, 1):
+        # IVs eleves pour les champions (20-31)
+        pokemon = _create_npc_pokemon(
+            poke_data['species'], trainer, poke_data['level'],
+            username, i, iv_min=20, iv_max=31
+        )
+        _assign_npc_moves(pokemon, poke_data.get('moves', []))
+
+    return trainer, gym
+
+
+def create_npc_trainer(username, trainer_type, location, team_data,
+                       intro_text=None):
+    """
+    Cree un dresseur NPC generique avec son equipe. Idempotent (get_or_create).
+    """
+    from .models import Trainer
+
+    trainer, created = Trainer.objects.get_or_create(
+        username=username,
+        defaults={
+            'trainer_type': trainer_type,
+            'location': location,
+            'intro_text': intro_text or f"{username} veut combattre !",
+            'defeat_text': "J'ai perdu...",
+            'victory_text': "J'ai gagne !",
+            'can_rebattle': False,
+            'is_npc': True,
+            'npc_class': 'Gamin',
+        }
+    )
+
+    if not created:
+        logging.info(f"  [skip] NPC '{username}' existe deja")
+        return trainer
+
+    for i, poke_data in enumerate(team_data, 1):
+        # IVs moyens pour les dresseurs normaux (0-20)
+        pokemon = _create_npc_pokemon(
+            poke_data['species'], trainer, poke_data['level'],
+            username, i, iv_min=0, iv_max=20
+        )
+        _assign_npc_moves(pokemon, poke_data.get('moves', []))
+
+    return trainer
+
+
+def create_rival(username, player_trainer):
+    """Cree un rival lie au joueur."""
+    from .models import Trainer
+
+    return Trainer.objects.create(
+        username=username,
+        trainer_type='rival',
+        intro_text=f"Salut {player_trainer.username} ! On fait un combat ?",
+        defeat_text="Tu t'ameliores... Mais je serai toujours meilleur !",
+        victory_text="Haha ! J'ai gagne comme toujours !",
+        can_rebattle=True,
+        money=0,
+        is_npc=True,
+        npc_class='Rival',
+    )
+
+
+# =============================================================================
+# 5. COMBATS
+# =============================================================================
+
+# --- Demarrage ---
+
+def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
+                 battle_type='trainer'):
+    """
+    Demarre un nouveau combat et retourne (Battle, message_intro).
+
+    Cas d'usage :
+        battle, msg = start_battle(trainer, opponent_trainer=npc)
+        battle, msg = start_battle(trainer, wild_pokemon=wild)
     """
     from .models import Battle
-    
-    # Pokémon actif du joueur
-    player_pokemon = player_trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).order_by('party_position').first()
-    
+
+    player_pokemon = get_first_alive_pokemon(player_trainer)
     if not player_pokemon:
-        return None, "Aucun Pokémon disponible pour combattre!"
-    
-    # Pokémon adverse
+        return None, "Aucun Pokemon disponible pour combattre !"
+
     if wild_pokemon:
         opponent_pokemon = wild_pokemon
         battle_type = 'wild'
     elif opponent_trainer:
-        opponent_pokemon = opponent_trainer.pokemon_team.filter(
-            is_in_party=True,
-            current_hp__gt=0
-        ).order_by('party_position').first()
-        
+        opponent_pokemon = get_first_alive_pokemon(opponent_trainer)
         if not opponent_pokemon:
-            return None, "L'adversaire n'a pas de Pokémon disponible!"
+            return None, "L'adversaire n'a pas de Pokemon disponible !"
     else:
-        return None, "Pas d'adversaire défini!"
-    
-    # Créer le combat
+        return None, "Pas d'adversaire defini !"
+
     battle = Battle.objects.create(
         battle_type=battle_type,
         player_trainer=player_trainer,
         opponent_trainer=opponent_trainer,
         player_pokemon=player_pokemon,
         opponent_pokemon=opponent_pokemon,
-        is_active=True
+        is_active=True,
     )
-    
-    # Message d'intro
-    if battle_type == 'wild':
-        msg = f"Un {opponent_pokemon.species.name} sauvage apparaît!"
-    else:
-        msg = opponent_trainer.intro_text or f"{opponent_trainer.username} veut combattre!"
-    
+
+    msg = (
+        f"Un {opponent_pokemon.species.name} sauvage apparait !"
+        if battle_type == 'wild'
+        else (opponent_trainer.intro_text or f"{opponent_trainer.username} veut combattre !")
+    )
     battle.add_to_log(msg)
-    battle.add_to_log(f"{player_trainer.username} envoie {player_pokemon}!")
-    battle.add_to_log(f"{opponent_trainer.username if opponent_trainer else 'Wild'} envoie {opponent_pokemon}!")
-    
+    battle.add_to_log(f"{player_trainer.username} envoie {player_pokemon} !")
+    opponent_label = opponent_trainer.username if opponent_trainer else 'Wild'
+    battle.add_to_log(f"{opponent_label} envoie {opponent_pokemon} !")
+
     return battle, msg
 
 
-def ai_choose_action(pokemon, opponent, battle):
+# --- IA adversaire ---
+
+def get_opponent_ai_action(battle):
     """
-    IA simple pour choisir l'action d'un Pokémon adverse
-    Retourne un dictionnaire d'action
+    Determine l'action de l'adversaire pour ce tour.
+
+    Priorites (dans l'ordre) :
+      1. HP < 20% et potion disponible  -> utiliser potion  (30 % de chance)
+      2. HP < 10% et remplacant dispo   -> changer          (50 % de chance)
+      3. Choisir le move le plus efficace (puissance x type x STAB)
+      4. Struggle si plus aucun PP
+
+    Retourne un dict action compatible avec battle.execute_turn().
     """
     from .models.PlayablePokemon import PokemonMoveInstance
-    
-    # Si HP < 20%, 30% de chance d'utiliser une potion si disponible
+
+    pokemon  = battle.opponent_pokemon
+    opponent = battle.player_pokemon
+
+    # 1. Utiliser une potion si HP critique
     if pokemon.current_hp < pokemon.max_hp * 0.2:
-        trainer = pokemon.trainer
-        potions = trainer.inventory.filter(
-            item__item_type='potion',
-            quantity__gt=0
+        potions = pokemon.trainer.inventory.filter(
+            item__item_type='potion', quantity__gt=0
         )
         if potions.exists() and random.random() < 0.3:
-            potion = potions.first().item
-            return {
-                'type': 'item',
-                'item': potion,
-                'target': pokemon
-            }
-    
-    # Si le Pokémon est KO ou presque, changer si possible
+            return {'type': 'item', 'item': potions.first().item, 'target': pokemon}
+
+    # 2. Changer si presque KO
     if pokemon.current_hp < pokemon.max_hp * 0.1:
-        available_pokemon = pokemon.trainer.pokemon_team.filter(
-            is_in_party=True,
-            current_hp__gt=0
+        bench = pokemon.trainer.pokemon_team.filter(
+            is_in_party=True, current_hp__gt=0
         ).exclude(id=pokemon.id)
-        
-        if available_pokemon.exists() and random.random() < 0.5:
-            return {
-                'type': 'switch',
-                'pokemon': random.choice(list(available_pokemon))
-            }
-    
-    # Choisir une attaque
-    moves = PokemonMoveInstance.objects.filter(
-        pokemon=pokemon,
-        current_pp__gt=0
-    )
-    
+        if bench.exists() and random.random() < 0.5:
+            return {'type': 'switch', 'pokemon': random.choice(list(bench))}
+
+    # 3. Meilleur move selon efficacite
+    moves = PokemonMoveInstance.objects.filter(pokemon=pokemon, current_pp__gt=0)
     if not moves.exists():
-        # Pas de PP, utiliser Struggle (à implémenter)
         return {'type': 'struggle'}
-    
-    # IA simple: choisir la meilleure attaque en fonction de l'efficacité
-    best_move = None
-    best_score = -1
-    
-    for move_instance in moves:
-        move = move_instance.move
-        score = move.power
-        
-        # Bonus pour les attaques super efficaces
-        effectiveness = battle.get_type_effectiveness(move.type, opponent)
-        score *= effectiveness
-        
-        # Bonus STAB
-        if move.type == pokemon.species.primary_type or move.type == pokemon.species.secondary_type:
+
+    best_move, best_score = None, -1
+    for mi in moves:
+        score = (mi.move.power or 0) * battle.get_type_effectiveness(mi.move.type, opponent)
+        if mi.move.type in (pokemon.species.primary_type, pokemon.species.secondary_type):
             score *= 1.5
-        
         if score > best_score:
-            best_score = score
-            best_move = move
-    
-    return {
-        'type': 'attack',
-        'move': best_move
-    }
+            best_score, best_move = score, mi.move
+
+    return {'type': 'attack', 'move': best_move}
 
 
-def check_battle_end(battle):
-    """
-    Vérifie si le combat est terminé
-    Retourne (is_ended: bool, winner: Trainer, message: str)
-    """
-    player_has_pokemon = battle.player_trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).exists()
-    
-    opponent_has_pokemon = True
-    if battle.opponent_trainer:
-        opponent_has_pokemon = battle.opponent_trainer.pokemon_team.filter(
-            is_in_party=True,
-            current_hp__gt=0
-        ).exists()
-    else:
-        # Combat sauvage
-        opponent_has_pokemon = battle.opponent_pokemon.current_hp > 0
-    
-    if not player_has_pokemon:
-        battle.end_battle(battle.opponent_trainer)
-        return True, battle.opponent_trainer, "Vous avez perdu le combat..."
-    
-    if not opponent_has_pokemon:
-        battle.end_battle(battle.player_trainer)
-        
-        # Distribuer l'expérience
-        if battle.opponent_pokemon.is_fainted():
-            battle_type = 'wild' if not battle.opponent_trainer else 'trainer'
-            exp = calculate_exp_gain(battle.opponent_pokemon, battle_type)
-            battle.player_pokemon.gain_exp(exp)
-            battle.add_to_log(f"{battle.player_pokemon} gagne {exp} points d'expérience!")
-        
-        msg = "Vous avez gagné le combat!"
-        if battle.opponent_trainer:
-            msg = battle.opponent_trainer.defeat_text or msg
-        
-        return True, battle.player_trainer, msg
-    
-    return False, None, ""
-
-
-# NOTE: calculate_exp_gain unifiée ci-dessous (signature: defeated_pokemon, battle_type='wild')
-
-
-# ============================================================================
-# CRÉATION DE NPCs ET DRESSEURS
-# ============================================================================
-
-def create_gym_leader(username, gym_name, city, badge_name, specialty_type, badge_order, team_data):
-    """
-    Crée un Champion d'Arène avec son équipe
-    
-    team_data = [
-        {'species': Pokemon object, 'level': 14, 'moves': [move1, move2]},
-        ...
-    ]
-    """
-    from .models import Trainer, PlayablePokemon
-    from .models.PlayablePokemon import PokemonMoveInstance
-    from .models.Trainer import GymLeader
-    
-    # Créer le dresseur
-    trainer, created = Trainer.objects.get_or_create(
-        username=username,
-        trainer_type='gym_leader',
-        location=city,
-        intro_text=f"Bienvenue à l'arène de {city}! Je suis {username}, champion de type {specialty_type.name}!",
-        defeat_text=f"Tu m'as battu... Tu mérites le badge {badge_name}!",
-        victory_text=f"Tu n'es pas encore prêt pour mon badge!",
-        can_rebattle=True,
-        is_npc=True,  # Default value 
-        npc_class="GymLeader",
-    )
-
-    if not created:
-        logging.info(f"[skip] Gym Leader {username} existe deja")
-        gym, _ = GymLeader.objects.get_or_create(trainer=trainer)
-        return trainer, gym
-
-    
-    # Créer les infos de l'arène
-    gym, _ = GymLeader.objects.get_or_create(
-        trainer=trainer,
-        gym_name=gym_name,
-        gym_city=city,
-        badge_name=badge_name,
-        specialty_type=specialty_type,
-        badge_order=badge_order
-    )
-    
-    # Créer l'équipe
-    for i, poke_data in enumerate(team_data, 1):
-        pokemon = PlayablePokemon(
-            species=poke_data['species'],
-            trainer=trainer,
-            level=poke_data['level'],
-            original_trainer=username,
-            is_in_party=True,
-            party_position=i,
-            # IVs élevés pour les champions
-            iv_hp=random.randint(20, 31),
-            iv_attack=random.randint(20, 31),
-            iv_defense=random.randint(20, 31),
-            iv_special_attack=random.randint(20, 31),
-            iv_special_defense=random.randint(20, 31),
-            iv_speed=random.randint(20, 31),
-        )
-        pokemon.calculate_stats()
-        pokemon.current_hp = pokemon.max_hp
-        pokemon.save()
-        
-        # Apprendre les capacités
-        # get_or_create sur les moves pour eviter UNIQUE constraint
-        seen_moves = set()
-        for move in poke_data.get('moves', []):
-            if move.id in seen_moves:
-                continue
-            seen_moves.add(move.id)
-            PokemonMoveInstance.objects.get_or_create(
-                pokemon=pokemon,
-                move=move,
-                defaults={'current_pp': move.pp}
-            )
-    
-    return trainer, gym
-
-
-def create_npc_trainer(username, trainer_type, location, team_data, intro_text=None):
-    """
-    Crée un dresseur NPC générique avec son équipe
-    """
-    from .models import Trainer, PlayablePokemon
-    from .models.PlayablePokemon import PokemonMoveInstance
-    
-    trainer, created = Trainer.objects.get_or_create(
-        username=username,
-        trainer_type=trainer_type,
-        location=location,
-        intro_text=intro_text or f"{username} veut combattre!",
-        defeat_text="J'ai perdu...",
-        victory_text="J'ai gagné!",
-        can_rebattle=False,
-        is_npc=True,  # Default value 
-        npc_class="Gamin", #Default
-    )
-
-    if not created:
-        logging.info(f"[skip] NPC trainer {username} existe deja")
-        return trainer
-    
-    for i, poke_data in enumerate(team_data, 1):
-        pokemon = PlayablePokemon(
-            species=poke_data['species'],
-            trainer=trainer,
-            level=poke_data['level'],
-            original_trainer=username,
-            is_in_party=True,
-            party_position=i,
-            # IVs moyens pour les dresseurs normaux
-            iv_hp=random.randint(0, 20),
-            iv_attack=random.randint(0, 20),
-            iv_defense=random.randint(0, 20),
-            iv_special_attack=random.randint(0, 20),
-            iv_special_defense=random.randint(0, 20),
-            iv_speed=random.randint(0, 20),
-        )
-        pokemon.calculate_stats()
-        pokemon.current_hp = pokemon.max_hp
-        pokemon.save()
-        
-        # Apprendre les capacités
-        # get_or_create sur les moves pour eviter UNIQUE constraint
-        seen_moves = set()
-        for move in poke_data.get('moves', []):
-            if move.id in seen_moves:
-                continue
-            seen_moves.add(move.id)
-            PokemonMoveInstance.objects.get_or_create(
-                pokemon=pokemon,
-                move=move,
-                defaults={'current_pp': move.pp}
-            )
-    
-    return trainer
-
-
-def create_rival(username, player_trainer):
-    """
-    Crée un rival qui évolue avec le joueur
-    """
-    from .models import Trainer
-    
-    rival = Trainer.objects.create(
-        username=username,
-        trainer_type='rival',
-        intro_text=f"Salut {player_trainer.username}! On fait un combat?",
-        defeat_text="Tu t'améliores... Mais je serai toujours meilleur!",
-        victory_text="Haha! J'ai gagné comme toujours!",
-        can_rebattle=True,
-        money=0,  # Le rival ne donne pas d'argent
-        is_npc=True,  # Default value 
-        npc_class="Rival",
-    )
-    
-    return rival
-
-
-# ============================================================================
-# GESTION DES OBJETS
-# ============================================================================
-
-def use_item_in_battle(item, pokemon, battle):
-    """
-    Utilise un objet pendant un combat
-    """
-    if item.item_type == 'pokeball':
-        # Tenter une capture
-        if battle.battle_type == 'wild':
-            success, message = catch_pokemon(
-                battle.opponent_pokemon,
-                battle.player_trainer,
-                item
-            )
-            battle.add_to_log(message)
-            
-            if success:
-                battle.end_battle(battle.player_trainer)
-                return True, message
-            return False, message
-        else:
-            return False, "On ne peut pas capturer le Pokémon d'un dresseur!"
-    
-    elif item.item_type in ['potion', 'status']:
-        result = item.use_on_pokemon(pokemon)
-        battle.add_to_log(result)
-        return True, result
-    
-    else:
-        return False, "Cet objet ne peut pas être utilisé en combat!"
-
-
-def give_item_to_trainer(trainer, item, quantity=1):
-    """
-    Donne un objet à un dresseur
-    """
-    from .models import TrainerInventory
-    
-    inventory_item, created = TrainerInventory.objects.get_or_create(
-        trainer=trainer,
-        item=item,
-        defaults={'quantity': 0}
-    )
-    
-    inventory_item.quantity += quantity
-    inventory_item.save()
-    
-    return inventory_item
-
-
-def remove_item_from_trainer(trainer, item, quantity=1):
-    """
-    Retire un objet de l'inventaire d'un dresseur
-    """
-    from .models import TrainerInventory
-    
-    try:
-        inventory_item = TrainerInventory.objects.get(
-            trainer=trainer,
-            item=item
-        )
-        
-        if inventory_item.quantity >= quantity:
-            inventory_item.quantity -= quantity
-            if inventory_item.quantity == 0:
-                inventory_item.delete()
-            else:
-                inventory_item.save()
-            return True
-        return False
-    except TrainerInventory.DoesNotExist:
-        return False
-
-
-# ============================================================================
-# UTILITAIRES DIVERS
-# ============================================================================
-
-def heal_team(trainer):
-    """
-    Soigne complètement tous les Pokémon d'un dresseur
-    """
-    for pokemon in trainer.pokemon_team.all():
-        pokemon.heal()
-        
-        # Restaurer les PP
-        from .models.PlayablePokemon import PokemonMoveInstance
-        for move_instance in PokemonMoveInstance.objects.filter(pokemon=pokemon):
-            move_instance.restore_pp()
-
-
-def organize_party(trainer, pokemon_order):
-    """
-    Réorganise l'équipe d'un dresseur
-    pokemon_order = [pokemon_id1, pokemon_id2, ...]
-    """
-    for position, pokemon_id in enumerate(pokemon_order, 1):
-        pokemon = trainer.pokemon_team.get(id=pokemon_id)
-        pokemon.party_position = position
-        pokemon.save()
-
-
-def deposit_pokemon(pokemon):
-    """
-    Dépose un Pokémon dans le PC
-    """
-    pokemon.is_in_party = False
-    pokemon.party_position = None
-    pokemon.save()
-
-
-def withdraw_pokemon(pokemon, position):
-    """
-    Retire un Pokémon du PC
-    """
-    # Vérifier qu'il y a de la place
-    party_count = pokemon.trainer.pokemon_team.filter(is_in_party=True).count()
-    if party_count >= 6:
-        return False, "L'équipe est complète!"
-    
-    pokemon.is_in_party = True
-    pokemon.party_position = position
-    pokemon.save()
-    
-    return True, f"{pokemon} a été ajouté à l'équipe!"
-
-
-def generate_random_nature():
-    """
-    Génère une nature aléatoire
-    """
-    natures = [
-        'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
-        'Bold', 'Docile', 'Relaxed', 'Impish', 'Lax',
-        'Timid', 'Hasty', 'Serious', 'Jolly', 'Naive',
-        'Modest', 'Mild', 'Quiet', 'Bashful', 'Rash',
-        'Calm', 'Gentle', 'Sassy', 'Careful', 'Quirky'
-    ]
-    return random.choice(natures)
-
-
-def get_nature_modifiers(nature):
-    """
-    Retourne les modificateurs de stats pour une nature
-    Retourne (stat_increased, stat_decreased)
-    """
-    nature_effects = {
-        'Lonely': ('attack', 'defense'),
-        'Brave': ('attack', 'speed'),
-        'Adamant': ('attack', 'special_attack'),
-        'Naughty': ('attack', 'special_defense'),
-        'Bold': ('defense', 'attack'),
-        'Relaxed': ('defense', 'speed'),
-        'Impish': ('defense', 'special_attack'),
-        'Lax': ('defense', 'special_defense'),
-        'Timid': ('speed', 'attack'),
-        'Hasty': ('speed', 'defense'),
-        'Jolly': ('speed', 'special_attack'),
-        'Naive': ('speed', 'special_defense'),
-        'Modest': ('special_attack', 'attack'),
-        'Mild': ('special_attack', 'defense'),
-        'Quiet': ('special_attack', 'speed'),
-        'Rash': ('special_attack', 'special_defense'),
-        'Calm': ('special_defense', 'attack'),
-        'Gentle': ('special_defense', 'defense'),
-        'Sassy': ('special_defense', 'speed'),
-        'Careful': ('special_defense', 'special_attack'),
-    }
-    
-    return nature_effects.get(nature, (None, None))
-
-
-def calculate_pokemon_stats_with_nature(pokemon):
-    """
-    Recalcule les stats d'un Pokémon en prenant en compte la nature
-    """
-    # Calculer les stats de base
-    pokemon.calculate_stats()
-    
-    # Appliquer les modificateurs de nature (+10% / -10%)
-    increased, decreased = get_nature_modifiers(pokemon.nature)
-    
-    if increased:
-        current_value = getattr(pokemon, increased)
-        setattr(pokemon, increased, int(current_value * 1.1))
-    
-    if decreased:
-        current_value = getattr(pokemon, decreased)
-        setattr(pokemon, decreased, int(current_value * 0.9))
-    
-    pokemon.save()
-
-
-def opponent_switch_pokemon(battle):
-    """Switch adversaire vers prochain Pokémon vivant"""
-    if not battle.opponent_trainer:
-        return None
-    
-    alive_pokemon = battle.opponent_trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).exclude(id=battle.opponent_pokemon.id)
-    
-    if not alive_pokemon.exists():
-        return None
-    
-    new_pokemon = alive_pokemon.first()
-    battle.opponent_pokemon = new_pokemon
-    battle.save()
-    
-    return new_pokemon
-
+# --- XP et level-up ---
 
 def calculate_exp_gain(defeated_pokemon, battle_type='wild'):
-    """Calcule XP selon formule Gen 1"""
+    """Calcule l'XP gagne selon la formule Gen 1."""
     base_exp = defeated_pokemon.species.base_experience or 100
-    level = defeated_pokemon.level
-    exp = int((base_exp * level) / 7)
-    
+    exp = int((base_exp * defeated_pokemon.level) / 7)
     if battle_type == 'trainer':
         exp = int(exp * 1.5)
-    
     return exp
 
 
 def apply_exp_gain(pokemon, exp_amount):
-    """Applique XP et gère level-ups"""
+    """
+    Applique l'XP a un Pokemon et gere les level-ups avec apprentissage de moves.
+
+    Retourne :
+        {
+            'exp_gained':    int,
+            'level_up':      bool,
+            'new_level':     int,
+            'learned_moves': [str]   # noms des nouvelles capacites apprises
+        }
+    """
+    from .models.PlayablePokemon import PokemonMoveInstance
+
     result = {
-        'exp_gained': exp_amount,
-        'level_up': False,
-        'new_level': pokemon.level,
-        'learned_moves': []
+        'exp_gained':    exp_amount,
+        'level_up':      False,
+        'new_level':     pokemon.level,
+        'learned_moves': [],
     }
-    
+
     pokemon.current_exp = (pokemon.current_exp or 0) + exp_amount
-    
+
     while pokemon.current_exp >= pokemon.exp_for_next_level():
         pokemon.current_exp -= pokemon.exp_for_next_level()
         pokemon.level += 1
         result['level_up'] = True
         result['new_level'] = pokemon.level
-        
+
+        # Recalculer stats et augmenter HP proportionnellement au gain de max_hp
+        old_max_hp = pokemon.max_hp
         pokemon.calculate_stats()
-        pokemon.current_hp = pokemon.max_hp
-        
-        # Apprendre nouvelles attaques (TODO: gérer 4 max)
-    
+        pokemon.current_hp = min(
+            pokemon.current_hp + (pokemon.max_hp - old_max_hp),
+            pokemon.max_hp
+        )
+
+        # Detecter les nouveaux moves appris a ce niveau
+        ids_before = set(
+            PokemonMoveInstance.objects.filter(pokemon=pokemon)
+            .values_list('move_id', flat=True)
+        )
+        learn_moves_up_to_level(pokemon, pokemon.level)
+        ids_after = set(
+            PokemonMoveInstance.objects.filter(pokemon=pokemon)
+            .values_list('move_id', flat=True)
+        )
+        for mid in (ids_after - ids_before):
+            move = PokemonMove.objects.filter(id=mid).first()
+            if move:
+                result['learned_moves'].append(move.name)
+
     pokemon.save()
     return result
 
 
+# --- Fin de combat ---
 
-"""
-Logique de capture Gen 1
-"""
+def check_battle_end(battle):
+    """
+    Verifie si le combat est termine.
+    Retourne (is_ended: bool, winner: Trainer | None, message: str).
+    """
+    player_alive = battle.player_trainer.pokemon_team.filter(
+        is_in_party=True, current_hp__gt=0
+    ).exists()
+
+    if battle.opponent_trainer:
+        opponent_alive = battle.opponent_trainer.pokemon_team.filter(
+            is_in_party=True, current_hp__gt=0
+        ).exists()
+    else:
+        opponent_alive = battle.opponent_pokemon.current_hp > 0
+
+    if not player_alive:
+        battle.end_battle(battle.opponent_trainer)
+        return True, battle.opponent_trainer, "Vous avez perdu le combat..."
+
+    if not opponent_alive:
+        battle.end_battle(battle.player_trainer)
+
+        if battle.opponent_pokemon.is_fainted():
+            btype = 'wild' if not battle.opponent_trainer else 'trainer'
+            exp   = calculate_exp_gain(battle.opponent_pokemon, btype)
+            apply_exp_gain(battle.player_pokemon, exp)
+            battle.add_to_log(
+                f"{battle.player_pokemon} gagne {exp} points d'experience !"
+            )
+
+        msg = "Vous avez gagne le combat !"
+        if battle.opponent_trainer:
+            msg = battle.opponent_trainer.defeat_text or msg
+
+        return True, battle.player_trainer, msg
+
+    return False, None, ""
+
+
+def opponent_switch_pokemon(battle):
+    """Fait switcher l'adversaire vers son prochain Pokemon vivant."""
+    if not battle.opponent_trainer:
+        return None
+
+    bench = battle.opponent_trainer.pokemon_team.filter(
+        is_in_party=True, current_hp__gt=0
+    ).exclude(id=battle.opponent_pokemon.id)
+
+    if not bench.exists():
+        return None
+
+    new_pokemon = bench.first()
+    battle.opponent_pokemon = new_pokemon
+    battle.save()
+    return new_pokemon
+
+
+# =============================================================================
+# 6. SERIALISATION JSON (pour les API views)
+# =============================================================================
+
+def serialize_pokemon(pokemon, include_moves=False):
+    """
+    Serialise un PlayablePokemon en dict JSON pret a etre envoye au client.
+
+    Args:
+        pokemon:       PlayablePokemon
+        include_moves: bool — inclure la liste des moves avec PP courants
+
+    Utilise dans build_battle_response() et GetTrainerTeam().
+    """
+    data = {
+        'id':           pokemon.id,
+        'name':         pokemon.nickname or pokemon.species.name,
+        'species_name': pokemon.species.name,
+        'level':        pokemon.level,
+        'current_hp':   pokemon.current_hp,
+        'max_hp':       pokemon.max_hp,
+        'status':       pokemon.status_condition,
+    }
+
+    if include_moves:
+        data['moves'] = [
+            {
+                'id':         mi.move.id,
+                'name':       mi.move.name,
+                'type':       mi.move.type.name,
+                'power':      mi.move.power,
+                'current_pp': mi.current_pp,
+                'max_pp':     mi.move.max_pp,
+            }
+            for mi in pokemon.pokemonmoveinstance_set.all()
+        ]
+
+    return data
+
+
+def build_battle_response(battle):
+    """
+    Construit le dict JSON complet renvoye au client apres chaque action.
+    Remplace le build_response_data() qui etait defini inline dans battle_action_view.
+
+    Contient :
+      - player_pokemon   (avec moves + champs EXP)
+      - opponent_pokemon (sans moves)
+      - champs de retrocompatibilite (player_hp, opponent_hp, ...)
+      - battle_ended: False  (le caller le passe a True si besoin)
+    """
+    exp_for_next = battle.player_pokemon.exp_for_next_level() or 100
+    current_exp  = battle.player_pokemon.current_exp or 0
+
+    player_data = serialize_pokemon(battle.player_pokemon, include_moves=True)
+    player_data['current_exp']        = current_exp
+    player_data['exp_for_next_level'] = exp_for_next
+    player_data['exp_percent']        = int((current_exp / exp_for_next) * 100)
+
+    return {
+        'success':          True,
+        'log':              [],
+        'player_pokemon':   player_data,
+        'opponent_pokemon': serialize_pokemon(battle.opponent_pokemon),
+        # Champs de retrocompatibilite pour le JS existant
+        'player_hp':        battle.player_pokemon.current_hp,
+        'player_max_hp':    battle.player_pokemon.max_hp,
+        'opponent_hp':      battle.opponent_pokemon.current_hp,
+        'opponent_max_hp':  battle.opponent_pokemon.max_hp,
+        'battle_ended':     False,
+    }
+
+
+# =============================================================================
+# 7. CAPTURE
+# =============================================================================
+
 def calculate_capture_rate(pokemon, ball, pokemon_hp_percent, pokemon_status=None):
     """
-    Calcule le taux de capture selon la formule Gen 1
-    
+    Calcule le taux de capture selon la formule Gen 1.
+
     Args:
-        pokemon: PlayablePokemon ou Pokemon (opponent)
-        ball: Item
-        pokemon_hp_percent: % HP restants (0.0-1.0)
-        pokemon_status: 'sleep', 'freeze', 'burn', etc.
-    
+        pokemon:            PlayablePokemon adversaire
+        ball:               Item (pokeball)
+        pokemon_hp_percent: float 0.0-1.0 (HP actuels / HP max)
+        pokemon_status:     str ou None ('sleep', 'freeze', ...)
+
     Returns:
-        float: Taux de capture (0.0-1.0)
+        float 0.0-1.0
     """
-    
-    # Vérifier Master Ball
+    # Master Ball -> capture garantie
     try:
         pokeball_stats = PokeballItem.objects.get(item=ball)
         if pokeball_stats.guaranteed_capture:
             return 1.0
     except PokeballItem.DoesNotExist:
         pokeball_stats = None
-    
-    # Base catch rate
-    if hasattr(pokemon, 'species'):
-        base_catch_rate = pokemon.species.catch_rate or 45
-    else:
-        base_catch_rate = pokemon.catch_rate or 45
-    
-    # Ball multiplier
-    ball_multiplier = ball.catch_rate_modifier or 1.0
-    
-    # Bonus type et status
+
+    base_rate = (
+        pokemon.species.catch_rate if hasattr(pokemon, 'species') else pokemon.catch_rate
+    ) or 45
+
+    ball_mult = ball.catch_rate_modifier or 1.0
+
+    # Bonus specifiques a certaines balls (type / statut)
     if pokeball_stats:
         if pokeball_stats.bonus_on_type:
-            pokemon_types = pokemon.species.types.all() if hasattr(pokemon, 'species') else pokemon.types.all()
-            if pokeball_stats.bonus_on_type in pokemon_types:
-                ball_multiplier *= 1.5
-        
-        if pokeball_stats.bonus_on_status and pokemon_status == pokeball_stats.bonus_on_status:
-            ball_multiplier *= 1.5
-    
-    # HP modifier
-    hp_modifier = (3 - 2 * pokemon_hp_percent) / 3
-    hp_modifier = max(0.1, min(1.0, hp_modifier))
-    
-    # Status modifier
-    status_modifier = 1.0
-    if pokemon_status in ['sleep', 'freeze']:
-        status_modifier = 2.0
-    elif pokemon_status in ['burn', 'poison', 'paralysis']:
-        status_modifier = 1.5
-    
-    # Formule finale
-    a = ((hp_modifier * base_catch_rate * ball_multiplier) / 255) * status_modifier
-    
-    return min(1.0, a)
+            poke_types = (
+                pokemon.species.types.all() if hasattr(pokemon, 'species')
+                else pokemon.types.all()
+            )
+            if pokeball_stats.bonus_on_type in poke_types:
+                ball_mult *= 1.5
+        if (pokeball_stats.bonus_on_status
+                and pokemon_status == pokeball_stats.bonus_on_status):
+            ball_mult *= 1.5
+
+    hp_mod     = max(0.1, min(1.0, (3 - 2 * pokemon_hp_percent) / 3))
+    status_mod = (2.0 if pokemon_status in ('sleep', 'freeze')
+                  else 1.5 if pokemon_status in ('burn', 'poison', 'paralysis')
+                  else 1.0)
+
+    return min(1.0, ((hp_mod * base_rate * ball_mult) / 255) * status_mod)
 
 
 def attempt_pokemon_capture(battle, ball_item, trainer):
     """
-    Tente de capturer le Pokémon adverse
-    
+    Tente de capturer le Pokemon adverse dans un combat avec le systeme de shakes.
+
     Returns:
         dict: {
-            'success': bool,
-            'capture_rate': float,
-            'shakes': int,
-            'message': str,
-            'captured_pokemon': PlayablePokemon or None
+            'success', 'capture_rate', 'shakes', 'message',
+            'captured_pokemon', 'is_first_catch', 'achievement_notifications'
         }
     """
-    
-    opponent = battle.opponent_pokemon
-    
-    # Calculer HP%
-    hp_percent = opponent.current_hp / opponent.max_hp
-    
-    # Calculer taux de capture
-    capture_rate = calculate_capture_rate(
-        opponent,
-        ball_item,
-        hp_percent,
-        opponent.status_condition
-    )
-    
-    # Enregistrer la tentative
     from myPokemonApp.models import CaptureAttempt
+
+    opponent     = battle.opponent_pokemon
+    hp_percent   = opponent.current_hp / opponent.max_hp
+    capture_rate = calculate_capture_rate(
+        opponent, ball_item, hp_percent, opponent.status_condition
+    )
+
     attempt = CaptureAttempt.objects.create(
         trainer=trainer,
         pokemon_species=opponent.species,
@@ -915,50 +731,43 @@ def attempt_pokemon_capture(battle, ball_item, trainer):
         pokemon_status=opponent.status_condition,
         capture_rate=capture_rate,
         battle=battle,
-        success=False,  # Sera mis à jour
-        shakes=0
+        success=False,
+        shakes=0,
     )
-    
-    # Master Ball = succès garanti
+
+    # Master Ball -> succes garanti sans shakes
     try:
-        pokeball_stats = PokeballItem.objects.get(item=ball_item)
-        if pokeball_stats.guaranteed_capture:
-            return capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shakes=0)
+        if PokeballItem.objects.get(item=ball_item).guaranteed_capture:
+            return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=0)
     except PokeballItem.DoesNotExist:
         pass
-    
-    # Système de shakes (3 max)
+
+    # Systeme de 3 shakes
     shakes = 0
-    for shake in range(3):
+    for _ in range(3):
         if random.random() < capture_rate:
             shakes += 1
         else:
-            # Échappement
             attempt.shakes = shakes
             attempt.save()
-            
             return {
-                'success': False,
-                'capture_rate': capture_rate,
-                'shakes': shakes,
-                'message': f"{opponent.species.name} s'est échappé après {shakes} shake(s) !",
-                'captured_pokemon': None
+                'success':          False,
+                'capture_rate':     capture_rate,
+                'shakes':           shakes,
+                'message':          f"{opponent.species.name} s'est echappe apres {shakes} shake(s) !",
+                'captured_pokemon': None,
             }
-    
-    # Les 3 shakes ont réussi = CAPTURE !
-    return capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shakes=3)
+
+    return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=3)
 
 
-def capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shakes):
-    """Gère la capture réussie d'un Pokémon"""
-    
+def _capture_success(battle, opponent, ball_item, trainer, attempt, shakes):
+    """Gere la capture reussie d'un Pokemon (helper prive)."""
     from myPokemonApp.models import PlayablePokemon, CaptureJournal
     from myPokemonApp.views.AchievementViews import trigger_achievements_after_capture
-    
-    # Créer le nouveau PlayablePokemon pour le trainer
+
     captured = PlayablePokemon.objects.create(
         species=opponent.species,
-        nickname=None,  # Pas de surnom par défaut
         level=opponent.level,
         trainer=trainer,
         current_hp=opponent.current_hp,
@@ -969,124 +778,266 @@ def capture_pokemon_success(battle, opponent, ball_item, trainer, attempt, shake
         special_defense=opponent.special_defense,
         speed=opponent.speed,
         status_condition=opponent.status_condition,
-        is_in_party=False,  # Pas dans l'équipe par défaut (PC)
+        is_in_party=False,
         current_exp=0,
     )
-    
-    # Copier les moves via helper centralisé
     copy_moves_to_pokemon(opponent, captured)
-    
-    # Vérifier si c'est le premier de cette espèce
-    is_first = not trainer.pokemon_team.filter(species=opponent.species).exclude(id=captured.id).exists()
-    
-    # Créer l'entrée de journal
-    journal_entry = CaptureJournal.objects.create(
+
+    is_first = not trainer.pokemon_team.filter(
+        species=opponent.species
+    ).exclude(id=captured.id).exists()
+
+    CaptureJournal.objects.create(
         trainer=trainer,
         pokemon=captured,
         ball_used=ball_item,
         level_at_capture=opponent.level,
         hp_at_capture=opponent.current_hp,
         is_first_catch=is_first,
-        is_critical_catch=(shakes == 0),  # Capture critique si 0 shake
-        attempts_before_success=1  # TODO: Compter les vraies tentatives
+        is_critical_catch=(shakes == 0),
+        attempts_before_success=1,
     )
-    
-    # Mettre à jour l'attempt
-    attempt.success = True
-    attempt.shakes = shakes
-    attempt.save()
-    
-    # Terminer le combat
-    battle.is_active = False
-    battle.winner = trainer
-    battle.save()
-    
-    message = f"Vous avez capturé {opponent.species.name} !"
-    if is_first:
-        message += " (Premier capturé !)"
 
-    # TRIGGER ACHIEVEMENTS
-    notifications = trigger_achievements_after_capture(trainer)
-    
+    attempt.success = True
+    attempt.shakes  = shakes
+    attempt.save()
+
+    battle.is_active = False
+    battle.winner    = trainer
+    battle.save()
+
+    message = f"Vous avez capture {opponent.species.name} !"
+    if is_first:
+        message += " (Premier capture !)"
+
     return {
-        'success': True,
-        'capture_rate': attempt.capture_rate,
-        'shakes': shakes,
-        'message': message,
-        'captured_pokemon': {'name':captured.species.name, 'level' : captured.level } ,
-        'is_first_catch': is_first,
-        'achievement_notifications' : notifications # Stocker dans le contexte pour afficher après TODO
-        # 'journal_entry': journal_entry
+        'success':                   True,
+        'capture_rate':              attempt.capture_rate,
+        'shakes':                    shakes,
+        'message':                   message,
+        'captured_pokemon':          {'name': captured.species.name, 'level': captured.level},
+        'is_first_catch':            is_first,
+        'achievement_notifications': trigger_achievements_after_capture(trainer),
     }
 
 
-"""
-Système de rencontre aléatoire avec spawn rates
-"""
+# =============================================================================
+# 8. RENCONTRES SAUVAGES
+# =============================================================================
 
 def get_random_wild_pokemon(zone, encounter_type='grass'):
     """
-    Génère un Pokémon sauvage aléatoire selon les spawn rates
-    
-    Args:
-        zone: Zone actuelle
-        encounter_type: 'grass', 'water', 'fishing', 'cave'
-    
+    Genere un Pokemon sauvage aleatoire selon les spawn rates d'une zone.
+
     Returns:
-        tuple: (Pokemon species, level) ou (None, None)
+        (Pokemon species, level) ou (None, None) si aucun spawn configure.
     """
-    
-    # Récupérer tous les spawns de cette zone
-    spawns = WildPokemonSpawn.objects.filter(
-        zone=zone,
-        encounter_type=encounter_type
-    )
-    
+    spawns = WildPokemonSpawn.objects.filter(zone=zone, encounter_type=encounter_type)
     if not spawns.exists():
         return None, None
-    
-    # Normaliser les spawn rates (total = 100%)
-    total_rate = sum(spawn.spawn_rate for spawn in spawns)
-    
-    if total_rate == 0:
+
+    total = sum(s.spawn_rate for s in spawns)
+    if total == 0:
         return None, None
-    
-    # Tirage aléatoire
-    roll = random.uniform(0, total_rate)
-    cumulative = 0
-    
+
+    roll, cumulative = random.uniform(0, total), 0
     for spawn in spawns:
         cumulative += spawn.spawn_rate
         if roll <= cumulative:
-            # Ce Pokémon est choisi !
-            level = random.randint(spawn.level_min, spawn.level_max)
-            return spawn.pokemon, level
-    
-    # Fallback (ne devrait jamais arriver)
-    first_spawn = spawns.first()
-    level = random.randint(first_spawn.level_min, first_spawn.level_max)
-    return first_spawn.pokemon, level
+            return spawn.pokemon, random.randint(spawn.level_min, spawn.level_max)
+
+    # Fallback (ne devrait jamais arriver si total > 0)
+    first = spawns.first()
+    return first.pokemon, random.randint(first.level_min, first.level_max)
 
 
-def get_encounter_chance(zone, encounter_type='grass'):
+def get_encounter_chance(encounter_type='grass'):
     """
-    Détermine s'il y a une rencontre (pour système de marche)
-    
-    Returns:
-        bool: True si rencontre
+    Determine s'il y a une rencontre aleatoire lors d'un deplacement.
+    Returns: bool
     """
-    
-    # Taux de base: 10% par pas dans les herbes
-    base_rate = {
-        'grass': 10.0,
-        'water': 20.0,
-        'fishing': 40.0,
-        'cave': 15.0
+    base_rates = {'grass': 10.0, 'water': 20.0, 'fishing': 40.0, 'cave': 15.0}
+    return random.random() * 100 < base_rates.get(encounter_type, 10.0)
+
+
+# =============================================================================
+# 9. GESTION INVENTAIRE
+# =============================================================================
+
+def give_item_to_trainer(trainer, item, quantity=1):
+    """Donne un objet a un dresseur (cree ou incremente l'entree inventaire)."""
+    from .models import TrainerInventory
+
+    inv, _ = TrainerInventory.objects.get_or_create(
+        trainer=trainer, item=item, defaults={'quantity': 0}
+    )
+    inv.quantity += quantity
+    inv.save()
+    return inv
+
+
+def remove_item_from_trainer(trainer, item, quantity=1):
+    """
+    Retire un objet de l'inventaire.
+    Retourne True si OK, False si stock insuffisant ou objet absent.
+    """
+    from .models import TrainerInventory
+
+    try:
+        inv = TrainerInventory.objects.get(trainer=trainer, item=item)
+        if inv.quantity < quantity:
+            return False
+        inv.quantity -= quantity
+        if inv.quantity == 0:
+            inv.delete()
+        else:
+            inv.save()
+        return True
+    except TrainerInventory.DoesNotExist:
+        return False
+
+
+def use_item_in_battle(item, pokemon, battle):
+    """
+    Applique l'effet d'un objet pendant un combat.
+    Retourne (success: bool, message: str).
+    """
+    if item.item_type == 'pokeball':
+        if battle.battle_type != 'wild':
+            return False, "On ne peut pas capturer le Pokemon d'un dresseur !"
+        success, msg = _catch_pokemon_simple(
+            battle.opponent_pokemon, battle.player_trainer, item
+        )
+        battle.add_to_log(msg)
+        if success:
+            battle.end_battle(battle.player_trainer)
+        return success, msg
+    elif item.item_type in ('potion', 'status'):
+        result = item.use_on_pokemon(pokemon)
+        battle.add_to_log(result)
+        return True, result
+    else:
+        return False, "Cet objet ne peut pas etre utilise en combat !"
+
+
+def _catch_pokemon_simple(wild_pokemon, trainer, pokeball_item):
+    """
+    Tentative de capture simplifiee (sans systeme de shakes).
+    Retourne (success: bool, message: str).
+    Utilise uniquement en interne par use_item_in_battle().
+    """
+    catch_rate = wild_pokemon.species.catch_rate
+    hp_mod     = (3 * wild_pokemon.max_hp - 2 * wild_pokemon.current_hp) / (3 * wild_pokemon.max_hp)
+    status_mod = (2.0 if wild_pokemon.status_condition in ('sleep', 'freeze')
+                  else 1.5 if wild_pokemon.status_condition in ('paralysis', 'poison', 'burn')
+                  else 1.0)
+
+    if random.random() < (catch_rate * pokeball_item.catch_rate_modifier * hp_mod * status_mod) / 255:
+        wild_pokemon.trainer          = trainer
+        wild_pokemon.original_trainer = trainer.username
+        wild_pokemon.pokeball_used    = pokeball_item.name
+        wild_pokemon.friendship       = 70
+        party_count = trainer.pokemon_team.filter(is_in_party=True).count()
+        wild_pokemon.is_in_party    = party_count < 6
+        wild_pokemon.party_position = party_count + 1 if party_count < 6 else None
+        wild_pokemon.save()
+        return True, f"{wild_pokemon.species.name} a ete capture !"
+
+    return False, f"{wild_pokemon.species.name} s'est libere de la ball !"
+
+
+# =============================================================================
+# 10. UTILITAIRES DIVERS
+# =============================================================================
+
+def heal_team(trainer):
+    """Soigne completement tous les Pokemon d'un dresseur (HP max + PP max)."""
+    from .models.PlayablePokemon import PokemonMoveInstance
+
+    for pokemon in trainer.pokemon_team.all():
+        pokemon.heal()
+        for mi in PokemonMoveInstance.objects.filter(pokemon=pokemon):
+            mi.restore_pp()
+
+
+def organize_party(trainer, pokemon_order):
+    """
+    Reordonne l'equipe du dresseur.
+    pokemon_order = [pokemon_id_1, pokemon_id_2, ...]
+    """
+    for position, pokemon_id in enumerate(pokemon_order, 1):
+        pokemon = trainer.pokemon_team.get(id=pokemon_id)
+        pokemon.party_position = position
+        pokemon.save()
+
+
+def deposit_pokemon(pokemon):
+    """Depose un Pokemon dans le PC (retire de l'equipe active)."""
+    pokemon.is_in_party    = False
+    pokemon.party_position = None
+    pokemon.save()
+
+
+def withdraw_pokemon(pokemon, position):
+    """
+    Retire un Pokemon du PC et l'ajoute a l'equipe.
+    Retourne (success: bool, message: str).
+    """
+    if pokemon.trainer.pokemon_team.filter(is_in_party=True).count() >= 6:
+        return False, "L'equipe est complete !"
+    pokemon.is_in_party    = True
+    pokemon.party_position = position
+    pokemon.save()
+    return True, f"{pokemon} a ete ajoute a l'equipe !"
+
+
+def generate_random_nature():
+    """Genere une nature aleatoire parmi les 25 natures."""
+    return random.choice([
+        'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
+        'Bold',  'Docile', 'Relaxed', 'Impish', 'Lax',
+        'Timid', 'Hasty',  'Serious', 'Jolly',  'Naive',
+        'Modest','Mild',   'Quiet',   'Bashful','Rash',
+        'Calm',  'Gentle', 'Sassy',   'Careful','Quirky',
+    ])
+
+
+def get_nature_modifiers(nature):
+    """
+    Retourne (stat_augmentee, stat_diminuee) pour une nature.
+    Retourne (None, None) pour les natures neutres.
+    """
+    effects = {
+        'Lonely':  ('attack',         'defense'),
+        'Brave':   ('attack',         'speed'),
+        'Adamant': ('attack',         'special_attack'),
+        'Naughty': ('attack',         'special_defense'),
+        'Bold':    ('defense',        'attack'),
+        'Relaxed': ('defense',        'speed'),
+        'Impish':  ('defense',        'special_attack'),
+        'Lax':     ('defense',        'special_defense'),
+        'Timid':   ('speed',          'attack'),
+        'Hasty':   ('speed',          'defense'),
+        'Jolly':   ('speed',          'special_attack'),
+        'Naive':   ('speed',          'special_defense'),
+        'Modest':  ('special_attack', 'attack'),
+        'Mild':    ('special_attack', 'defense'),
+        'Quiet':   ('special_attack', 'speed'),
+        'Rash':    ('special_attack', 'special_defense'),
+        'Calm':    ('special_defense','attack'),
+        'Gentle':  ('special_defense','defense'),
+        'Sassy':   ('special_defense','speed'),
+        'Careful': ('special_defense','special_attack'),
     }
-    
-    chance = base_rate.get(encounter_type, 10.0)
-    
-    # Repel items peuvent modifier ça
-    # TODO
-    
-    return random.random() * 100 < chance
+    return effects.get(nature, (None, None))
+
+
+def calculate_pokemon_stats_with_nature(pokemon):
+    """Recalcule les stats d'un Pokemon en appliquant les modificateurs de nature (+10%/-10%)."""
+    pokemon.calculate_stats()
+    increased, decreased = get_nature_modifiers(pokemon.nature)
+    if increased:
+        setattr(pokemon, increased, int(getattr(pokemon, increased) * 1.1))
+    if decreased:
+        setattr(pokemon, decreased, int(getattr(pokemon, decreased) * 0.9))
+    pokemon.save()
