@@ -60,6 +60,29 @@ def initialize_items():
         {'name': 'Ultra Ball', 'description': 'Ball ultra-performante.', 'item_type': 'pokeball', 'price': 1200, 'catch_rate_modifier': 2.0, 'is_consumable': True},
         {'name': 'Master Ball', 'description': 'La meilleure Ball. Capture a coup sur.', 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 255.0, 'is_consumable': True},
         {'name': 'Safari Ball', 'description': 'Ball speciale de la Zone Safari.', 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.5, 'is_consumable': True},
+        # POKEBALLS spéciales
+        {'name': 'Net Ball', 'description': "Efficace contre les Pokémon de type Eau ou Insecte.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Dive Ball', 'description': "Efficace sous l'eau ou contre les Pokémon aquatiques.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.5, 'is_consumable': True},
+        {'name': 'Nest Ball', 'description': "Plus efficace contre les Pokémon de bas niveau.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True}, # To implement in pokeballItem class catch_rate_modifier = pokemon_level: (40 - pokemon_level) / 10 if pokemon_level < 30 else 1.0
+        {'name': 'Repeat Ball', 'description': "Efficace contre les Pokémon déjà capturés.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Timer Ball', 'description': "Plus efficace après plusieurs tours.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True}, # To implement in pokeballItem class catch_rate_modifier = turn: 1 + (turn / 10)
+        {'name': 'Dusk Ball', 'description': "Efficace la nuit ou dans les grottes.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.5, 'is_consumable': True},
+        {'name': 'Quick Ball', 'description': "Efficace si utilisée en premier tour.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 4.0, 'is_consumable': True},
+        {'name': 'Heal Ball', 'description': "Soigne les problèmes de statut du Pokémon capturé.", 'item_type': 'pokeball', 'price': 300, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Luxury Ball', 'description': "Améliore l'amitié du Pokémon capturé.", 'item_type': 'pokeball', 'price': 1200, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Premier Ball', 'description': "Une Poké Ball commémorative.", 'item_type': 'pokeball', 'price': 200, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Cherry Ball', 'description': "Efficace contre les Pokémon avec une évolution unique.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Fast Ball', 'description': "Efficace contre les Pokémon rapides.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Level Ball', 'description': "Plus efficace contre les Pokémon de niveau inférieur.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True},# To implement in pokeballItem class catch_rate_modifier = user_level, pokemon_level: (4 * user_level / pokemon_level) if user_level > pokemon_level else 1.0
+        {'name': 'Lure Ball', 'description': "Efficace contre les Pokémon pêchés.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Heavy Ball', 'description': "Plus efficace contre les Pokémon lourds.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True}, # To implement in pokeballItem class catch_rate_modifier = weight: (weight / 10) if weight > 200 else 1.0
+        {'name': 'Love Ball', 'description': "Efficace contre les Pokémon du sexe opposé.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 8.0, 'is_consumable': True},
+        {'name': 'Moon Ball', 'description': "Efficace contre les Pokémon qui évoluent avec une Pierre Lune.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 4.0, 'is_consumable': True},
+        {'name': 'Friend Ball', 'description': "Le Pokémon capturé a une amitié instantanée maximale.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Sport Ball', 'description': "Une Poké Ball spéciale pour les concours.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.5, 'is_consumable': True},
+        {'name': 'Park Ball', 'description': "Utilisée dans le Parc des Amis.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Dream Ball', 'description': "Utilisée dans le Monde des Rêves.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Beast Ball', 'description': "Spéciale pour les Ultra-Chimères.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 0.1, 'is_consumable': True},
 
         # PIERRES D EVOLUTION
         {'name': 'Fire Stone', 'description': 'Fait evoluer Goupix, Caninos, Evoli (Pyroli).', 'item_type': 'evolution', 'price': 2100, 'is_consumable': True},

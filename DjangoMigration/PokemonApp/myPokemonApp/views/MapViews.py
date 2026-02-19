@@ -167,7 +167,7 @@ def wild_encounter_view(request, zone_id):
     
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
-        return redirect('pokemon_center')
+        return redirect('PokemonCenterListView')
     
     # Trainer wild
     wild_trainer, _ = Trainer.objects.get_or_create(

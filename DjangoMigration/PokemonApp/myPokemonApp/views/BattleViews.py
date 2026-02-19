@@ -337,7 +337,7 @@ def battle_create_wild_view(request):
 
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokemon en etat de combattre !")
-        return redirect('pokemon_center')
+        return redirect('PokemonCenterListView')
 
     # Choisir l'espece et le niveau
     pokemon_id = request.POST.get('pokemon_id')
@@ -390,7 +390,7 @@ def battle_create_trainer_view(request, trainer_id):
 
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokemon en etat de combattre !")
-        return redirect('pokemon_center')
+        return redirect('PokemonCenterListView')
     if not opponent_pokemon:
         messages.error(request, "Ce dresseur n'a pas d'equipe configuree !")
         return redirect('BattleCreateView')
@@ -442,7 +442,7 @@ def battle_create_gym_view(request):
 
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokemon en etat de combattre !")
-        return redirect('pokemon_center')
+        return redirect('PokemonCenterListView')
     if not opponent_pokemon:
         messages.error(request, "Le Champion n'a pas d'equipe configuree !")
         return redirect('BattleCreateView')
