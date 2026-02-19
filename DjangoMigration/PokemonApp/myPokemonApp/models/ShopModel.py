@@ -78,8 +78,6 @@ class ShopInventory(models.Model):
     
     def is_available_for_trainer(self, trainer):
         """Vérifie si l'item est disponible pour ce dresseur"""
-        print(f"[+] player badges : {trainer.badges} / required : {self.unlock_badge_required} / {self}")
-        print(trainer.badges >= self.unlock_badge_required)
         return trainer.badges >= self.unlock_badge_required
     
     def can_afford(self, trainer, quantity=1):

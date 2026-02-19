@@ -229,7 +229,6 @@ class Battle(models.Model):
 
     def execute_action(self, attacker, defender, action):
         """Exécute une action (attaque, changement, objet, fuite)"""
-        print(f"actiuon : {action} / defender : {defender} / attacker : {attacker}")
 
         action_type = action.get('type')
         

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}<title>{{ zone.name }}</title>{% endblock %}
 
@@ -10,34 +11,40 @@
       <i class="fas fa-arrow-left"></i> Retour à la carte
     </a>
   </div>
-  
+
   <div class="card">
-    <div class="card-header bg-primary text-white">
-      <h2 class="mb-0">
-        <i class="fas fa-map-marker-alt"></i> {{ zone.name }}
-      </h2>
-      <p class="mb-0">{{ zone.get_zone_type_display }}</p>
+    <!-- Header avec image de zone -->
+    <div class="card-header bg-primary text-white p-0 position-relative" style="overflow:hidden; min-height:180px;">
+      <img src="{% static 'img/mapSprites/Kanto/' %}{{ zone.name|zone_image_path }}"
+           alt="{{ zone.name }}"
+           class="w-100"
+           style="object-fit:cover; max-height:220px; opacity:0.55;"
+           onerror="this.style.display='none';">
+      <div class="position-absolute w-100 p-3" style="bottom:0; background: linear-gradient(transparent, rgba(0,0,0,0.6));">
+        <h2 class="mb-0 text-white">
+          <i class="fas fa-map-marker-alt"></i> {{ zone.name }}
+        </h2>
+        <p class="mb-0 text-white-50">{{ zone.get_zone_type_display }}</p>
+      </div>
     </div>
-    
+
     <div class="card-body">
       <p>{{ zone.description }}</p>
-      
+
       <div class="mb-3">
         <span class="badge badge-info">
           Niveau recommandé: {{ zone.recommended_level_min }}-{{ zone.recommended_level_max }}
         </span>
-        
         {% if is_current %}
         <span class="badge badge-success">
           <i class="fas fa-check"></i> Vous êtes ici
         </span>
         {% endif %}
       </div>
-      
+
       <!-- Actions -->
       {% if is_current %}
       <div class="row mb-4">
-        <!-- Rencontre sauvage -->
         {% if not zone.is_safe_zone %}
         <div class="col-md-6 mb-3">
           <div class="card bg-success text-white">
@@ -50,8 +57,7 @@
           </div>
         </div>
         {% endif %}
-        
-        <!-- Centre Pokémon -->
+
         {% if zone.has_pokemon_center %}
         <div class="col-md-6 mb-3">
           <div class="card bg-info text-white">
@@ -66,14 +72,15 @@
         {% endif %}
       </div>
       {% endif %}
-      
+
       <!-- Pokémon sauvages -->
       {% if wild_spawns %}
       <h4><i class="fas fa-paw"></i> Pokémon Sauvages</h4>
       <div class="table-responsive mb-4">
-        <table class="table table-sm">
+        <table class="table table-sm align-middle">
           <thead>
             <tr>
+              <th style="width:56px;"></th>
               <th>Pokémon</th>
               <th>Niveau</th>
               <th>Taux</th>
@@ -82,11 +89,17 @@
           <tbody>
             {% for spawn in wild_spawns %}
             <tr>
-              <td>{{ spawn.pokemon.name }}</td>
+              <td class="text-center">
+                <img src="{% static 'img/sprites_gen5/normal/' %}{{ spawn.pokemon.name|lowerPokemonFileNames }}.png"
+                     alt="{{ spawn.pokemon.name }}"
+                     style="width:64px;height:64px;object-fit:contain;"
+                     onerror="this.style.display='none';">
+              </td>
+              <td><strong>{{ spawn.pokemon.name }}</strong></td>
               <td>{{ spawn.level_min }}-{{ spawn.level_max }}</td>
               <td>
-                <div class="progress" style="width: 100px;">
-                  <div class="progress-bar" style="width: {{ spawn.spawn_rate }}%">
+                <div class="progress" style="width:100px;">
+                  <div class="progress-bar bg-success" style="width:{{ spawn.spawn_rate }}%">
                     {{ spawn.spawn_rate }}%
                   </div>
                 </div>
@@ -97,20 +110,24 @@
         </table>
       </div>
       {% endif %}
-      
+
       <!-- Dresseurs -->
       {% if trainers %}
       <h4><i class="fas fa-users"></i> Dresseurs</h4>
       <div class="list-group mb-4">
         {% for trainer in trainers %}
         <a href="{% url 'battle_create_trainer' trainer.id %}" class="list-group-item list-group-item-action">
-          <div class="d-flex justify-content-between">
-            <div>
+          <div class="d-flex align-items-center">
+            <img src="{% static 'img/trainer_sprites/' %}{{ trainer|trainer_sprite_path }}"
+                 alt="{{ trainer.get_full_title }}"
+                 style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;"
+                 onerror="this.style.display='none';">
+            <div class="flex-grow-1">
               <strong>{{ trainer.get_full_title }}</strong>
               <br>
               <small class="text-muted">{{ trainer.intro_text|truncatewords:10 }}</small>
             </div>
-            <span class="badge badge-danger">
+            <span class="badge badge-danger align-self-center">
               <i class="fas fa-fist-raised"></i> Combattre
             </span>
           </div>
@@ -118,7 +135,7 @@
         {% endfor %}
       </div>
       {% endif %}
-      
+
       <!-- Zones connectées -->
       {% if connections %}
       <h4><i class="fas fa-route"></i> Zones Adjacentes</h4>
@@ -126,8 +143,14 @@
         {% for conn in connections %}
         <div class="col-md-6 mb-3">
           <div class="card">
-            <div class="card-body">
-              <h6>{{ conn.to_zone.name }}</h6>
+            <!-- Mini image de la zone destination -->
+            <img src="{% static 'img/mapSprites/Kanto/' %}{{ conn.to_zone.name|zone_image_path }}"
+                 alt="{{ conn.to_zone.name }}"
+                 class="card-img-top"
+                 style="height:80px; object-fit:cover; opacity:0.75;"
+                 onerror="this.style.display='none';">
+            <div class="card-body py-2">
+              <h6 class="mb-1">{{ conn.to_zone.name }}</h6>
               {% if is_current %}
               <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
                 <i class="fas fa-arrow-right"></i> Voyager
@@ -141,7 +164,7 @@
         {% endfor %}
       </div>
       {% endif %}
-      
+
     </div>
   </div>
 </div>

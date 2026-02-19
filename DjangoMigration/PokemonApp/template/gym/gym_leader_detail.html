@@ -63,9 +63,9 @@
       </div>
       <div class="card-body">
         <div class="text-center mb-3">
-          <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer.username|lower|gymleaderescape }}.png" 
+          <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}" 
                alt="{{ gym_leader.trainer.username }}"
-               style="width: 150px; height: 150px; border-radius: 50%;"
+               style="height: 160px;  object-fit: contain;"
                onerror="this.src='{% static 'img/pokeball.png' %}'">
         </div>
         
