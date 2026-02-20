@@ -8,7 +8,6 @@ from django.http import JsonResponse
 from django.contrib import messages
 from myPokemonApp.models import *
 from myPokemonApp.gameUtils import get_random_wild_pokemon
-from myPokemonApp.gameUtils import learn_moves_up_to_level
 
 # ============================================================================
 # MAP OVERVIEW
@@ -197,80 +196,68 @@ def travel_to_zone_view(request, zone_id):
 @login_required
 def wild_encounter_view(request, zone_id):
     """Déclencher une rencontre sauvage dans une zone"""
-    
+    from myPokemonApp.gameUtils import create_wild_pokemon, get_first_alive_pokemon
+
     trainer = get_object_or_404(Trainer, username=request.user.username)
-    zone = get_object_or_404(Zone, pk=zone_id)
-    
+    zone    = get_object_or_404(Zone, pk=zone_id)
+
     # Vérifier que c'est la zone actuelle
     player_location = PlayerLocation.objects.get(trainer=trainer)
     if player_location.current_zone != zone:
         messages.error(request, "Vous n'êtes pas dans cette zone !")
         return redirect('map_view')
-    
+
+    # Interdire si un combat actif existe déjà pour ce joueur
+    active_battle = Battle.objects.filter(
+        player_trainer=trainer, is_active=True
+    ).first()
+    if active_battle:
+        messages.warning(request, "Un combat est déjà en cours !")
+        return redirect('BattleGameView', pk=active_battle.id)
+
     # Type de rencontre (par défaut: grass)
     encounter_type = request.GET.get('type', 'grass')
-    
+
     # Générer Pokémon selon spawn rates
     wild_species, level = get_random_wild_pokemon(zone, encounter_type)
-    
     if not wild_species:
         messages.warning(request, "Aucun Pokémon trouvé dans cette zone.")
         return redirect('zone_detail', zone_id=zone.id)
-    
-    # Créer le combat (même logique que battle_create_wild_view)
-    player_pokemon = trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).first()
-    
+
+    player_pokemon = get_first_alive_pokemon(trainer)
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
         return redirect('PokemonCenterListView')
-    
-    # Trainer wild
-    wild_trainer, _ = Trainer.objects.get_or_create(
-        username='wild_pokemon',
-        defaults={'trainer_type': 'wild', 'is_npc': True}
-    )
-    
-    # Créer Pokémon sauvage
-    wild_pokemon = PlayablePokemon.objects.create(
-        species=wild_species,
-        level=level,
-        trainer=wild_trainer,
-        is_in_party=True
-    )
-    
-    wild_pokemon.calculate_stats()
-    wild_pokemon.current_hp = wild_pokemon.max_hp
-    wild_pokemon.save()
-    
-    # Ajouter moves
-    learn_moves_up_to_level(wild_pokemon, wild_pokemon.level)
 
-    # Si pas de moves appris, donner Tackle
-    if not wild_pokemon.pokemonmoveinstance_set.exists():
-        tackle = PokemonMove.objects.filter(name__icontains='Charge').first()
-        if not tackle:
-            tackle = PokemonMove.objects.first()
-        
-        if tackle:
-            PokemonMoveInstance.objects.create(
-                pokemon=wild_pokemon,
-                move=tackle,
-                current_pp=tackle.pp,
-            )
+    # Nettoyer les vieux Pokémon sauvages orphelins (pas dans un combat actif)
+    # pour éviter l'accumulation en DB.
+    wild_trainer_usernames = ('Wild', 'wild_pokemon')
+    active_wild_pokemon_ids = Battle.objects.filter(
+        is_active=True
+    ).values_list('opponent_pokemon_id', flat=True)
 
-    # Créer combat
+    PlayablePokemon.objects.filter(
+        trainer__username__in=wild_trainer_usernames
+    ).exclude(
+        id__in=active_wild_pokemon_ids
+    ).delete()
+
+    # Créer le Pokémon sauvage via gameUtils (stats + moves + fallback Tackle)
+    wild_pokemon = create_wild_pokemon(wild_species, level, location=zone.name)
+
+    # Créer le combat — opponent_trainer=None pour les combats sauvages,
+    # exactement comme battle_create_wild_view, pour éviter :
+    #   • le switch automatique vers d'autres Pokémon du wild_trainer
+    #   • le calcul d'XP × 1.5 (bonus dresseur)
+    #   • l'affichage de toute la "team" du wild_trainer dans l'historique
     battle = Battle.objects.create(
         player_trainer=trainer,
-        opponent_trainer=wild_trainer,
+        opponent_trainer=None,
         player_pokemon=player_pokemon,
         opponent_pokemon=wild_pokemon,
         battle_type='wild',
-        is_active=True
+        is_active=True,
     )
-    
+
     messages.success(request, f"Un {wild_species.name} sauvage de niveau {level} apparaît !")
-    
     return redirect('BattleGameView', pk=battle.id)

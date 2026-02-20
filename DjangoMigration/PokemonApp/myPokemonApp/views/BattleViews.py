@@ -79,12 +79,14 @@ class BattleDetailView(generic.DetailView):
         ).select_related('species', 'species__primary_type', 'species__secondary_type')
 
         # Équipe complète de l'adversaire
-        if battle.opponent_trainer:
+        # Pour les combats sauvages : toujours utiliser opponent_pokemon (le pokemon unique
+        # du combat), même si opponent_trainer est renseigné (données corrompues legacy).
+        if battle.battle_type == 'wild' or not battle.opponent_trainer:
+            opponent_team = [battle.opponent_pokemon] if battle.opponent_pokemon else []
+        else:
             opponent_team = list(battle.opponent_trainer.pokemon_team.filter(
                 is_in_party=True
             ).select_related('species', 'species__primary_type', 'species__secondary_type'))
-        else:
-            opponent_team = [battle.opponent_pokemon] if battle.opponent_pokemon else []
 
         # Argent gagné depuis l'historique
         money_earned = 0
