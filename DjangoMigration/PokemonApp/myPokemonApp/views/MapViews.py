@@ -78,12 +78,10 @@ def zone_detail_view(request, zone_id):
     ).select_related('from_zone')
 
     # Construire une liste unifiée de "connexions" pour le template (to_zone = destination)
-    # Pour les connexions inverses, on crée un objet anonyme cohérent
     connections = list(outgoing)
     seen_zone_ids = {c.to_zone_id for c in outgoing}
     for conn in incoming:
         if conn.from_zone_id not in seen_zone_ids:
-            # On crée un wrapper simple pour le template qui attend conn.to_zone
             conn.to_zone = conn.from_zone
             connections.append(conn)
     
@@ -95,6 +93,51 @@ def zone_detail_view(request, zone_id):
         is_npc=True,
         location=zone.name
     )
+
+    # ----------------------------------------------------------------
+    # Services de la zone
+    # ----------------------------------------------------------------
+
+    # Centre Pokémon lié à cette zone (recherche par nom de zone dans location)
+    pokemon_center = None
+    if zone.has_pokemon_center:
+        pokemon_center = PokemonCenter.objects.filter(
+            location__icontains=zone.name,
+            is_available=True
+        ).first()
+
+    # Boutique / Pokemart lié à cette zone
+    zone_shop = None
+    if zone.has_shop:
+        zone_shop = Shop.objects.filter(
+            location__icontains=zone.name
+        ).first()
+
+
+    # Dictionnaire de correspondance  français -> anglais
+    zone_translations = {
+        "Argenta": "Pewter City",
+        "Azuria": "Cerulean City",
+        "Cramois'Ile": "Vermilion City",
+        "Jadielle": "Celadon City",
+        "Parmanie": "Saffron City",
+        "Céladopole": "Fuchsia City",
+        "Cramois'Ile": "Cinnabar Island",
+        "Bourg Palette": "Viridian City",
+    }
+
+    english_zone_name = zone_translations.get(zone.name, zone.name).strip() # Si pas de traduction, garde le nom original
+
+    # Gym Leader / Arène de cette zone
+    gym_leader = None
+    try:
+        gym_leader = GymLeader.objects.filter(
+            gym_city__icontains=english_zone_name
+        ).first()
+    except Exception:
+        pass
+
+    # ----------------------------------------------------------------
     
     context = {
         'zone': zone,
@@ -104,7 +147,11 @@ def zone_detail_view(request, zone_id):
         'connections': connections,
         'wild_spawns': wild_spawns,
         'trainers': trainers_in_zone,
-        'current_zone': player_location.current_zone
+        'current_zone': player_location.current_zone,
+        # Services
+        'pokemon_center': pokemon_center,
+        'zone_shop': zone_shop,
+        'gym_leader': gym_leader,
     }
     
     return render(request, 'map/zone_detail.html', context)
@@ -126,7 +173,6 @@ def travel_to_zone_view(request, zone_id):
         messages.success(request, message)
 
         # TRIGGER ACHIEVEMENTS
-        # Compter zones visitées
         visited_count = player_location.visited_zones.count()
         
         if visited_count >= 10:
@@ -134,7 +180,6 @@ def travel_to_zone_view(request, zone_id):
             if result.get('newly_completed'):
                 messages.success(request, f"🏆 Explorateur débloqué ! +{result['reward_money']}₽")
 
-        
         # Mettre à jour la save active
         try:
             save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
@@ -216,7 +261,6 @@ def wild_encounter_view(request, zone_id):
                 current_pp=tackle.pp,
             )
 
-    
     # Créer combat
     battle = Battle.objects.create(
         player_trainer=trainer,

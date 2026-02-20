@@ -381,6 +381,32 @@
     </script>
     {% endif %}
 
+    <!-- Django Messages → our Toast model -->
+    {% if messages %}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var djangoTagMap = {
+          'debug':   'info',
+          'info':    'info',
+          'success': 'success',
+          'warning': 'warning',
+          'error':   'error',
+        };
+        {% for message in messages %}
+        (function () {
+          var rawTag = '{{ message.tags }}';
+          var type = 'info';
+          ['error', 'warning', 'success', 'info', 'debug'].forEach(function (t) {
+            if (rawTag.indexOf(t) !== -1 && type === 'info') {
+              type = djangoTagMap[t] || 'info';
+            }
+          });
+          showToast('{{ message|escapejs }}', type, type === 'error' ? 7000 : 4000);
+        })();
+        {% endfor %}
+      });
+    </script>
+    {% endif %}
 
     {% block css %}
     {% endblock css %}
