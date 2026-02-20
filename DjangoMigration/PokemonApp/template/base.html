@@ -24,13 +24,22 @@
     <!-- Auto-save -->
     {% if has_active_save %}
       <script>
+      // ID du slot actif — mis à jour dynamiquement après chaque sauvegarde manuelle
+      let activeSaveId = {{ active_save.id }};
+
       function autoSave() {
-        fetch('{% url "auto_save" active_save.id %}', {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
+        if (!activeSaveId) return;
+        fetch(`/saves/${activeSaveId}/save/`, {
+          method: 'GET',
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.save_id) {
+            activeSaveId = data.save_id; // rester synchronisé
           }
-        });
+        })
+        .catch(() => {}); // silencieux
       }
 
       setInterval(autoSave, 5 * 60 * 1000);
@@ -354,12 +363,15 @@
         // Créer nouveau slot
         const name = prompt(`Nom pour Slot ${slotNum}:`, `Aventure ${slotNum}`);
         if (!name) return;
-        
+
         $.post(`/saves/create/${slotNum}/quick/`, {
           csrfmiddlewaretoken: '{{ csrf_token }}',
           save_name: name
         }, function(data) {
           if (data.success) {
+            if (typeof activeSaveId !== 'undefined' && data.save_id) {
+              activeSaveId = data.save_id;
+            }
             alert(`Sauvegardé dans Slot ${slotNum} !`);
             $('#saveModal').modal('hide');
             location.reload();
@@ -371,6 +383,9 @@
           .then(r => r.json())
           .then(data => {
             if (data.success) {
+              if (typeof activeSaveId !== 'undefined' && data.save_id) {
+                activeSaveId = data.save_id;
+              }
               alert(`Sauvegardé dans Slot ${slotNum} !`);
               $('#saveModal').modal('hide');
               location.reload();
