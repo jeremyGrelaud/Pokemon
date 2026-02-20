@@ -108,6 +108,8 @@ class PlayablePokemon(models.Model):
     # Position dans l'équipe
     party_position = models.IntegerField(blank=True, null=True)
     is_in_party = models.BooleanField(default=True)
+
+    is_shiny = models.BooleanField(default=False)
     
     class Meta:
         verbose_name = "Pokémon (Jouable)"

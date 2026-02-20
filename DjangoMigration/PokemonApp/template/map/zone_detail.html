@@ -255,8 +255,7 @@
             {% with minimap=zone.name|zone_minimap_path %}
             <img src="{% static 'img/mapSprites/Kanto/' %}{{ minimap }}"
                  alt="Localisation {{ zone.name }}"
-                 class="img-fluid minimap-gif"
-                 onerror="this.closest('.card').style.display='none';">
+                 class="img-fluid minimap-gif">
             {% endwith %}
             <p class="text-muted small mt-2 mb-0">
               <i class="fas fa-map-marker-alt text-danger"></i>
