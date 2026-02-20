@@ -12,6 +12,8 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 from django.contrib import messages
 from ..models import *
+# Zone/location models needed for defeat redirect
+from myPokemonApp.models import Zone, ZoneConnection, PlayerLocation
 
 from myPokemonApp.views.AchievementViews import trigger_achievements_after_battle
 from myPokemonApp.gameUtils import (
@@ -164,8 +166,13 @@ def battle_action_view(request, pk):
             success = battle.attempt_flee()
             response_data['fled'] = success
             if success:
+                # Le joueur fuit = victoire morale, on marque le combat terminé
+                battle.is_active = False
+                battle.winner = battle.player_trainer
+                battle.save()
                 response_data['log']          = ['Vous avez reussi a fuir !']
                 response_data['battle_ended'] = True
+                response_data['result']       = 'fled'
             else:
                 response_data['log'] = ['Echec dans la fuite !']
 
@@ -190,7 +197,8 @@ def battle_action_view(request, pk):
             item = inv.item
 
             if item.item_type == 'pokeball':
-                if battle.opponent_trainer:
+                # if battle.opponent_trainer:
+                if battle.battle_type != "wild":
                     response_data['log'] = ["Vous ne pouvez pas capturer le Pokemon d'un dresseur !"]
                     return JsonResponse(response_data)
 
@@ -236,6 +244,11 @@ def battle_action_view(request, pk):
             if not result['success']:
                 opponent_action = get_opponent_ai_action(battle)
                 battle.execute_turn({'type': 'PokeBall'}, opponent_action)
+            else:
+                # Capture réussie → marquer le combat comme gagné par le joueur
+                battle.is_active = False
+                battle.winner = trainer
+                battle.save()
 
             response_data['capture_result'] = result
             response_data['battle_ended']   = result['success']
@@ -360,6 +373,7 @@ def battle_create_wild_view(request):
         opponent_trainer=None,
         player_pokemon=player_pokemon,
         opponent_pokemon=wild_pokemon,
+        battle_type='wild',
         is_active=True,
     )
 
@@ -400,6 +414,7 @@ def battle_create_trainer_view(request, trainer_id):
         opponent_trainer=opponent_trainer,
         player_pokemon=player_pokemon,
         opponent_pokemon=opponent_pokemon,
+        battle_type='trainer',
         is_active=True,
     )
 
@@ -452,6 +467,7 @@ def battle_create_gym_view(request):
         opponent_trainer=opponent_trainer,
         player_pokemon=player_pokemon,
         opponent_pokemon=opponent_pokemon,
+        battle_type='gym',
         is_active=True,
     )
 
@@ -482,20 +498,46 @@ def battle_trainer_complete_view(request, battle_id):
     player_won = battle.winner == player_trainer
     opponent   = battle.opponent_trainer
 
+    # =========================================================
+    # VICTOIRE
+    # =========================================================
+    money_earned = 0
+    badge_earned = None
+
     if player_won:
+        # --- Achievements ---
         notifications = trigger_achievements_after_battle(
             player_trainer,
-            {'won': True, 'opponent_type': opponent.trainer_type}
+            {'won': True, 'opponent_type': opponent.trainer_type if opponent else 'wild'}
         )
         for notif in notifications:
             messages.success(request, f"{notif['title']} : {notif['message']}")
 
-    money_earned = 0
-    if player_won and opponent and opponent.trainer_type != 'wild':
-        money_earned = opponent.get_reward()
-        player_trainer.money += money_earned
-        player_trainer.save()
+        # --- Argent ---
+        if opponent and opponent.trainer_type != 'wild':
+            money_earned = opponent.get_reward()
+            player_trainer.money += money_earned
+            player_trainer.save()
 
+        # --- Badge Arène ---
+        if opponent:
+            try:
+                gym_info = GymLeader.objects.get(trainer=opponent)
+                # Donner le badge si le joueur ne l'a pas encore
+                if player_trainer.badges < gym_info.badge_order:
+                    player_trainer.badges = gym_info.badge_order
+                    player_trainer.save()
+                    badge_earned = gym_info
+                    messages.success(
+                        request,
+                        f"🏅 Vous avez obtenu le {gym_info.badge_name} !"
+                    )
+            except GymLeader.DoesNotExist:
+                pass  # Pas un Champion d'Arène
+
+    # =========================================================
+    # HISTORIQUE
+    # =========================================================
     try:
         TrainerBattleHistory.objects.create(
             player=player_trainer,
@@ -514,9 +556,61 @@ def battle_trainer_complete_view(request, battle_id):
     except Exception:
         pass
 
+    # =========================================================
+    # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
+    # =========================================================
+    if not player_won:
+        try:
+            # Trouver la zone avec Centre Pokémon
+            player_location = PlayerLocation.objects.get(trainer=player_trainer)
+            current_zone    = player_location.current_zone
+
+            # Chercher le centre le plus proche : d'abord la zone actuelle, sinon
+            # la première zone connectée avec un centre
+            if current_zone.has_pokemon_center:
+                center_zone = current_zone
+            else:
+                # Chercher parmi les connexions directes
+                connected_ids = ZoneConnection.objects.filter(
+                    from_zone=current_zone
+                ).values_list('to_zone_id', flat=True)
+                reverse_ids  = ZoneConnection.objects.filter(
+                    to_zone=current_zone, is_bidirectional=True
+                ).values_list('from_zone_id', flat=True)
+                all_ids      = list(connected_ids) + list(reverse_ids)
+
+                center_zone = Zone.objects.filter(
+                    id__in=all_ids, has_pokemon_center=True
+                ).first()
+
+                if not center_zone:
+                    # Fallback: premier centre disponible
+                    center_zone = Zone.objects.filter(has_pokemon_center=True).first()
+
+            if center_zone:
+                player_location.current_zone = center_zone
+                if center_zone.has_pokemon_center:
+                    player_location.last_pokemon_center = center_zone
+                player_location.save()
+
+                # Sauvegarder la location dans la save active
+                save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+                if save:
+                    save.current_location = center_zone.name
+                    save.save()
+
+                messages.warning(
+                    request,
+                    f"Vous avez été soigné au Centre Pokémon de {center_zone.name}."
+                )
+
+        except PlayerLocation.DoesNotExist:
+            pass
+
     dialogue = (
         (opponent.defeat_text  or "Vous avez gagne...") if player_won
-        else (opponent.victory_text or "J'ai gagne !")
+        else (opponent.victory_text or "J'ai gagne !") if opponent
+        else ""
     )
 
     return render(request, 'battle/battle_trainer_complete.html', {
@@ -524,6 +618,7 @@ def battle_trainer_complete_view(request, battle_id):
         'opponent':     opponent,
         'player_won':   player_won,
         'money_earned': money_earned,
+        'badge_earned': badge_earned,
         'dialogue':     dialogue,
     })
 

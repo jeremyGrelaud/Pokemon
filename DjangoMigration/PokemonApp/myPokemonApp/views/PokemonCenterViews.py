@@ -8,9 +8,19 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.contrib import messages
 import json
 
-from myPokemonApp.models import PokemonCenter, CenterVisit, Trainer, NurseDialogue
+from myPokemonApp.models import PokemonCenter, CenterVisit, Trainer, NurseDialogue, PlayerLocation, Zone
+
+
+def _trainer_is_at_pokemon_center(trainer):
+    """Renvoie True si le trainer se trouve actuellement dans une zone avec un Centre Pokémon"""
+    try:
+        loc = PlayerLocation.objects.get(trainer=trainer)
+        return loc.current_zone.has_pokemon_center
+    except PlayerLocation.DoesNotExist:
+        return True  # Pas de localisation → on ne bloque pas
 
 
 @method_decorator(login_required, name='dispatch')
@@ -20,6 +30,16 @@ class PokemonCenterListView(generic.ListView):
     template_name = 'pokemon_center/center_list.html'
     context_object_name = 'centers'
     
+    def dispatch(self, request, *args, **kwargs):
+        trainer = get_object_or_404(Trainer, username=request.user.username)
+        if not _trainer_is_at_pokemon_center(trainer):
+            messages.warning(
+                request,
+                "Vous devez être dans une ville possédant un Centre Pokémon pour y accéder."
+            )
+            return redirect('map_view')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         return PokemonCenter.objects.filter(is_available=True)
     

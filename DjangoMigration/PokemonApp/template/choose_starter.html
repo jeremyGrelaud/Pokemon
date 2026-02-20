@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}<title>Choisissez votre Pokémon de départ !</title>{% endblock title %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+
+      <!-- Header -->
+      <div class="text-center mb-5">
+        <img src="{% static 'img/pokedex_transparent.png' %}" style="width:60px;" alt="Pokédex" class="mb-3">
+        <h1 class="h2 font-weight-bold text-gray-800">Bienvenue, {{ trainer.username }} !</h1>
+        <p class="lead text-muted">
+          Professeur Chen vous attend. Choisissez votre Pokémon de départ pour commencer votre aventure !
+        </p>
+        <hr>
+      </div>
+
+      <!-- Starters -->
+      <form method="post">
+        {% csrf_token %}
+        <div class="row justify-content-center">
+
+          {% for starter in starters %}
+          <div class="col-md-4 mb-4">
+            <div class="card h-100 starter-card shadow-sm" 
+                 data-starter-id="{{ starter.id }}"
+                 style="cursor:pointer; transition: transform 0.15s, box-shadow 0.15s; border: 3px solid transparent;">
+              
+              <!-- Sprite centré -->
+              <div class="card-body text-center pb-0">
+                <img src="{% static 'img/sprites_gen5/normal/' %}{{ starter.name|lowerPokemonFileNames }}.png"
+                     alt="{{ starter.name }}"
+                     style="width:120px;height:120px;object-fit:contain;"
+                     onerror="this.src='{% static 'img/pokeball.png' %}'">
+                
+                <h4 class="mt-3 font-weight-bold">{{ starter.name }}</h4>
+
+                <!-- Types -->
+                <div class="mb-2">
+                  <span class="badge badge-type-{{ starter.primary_type.name }} mr-1">
+                    {{ starter.primary_type.name|upper }}
+                  </span>
+                  {% if starter.secondary_type %}
+                  <span class="badge badge-type-{{ starter.secondary_type.name }}">
+                    {{ starter.secondary_type.name|upper }}
+                  </span>
+                  {% endif %}
+                </div>
+
+                <!-- Stats de base -->
+                <small class="text-muted">
+                  <div>❤️ PV : {{ starter.base_hp }}</div>
+                  <div>⚔️ ATK : {{ starter.base_attack }}</div>
+                  <div>🛡️ DEF : {{ starter.base_defense }}</div>
+                  <div>⚡ VIT : {{ starter.base_speed }}</div>
+                </small>
+              </div>
+
+              <div class="card-footer text-center bg-transparent border-0 pt-2 pb-3">
+                <button type="submit" name="starter_id" value="{{ starter.id }}"
+                        class="btn btn-outline-primary btn-choose-starter">
+                  <i class="fas fa-hand-pointer"></i> Choisir {{ starter.name }}
+                </button>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12 text-center text-danger">
+            <p>Aucun Pokémon de départ n'est configuré dans la base de données.<br>
+               Demandez à votre administrateur d'initialiser la base.</p>
+          </div>
+          {% endfor %}
+
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<style>
+.starter-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+}
+.starter-card.selected {
+  border-color: #4e73df !important;
+  background: #f0f4ff;
+}
+.badge-type-Plante, .badge-type-grass { background:#78C850; color:#fff; }
+.badge-type-Feu, .badge-type-fire { background:#F08030; color:#fff; }
+.badge-type-Eau, .badge-type-water { background:#6890F0; color:#fff; }
+.badge-type-Poison, .badge-type-poison { background:#A040A0; color:#fff; }
+</style>
+
+<script>
+// Highlight au clic
+document.querySelectorAll('.starter-card').forEach(card => {
+  card.addEventListener('click', function() {
+    document.querySelectorAll('.starter-card').forEach(c => c.classList.remove('selected'));
+    this.classList.add('selected');
+  });
+});
+</script>
+{% endblock content %}

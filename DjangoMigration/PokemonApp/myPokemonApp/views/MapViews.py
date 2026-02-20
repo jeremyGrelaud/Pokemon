@@ -71,8 +71,21 @@ def zone_detail_view(request, zone_id):
     player_location = PlayerLocation.objects.get(trainer=trainer)
     is_current = player_location.current_zone == zone
     
-    # Zones connectées
-    connections = ZoneConnection.objects.filter(from_zone=zone)
+    # Zones connectées : depuis + retour bidirectionnel
+    outgoing = ZoneConnection.objects.filter(from_zone=zone).select_related('to_zone')
+    incoming = ZoneConnection.objects.filter(
+        to_zone=zone, is_bidirectional=True
+    ).select_related('from_zone')
+
+    # Construire une liste unifiée de "connexions" pour le template (to_zone = destination)
+    # Pour les connexions inverses, on crée un objet anonyme cohérent
+    connections = list(outgoing)
+    seen_zone_ids = {c.to_zone_id for c in outgoing}
+    for conn in incoming:
+        if conn.from_zone_id not in seen_zone_ids:
+            # On crée un wrapper simple pour le template qui attend conn.to_zone
+            conn.to_zone = conn.from_zone
+            connections.append(conn)
     
     # Pokémon sauvages
     wild_spawns = zone.wild_spawns.all()
@@ -210,6 +223,7 @@ def wild_encounter_view(request, zone_id):
         opponent_trainer=wild_trainer,
         player_pokemon=player_pokemon,
         opponent_pokemon=wild_pokemon,
+        battle_type='wild',
         is_active=True
     )
     

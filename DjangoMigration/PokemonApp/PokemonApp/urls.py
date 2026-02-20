@@ -22,13 +22,17 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('login/', auth_views.LoginView.as_view(), name='account_login'), #base django login and logout
+    path('login/', auth_views.LoginView.as_view(), name='account_login'),
+    path('login/', auth_views.LoginView.as_view(), name='login'),  # alias
     path('logout/', auth_views.LogoutView.as_view(), name='account_logout'),
     # path("pokemonGame", views.PokemonGameLauncherView.as_view(), name='PokemonGameLauncherView'),
 
 
     # Dashboard
     path('', views.DashboardView.as_view(), name='home'),
+    
+    # Starter selection (nouveaux joueurs)
+    path('choose-starter/', views.choose_starter_view, name='choose_starter'),
     
     # Pokédex
     path('pokedex/', views.PokemonOverView.as_view(), name='PokemonOverView'),

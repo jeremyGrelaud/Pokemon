@@ -222,6 +222,9 @@
               <span class="move-power">
                 {% if move_instance.move.power %}PWR: {{ move_instance.move.power }}{% else %}—{% endif %}
               </span>
+              <span class="move-accuracy" style="font-size:0.75em;color:#aaa;">
+                {% if move_instance.move.accuracy %}PREC: {{ move_instance.move.accuracy }}%{% else %}∞{% endif %}
+              </span>
             </div>
           </button>
           {% empty %}
@@ -298,9 +301,17 @@
         <p id="victory-exp-message"></p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-success" onclick="window.location.reload()">
-          <i class="fas fa-check"></i> Continuer
+        {% if battle.battle_type == 'trainer' or battle.battle_type == 'gym' %}
+        <button type="button" class="btn btn-success" 
+                onclick="window.location.href='{% url 'battle_trainer_complete' battle.id %}'">
+          <i class="fas fa-check"></i> Voir les récompenses
         </button>
+        {% else %}
+        <button type="button" class="btn btn-success" 
+                onclick="window.location.href='{% url 'home' %}'">
+          <i class="fas fa-home"></i> Retour
+        </button>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -318,12 +329,19 @@
       <div class="modal-body text-center">
         <i class="fas fa-times-circle fa-5x text-danger mb-3"></i>
         <h4>Vous avez perdu le combat...</h4>
-        <p>Tous vos Pokémon sont K.O.</p>
+        <p>Tous vos Pokémon sont K.O. Vous êtes transporté au Centre Pokémon.</p>
       </div>
       <div class="modal-footer">
+        {% if battle.battle_type == 'trainer' or battle.battle_type == 'gym' %}
+        <button type="button" class="btn btn-warning"
+                onclick="window.location.href='{% url 'battle_trainer_complete' battle.id %}'">
+          <i class="fas fa-hospital"></i> Voir le résultat
+        </button>
+        {% else %}
         <button type="button" class="btn btn-secondary" onclick="window.location.href='{% url 'home' %}'">
           <i class="fas fa-home"></i> Retour
         </button>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -634,10 +652,15 @@ function loadItems() {
     
     let html = '<div class="items-grid">';
     data.items.forEach(item => {
+      // Tentative de chargement du sprite de l'objet
+      const itemSlug = item.name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+      const spriteUrl = "{% static 'img/items/' %}" + itemSlug + ".png";
       html += `
         <button class="item-btn" onclick="useItem(${item.id})">
           <div class="item-icon">
-            <i class="fas fa-flask"></i>
+            <img src="${spriteUrl}" alt="${item.name}"
+                 style="width:32px;height:32px;object-fit:contain;"
+                 onerror="this.outerHTML='<i class=\\'fas fa-flask\\'></i>'">
           </div>
           <div class="item-info">
             <span class="item-name">${item.name}</span>
@@ -864,6 +887,7 @@ function updateMovesMenu(moves) {
         <div class="move-footer">
           <span class="move-type-badge type-${move.type}">${move.type}</span>
           <span class="move-power">${move.power ? 'PWR: ' + move.power : '—'}</span>
+          <span class="move-accuracy" style="font-size:0.75em;color:#aaa;">${move.accuracy ? 'PREC: ' + move.accuracy + '%' : '∞'}</span>
         </div>
       </button>
     `;
@@ -1021,14 +1045,22 @@ function showForcedSwitchModal() {
     alivePokemon.forEach(pokemon => {
       const hpPercent = (pokemon.current_hp / pokemon.max_hp) * 100;
       const hpClass = hpPercent > 50 ? 'success' : (hpPercent > 20 ? 'warning' : 'danger');
+      const spriteName = lowerPokemonFileNames(pokemon.species.name);
+      const spriteUrl = "{% static 'img/sprites_gen5/normal/' %}" + spriteName + ".png";
       
       html += `
         <button class="list-group-item list-group-item-action" 
                 onclick="forcedSwitch(${pokemon.id})">
           <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="mb-1"><strong>${pokemon.nickname || pokemon.species.name}</strong></h6>
-              <small>Niv. ${pokemon.level}</small>
+            <div class="d-flex align-items-center">
+              <img src="${spriteUrl}" 
+                   alt="${pokemon.nickname || pokemon.species.name}"
+                   style="width:56px;height:56px;object-fit:contain;margin-right:12px;flex-shrink:0;"
+                   onerror="this.style.display='none'">
+              <div>
+                <h6 class="mb-0"><strong>${pokemon.nickname || pokemon.species.name}</strong></h6>
+                <small class="text-muted">Niv. ${pokemon.level}</small>
+              </div>
             </div>
             <div class="text-right">
               <div class="progress" style="width: 100px; height: 10px;">
@@ -1178,7 +1210,7 @@ function showCaptureSuccessModal(captureData) {
           </div>
           <div class="modal-body text-center">
             <i class="fas fa-check-circle fa-5x text-success mb-3"></i>
-            <h4>${captureData.captured_pokemon.species.name} capturé !</h4>
+            <h4>${captureData.captured_pokemon.name} capturé !</h4>
             <p class="mb-2">Niveau ${captureData.captured_pokemon.level}</p>
             ${captureData.is_first_catch ? '<p class="text-warning"><i class="fas fa-star"></i> Premier capturé !</p>' : ''}
             <hr>
