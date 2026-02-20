@@ -6,414 +6,397 @@
 {% endblock title %}
 
 {% block content %}
-<!-- Page Heading -->
+<!-- Header -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
   <h1 class="h3 mb-0 text-gray-800">
     <i class="fas fa-users text-success"></i> Mon Équipe
   </h1>
-  <div>
-    <span class="badge badge-primary p-2">{{ trainer.badges }} badges</span>
-    <span class="badge badge-warning p-2">{{ trainer.money }}₽</span>
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge badge-primary p-2">
+      <i class="fas fa-medal"></i> {{ trainer.badges }} badge{% if trainer.badges != 1 %}s{% endif %}
+    </span>
+    <span class="badge badge-warning p-2">
+      <i class="fas fa-coins"></i> {{ trainer.money }}₽
+    </span>
   </div>
 </div>
 
-<!-- Trainer Info -->
-<div class="row mb-4">
-  <div class="col-12">
-    <div class="card shadow">
-      <div class="card-body">
-        <div class="row align-items-center">
-          <div class="col-md-2 text-center">
-            <img src="{% static 'img/trainer_sprites/red.png' %}" 
-                 alt="Trainer" 
-                 style="width: 80px;"
-                 onerror="this.src='{% static 'img/pokeball.png' %}'">
-          </div>
-          <div class="col-md-10">
-            <h4>{{ trainer.username }}</h4>
-            <p class="mb-1">
-              <strong>Type:</strong> {{ trainer.get_trainer_type_display }}
-            </p>
-            {% if trainer.location %}
-            <p class="mb-1">
-              <strong>Position:</strong> {{ trainer.location }}
-            </p>
-            {% endif %}
-            <p class="mb-0">
-              <strong>Pokémon capturés:</strong> {{ trainer.pokemon_team.count }}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Notification inline -->
+<div id="team-alert" class="alert d-none mb-3" role="alert"></div>
 
-<!-- Équipe Active -->
-<div class="row">
-  <div class="col-12">
-    <div class="card shadow mb-4">
-      <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-          <i class="fas fa-star"></i> Équipe Active ({{ team|length }}/6)
-        </h6>
-      </div>
-      <div class="card-body">
-        {% if team %}
-        <div class="row">
-          {% for pokemon in team %}
-          <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card pokemon-card h-100">
-              <div class="card-body">
-                <div class="text-center mb-2">
-                  <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png" 
-                       alt="{{ pokemon.species.name }}"
-                       class="pokemon-sprite"
-                       onerror="this.src='{% static 'img/pokeball.png' %}'">
-                </div>
-                
-                <h5 class="text-center">
+<!-- ═══ ÉQUIPE ACTIVE ═══════════════════════════════════════════════════ -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3 d-flex align-items-center justify-content-between">
+    <h6 class="m-0 font-weight-bold text-primary">
+      <i class="fas fa-star"></i> Équipe Active
+      <span class="badge badge-light ml-1" id="team-count">{{ team|length }}/6</span>
+    </h6>
+    <small class="text-muted">
+      <i class="fas fa-grip-vertical"></i> Glisser-déposer pour réordonner
+    </small>
+  </div>
+  <div class="card-body">
+    {% if team %}
+    <div id="team-sortable" class="row">
+      {% for pokemon in team %}
+      <div class="col-md-6 col-lg-4 mb-3 team-slot" data-id="{{ pokemon.id }}">
+        <div class="card pokemon-card h-100 border-success">
+          <!-- Drag handle -->
+          <div class="drag-handle card-header py-1 px-2 d-flex align-items-center justify-content-between bg-light">
+            <i class="fas fa-grip-horizontal text-muted"></i>
+            <small class="text-muted position-badge">#{{ forloop.counter }}</small>
+          </div>
+
+          <div class="card-body pt-2 pb-1">
+            <div class="d-flex align-items-center mb-2">
+              <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png"
+                   alt="{{ pokemon.species.name }}"
+                   class="pokemon-sprite-sm mr-3"
+                   onerror="this.src='{% static 'img/pokeball.png' %}'">
+              <div class="flex-grow-1 min-w-0">
+                <h6 class="mb-0 text-truncate">
                   {% if pokemon.nickname %}
-                    {{ pokemon.nickname }}
+                    <strong>{{ pokemon.nickname }}</strong>
                     <small class="text-muted">({{ pokemon.species.name }})</small>
                   {% else %}
-                    {{ pokemon.species.name }}
+                    <strong>{{ pokemon.species.name }}</strong>
                   {% endif %}
-                </h5>
-                
-                <p class="text-center mb-2">
-                  <span class="badge badge-secondary">Niv. {{ pokemon.level }}</span>
-                  <span class="badge badge-type-{{ pokemon.species.primary_type.name }}">
-                    {{ pokemon.species.primary_type.name }}
-                  </span>
-                  {% if pokemon.species.secondary_type %}
-                  <span class="badge badge-type-{{ pokemon.species.secondary_type.name }}">
-                    {{ pokemon.species.secondary_type.name }}
-                  </span>
-                  {% endif %}
-                </p>
-
-                <!-- HP Bar -->
-                <div class="mb-2">
-                  <div class="d-flex justify-content-between">
-                    <small>HP</small>
-                    <small><strong>{{ pokemon.current_hp }}/{{ pokemon.max_hp }}</strong></small>
-                  </div>
-                  <div class="hp-bar">
-                    {% widthratio pokemon.current_hp pokemon.max_hp 100 as hp_percent %}
-                    {% with hp_percent_int=hp_percent|default:0|add:0 %}
-                    <div class="hp-bar-fill
-                      {% if hp_percent_int > 50 %}hp-high
-                      {% elif hp_percent_int > 20 %}hp-medium
-                      {% else %}hp-low
-                      {% endif %}"
-                      style="width: {{ hp_percent }}%">
-                    </div>
-                    {% endwith %}
-                  </div>
-                </div>
-
-                <!-- Stats -->
-                <div class="row text-center small">
-                  <div class="col-4">
-                    <strong>{{ pokemon.attack }}</strong><br>
-                    <small class="text-muted">ATK</small>
-                  </div>
-                  <div class="col-4">
-                    <strong>{{ pokemon.defense }}</strong><br>
-                    <small class="text-muted">DEF</small>
-                  </div>
-                  <div class="col-4">
-                    <strong>{{ pokemon.speed }}</strong><br>
-                    <small class="text-muted">SPD</small>
-                  </div>
-                </div>
-
-                <!-- Status -->
-                {% if pokemon.status_condition %}
-                <div class="mt-2 text-center">
-                  <span class="badge badge-danger">
-                    {{ pokemon.get_status_condition_display }}
-                  </span>
-                </div>
+                </h6>
+                <span class="badge badge-secondary">Niv. {{ pokemon.level }}</span>
+                <span class="badge badge-type-{{ pokemon.species.primary_type.name|lower }}">{{ pokemon.species.primary_type.name }}</span>
+                {% if pokemon.species.secondary_type %}
+                <span class="badge badge-type-{{ pokemon.species.secondary_type.name|lower }}">{{ pokemon.species.secondary_type.name }}</span>
                 {% endif %}
-
-                <!-- Capacités -->
-                <div class="mt-3">
-                  <small class="text-muted">Capacités:</small>
-                  {% for move_instance in pokemon.pokemonmoveinstance_set.all %}
-                  <div class="small">
-                    • {{ move_instance.move.name }} 
-                    <span class="text-muted">({{ move_instance.current_pp }}/{{ move_instance.move.pp }})</span>
-                  </div>
-                  {% empty %}
-                  <div class="small text-muted">Aucune capacité</div>
-                  {% endfor %}
-                </div>
-
-                <!-- NOUVEAU: XP Progress Bar -->
-                <div class="mt-3">
-                  <small class="text-muted">Expérience</small>
-                  <div class="progress" style="height: 10px;">
-                    {% widthratio pokemon.current_exp pokemon.exp_for_next_level 100 as exp_percent %}
-                    <div class="progress-bar bg-info" role="progressbar" 
-                         style="width: {{ exp_percent }}%" 
-                         aria-valuenow="{{ exp_percent }}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="100">
-                    </div>
-                  </div>
-                  <small class="text-muted">{{ pokemon.current_exp }} / {{ pokemon.exp_for_next_level }} XP</small>
-                </div>
               </div>
-              <div class="card-footer text-center">
-                <!-- NOUVEAU: Boutons d'action -->
-                <div class="btn-group btn-group-sm" role="group">
-                  <a href="{% url 'PokemonDetailView' pokemon.species.id %}" 
-                     class="btn btn-outline-primary">
-                    <i class="fas fa-info-circle"></i> Détails
-                  </a>
-                  
-                  <!-- Bouton Envoyer au PC -->
-                  <button class="btn btn-outline-warning" 
-                          onclick="sendToPC({{ pokemon.id }})"
-                          {% if team|length <= 1 %}disabled title="Vous devez avoir au moins 1 Pokémon dans l'équipe"{% endif %}>
-                    <i class="fas fa-database"></i> PC
-                  </button>
-                </div>
+            </div>
+
+            <!-- HP bar -->
+            <div class="mb-2">
+              <div class="d-flex justify-content-between" style="font-size:.75rem;">
+                <span>HP</span>
+                <strong>{{ pokemon.current_hp }}/{{ pokemon.max_hp }}</strong>
+              </div>
+              <div class="hp-bar">
+                {% widthratio pokemon.current_hp pokemon.max_hp 100 as hp_pct %}
+                {% with hp_int=hp_pct|default:0|add:0 %}
+                <div class="hp-bar-fill {% if hp_int > 50 %}hp-high{% elif hp_int > 20 %}hp-medium{% else %}hp-low{% endif %}"
+                     style="width:{{ hp_pct }}%"></div>
+                {% endwith %}
+              </div>
+            </div>
+
+            <!-- Mini stats -->
+            <div class="row text-center small text-muted mb-1">
+              <div class="col-4">{{ pokemon.attack }}<br><span style="font-size:.65rem">ATK</span></div>
+              <div class="col-4">{{ pokemon.defense }}<br><span style="font-size:.65rem">DEF</span></div>
+              <div class="col-4">{{ pokemon.speed }}<br><span style="font-size:.65rem">SPD</span></div>
+            </div>
+
+            <!-- Statut -->
+            {% if pokemon.status_condition %}
+            <div class="text-center mb-1">
+              <span class="badge badge-danger">{{ pokemon.get_status_condition_display }}</span>
+            </div>
+            {% endif %}
+
+            <!-- XP bar -->
+            <div>
+              <div class="d-flex justify-content-between" style="font-size:.7rem;color:#6c757d;">
+                <span>EXP</span>
+                <span>{{ pokemon.current_exp }}/{{ pokemon.exp_for_next_level }}</span>
+              </div>
+              <div class="progress" style="height:5px;">
+                {% widthratio pokemon.current_exp pokemon.exp_for_next_level 100 as exp_pct %}
+                <div class="progress-bar bg-info" style="width:{{ exp_pct }}%"></div>
               </div>
             </div>
           </div>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="text-center py-5">
-          <i class="fas fa-users fa-3x text-muted mb-3"></i>
-          <p class="text-muted">Vous n'avez pas encore de Pokémon dans votre équipe</p>
-        </div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- PC Storage -->
-{% if pc_pokemon %}
-<div class="row">
-  <div class="col-12">
-    <div class="card shadow mb-4">
-      <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-          <i class="fas fa-database"></i> PC Storage ({{ pc_pokemon|length }} Pokémon)
-        </h6>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          {% for pokemon in pc_pokemon %}
-          <div class="col-md-3 col-lg-2 mb-3">
-            <div class="card text-center pokemon-pc-card" style="cursor: pointer;">
-              <div class="card-body p-2">
-                <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png" 
-                     alt="{{ pokemon.species.name }}"
-                     style="width: 64px; height: 64px;"
-                     onerror="this.src='{% static 'img/pokeball.png' %}'">
-                <small class="d-block">{{ pokemon.species.name }}</small>
-                <small class="text-muted">Niv. {{ pokemon.level }}</small>
-                
-                <!-- Bouton Ajouter à l'équipe -->
-                <button class="btn btn-sm btn-primary mt-2" 
-                        onclick="addToParty({{ pokemon.id }})"
-                        {% if team|length >= 6 %}disabled title="Équipe complète (6/6)"{% endif %}>
-                  <i class="fas fa-plus"></i> Équipe
-                </button>
-              </div>
+          <div class="card-footer py-2">
+            <div class="btn-group btn-group-sm w-100">
+              <a href="{% url 'PokemonDetailView' pokemon.species.id %}"
+                 class="btn btn-outline-primary">
+                <i class="fas fa-info-circle"></i> Détails
+              </a>
+              <button class="btn btn-outline-warning send-to-pc-btn"
+                      data-id="{{ pokemon.id }}"
+                      data-name="{{ pokemon.nickname|default:pokemon.species.name }}"
+                      {% if team|length <= 1 %}disabled title="Dernier Pokémon de l'équipe"{% endif %}>
+                <i class="fas fa-database"></i> → PC
+              </button>
             </div>
           </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-users fa-3x mb-3 d-block"></i>
+      Aucun Pokémon dans l'équipe. Ajoutez-en depuis le PC ci-dessous.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ═══ PC STORAGE ═══════════════════════════════════════════════════════ -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3 d-flex align-items-center justify-content-between">
+    <h6 class="m-0 font-weight-bold text-info">
+      <i class="fas fa-database"></i> PC — Réserve
+      <span class="badge badge-light ml-1" id="pc-count">{{ pc_pokemon|length }}</span>
+    </h6>
+    {% if pc_pokemon %}
+    <small class="text-muted">Cliquez sur un Pokémon pour l'ajouter à l'équipe</small>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if pc_pokemon %}
+    <div id="pc-grid" class="row">
+      {% for pokemon in pc_pokemon %}
+      <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-3 pc-slot" id="pc-slot-{{ pokemon.id }}">
+        <div class="card pc-card text-center h-100 {% if team|length >= 6 %}pc-card-disabled{% endif %}"
+             data-id="{{ pokemon.id }}"
+             data-name="{{ pokemon.nickname|default:pokemon.species.name }}">
+          <div class="card-body p-2">
+            <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png"
+                 alt="{{ pokemon.species.name }}"
+                 class="pokemon-sprite-pc"
+                 onerror="this.src='{% static 'img/pokeball.png' %}'">
+            <div class="mt-1 text-truncate" style="font-size:.8rem;font-weight:600;">
+              {{ pokemon.nickname|default:pokemon.species.name }}
+            </div>
+            <small class="text-muted d-block">Niv. {{ pokemon.level }}</small>
+            {% if pokemon.status_condition %}
+            <span class="badge badge-danger" style="font-size:.6rem;">{{ pokemon.status_condition }}</span>
+            {% endif %}
+          </div>
+          <div class="card-footer p-1" style="font-size:.7rem;">
+            <i class="fas fa-plus-circle text-success"></i> Équipe
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-4 text-muted">
+      <i class="fas fa-database fa-2x mb-2 d-block"></i>
+      Le PC est vide.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ═══ INVENTAIRE ═══════════════════════════════════════════════════════ -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3">
+    <h6 class="m-0 font-weight-bold text-primary">
+      <i class="fas fa-shopping-bag"></i> Inventaire
+    </h6>
+  </div>
+  <div class="card-body">
+    {% if inventory %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover">
+        <thead><tr><th>Objet</th><th>Type</th><th>Qté</th><th>Description</th></tr></thead>
+        <tbody>
+          {% for inv_item in inventory %}
+          <tr>
+            <td>
+              {% with path=inv_item.item|item_sprite_path %}
+              {% if path %}
+              <img src="{% static 'img/items_sprites/' %}{{ path }}"
+                   alt="{{ inv_item.item.name }}"
+                   style="width:20px;height:20px;object-fit:contain;margin-right:4px;"
+                   onerror="this.style.display='none'">
+              {% endif %}
+              {% endwith %}
+              <strong>{{ inv_item.item.name }}</strong>
+            </td>
+            <td><span class="badge badge-secondary">{{ inv_item.item.get_item_type_display }}</span></td>
+            <td><span class="badge badge-primary">x{{ inv_item.quantity }}</span></td>
+            <td><small class="text-muted">{{ inv_item.item.description|truncatewords:10 }}</small></td>
+          </tr>
           {% endfor %}
-        </div>
-      </div>
+        </tbody>
+      </table>
     </div>
-  </div>
-</div>
-{% endif %}
-
-<!-- Inventaire -->
-<div class="row">
-  <div class="col-12">
-    <div class="card shadow mb-4">
-      <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-          <i class="fas fa-shopping-bag"></i> Inventaire
-        </h6>
-      </div>
-      <div class="card-body">
-        {% if inventory %}
-        <div class="table-responsive">
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                <th>Objet</th>
-                <th>Type</th>
-                <th>Quantité</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for inv_item in inventory %}
-              <tr>
-                <td><strong>{{ inv_item.item.name }}</strong></td>
-                <td>
-                  <span class="badge badge-secondary">
-                    {{ inv_item.item.get_item_type_display }}
-                  </span>
-                </td>
-                <td>
-                  <span class="badge badge-primary">x{{ inv_item.quantity }}</span>
-                </td>
-                <td><small class="text-muted">{{ inv_item.item.description|truncatewords:10 }}</small></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <p class="text-center text-muted">Votre inventaire est vide</p>
-        {% endif %}
-      </div>
-    </div>
+    {% else %}
+    <p class="text-center text-muted mb-0">Votre inventaire est vide.</p>
+    {% endif %}
   </div>
 </div>
 
-<!-- Back Link -->
 <a href="{% url 'home' %}" class="btn btn-secondary mb-4">
   <i class="fas fa-arrow-left"></i> Retour au Dashboard
 </a>
+
 {% endblock content %}
 
 {% block js %}
 {{ block.super }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"  crossorigin="anonymous"></script>
 <script>
-// CSRF Token pour les requêtes AJAX
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
+const CSRF     = '{{ csrf_token }}';
+const TEAM_MAX = 6;
+
+// ── Utilitaires ─────────────────────────────────────────────────────────
+function showAlert(msg, type = 'success') {
+  const el = document.getElementById('team-alert');
+  el.className = `alert alert-${type} mb-3`;
+  el.innerHTML = msg;
+  el.classList.remove('d-none');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add('d-none'), 3500);
 }
 
-const csrftoken = getCookie('csrftoken');
+function post(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+    body: JSON.stringify(body)
+  }).then(r => r.json());
+}
 
-// NOUVEAU: Fonction pour envoyer un Pokémon au PC
-function sendToPC(pokemonId) {
-  if (!confirm('Envoyer ce Pokémon au PC ?')) {
+function getTeamCount() { return document.querySelectorAll('#team-sortable .team-slot').length; }
+function getPCCount()   { return document.querySelectorAll('#pc-grid .pc-slot').length; }
+
+function syncUI() {
+  const tc = getTeamCount();
+  const pc = getPCCount();
+
+  document.getElementById('team-count').textContent = `${tc}/6`;
+  document.getElementById('pc-count').textContent   = pc;
+
+  // Boutons → PC : désactivés si dernier Pokémon
+  document.querySelectorAll('.send-to-pc-btn').forEach(btn => {
+    btn.disabled = (tc <= 1);
+    btn.title    = (tc <= 1) ? "Dernier Pokémon de l'équipe" : '';
+  });
+
+  // Cartes PC : grises si équipe pleine
+  document.querySelectorAll('.pc-card').forEach(card => {
+    card.classList.toggle('pc-card-disabled', tc >= TEAM_MAX);
+  });
+
+  // Numéros de position
+  document.querySelectorAll('#team-sortable .position-badge').forEach((el, i) => {
+    el.textContent = `#${i + 1}`;
+  });
+}
+
+// ── Drag & Drop — Réordonnement ─────────────────────────────────────────
+const teamContainer = document.getElementById('team-sortable');
+if (teamContainer) {
+  Sortable.create(teamContainer, {
+    handle: '.drag-handle',
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    chosenClass: 'sortable-chosen',
+    onEnd() {
+      const order = [...teamContainer.querySelectorAll('.team-slot')]
+        .map(el => parseInt(el.dataset.id));
+      syncUI();
+      post('/api/reorder-party/', { order }).then(data => {
+        if (!data.success) showAlert('Erreur réordonnement : ' + data.error, 'danger');
+      });
+    }
+  });
+}
+
+// ── Envoyer au PC ───────────────────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.send-to-pc-btn');
+  if (!btn || btn.disabled) return;
+
+  const id   = parseInt(btn.dataset.id);
+  const name = btn.dataset.name;
+  if (!confirm(`Envoyer ${name} au PC ?`)) return;
+
+  btn.disabled = true;
+
+  post('/api/send-to-pc/', { pokemon_id: id }).then(data => {
+    if (data.success) {
+      // Retirer de l'équipe
+      document.querySelector(`#team-sortable .team-slot[data-id="${id}"]`)?.remove();
+      // Recharger pour afficher le Pokémon dans le PC avec son sprite correct
+      showAlert(`<i class="fas fa-database"></i> ${name} envoyé au PC.`, 'info');
+      syncUI();
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showAlert('Erreur : ' + data.error, 'danger');
+      btn.disabled = false;
+    }
+  }).catch(() => { showAlert('Erreur réseau.', 'danger'); btn.disabled = false; });
+});
+
+// ── Ajouter depuis le PC ─────────────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  const card = e.target.closest('.pc-card');
+  if (!card || card.classList.contains('pc-card-disabled')) return;
+
+  const id   = parseInt(card.dataset.id);
+  const name = card.dataset.name;
+
+  if (getTeamCount() >= TEAM_MAX) {
+    showAlert('Équipe complète (6/6) — envoyez d\'abord un Pokémon au PC.', 'warning');
     return;
   }
-  
-  fetch('/api/send-to-pc/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': csrftoken
-    },
-    body: JSON.stringify({
-      pokemon_id: pokemonId
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessToast('Pokémon envoyé au PC!');
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      showErrorToast('Erreur: ' + data.error);
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showErrorToast('Erreur lors du transfert');
-  });
-}
 
-// NOUVEAU: Fonction pour ajouter un Pokémon à l'équipe
-function addToParty(pokemonId) {
-  fetch('/api/add-to-party/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': csrftoken
-    },
-    body: JSON.stringify({
-      pokemon_id: pokemonId
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showSuccessToast('Pokémon ajouté à l\'équipe!');
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      showErrorToast('Erreur: ' + data.error);
-    }
-  })
-  .catch(error => {
-    showErrorToast('Erreur lors de l\'ajout');
-  });
-}
+  card.style.opacity        = '.45';
+  card.style.pointerEvents  = 'none';
 
-// Animation des cartes Pokémon
-$(document).ready(function() {
-  $('.pokemon-card, .pokemon-pc-card').hover(
-    function() { $(this).addClass('shadow-lg'); },
-    function() { $(this).removeClass('shadow-lg'); }
-  );
+  post('/api/add-to-party/', { pokemon_id: id }).then(data => {
+    if (data.success) {
+      showAlert(`<i class="fas fa-star"></i> ${name} rejoint l'équipe !`, 'success');
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showAlert('Erreur : ' + data.error, 'danger');
+      card.style.opacity       = '';
+      card.style.pointerEvents = '';
+    }
+  }).catch(() => {
+    showAlert('Erreur réseau.', 'danger');
+    card.style.opacity       = '';
+    card.style.pointerEvents = '';
+  });
 });
+
+syncUI();
 </script>
 
 <style>
-.hp-bar {
-  width: 100%;
-  height: 20px;
-  background-color: #e9ecef;
-  border-radius: 10px;
-  overflow: hidden;
-}
+/* ── Sprites ───────────────────────────────────────────────── */
+.pokemon-sprite-sm { width:64px; height:64px; object-fit:contain; flex-shrink:0; }
+.pokemon-sprite-pc { width:56px; height:56px; object-fit:contain; }
 
-.hp-bar-fill {
-  height: 100%;
-  transition: width 0.3s ease;
-}
+/* ── Cards équipe ──────────────────────────────────────────── */
+.pokemon-card       { transition:transform .2s,box-shadow .2s; }
+.pokemon-card:hover { transform:translateY(-3px); box-shadow:0 6px 14px rgba(0,0,0,.15); }
 
-.hp-high {
-  background-color: #28a745;
-}
+.drag-handle        { cursor:grab; user-select:none; }
+.drag-handle:active { cursor:grabbing; }
+.sortable-ghost     { opacity:.3; }
+.sortable-chosen    { box-shadow:0 0 0 3px #28a745!important; border-radius:.35rem; }
 
-.hp-medium {
-  background-color: #ffc107;
+/* ── Cards PC ──────────────────────────────────────────────── */
+.pc-card {
+  cursor:pointer;
+  transition:transform .15s,box-shadow .15s,border-color .15s;
+  border:2px solid transparent;
 }
+.pc-card:hover:not(.pc-card-disabled) {
+  transform:translateY(-3px);
+  box-shadow:0 4px 12px rgba(40,167,69,.4);
+  border-color:#28a745;
+}
+.pc-card-disabled { opacity:.4; cursor:not-allowed; }
 
-.hp-low {
-  background-color: #dc3545;
-}
-
-.pokemon-card, .pokemon-pc-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.pokemon-card:hover, .pokemon-pc-card:hover {
-  transform: translateY(-5px);
-}
-
-.pokemon-sprite {
-  width: 96px;
-  height: 96px;
-}
+/* ── HP bar ────────────────────────────────────────────────── */
+.hp-bar      { width:100%; height:8px; background:#e9ecef; border-radius:4px; overflow:hidden; }
+.hp-bar-fill { height:100%; transition:width .3s; }
+.hp-high     { background:#28a745; }
+.hp-medium   { background:#ffc107; }
+.hp-low      { background:#dc3545; }
 </style>
 {% endblock js %}

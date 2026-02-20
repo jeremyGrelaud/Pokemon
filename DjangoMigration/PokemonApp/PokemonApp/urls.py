@@ -44,6 +44,9 @@ urlpatterns = [
     
     # Mon équipe
     path('my-team/', views.MyTeamView.as_view(), name='MyTeamView'),
+    path('api/reorder-party/', views.reorder_party_api, name='ReorderPartyAPI'),
+    path('api/send-to-pc/', views.send_to_pc_api, name='SendToPCAPI'),
+    path('api/add-to-party/', views.add_to_party_api, name='AddToPartyAPI'),
     
     # Combats
     path('battles/', views.BattleListView.as_view(), name='BattleListView'),
@@ -65,10 +68,6 @@ urlpatterns = [
     path('get_trainer_items/', views.GetTrainerItems, name='GetTrainerItems'),
     path('get_trainer_team/', views.GetTrainerTeam, name='GetTrainerTeam'),
 
-
-    # NOUVELLES ROUTES API
-    path('api/send-to-pc/', views.send_to_pc_api, name='SendToPCAPI'),
-    path('api/add-to-party/', views.add_to_party_api, name='AddToPartyAPI'),
 
     # Boutiques
     path('shops/', views.ShopListView.as_view(), name='ShopListView'),

@@ -205,3 +205,32 @@ def reorganize_party_positions(trainer):
     for position, pokemon in enumerate(team_pokemon, start=1):
         pokemon.party_position = position
         pokemon.save()
+
+
+@login_required
+@require_POST
+def reorder_party_api(request):
+    """
+    API pour réordonner l'équipe via drag & drop.
+    Attend un JSON : { "order": [id1, id2, id3, ...] }
+    """
+    try:
+        data     = json.loads(request.body)
+        order    = data.get('order', [])  # liste ordonnée d'IDs de PlayablePokemon
+        trainer  = get_object_or_404(Trainer, username=request.user.username)
+
+        # Vérifier que tous les IDs appartiennent bien au trainer et sont en équipe
+        team_ids = set(
+            trainer.pokemon_team.filter(is_in_party=True).values_list('id', flat=True)
+        )
+        if set(order) != team_ids:
+            return JsonResponse({'success': False, 'error': 'IDs invalides'}, status=400)
+
+        # Appliquer le nouvel ordre en une seule passe
+        for position, pk in enumerate(order, start=1):
+            trainer.pokemon_team.filter(pk=pk).update(party_position=position)
+
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
