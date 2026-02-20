@@ -5,266 +5,316 @@
 {% block title %}<title>{{ zone.name }}</title>{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container-fluid">
   <div class="mb-3">
     <a href="{% url 'map_view' %}" class="btn btn-secondary">
       <i class="fas fa-arrow-left"></i> Retour à la carte
     </a>
   </div>
 
-  <div class="card">
-    <!-- Header avec image de zone -->
-    <div class="card-header bg-primary text-white p-0 position-relative" style="overflow:hidden; min-height:180px;">
-      <img src="{% static 'img/mapSprites/Kanto/' %}{{ zone.name|zone_image_path }}"
-           alt="{{ zone.name }}"
-           class="w-100"
-           style="object-fit:cover; max-height:220px; opacity:0.55;"
-           onerror="this.style.display='none';">
-      <div class="position-absolute w-100 p-3" style="bottom:0; background: linear-gradient(transparent, rgba(0,0,0,0.6));">
-        <h2 class="mb-0 text-white">
-          <i class="fas fa-map-marker-alt"></i> {{ zone.name }}
-        </h2>
-        <p class="mb-0 text-white-50">{{ zone.get_zone_type_display }}</p>
-      </div>
-    </div>
+  <div class="row">
+    <!-- ── Colonne principale ─────────────────────────────────────── -->
+    <div class="col-lg-8 col-xl-9">
 
-    <div class="card-body">
-      <p>{{ zone.description }}</p>
-
-      <div class="mb-3">
-        <span class="badge badge-info">
-          Niveau recommandé: {{ zone.recommended_level_min }}-{{ zone.recommended_level_max }}
-        </span>
-        {% if is_current %}
-        <span class="badge badge-success">
-          <i class="fas fa-check"></i> Vous êtes ici
-        </span>
-        {% endif %}
-      </div>
-
-      <!-- Actions (uniquement si le joueur est dans cette zone) -->
-      {% if is_current %}
-      <div class="row mb-4">
-
-        <!-- Hautes herbes -->
-        {% if not zone.is_safe_zone %}
-        <div class="col-md-6 col-lg-3 mb-3">
-          <div class="card bg-success text-white h-100">
-            <div class="card-body text-center d-flex flex-column justify-content-between">
-              <div>
-                <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}"
-                     alt="Hautes herbes"
-                     style="width:48px;height:48px;object-fit:contain;"
-                     onerror="this.style.display='none';">
-                <h5 class="mt-2"><i class="fas fa-leaf"></i> Hautes Herbes</h5>
-                <p class="small mb-3 text-white-50">Rencontrez des Pokémon sauvages</p>
-              </div>
-              <a href="{% url 'wild_encounter' zone.id %}?type=grass" class="btn btn-light btn-sm">
-                <i class="fas fa-search"></i> Chercher un Pokémon
-              </a>
-            </div>
+      <div class="card">
+        <!-- Header avec image de zone -->
+        <div class="card-header bg-primary text-white p-0 position-relative" style="overflow:hidden; min-height:180px;">
+          <img src="{% static 'img/mapSprites/Kanto/' %}{{ zone.name|zone_image_path }}"
+              alt="{{ zone.name }}"
+              class="w-100"
+              style="object-fit:cover; max-height:220px; opacity:0.55;"
+              onerror="this.style.display='none';">
+          <div class="position-absolute w-100 p-3" style="bottom:0; background: linear-gradient(transparent, rgba(0,0,0,0.6));">
+            <h2 class="mb-0 text-white">
+              <i class="fas fa-map-marker-alt"></i> {{ zone.name }}
+            </h2>
+            <p class="mb-0 text-white-50">{{ zone.get_zone_type_display }}</p>
           </div>
         </div>
-        {% endif %}
 
-        <!-- Centre Pokémon -->
-        {% if zone.has_pokemon_center %}
-        <div class="col-md-6 col-lg-3 mb-3">
-          <div class="card bg-danger text-white h-100">
-            <div class="card-body text-center d-flex flex-column justify-content-between">
-              <div>
-                <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}"
-                     alt="Centre Pokémon"
-                     style="width:64px;height:64px;object-fit:contain;"
-                     onerror="this.style.display='none';">
-                <h5 class="mt-2"><i class="fas fa-hospital"></i> Centre Pokémon</h5>
-                {% if pokemon_center %}
-                <p class="small mb-3 text-white-50">{{ pokemon_center.nurse_name }}</p>
-                {% else %}
-                <p class="small mb-3 text-white-50">Soignez votre équipe gratuitement</p>
-                {% endif %}
-              </div>
-              {% if pokemon_center %}
-              <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}" class="btn btn-light btn-sm">
-                <i class="fas fa-heartbeat"></i> Entrer au centre
-              </a>
-              {% else %}
-              <a href="{% url 'PokemonCenterListView' %}" class="btn btn-light btn-sm">
-                <i class="fas fa-heartbeat"></i> Soigner l'équipe
-              </a>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        {% endif %}
+        <div class="card-body">
+          <p>{{ zone.description }}</p>
 
-        <!-- Pokemart / Boutique -->
-        {% if zone.has_shop %}
-        <div class="col-md-6 col-lg-3 mb-3">
-          <div class="card text-white h-100" style="background-color: #764ba2;">
-            <div class="card-body text-center d-flex flex-column justify-content-between">
-              <div>
-                <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}"
-                     alt="Pokemart"
-                     style="width:64px;height:64px;object-fit:contain;"
-                     onerror="this.style.display='none';">
-                <h5 class="mt-2"><i class="fas fa-shopping-bag"></i> Pokemart</h5>
-                {% if zone_shop %}
-                <p class="small mb-3 text-white-50">{{ zone_shop.name }}</p>
-                {% else %}
-                <p class="small mb-3 text-white-50">Achetez objets et équipements</p>
-                {% endif %}
-              </div>
-              {% if zone_shop %}
-              <a href="{% url 'ShopDetailView' zone_shop.id %}" class="btn btn-light btn-sm">
-                <i class="fas fa-store"></i> Entrer dans la boutique
-              </a>
-              {% else %}
-              <a href="{% url 'ShopListView' %}" class="btn btn-light btn-sm">
-                <i class="fas fa-store"></i> Voir les boutiques
-              </a>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        {% endif %}
-
-        <!-- Arène / Gym Leader -->
-        {% if gym_leader %}
-        <div class="col-md-6 col-lg-3 mb-3">
-          <div class="card text-white h-100" style="background-color: #e67e22;">
-            <div class="card-body text-center d-flex flex-column justify-content-between">
-              <div>
-                <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}" 
-                     alt="{{ gym_leader.trainer.username }}"
-                     style="width:64px;height:64px;object-fit:contain;"
-                     onerror="this.style.display='none';">
-                <h5 class="mt-2"><i class="fas fa-trophy"></i> Arène</h5>
-                <p class="small mb-1 text-white-50">
-                  <strong>{{ gym_leader.trainer.username }}</strong>
-                </p>
-                <p class="small mb-3 text-white-50">
-                  Badge : {{ gym_leader.badge_name }}
-                </p>
-              </div>
-              <a href="{% url 'GymLeaderDetailView' gym_leader.id %}" class="btn btn-light btn-sm">
-                <i class="fas fa-fist-raised"></i> Défier l'Arène
-              </a>
-            </div>
-          </div>
-        </div>
-        {% endif %}
-
-      </div>
-      {% endif %}
-
-      <!-- Pokémon sauvages -->
-      {% if wild_spawns %}
-      <h4><i class="fas fa-paw"></i> Pokémon Sauvages</h4>
-      <div class="table-responsive mb-4">
-        <table class="table table-sm align-middle">
-          <thead>
-            <tr>
-              <th style="width:56px;"></th>
-              <th>Pokémon</th>
-              <th>Niveau</th>
-              <th>Taux</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for spawn in wild_spawns %}
-            <tr>
-              <td class="text-center">
-                <img src="{% static 'img/sprites_gen5/normal/' %}{{ spawn.pokemon.name|lowerPokemonFileNames }}.png"
-                     alt="{{ spawn.pokemon.name }}"
-                     style="width:64px;height:64px;object-fit:contain;"
-                     onerror="this.style.display='none';">
-              </td>
-              <td><strong>{{ spawn.pokemon.name }}</strong></td>
-              <td>{{ spawn.level_min }}-{{ spawn.level_max }}</td>
-              <td>
-                <div style="display:flex; align-items:center; gap:8px; min-width:120px;">
-                  <div style="
-                    flex:1;
-                    height:8px;
-                    background:#e9ecef;
-                    border-radius:4px;
-                    overflow:hidden;
-                  ">
-                    <div style="
-                      height:100%;
-                      width:{{ spawn.spawn_rate }}%;
-                      background: {% if spawn.spawn_rate >= 50 %}#28a745{% elif spawn.spawn_rate >= 20 %}#ffc107{% else %}#dc3545{% endif %};
-                      border-radius:4px;
-                      transition: width 0.3s ease;
-                    "></div>
-                  </div>
-                  <small style="color:#6c757d; white-space:nowrap; font-size:0.75rem;">
-                    {{ spawn.spawn_rate }}%
-                  </small>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% endif %}
-
-      <!-- Dresseurs -->
-      {% if trainers %}
-      <h4><i class="fas fa-users"></i> Dresseurs</h4>
-      <div class="list-group mb-4">
-        {% for trainer in trainers %}
-        <a href="{% url 'battle_create_trainer' trainer.id %}" class="list-group-item list-group-item-action">
-          <div class="d-flex align-items-center">
-            <img src="{% static 'img/trainer_sprites/' %}{{ trainer|trainer_sprite_path }}"
-                 alt="{{ trainer.get_full_title }}"
-                 style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;"
-                 onerror="this.style.display='none';">
-            <div class="flex-grow-1">
-              <strong>{{ trainer.get_full_title }}</strong>
-              <br>
-              <small class="text-muted">{{ trainer.intro_text|truncatewords:10 }}</small>
-            </div>
-            <span class="badge badge-danger align-self-center">
-              <i class="fas fa-fist-raised"></i> Combattre
+          <div class="mb-3">
+            <span class="badge badge-info">
+              Niveau recommandé: {{ zone.recommended_level_min }}-{{ zone.recommended_level_max }}
             </span>
+            {% if is_current %}
+            <span class="badge badge-success">
+              <i class="fas fa-check"></i> Vous êtes ici
+            </span>
+            {% endif %}
           </div>
-        </a>
-        {% endfor %}
-      </div>
-      {% endif %}
 
-      <!-- Zones connectées -->
-      {% if connections %}
-      <h4><i class="fas fa-route"></i> Zones Adjacentes</h4>
-      <div class="row">
-        {% for conn in connections %}
-        <div class="col-md-6 mb-3">
-          <div class="card">
-            <img src="{% static 'img/mapSprites/Kanto/' %}{{ conn.to_zone.name|zone_image_path }}"
-                 alt="{{ conn.to_zone.name }}"
-                 class="card-img-top"
-                 style="height:80px; object-fit:cover; opacity:0.75;"
-                 onerror="this.style.display='none';">
-            <div class="card-body py-2">
-              <h6 class="mb-1">{{ conn.to_zone.name }}</h6>
-              {% if is_current %}
-              <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
-                <i class="fas fa-arrow-right"></i> Voyager
-              </a>
-              {% else %}
-              <small class="text-muted">Revenez ici pour voyager</small>
-              {% endif %}
+          <!-- Actions (uniquement si le joueur est dans cette zone) -->
+          {% if is_current %}
+          <div class="row mb-4">
+
+            <!-- Hautes herbes -->
+            {% if not zone.is_safe_zone %}
+            <div class="col-md-6 col-lg-3 mb-3">
+              <div class="card bg-success text-white h-100">
+                <div class="card-body text-center d-flex flex-column justify-content-between">
+                  <div>
+                    <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}"
+                        alt="Hautes herbes"
+                        style="width:48px;height:48px;object-fit:contain;"
+                        onerror="this.style.display='none';">
+                    <h5 class="mt-2"><i class="fas fa-leaf"></i> Hautes Herbes</h5>
+                    <p class="small mb-3 text-white-50">Rencontrez des Pokémon sauvages</p>
+                  </div>
+                  <a href="{% url 'wild_encounter' zone.id %}?type=grass" class="btn btn-light btn-sm">
+                    <i class="fas fa-search"></i> Chercher un Pokémon
+                  </a>
+                </div>
+              </div>
             </div>
+            {% endif %}
+
+            <!-- Centre Pokémon -->
+            {% if zone.has_pokemon_center %}
+            <div class="col-md-6 col-lg-3 mb-3">
+              <div class="card bg-danger text-white h-100">
+                <div class="card-body text-center d-flex flex-column justify-content-between">
+                  <div>
+                    <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}"
+                        alt="Centre Pokémon"
+                        style="width:64px;height:64px;object-fit:contain;"
+                        onerror="this.style.display='none';">
+                    <h5 class="mt-2"><i class="fas fa-hospital"></i> Centre Pokémon</h5>
+                    {% if pokemon_center %}
+                    <p class="small mb-3 text-white-50">{{ pokemon_center.nurse_name }}</p>
+                    {% else %}
+                    <p class="small mb-3 text-white-50">Soignez votre équipe gratuitement</p>
+                    {% endif %}
+                  </div>
+                  {% if pokemon_center %}
+                  <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-heartbeat"></i> Entrer au centre
+                  </a>
+                  {% else %}
+                  <a href="{% url 'PokemonCenterListView' %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-heartbeat"></i> Soigner l'équipe
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Pokemart / Boutique -->
+            {% if zone.has_shop %}
+            <div class="col-md-6 col-lg-3 mb-3">
+              <div class="card text-white h-100" style="background-color: #764ba2;">
+                <div class="card-body text-center d-flex flex-column justify-content-between">
+                  <div>
+                    <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}"
+                        alt="Pokemart"
+                        style="width:64px;height:64px;object-fit:contain;"
+                        onerror="this.style.display='none';">
+                    <h5 class="mt-2"><i class="fas fa-shopping-bag"></i> Pokemart</h5>
+                    {% if zone_shop %}
+                    <p class="small mb-3 text-white-50">{{ zone_shop.name }}</p>
+                    {% else %}
+                    <p class="small mb-3 text-white-50">Achetez objets et équipements</p>
+                    {% endif %}
+                  </div>
+                  {% if zone_shop %}
+                  <a href="{% url 'ShopDetailView' zone_shop.id %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-store"></i> Entrer dans la boutique
+                  </a>
+                  {% else %}
+                  <a href="{% url 'ShopListView' %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-store"></i> Voir les boutiques
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Arène / Gym Leader -->
+            {% if gym_leader %}
+            <div class="col-md-6 col-lg-3 mb-3">
+              <div class="card text-white h-100" style="background-color: #e67e22;">
+                <div class="card-body text-center d-flex flex-column justify-content-between">
+                  <div>
+                    <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}" 
+                        alt="{{ gym_leader.trainer.username }}"
+                        style="width:64px;height:64px;object-fit:contain;"
+                        onerror="this.style.display='none';">
+                    <h5 class="mt-2"><i class="fas fa-trophy"></i> Arène</h5>
+                    <p class="small mb-1 text-white-50">
+                      <strong>{{ gym_leader.trainer.username }}</strong>
+                    </p>
+                    <p class="small mb-3 text-white-50">
+                      Badge : {{ gym_leader.badge_name }}
+                    </p>
+                  </div>
+                  <a href="{% url 'GymLeaderDetailView' gym_leader.id %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-fist-raised"></i> Défier l'Arène
+                  </a>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+          </div>
+          {% endif %}
+
+          <!-- Pokémon sauvages -->
+          {% if wild_spawns %}
+          <h4><i class="fas fa-paw"></i> Pokémon Sauvages</h4>
+          <div class="table-responsive mb-4">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th style="width:56px;"></th>
+                  <th>Pokémon</th>
+                  <th>Niveau</th>
+                  <th>Taux</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for spawn in wild_spawns %}
+                <tr>
+                  <td class="text-center">
+                    <img src="{% static 'img/sprites_gen5/normal/' %}{{ spawn.pokemon.name|lowerPokemonFileNames }}.png"
+                        alt="{{ spawn.pokemon.name }}"
+                        style="width:64px;height:64px;object-fit:contain;"
+                        onerror="this.style.display='none';">
+                  </td>
+                  <td><strong>{{ spawn.pokemon.name }}</strong></td>
+                  <td>{{ spawn.level_min }}-{{ spawn.level_max }}</td>
+                  <td>
+                    <div style="display:flex; align-items:center; gap:8px; min-width:120px;">
+                      <div style="
+                        flex:1;
+                        height:8px;
+                        background:#e9ecef;
+                        border-radius:4px;
+                        overflow:hidden;
+                      ">
+                        <div style="
+                          height:100%;
+                          width:{{ spawn.spawn_rate }}%;
+                          background: {% if spawn.spawn_rate >= 50 %}#28a745{% elif spawn.spawn_rate >= 20 %}#ffc107{% else %}#dc3545{% endif %};
+                          border-radius:4px;
+                          transition: width 0.3s ease;
+                        "></div>
+                      </div>
+                      <small style="color:#6c757d; white-space:nowrap; font-size:0.75rem;">
+                        {{ spawn.spawn_rate }}%
+                      </small>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+
+          <!-- Dresseurs -->
+          {% if trainers %}
+          <h4><i class="fas fa-users"></i> Dresseurs</h4>
+          <div class="list-group mb-4">
+            {% for trainer in trainers %}
+            <a href="{% url 'battle_create_trainer' trainer.id %}" class="list-group-item list-group-item-action">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ trainer|trainer_sprite_path }}"
+                    alt="{{ trainer.get_full_title }}"
+                    style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;"
+                    onerror="this.style.display='none';">
+                <div class="flex-grow-1">
+                  <strong>{{ trainer.get_full_title }}</strong>
+                  <br>
+                  <small class="text-muted">{{ trainer.intro_text|truncatewords:10 }}</small>
+                </div>
+                <span class="badge badge-danger align-self-center">
+                  <i class="fas fa-fist-raised"></i> Combattre
+                </span>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Zones connectées -->
+          {% if connections %}
+          <h4><i class="fas fa-route"></i> Zones Adjacentes</h4>
+          <div class="row">
+            {% for conn in connections %}
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <img src="{% static 'img/mapSprites/Kanto/' %}{{ conn.to_zone.name|zone_image_path }}"
+                    alt="{{ conn.to_zone.name }}"
+                    class="card-img-top"
+                    style="height:80px; object-fit:cover; opacity:0.75;"
+                    onerror="this.style.display='none';">
+                <div class="card-body py-2">
+                  <h6 class="mb-1">{{ conn.to_zone.name }}</h6>
+                  {% if is_current %}
+                  <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-arrow-right"></i> Voyager
+                  </a>
+                  {% else %}
+                  <small class="text-muted">Revenez ici pour voyager</small>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+        </div>{# /card #}
+      </div>{# /card #}
+    </div>{# /col principal #}
+
+    <!-- ── Colonne minimap ─────────────────────────────────────────── -->
+    <div class="col-lg-4 col-xl-3 mt-3 mt-lg-0">
+      <div class="zone-minimap-panel">
+        <div class="card shadow-sm">
+          <div class="card-header py-2 text-center">
+            <strong><i class="fas fa-map-marked-alt"></i> Position sur la carte</strong>
+          </div>
+          <div class="card-body p-2 text-center">
+            {% with minimap=zone.name|zone_minimap_path %}
+            <img src="{% static 'img/mapSprites/Kanto/' %}{{ minimap }}"
+                 alt="Localisation {{ zone.name }}"
+                 class="img-fluid minimap-gif"
+                 onerror="this.closest('.card').style.display='none';">
+            {% endwith %}
+            <p class="text-muted small mt-2 mb-0">
+              <i class="fas fa-map-marker-alt text-danger"></i>
+              <strong>{{ zone.name }}</strong>
+            </p>
           </div>
         </div>
-        {% endfor %}
       </div>
-      {% endif %}
+    </div>{# /col minimap #}
 
-    </div>
-  </div>
-</div>
+  </div>{# /row #}
+</div>{# /container-fluid #}
+
+<style>
+/* Minimap sticky */
+.zone-minimap-panel {
+  position: sticky;
+  top: 80px;
+}
+.minimap-gif {
+  max-height: 320px;
+  width: auto;
+  border-radius: 6px;
+  image-rendering: pixelated;
+}
+@media (max-width: 991px) {
+  .zone-minimap-panel {
+    position: static;
+    margin-bottom: 1.5rem;
+  }
+}
+</style>
 {% endblock %}

@@ -695,3 +695,21 @@ def trainer_sprite_path(trainer):
         return type_fallback[trainer_type]
 
     return 'unknown.png'
+
+# ---------------------------------------------------------------------------
+# zone_minimap_path : retourne le chemin du GIF de localisation dans mapGifs/
+# Exemple : "Bourg Palette" → "mapGifs/Localisation_Bourg_Palette.gif"
+# Usage :
+#   <img src="{% static 'img/mapSprites/Kanto/' %}{{ zone.name|zone_minimap_path }}">
+# ---------------------------------------------------------------------------
+
+@register.filter(name='zone_minimap_path')
+def zone_minimap_path(zone_name):
+    """
+    Convertit un nom de zone en chemin vers le GIF de localisation minimap.
+    Les espaces sont remplacés par des underscores, la casse est conservée.
+    """
+    if not zone_name:
+        return None
+    safe_name = str(zone_name).replace(' ', '_')
+    return f'mapGifs/Localisation_{safe_name}.gif'

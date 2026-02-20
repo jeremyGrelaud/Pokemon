@@ -22,11 +22,20 @@
     </span>
   </div>
 
-  <!-- Liste des zones -->
+  <!-- Bouton de retour vers position actuelle -->
+  <div class="mb-3 d-flex align-items-center gap-2">
+    <button class="btn btn-sm btn-success" onclick="scrollToCurrentZone()">
+      <i class="fas fa-crosshairs"></i> Ma position
+    </button>
+    <small class="text-muted">{{ zones|length }} zone{% if zones|length > 1 %}s{% endif %} disponible{% if zones|length > 1 %}s{% endif %}</small>
+  </div>
+
+  <!-- Liste des zones (scrollable) -->
+  <div id="zones-container" style="max-height:72vh; overflow-y:auto; padding-right:4px;">
   <div class="row">
     {% for zone_data in zones %}
     <div class="col-md-4 mb-4">
-      <div class="card zone-card h-100 {% if zone_data.zone == current_zone %}current-zone{% endif %} {% if not zone_data.accessible %}locked-zone{% endif %}">
+      <div class="card zone-card h-100 {% if zone_data.zone == current_zone %}current-zone{% endif %} {% if not zone_data.accessible %}locked-zone{% endif %}" {% if zone_data.zone == current_zone %}id="current-zone-card"{% endif %}>
 
         <!-- Image de la zone -->
         <img src="{% static 'img/mapSprites/Kanto/' %}{{ zone_data.zone.name|zone_image_path }}"
@@ -81,10 +90,17 @@
       </div>
     </div>
     {% endfor %}
-  </div>
+  </div>{# /row #}
+  </div>{# /zones-container #}
 </div>
 
 <style>
+/* Scrollbar discrète */
+#zones-container::-webkit-scrollbar { width: 6px; }
+#zones-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+#zones-container::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 3px; }
+#zones-container::-webkit-scrollbar-thumb:hover { background: #6c757d; }
+
 .zone-card {
   transition: all 0.3s ease;
   border: 2px solid #ddd;
@@ -95,6 +111,7 @@
 }
 .current-zone {
   border-color: #28a745;
+  box-shadow: 0 0 0 3px rgba(40,167,69,0.25);
 }
 .current-zone .card-img-top {
   border-top: 3px solid #28a745;
@@ -106,4 +123,29 @@
   filter: grayscale(80%);
 }
 </style>
+
+<script>
+function scrollToCurrentZone() {
+  const card = document.getElementById('current-zone-card');
+  const container = document.getElementById('zones-container');
+  if (!card || !container) return;
+
+  // Offset du card dans le container
+  const cardTop    = card.getBoundingClientRect().top;
+  const contTop    = container.getBoundingClientRect().top;
+  const scrollTo   = container.scrollTop + (cardTop - contTop) - 20;
+
+  container.scrollTo({ top: scrollTo, behavior: 'smooth' });
+
+  // Petit flash pour attirer l'œil
+  card.style.transition = 'box-shadow 0.3s';
+  card.style.boxShadow  = '0 0 0 5px rgba(40,167,69,0.6)';
+  setTimeout(() => { card.style.boxShadow = ''; }, 1200);
+}
+
+// Auto-scroll au chargement
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(scrollToCurrentZone, 300);
+});
+</script>
 {% endblock %}
