@@ -62,6 +62,7 @@ urlpatterns = [
     # Combat graphique
     path('battle/<int:pk>/play/', views.BattleGameView.as_view(), name='BattleGameView'),
     path('battle/<int:pk>/action/', views.battle_action_view, name='BattleActionView'),    
+    path('battle/<int:pk>/learn-move/', views.battle_learn_move_view, name='BattlelearnMoveView'),
 
     # path('battle/create/', views.BattleCreateView.as_view(), name='BattleCreateView'),
 

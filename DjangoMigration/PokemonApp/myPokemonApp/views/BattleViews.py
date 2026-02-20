@@ -180,6 +180,10 @@ def battle_action_view(request, pk):
                 for move_name in exp_result.get('learned_moves', []):
                     response_data['log'].append(f"{battle.player_pokemon.species.name} apprend {move_name} !")
 
+                # Moves en attente d'apprentissage (pokemon a deja 4 moves)
+                if exp_result.get('pending_moves'):
+                    response_data['pending_moves'] = exp_result['pending_moves']
+
                 # Switch adversaire si dresseur avec d'autres Pokemon
                 if battle.opponent_trainer:
                     new_opponent = opponent_switch_pokemon(battle)
@@ -322,14 +326,14 @@ def battle_action_view(request, pk):
         elif extra_logs:
             response_data['log'] = extra_logs
 
-        # Verification finale de fin de combat
-        is_ended, winner, end_message = check_battle_end(battle)
-        if is_ended:
-            battle.winner = winner
-            battle.save()
-            response_data['battle_ended'] = True
-            response_data['winner']       = winner.username if winner else 'Draw'
-            response_data['log'].append(end_message)
+        # Verification finale de fin de combat (seulement si pas deja termine)
+        if not response_data.get('battle_ended'):
+            is_ended, winner, end_message = check_battle_end(battle)
+            if is_ended:
+                response_data['battle_ended'] = True
+                response_data['winner']       = winner.username if winner else 'Draw'
+                response_data['result']       = 'victory' if winner == battle.player_trainer else 'defeat'
+                response_data['log'].append(end_message)
 
     except Exception as e:
         import traceback
@@ -722,3 +726,68 @@ def GetTrainerItems(request):
     ]
 
     return JsonResponse({'success': True, 'items': items_data})
+
+
+# =============================================================================
+# API — APPRENTISSAGE DE MOVE (modal de selection)
+# =============================================================================
+
+@login_required
+@require_http_methods(['POST'])
+def battle_learn_move_view(request, pk):
+    """
+    Gere la decision du joueur lors de l'apprentissage d'un move (modal de selection).
+
+    POST params :
+      new_move_id      : ID du move a apprendre
+      replaced_move_id : ID du move a oublier (ou 'skip' pour ne pas apprendre)
+      pokemon_id       : ID du PlayablePokemon concerne
+    """
+    from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+
+    battle  = get_object_or_404(Battle, pk=pk)
+    trainer = get_object_or_404(Trainer, username=request.user.username)
+
+    if battle.player_trainer != trainer:
+        return JsonResponse({'error': 'Not your battle'}, status=403)
+
+    new_move_id      = request.POST.get('new_move_id')
+    replaced_move_id = request.POST.get('replaced_move_id')  # 'skip' = ne pas apprendre
+    pokemon_id       = request.POST.get('pokemon_id')
+
+    pokemon  = get_object_or_404(PlayablePokemon, pk=pokemon_id, trainer=trainer)
+    new_move = get_object_or_404(PokemonMove, pk=new_move_id)
+
+    if replaced_move_id and replaced_move_id != 'skip':
+        # Oublier le move choisi et apprendre le nouveau
+        PokemonMoveInstance.objects.filter(
+            pokemon=pokemon, move_id=replaced_move_id
+        ).delete()
+        PokemonMoveInstance.objects.get_or_create(
+            pokemon=pokemon,
+            move=new_move,
+            defaults={'current_pp': new_move.pp}
+        )
+        message = f"{pokemon.species.name} oublie et apprend {new_move.name} !"
+    else:
+        # Joueur decide de ne pas apprendre le move
+        message = f"{pokemon.species.name} n'apprend pas {new_move.name}."
+
+    # Retourner les moves mis a jour
+    moves = [
+        {
+            'id':         mi.move.id,
+            'name':       mi.move.name,
+            'type':       mi.move.type.name if mi.move.type else '',
+            'power':      mi.move.power,
+            'accuracy':   mi.move.accuracy,
+            'pp':         mi.move.pp,
+            'current_pp': mi.current_pp,
+            'max_pp':     mi.move.pp,
+        }
+        for mi in PokemonMoveInstance.objects.filter(
+            pokemon=pokemon
+        ).select_related('move', 'move__type')
+    ]
+
+    return JsonResponse({'success': True, 'message': message, 'moves': moves})

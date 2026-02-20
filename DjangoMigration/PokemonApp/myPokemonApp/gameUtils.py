@@ -469,10 +469,22 @@ def apply_exp_gain(pokemon, exp_amount):
 
     Retourne :
         {
-            'exp_gained':    int,
-            'level_up':      bool,
-            'new_level':     int,
-            'learned_moves': [str]   # noms des nouvelles capacites apprises
+            'exp_gained':      int,
+            'level_up':        bool,
+            'new_level':       int,
+            'learned_moves':   [str],  # noms des capacites auto-apprises (< 4 moves)
+            'pending_moves':   [       # capacites en attente si le pokemon a deja 4 moves
+                {
+                    'move_id':   int,
+                    'move_name': str,
+                    'move_type': str,
+                    'move_power': int|None,
+                    'move_pp':   int,
+                    'current_moves': [
+                        {'id': int, 'name': str, 'type': str, 'power': int|None, 'pp': int}
+                    ]
+                }
+            ]
         }
     """
     from .models.PlayablePokemon import PokemonMoveInstance
@@ -482,6 +494,7 @@ def apply_exp_gain(pokemon, exp_amount):
         'level_up':      False,
         'new_level':     pokemon.level,
         'learned_moves': [],
+        'pending_moves': [],
     }
 
     pokemon.current_exp = (pokemon.current_exp or 0) + exp_amount
@@ -500,20 +513,52 @@ def apply_exp_gain(pokemon, exp_amount):
             pokemon.max_hp
         )
 
-        # Detecter les nouveaux moves appris a ce niveau
-        ids_before = set(
-            PokemonMoveInstance.objects.filter(pokemon=pokemon)
-            .values_list('move_id', flat=True)
-        )
-        learn_moves_up_to_level(pokemon, pokemon.level)
-        ids_after = set(
-            PokemonMoveInstance.objects.filter(pokemon=pokemon)
-            .values_list('move_id', flat=True)
-        )
-        for mid in (ids_after - ids_before):
-            move = PokemonMove.objects.filter(id=mid).first()
-            if move:
+        # Trouver les moves apprenables exactement a ce niveau
+        new_learnable = pokemon.species.learnable_moves.filter(
+            level_learned=pokemon.level
+        ).select_related('move', 'move__type')
+
+        for lm in new_learnable:
+            move = lm.move
+            # Verifier que le pokemon n'a pas deja ce move
+            already_has = PokemonMoveInstance.objects.filter(
+                pokemon=pokemon, move=move
+            ).exists()
+            if already_has:
+                continue
+
+            current_count = PokemonMoveInstance.objects.filter(pokemon=pokemon).count()
+
+            if current_count < 4:
+                # Apprendre automatiquement
+                PokemonMoveInstance.objects.get_or_create(
+                    pokemon=pokemon,
+                    move=move,
+                    defaults={'current_pp': move.pp}
+                )
                 result['learned_moves'].append(move.name)
+            else:
+                # Pokemon a deja 4 moves → proposer au joueur de choisir
+                current_moves = [
+                    {
+                        'id':    mi.move.id,
+                        'name':  mi.move.name,
+                        'type':  mi.move.type.name if mi.move.type else '',
+                        'power': mi.move.power,
+                        'pp':    mi.move.pp,
+                    }
+                    for mi in PokemonMoveInstance.objects.filter(
+                        pokemon=pokemon
+                    ).select_related('move', 'move__type')
+                ]
+                result['pending_moves'].append({
+                    'move_id':       move.id,
+                    'move_name':     move.name,
+                    'move_type':     move.type.name if move.type else '',
+                    'move_power':    move.power,
+                    'move_pp':       move.pp,
+                    'current_moves': current_moves,
+                })
 
     pokemon.save()
     return result
@@ -525,7 +570,14 @@ def check_battle_end(battle):
     """
     Verifie si le combat est termine.
     Retourne (is_ended: bool, winner: Trainer | None, message: str).
+
+    Note : cette fonction ne distribue PAS l'XP ni n'appelle end_battle().
+    La gestion de l'XP est centralisee dans BattleViews.py (action 'attack').
     """
+    # Si le combat est deja marque termine, ne rien faire
+    if not battle.is_active:
+        return False, None, ""
+
     player_alive = battle.player_trainer.pokemon_team.filter(
         is_in_party=True, current_hp__gt=0
     ).exists()
@@ -538,24 +590,25 @@ def check_battle_end(battle):
         opponent_alive = battle.opponent_pokemon.current_hp > 0
 
     if not player_alive:
-        battle.end_battle(battle.opponent_trainer)
+        battle.is_active = False
+        battle.winner    = battle.opponent_trainer
+        from django.utils import timezone
+        battle.ended_at  = timezone.now()
+        battle.save()
         return True, battle.opponent_trainer, "Vous avez perdu le combat..."
 
     if not opponent_alive:
-        battle.end_battle(battle.player_trainer)
-
-        if battle.opponent_pokemon.is_fainted():
-            btype = 'wild' if not battle.opponent_trainer else 'trainer'
-            exp   = calculate_exp_gain(battle.opponent_pokemon, btype)
-            apply_exp_gain(battle.player_pokemon, exp)
-            battle.add_to_log(
-                f"{battle.player_pokemon} gagne {exp} points d'experience !"
-            )
-
+        # La victoire du joueur est deja geree dans BattleViews.py (action attack).
+        # On ne devrait jamais arriver ici pour une victoire normale.
+        # Mais en cas de cas tordu, on marque quand meme la fin.
+        battle.is_active = False
+        battle.winner    = battle.player_trainer
+        from django.utils import timezone
+        battle.ended_at  = timezone.now()
+        battle.save()
         msg = "Vous avez gagne le combat !"
         if battle.opponent_trainer:
             msg = battle.opponent_trainer.defeat_text or msg
-
         return True, battle.player_trainer, msg
 
     return False, None, ""

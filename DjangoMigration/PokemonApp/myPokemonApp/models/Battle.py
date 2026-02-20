@@ -448,43 +448,11 @@ class Battle(models.Model):
         return exp
     
     def end_battle(self, winner):
-        """Termine le combat"""
+        """Termine le combat.
+        XP distribution is generated in BattleViews.py.
+        """
         self.winner = winner
         self.is_active = False
         from django.utils import timezone
         self.ended_at = timezone.now()
         self.save()
-        
-        # Distribution de l'XP
-        if winner == self.player_trainer:
-            # Le joueur a gagné
-            exp_gained = self.calculate_exp_reward(self.opponent_pokemon)
-            
-            # Donner l'XP au Pokémon du joueur (s'il n'est pas KO)
-            if self.player_pokemon and self.player_pokemon.current_hp > 0:
-                level_up_messages = self.player_pokemon.gain_exp(exp_gained)
-                self.add_to_log(f"{self.player_pokemon} gagne {exp_gained} points d'expérience!")
-                
-                # Ajouter les messages de level up
-                for msg in level_up_messages:
-                    self.add_to_log(msg)
-            
-            # Distribution des récompenses monétaires
-            if self.opponent_trainer:
-                reward = self.opponent_trainer.get_reward()
-                self.player_trainer.money += reward
-                self.player_trainer.save()
-                self.add_to_log(f"{self.player_trainer.username} gagne {reward}₽!")
-                
-                # Marquer le dresseur comme vaincu
-                if self.opponent_trainer.trainer_type != 'wild':
-                    self.opponent_trainer.is_defeated = True
-                    self.opponent_trainer.save()
-        
-        elif winner == self.opponent_trainer and self.opponent_trainer:
-            # L'adversaire a gagné
-            exp_gained = self.calculate_exp_reward(self.player_pokemon)
-            
-            # Donner l'XP au Pokémon adverse (s'il n'est pas KO)
-            if self.opponent_pokemon and self.opponent_pokemon.current_hp > 0:
-                self.opponent_pokemon.gain_exp(exp_gained)

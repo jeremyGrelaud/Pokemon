@@ -369,6 +369,50 @@
   </div>
 </div>
 
+<!-- Modal d'Apprentissage de Move -->
+<div class="modal fade" id="learn-move-modal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content border-warning">
+      <div class="modal-header" style="background: linear-gradient(135deg, #f5a623, #e67e22); color: white;">
+        <h5 class="modal-title">
+          <i class="fas fa-bolt"></i> Nouvelle Capacité !
+        </h5>
+      </div>
+      <div class="modal-body">
+        <p class="text-center mb-3" id="learn-move-intro">
+          <strong id="learn-move-pokemon-name"></strong> veut apprendre
+          <strong id="learn-move-new-name" class="text-warning"></strong> !<br>
+          <small class="text-muted">Mais il connaît déjà 4 capacités. Quelle capacité voulez-vous oublier ?</small>
+        </p>
+
+        <!-- Info sur la nouvelle capacité -->
+        <div class="card mb-3 border-warning" id="new-move-card">
+          <div class="card-header bg-warning text-white py-1">
+            <strong>Nouvelle capacité : <span id="new-move-display-name"></span></strong>
+          </div>
+          <div class="card-body py-2 d-flex gap-3">
+            <span class="badge badge-secondary" id="new-move-type-badge"></span>
+            <span class="text-muted" id="new-move-power-display"></span>
+            <span class="text-muted" id="new-move-pp-display"></span>
+          </div>
+        </div>
+
+        <!-- Moves actuels à choisir -->
+        <p class="font-weight-bold mb-2">Choisissez la capacité à oublier :</p>
+        <div class="row" id="current-moves-list">
+          <!-- rempli dynamiquement -->
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-secondary" onclick="skipLearnMove()">
+          <i class="fas fa-times"></i> Ne pas apprendre
+        </button>
+        <small class="text-muted">Cliquez sur une capacité pour l'oublier et apprendre la nouvelle</small>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Audio Elements (preload) -->
 <audio id="bgm-battle" loop preload="auto">
   <source src="{% static 'sounds/bgm/battle_wild.mp3' %}" type="audio/mpeg">
@@ -736,6 +780,12 @@ function updateBattleState(data) {
   // Check battle end
   if (data.battle_ended) {
     handleBattleEnd(data);
+  } else if (data.pending_moves && data.pending_moves.length > 0) {
+    // Moves en attente d'apprentissage → afficher la modal de sélection
+    // On bloque les boutons jusqu'à résolution de tous les moves
+    $('button').prop('disabled', true);
+    const pokemonId = data.player_pokemon ? data.player_pokemon.id : null;
+    handlePendingMoves(data.pending_moves, pokemonId);
   } else {
     $('button').prop('disabled', false);
     showMainMenu();
@@ -1110,6 +1160,119 @@ function forcedSwitch(pokemonId) {
     console.error('Forced switch failed:', xhr);
     addBattleLog('Erreur lors du changement');
     $('#forced-switch-list button').prop('disabled', false);
+  });
+}
+
+// ============================================================================
+// APPRENTISSAGE DE MOVE (modal de sélection)
+// ============================================================================
+
+// File d'attente si plusieurs moves sont appris en meme temps
+let pendingMovesQueue = [];
+let currentPendingMove = null;
+let learnMovePokemonId = null;
+
+function handlePendingMoves(pendingMoves, pokemonId) {
+  if (!pendingMoves || pendingMoves.length === 0) return;
+  learnMovePokemonId = pokemonId;
+  pendingMovesQueue = [...pendingMoves];
+  showNextPendingMove();
+}
+
+function showNextPendingMove() {
+  if (pendingMovesQueue.length === 0) {
+    currentPendingMove = null;
+    // Re-activer les boutons une fois tous les moves traités
+    $('button').prop('disabled', false);
+    showMainMenu();
+    return;
+  }
+
+  currentPendingMove = pendingMovesQueue.shift();
+
+  const pokemonName = $('#player-name').text();
+  $('#learn-move-pokemon-name').text(pokemonName);
+  $('#learn-move-new-name').text(currentPendingMove.move_name);
+  $('#new-move-display-name').text(currentPendingMove.move_name);
+  $('#new-move-type-badge')
+    .text((currentPendingMove.move_type || '').toUpperCase())
+    .attr('class', `badge type-${currentPendingMove.move_type}`);
+  $('#new-move-power-display').text(
+    currentPendingMove.move_power ? `Puissance : ${currentPendingMove.move_power}` : 'Puissance : —'
+  );
+  $('#new-move-pp-display').text(`PP : ${currentPendingMove.move_pp}`);
+
+  // Afficher les moves actuels
+  let html = '';
+  (currentPendingMove.current_moves || []).forEach(move => {
+    html += `
+      <div class="col-6 mb-2">
+        <button class="btn btn-outline-danger btn-block move-replace-btn"
+                onclick="confirmReplaceMove(${move.id})"
+                style="text-align:left; padding: 8px 12px;">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>${move.name}</strong>
+              <br>
+              <small class="badge type-${move.type}">${(move.type || '').toUpperCase()}</small>
+              <small class="text-muted ml-1">${move.power ? 'PWR ' + move.power : '—'}</small>
+            </div>
+            <div class="text-right">
+              <small class="text-muted">PP: ${move.pp}</small>
+            </div>
+          </div>
+        </button>
+      </div>
+    `;
+  });
+  $('#current-moves-list').html(html);
+
+  $('#learn-move-modal').modal('show');
+}
+
+function confirmReplaceMove(replacedMoveId) {
+  if (!currentPendingMove || !learnMovePokemonId) return;
+
+  // Désactiver les boutons pour éviter double-clic
+  $('.move-replace-btn').prop('disabled', true);
+
+  $.post('{% url "BattlelearnMoveView" battle.id %}', {
+    new_move_id:      currentPendingMove.move_id,
+    replaced_move_id: replacedMoveId,
+    pokemon_id:       learnMovePokemonId,
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    $('#learn-move-modal').modal('hide');
+    addBattleLog(data.message || 'Capacité apprise !');
+    if (data.moves) {
+      updateMovesMenu(data.moves);
+    }
+    // Passer au move suivant si file d'attente
+    setTimeout(showNextPendingMove, 400);
+  })
+  .fail(function() {
+    addBattleLog('Erreur lors de l\'apprentissage du move.');
+    $('.move-replace-btn').prop('disabled', false);
+  });
+}
+
+function skipLearnMove() {
+  if (!currentPendingMove || !learnMovePokemonId) return;
+
+  $.post('{% url "BattlelearnMoveView" battle.id %}', {
+    new_move_id:      currentPendingMove.move_id,
+    replaced_move_id: 'skip',
+    pokemon_id:       learnMovePokemonId,
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    $('#learn-move-modal').modal('hide');
+    addBattleLog(data.message || 'Capacité ignorée.');
+    setTimeout(showNextPendingMove, 400);
+  })
+  .fail(function() {
+    addBattleLog('Erreur.');
   });
 }
 
