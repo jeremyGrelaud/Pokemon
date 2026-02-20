@@ -47,6 +47,8 @@ urlpatterns = [
     path('api/reorder-party/', views.reorder_party_api, name='ReorderPartyAPI'),
     path('api/send-to-pc/', views.send_to_pc_api, name='SendToPCAPI'),
     path('api/add-to-party/', views.add_to_party_api, name='AddToPartyAPI'),
+    path('api/pokemon/moves/', views.get_pokemon_moves_api, name='GetPokemonMovesAPI'),
+    path('api/pokemon/swap-move/', views.swap_move_api, name='SwapMoveAPI'),
     
     # Combats
     path('battles/', views.BattleListView.as_view(), name='BattleListView'),

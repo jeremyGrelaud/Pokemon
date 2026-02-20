@@ -99,6 +99,20 @@
             </div>
             {% endif %}
 
+            <!-- Moves actifs -->
+            <div class="mb-2">
+              <div class="moves-mini-grid">
+                {% for mi in pokemon.pokemonmoveinstance_set.all %}
+                <div class="move-mini-chip type-bg-{{ mi.move.type.name|lower }}">
+                  <span class="move-mini-name">{{ mi.move.name }}</span>
+                  <span class="move-mini-pp {% if mi.current_pp == 0 %}pp-empty{% elif mi.current_pp <= mi.move.pp|divisibleby:3 %}pp-low{% endif %}">{{ mi.current_pp }}/{{ mi.move.pp }}</span>
+                </div>
+                {% empty %}
+                <span class="text-muted small">Aucune capacité</span>
+                {% endfor %}
+              </div>
+            </div>
+
             <!-- XP bar -->
             <div>
               <div class="d-flex justify-content-between" style="font-size:.7rem;color:#6c757d;">
@@ -113,18 +127,23 @@
           </div>
 
           <div class="card-footer py-2">
-            <div class="btn-group btn-group-sm w-100">
+            <div class="btn-group btn-group-sm w-100 mb-1">
               <a href="{% url 'PokemonDetailView' pokemon.species.id %}"
                  class="btn btn-outline-primary">
                 <i class="fas fa-info-circle"></i> Détails
               </a>
-              <button class="btn btn-outline-warning send-to-pc-btn"
+              <button class="btn btn-outline-secondary manage-moves-btn"
                       data-id="{{ pokemon.id }}"
-                      data-name="{{ pokemon.nickname|default:pokemon.species.name }}"
-                      {% if team|length <= 1 %}disabled title="Dernier Pokémon de l'équipe"{% endif %}>
-                <i class="fas fa-database"></i> → PC
+                      data-name="{{ pokemon.nickname|default:pokemon.species.name }}">
+                <i class="fas fa-bolt"></i> Capacités
               </button>
             </div>
+            <button class="btn btn-outline-warning btn-sm w-100 send-to-pc-btn"
+                    data-id="{{ pokemon.id }}"
+                    data-name="{{ pokemon.nickname|default:pokemon.species.name }}"
+                    {% if team|length <= 1 %}disabled title="Dernier Pokémon de l'équipe"{% endif %}>
+              <i class="fas fa-database"></i> Envoyer au PC
+            </button>
           </div>
         </div>
       </div>
@@ -231,6 +250,90 @@
   <i class="fas fa-arrow-left"></i> Retour au Dashboard
 </a>
 
+<!-- ═══ MODAL GESTION DES CAPACITÉS ════════════════════════════════════ -->
+<div class="modal fade" id="moves-modal" tabindex="-1" role="dialog" data-backdrop="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;">
+        <h5 class="modal-title">
+          <i class="fas fa-bolt text-warning"></i>
+          Capacités de <strong id="modal-pokemon-name">—</strong>
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+
+      <div class="modal-body p-0">
+        <div class="row no-gutters" style="min-height:420px;">
+
+          <!-- ── DECK ACTIF (gauche) ────────────────────────── -->
+          <div class="col-md-5 border-right" style="background:#f8f9fa;">
+            <div class="p-3 border-bottom" style="background:#e9ecef;">
+              <h6 class="mb-0 font-weight-bold">
+                <i class="fas fa-shield-alt text-success"></i> Deck actif
+                <small class="text-muted font-weight-normal ml-1">(max 4)</small>
+              </h6>
+            </div>
+            <div class="p-3" id="active-moves-list">
+              <div class="text-center text-muted py-4">
+                <i class="fas fa-spinner fa-spin"></i> Chargement...
+              </div>
+            </div>
+          </div>
+
+          <!-- ── FLÈCHE séparateur ─────────────────────────── -->
+          <div class="col-md-2 d-flex flex-column align-items-center justify-content-center"
+               style="background:#f0f4ff; border-right:1px solid #dee2e6;">
+            <div class="text-center text-muted px-2">
+              <i class="fas fa-exchange-alt fa-2x mb-2 text-primary"></i>
+              <p class="small mb-0">Cliquez sur un move apprenable pour choisir lequel remplacer</p>
+            </div>
+          </div>
+
+          <!-- ── MOVES APPRENABLES (droite) ────────────────── -->
+          <div class="col-md-5" style="background:#fff;">
+            <div class="p-3 border-bottom" style="background:#e9ecef;">
+              <h6 class="mb-0 font-weight-bold">
+                <i class="fas fa-book text-info"></i> Moves apprenables
+                <small class="text-muted font-weight-normal ml-1">(jusqu'au niveau actuel)</small>
+              </h6>
+            </div>
+            <div class="p-3" id="learnable-moves-list">
+              <div class="text-center text-muted py-4">
+                <i class="fas fa-spinner fa-spin"></i> Chargement...
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Sous-modal de confirmation de swap (inline) -->
+      <div id="swap-confirm-panel" class="d-none border-top p-3" style="background:#fff8e1;">
+        <p class="mb-2 font-weight-bold text-center">
+          <i class="fas fa-exchange-alt text-warning"></i>
+          Remplacer <strong id="swap-remove-name" class="text-danger"></strong>
+          par <strong id="swap-add-name" class="text-success"></strong> ?
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+          <button class="btn btn-success btn-sm" id="swap-confirm-btn">
+            <i class="fas fa-check"></i> Confirmer
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="cancelSwap()">
+            <i class="fas fa-times"></i> Annuler
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <small class="text-muted mr-auto" id="modal-status-msg"></small>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock content %}
 
 {% block js %}
@@ -268,18 +371,15 @@ function syncUI() {
   document.getElementById('team-count').textContent = `${tc}/6`;
   document.getElementById('pc-count').textContent   = pc;
 
-  // Boutons → PC : désactivés si dernier Pokémon
   document.querySelectorAll('.send-to-pc-btn').forEach(btn => {
     btn.disabled = (tc <= 1);
     btn.title    = (tc <= 1) ? "Dernier Pokémon de l'équipe" : '';
   });
 
-  // Cartes PC : grises si équipe pleine
   document.querySelectorAll('.pc-card').forEach(card => {
     card.classList.toggle('pc-card-disabled', tc >= TEAM_MAX);
   });
 
-  // Numéros de position
   document.querySelectorAll('#team-sortable .position-badge').forEach((el, i) => {
     el.textContent = `#${i + 1}`;
   });
@@ -317,9 +417,7 @@ document.addEventListener('click', function(e) {
 
   post('/api/send-to-pc/', { pokemon_id: id }).then(data => {
     if (data.success) {
-      // Retirer de l'équipe
       document.querySelector(`#team-sortable .team-slot[data-id="${id}"]`)?.remove();
-      // Recharger pour afficher le Pokémon dans le PC avec son sprite correct
       showAlert(`<i class="fas fa-database"></i> ${name} envoyé au PC.`, 'info');
       syncUI();
       setTimeout(() => location.reload(), 1000);
@@ -362,6 +460,205 @@ document.addEventListener('click', function(e) {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+// GESTION DES CAPACITÉS (modal)
+// ═══════════════════════════════════════════════════════════════════════
+
+let currentPokemonId   = null;
+let pendingAddMoveId   = null;
+let pendingAddMoveName = '';
+let currentMovesData   = [];
+
+// Ouvrir le modal
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.manage-moves-btn');
+  if (!btn) return;
+
+  currentPokemonId = parseInt(btn.dataset.id);
+  const name       = btn.dataset.name;
+
+  document.getElementById('modal-pokemon-name').textContent = name;
+  document.getElementById('modal-status-msg').textContent   = '';
+  cancelSwap();
+
+  $('#moves-modal').modal('show');
+  loadMovesModal(currentPokemonId);
+});
+
+function loadMovesModal(pokemonId) {
+  document.getElementById('active-moves-list').innerHTML   = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i></div>';
+  document.getElementById('learnable-moves-list').innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i></div>';
+
+  fetch(`/api/pokemon/moves/?pokemon_id=${pokemonId}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) {
+        showModalStatus('Erreur : ' + data.error, 'danger');
+        return;
+      }
+      currentMovesData = data.moves;
+      renderActiveMoves(data.moves);
+      renderLearnableMoves(data.learnable);
+    })
+    .catch(() => showModalStatus('Erreur réseau.', 'danger'));
+}
+
+function renderActiveMoves(moves) {
+  const container = document.getElementById('active-moves-list');
+  if (!moves.length) {
+    container.innerHTML = '<p class="text-muted text-center small py-3">Aucune capacité active.</p>';
+    return;
+  }
+
+  container.innerHTML = moves.map(m => {
+    const ppPct    = Math.round((m.current_pp / m.pp) * 100);
+    const ppClass  = ppPct === 0 ? 'pp-bar-empty' : ppPct <= 33 ? 'pp-bar-low' : ppPct <= 66 ? 'pp-bar-mid' : 'pp-bar-full';
+    const catIcon  = m.category === 'physical' ? '⚔️' : m.category === 'special' ? '✨' : '🔵';
+    return `
+      <div class="move-card-full type-bg-${m.type.toLowerCase()} mb-2" data-move-id="${m.id}" data-move-name="${m.name}">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <span class="move-card-name">${m.name}</span>
+          <span class="move-type-pill">${m.type.toUpperCase()}</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
+          <span>${catIcon} ${m.category}</span>
+          <span>${m.power ? '💥 ' + m.power : '—'}</span>
+          <span>🎯 ${m.accuracy}%</span>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <small class="text-muted mr-1" style="white-space:nowrap;">PP</small>
+          <div class="pp-bar-track flex-grow-1">
+            <div class="pp-bar-fill ${ppClass}" style="width:${ppPct}%"></div>
+          </div>
+          <small class="ml-1 font-weight-bold ${m.current_pp === 0 ? 'text-danger' : ''}">${m.current_pp}/${m.pp}</small>
+        </div>
+        ${pendingAddMoveId ? `<button class="btn btn-danger btn-sm btn-block mt-2 choose-remove-btn" data-remove-id="${m.id}" data-remove-name="${m.name}">
+          <i class="fas fa-trash-alt"></i> Remplacer par ${pendingAddMoveName}
+        </button>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderLearnableMoves(learnable) {
+  const container = document.getElementById('learnable-moves-list');
+  if (!learnable.length) {
+    container.innerHTML = '<p class="text-muted text-center small py-3">Tous les moves disponibles sont déjà dans le deck.</p>';
+    return;
+  }
+
+  container.innerHTML = learnable.map(m => {
+    const catIcon = m.category === 'physical' ? '⚔️' : m.category === 'special' ? '✨' : '🔵';
+    return `
+      <div class="move-card-full move-learnable type-bg-${m.type.toLowerCase()} mb-2"
+           data-move-id="${m.id}" data-move-name="${m.name}"
+           onclick="selectLearnableMove(${m.id}, '${m.name.replace(/'/g, "\\'")}')">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <span class="move-card-name">${m.name}</span>
+          <span class="move-type-pill">${m.type.toUpperCase()}</span>
+        </div>
+        <div class="d-flex justify-content-between small text-muted">
+          <span>${catIcon} ${m.category}</span>
+          <span>${m.power ? '💥 ' + m.power : '—'}</span>
+          <span>🎯 ${m.accuracy}%</span>
+          <span class="text-info">Niv. ${m.level_learned}</span>
+        </div>
+        <div class="mt-1 small text-muted">PP max : <strong>${m.pp}</strong></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectLearnableMove(moveId, moveName) {
+  pendingAddMoveId   = moveId;
+  pendingAddMoveName = moveName;
+
+  // Mettre en évidence la sélection
+  document.querySelectorAll('.move-learnable').forEach(el => {
+    el.classList.toggle('move-learnable-selected', parseInt(el.dataset.moveId) === moveId);
+  });
+
+  // Ré-afficher les moves actifs avec les boutons "Remplacer"
+  renderActiveMoves(currentMovesData);
+
+  // Afficher le panneau de confirmation
+  document.getElementById('swap-add-name').textContent = moveName;
+  document.getElementById('swap-confirm-panel').classList.add('d-none'); // masqué tant qu'on n'a pas cliqué "remplacer"
+
+  // Binder les boutons "Remplacer"
+  document.querySelectorAll('.choose-remove-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const removeId   = parseInt(this.dataset.removeId);
+      const removeName = this.dataset.removeName;
+      document.getElementById('swap-remove-name').textContent = removeName;
+      document.getElementById('swap-add-name').textContent   = moveName;
+      document.getElementById('swap-confirm-panel').classList.remove('d-none');
+
+      document.getElementById('swap-confirm-btn').onclick = () => confirmSwap(removeId, moveId);
+    });
+  });
+}
+
+function cancelSwap() {
+  pendingAddMoveId   = null;
+  pendingAddMoveName = '';
+  document.getElementById('swap-confirm-panel')?.classList.add('d-none');
+  document.querySelectorAll('.move-learnable-selected').forEach(el => el.classList.remove('move-learnable-selected'));
+  if (currentMovesData.length) renderActiveMoves(currentMovesData);
+}
+
+function confirmSwap(removeId, addId) {
+  document.getElementById('swap-confirm-btn').disabled = true;
+  document.getElementById('modal-status-msg').textContent = '';
+
+  post('/api/pokemon/swap-move/', {
+    pokemon_id:     currentPokemonId,
+    remove_move_id: removeId,
+    add_move_id:    addId
+  }).then(data => {
+    document.getElementById('swap-confirm-btn').disabled = false;
+    if (data.success) {
+      showModalStatus('✅ Capacité mise à jour !', 'success');
+      currentMovesData = data.moves;
+      pendingAddMoveId   = null;
+      pendingAddMoveName = '';
+      document.getElementById('swap-confirm-panel').classList.add('d-none');
+      // Recharger les deux colonnes
+      loadMovesModal(currentPokemonId);
+      // Mettre à jour les chips sur la card équipe
+      updateCardMoves(currentPokemonId, data.moves);
+    } else {
+      showModalStatus('Erreur : ' + data.error, 'danger');
+    }
+  }).catch(() => {
+    document.getElementById('swap-confirm-btn').disabled = false;
+    showModalStatus('Erreur réseau.', 'danger');
+  });
+}
+
+function showModalStatus(msg, type) {
+  const el = document.getElementById('modal-status-msg');
+  el.textContent  = msg;
+  el.style.color  = type === 'success' ? '#28a745' : '#dc3545';
+}
+
+// Mettre à jour les chips de moves dans la card équipe sans reload
+function updateCardMoves(pokemonId, moves) {
+  const slot = document.querySelector(`.team-slot[data-id="${pokemonId}"]`);
+  if (!slot) return;
+  const grid = slot.querySelector('.moves-mini-grid');
+  if (!grid) return;
+
+  grid.innerHTML = moves.map(m => {
+    const ppPct   = Math.round((m.current_pp / m.pp) * 100);
+    const ppClass = m.current_pp === 0 ? 'pp-empty' : ppPct <= 33 ? 'pp-low' : '';
+    return `<div class="move-mini-chip type-bg-${m.type.toLowerCase()}">
+      <span class="move-mini-name">${m.name}</span>
+      <span class="move-mini-pp ${ppClass}">${m.current_pp}/${m.pp}</span>
+    </div>`;
+  }).join('');
+}
+
 syncUI();
 </script>
 
@@ -398,5 +695,98 @@ syncUI();
 .hp-high     { background:#28a745; }
 .hp-medium   { background:#ffc107; }
 .hp-low      { background:#dc3545; }
+
+/* ── Moves mini chips (sur les cards) ──────────────────────── */
+.moves-mini-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.move-mini-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: .68rem;
+  color: #fff;
+  background: #6c757d;
+  min-width: 0;
+}
+.move-mini-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.move-mini-pp {
+  font-size: .62rem;
+  margin-left: 4px;
+  white-space: nowrap;
+  opacity: .9;
+  flex-shrink: 0;
+}
+.move-mini-pp.pp-low   { color: #ff6b35; font-weight: 700; }
+.move-mini-pp.pp-empty { color: #ff0000; font-weight: 700; }
+
+/* ── Move cards (dans le modal) ─────────────────────────────── */
+.move-card-full {
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #6c757d;
+  color: #fff;
+  transition: transform .15s, box-shadow .15s;
+}
+.move-learnable {
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.move-learnable:hover {
+  transform: translateX(3px);
+  box-shadow: 0 3px 8px rgba(0,0,0,.2);
+}
+.move-learnable-selected {
+  border-color: #ffc107 !important;
+  box-shadow: 0 0 0 3px rgba(255,193,7,.4) !important;
+}
+.move-card-name { font-weight: 700; font-size: .9rem; }
+.move-type-pill {
+  font-size: .65rem;
+  font-weight: 700;
+  background: rgba(255,255,255,.25);
+  border-radius: 20px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+/* ── PP bar (dans le modal) ─────────────────────────────────── */
+.pp-bar-track { height: 6px; background: rgba(255,255,255,.3); border-radius: 3px; overflow: hidden; min-width: 40px; }
+.pp-bar-fill  { height: 100%; border-radius: 3px; transition: width .3s; }
+.pp-bar-full  { background: #28a745; }
+.pp-bar-mid   { background: #ffc107; }
+.pp-bar-low   { background: #fd7e14; }
+.pp-bar-empty { background: #dc3545; }
+
+/* ── Couleurs de type (fond des move cards) ─────────────────── */
+.type-bg-normal   { background: #a8a77a; }
+.type-bg-fire     { background: #ee8130; }
+.type-bg-water    { background: #6390f0; }
+.type-bg-electric { background: #f7d02c; color: #333 !important; }
+.type-bg-grass    { background: #7ac74c; }
+.type-bg-ice      { background: #96d9d6; color: #333 !important; }
+.type-bg-fighting { background: #c22e28; }
+.type-bg-poison   { background: #a33ea1; }
+.type-bg-ground   { background: #e2bf65; color: #333 !important; }
+.type-bg-flying   { background: #a98ff3; }
+.type-bg-psychic  { background: #f95587; }
+.type-bg-bug      { background: #a6b91a; }
+.type-bg-rock     { background: #b6a136; }
+.type-bg-ghost    { background: #735797; }
+.type-bg-dragon   { background: #6f35fc; }
+.type-bg-dark     { background: #705746; }
+.type-bg-steel    { background: #b7b7ce; color: #333 !important; }
+.type-bg-fairy    { background: #d685ad; }
 </style>
 {% endblock js %}

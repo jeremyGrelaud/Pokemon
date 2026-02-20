@@ -196,6 +196,127 @@ def add_to_party_api(request):
         }, status=400)
 
 
+@login_required
+@require_POST
+def swap_move_api(request):
+    """
+    API pour remplacer un move actif par un move apprenable.
+    Body JSON :
+      { "pokemon_id": int, "remove_move_id": int, "add_move_id": int }
+    """
+    from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+
+    try:
+        data          = json.loads(request.body)
+        pokemon_id    = data.get('pokemon_id')
+        remove_id     = data.get('remove_move_id')
+        add_id        = data.get('add_move_id')
+
+        trainer = get_object_or_404(Trainer, username=request.user.username)
+        pokemon = get_object_or_404(PlayablePokemon, pk=pokemon_id, trainer=trainer)
+
+        # Vérifier que le move à retirer est bien dans le deck du Pokémon
+        to_remove = PokemonMoveInstance.objects.filter(pokemon=pokemon, move_id=remove_id).first()
+        if not to_remove:
+            return JsonResponse({'success': False, 'error': 'Ce move ne fait pas partie du deck actif.'})
+
+        # Vérifier que le move à ajouter est apprenable par l'espèce et au niveau actuel
+        learnable = pokemon.species.learnable_moves.filter(
+            move_id=add_id,
+            level_learned__lte=pokemon.level
+        ).first()
+        if not learnable:
+            return JsonResponse({'success': False, 'error': 'Ce move ne peut pas être appris à ce niveau.'})
+
+        # Vérifier que le move n'est pas déjà dans le deck
+        if PokemonMoveInstance.objects.filter(pokemon=pokemon, move_id=add_id).exists():
+            return JsonResponse({'success': False, 'error': 'Ce move est déjà dans le deck.'})
+
+        # Effectuer le swap
+        new_move = learnable.move
+        to_remove.delete()
+        PokemonMoveInstance.objects.create(
+            pokemon=pokemon,
+            move=new_move,
+            current_pp=new_move.pp,
+        )
+
+        # Retourner le deck mis à jour
+        moves = _serialize_pokemon_moves(pokemon)
+        return JsonResponse({'success': True, 'moves': moves})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+def get_pokemon_moves_api(request):
+    """
+    GET — Retourne le deck actif + tous les moves apprenables jusqu'au niveau actuel.
+    Query param : ?pokemon_id=<int>
+    """
+    from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+
+    trainer    = get_object_or_404(Trainer, username=request.user.username)
+    pokemon_id = request.GET.get('pokemon_id')
+    pokemon    = get_object_or_404(PlayablePokemon, pk=pokemon_id, trainer=trainer)
+
+    active_ids = set(
+        PokemonMoveInstance.objects.filter(pokemon=pokemon).values_list('move_id', flat=True)
+    )
+
+    moves = _serialize_pokemon_moves(pokemon)
+
+    # Tous les moves apprenables jusqu'au niveau actuel, hors ceux déjà dans le deck
+    learnable_qs = pokemon.species.learnable_moves.filter(
+        level_learned__lte=pokemon.level
+    ).select_related('move', 'move__type').order_by('level_learned')
+
+    learnable = []
+    for lm in learnable_qs:
+        if lm.move_id in active_ids:
+            continue  # déjà dans le deck
+        learnable.append({
+            'id':          lm.move.id,
+            'name':        lm.move.name,
+            'type':        lm.move.type.name if lm.move.type else '',
+            'category':    lm.move.category,
+            'power':       lm.move.power,
+            'accuracy':    lm.move.accuracy,
+            'pp':          lm.move.pp,
+            'level_learned': lm.level_learned,
+        })
+
+    return JsonResponse({
+        'success':   True,
+        'pokemon_id': pokemon.id,
+        'pokemon_name': pokemon.nickname or pokemon.species.name,
+        'moves':     moves,
+        'learnable': learnable,
+    })
+
+
+def _serialize_pokemon_moves(pokemon):
+    """Sérialise les moves actifs d'un Pokémon."""
+    from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+
+    return [
+        {
+            'id':         mi.move.id,
+            'name':       mi.move.name,
+            'type':       mi.move.type.name if mi.move.type else '',
+            'category':   mi.move.category,
+            'power':      mi.move.power,
+            'accuracy':   mi.move.accuracy,
+            'pp':         mi.move.pp,
+            'current_pp': mi.current_pp,
+        }
+        for mi in PokemonMoveInstance.objects.filter(
+            pokemon=pokemon
+        ).select_related('move', 'move__type')
+    ]
+
+
 def reorganize_party_positions(trainer):
     """
     Réorganise les positions des Pokémon dans l'équipe (1-6)
