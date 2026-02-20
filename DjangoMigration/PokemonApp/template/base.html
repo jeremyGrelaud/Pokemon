@@ -71,7 +71,7 @@
         </li>
 
         <hr class="sidebar-divider" />
-        <div class="sidebar-heading">Pokémon</div>
+        <div class="sidebar-heading">Encyclopédies</div>
 
         <!-- Pokédex -->
         <li class="nav-item {% if 'Pokemon' in request.resolver_match.url_name %}active{% endif %}">
@@ -88,23 +88,11 @@
             <span>Capacités</span>
           </a>
         </li>
-
-        <hr class="sidebar-divider" />
-        <div class="sidebar-heading">Mon Jeu</div>
-
-        <!-- Mon Équipe -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'MyTeamView' %}">
-            <i class="fas fa-users"></i>
-            <span>Mon Équipe</span>
-          </a>
-        </li>
-
-        <!-- Combats -->
-        <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'BattleListView' %}">
-            <i class="fas fa-fist-raised"></i>
-            <span>Combats</span>
+        <!-- Objets -->
+        <li class="nav-item {% if 'Item' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'ItemListView' %}">
+            <i class="fas fa-shopping-bag"></i>
+            <span>Objets</span>
           </a>
         </li>
 
@@ -116,13 +104,34 @@
           </a>
         </li>
 
-        <!-- Objets -->
-        <li class="nav-item {% if 'Item' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'ItemListView' %}">
-            <i class="fas fa-shopping-bag"></i>
-            <span>Objets</span>
+        <hr class="sidebar-divider" />
+        <div class="sidebar-heading">Gameplay</div>
+
+        <!-- Mon Équipe -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'MyTeamView' %}">
+            <i class="fas fa-users"></i>
+            <span>Mon Équipe</span>
           </a>
         </li>
+
+        <!-- Maps  -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'map_view' %}">
+            <i class="fas fa-map-location-dot"></i>
+            <span>Maps</span>
+          </a>
+        </li>
+
+        <!-- Combats -->
+        {% if user.is_superuser %}
+        <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'BattleListView' %}">
+            <i class="fas fa-fist-raised"></i>
+            <span>Combats (admin view)</span>
+          </a>
+        </li>
+        {% endif %}
 
         <!-- Boutiques -->
         <li class="nav-item {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}">
@@ -153,14 +162,6 @@
           <a class="nav-link" href="{% url 'save_select' %}">
             <i class="fas fa-save"></i>
             <span>Liste des sauvegardes</span>
-          </a>
-        </li>
-
-        <!-- Maps  -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'map_view' %}">
-            <i class="fas fa-map-location-dot"></i>
-            <span>Maps</span>
           </a>
         </li>
 

@@ -35,7 +35,6 @@
   transform: translateX(-50%);
   width: 150px;
   height: 150px;
-  image-rendering: pixelated;
   animation: pokemon-captured 0.8s ease forwards;
 }
 

@@ -28,7 +28,7 @@
         <div class="mr-3 flex-shrink-0 text-center" style="width:80px;">
           <img src="{% static 'img/trainer_sprites/' %}{{ gym.trainer|trainer_sprite_path }}"
                alt="{{ gym.trainer.username }}"
-               style="height:80px; image-rendering:pixelated; object-fit:contain;"
+               style="height:80px; object-fit:contain;"
                onerror="this.src='{% static 'img/pokeball.png' %}';">
         </div>
 

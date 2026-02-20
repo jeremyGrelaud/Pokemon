@@ -228,7 +228,6 @@ Pokemon Platforms
 .pokemon-sprite {
   width: 200px;
   height: 200px;
-  image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
   filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6));
