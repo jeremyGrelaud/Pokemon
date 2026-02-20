@@ -300,17 +300,27 @@ def battle_action_view(request, pk):
         # ------------------------------------------------------------------
         # Fin du traitement de l'action : rafraichir et reconstruire la reponse
         battle.refresh_from_db()
-        ended_before = response_data.get('battle_ended', False)
+        ended_before  = response_data.get('battle_ended', False)
+        result_before = response_data.get('result')        # 'victory' / 'defeat' / 'fled'
+        extra_logs    = response_data.get('log', [])       # logs EXP / level-up ajoutés avant le rebuild
+
         response_data = build_battle_response(battle)
 
         if ended_before:
             response_data['battle_ended'] = True
+        if result_before:
+            response_data['result'] = result_before
 
         # Logs recents depuis le journal de combat
         if battle.battle_log:
-            response_data['log'] = [
-                entry['message'] for entry in battle.battle_log[-5:]
-            ]
+            battle_log_messages = [entry['message'] for entry in battle.battle_log[-5:]]
+            # Fusionner : d'abord les messages du journal, puis les extras (EXP/level-up)
+            # qui ne sont pas déjà dans le journal
+            seen = set(battle_log_messages)
+            merged = battle_log_messages + [m for m in extra_logs if m not in seen]
+            response_data['log'] = merged
+        elif extra_logs:
+            response_data['log'] = extra_logs
 
         # Verification finale de fin de combat
         is_ended, winner, end_message = check_battle_end(battle)

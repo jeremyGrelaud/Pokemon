@@ -558,27 +558,6 @@ function switchPokemon(pokemonId) {
   });
 }
 
-// function useItem(itemId) {
-//   $('button').prop('disabled', true);
-  
-//   $.post('{% url "BattleActionView" battle.id %}', {
-//     action: 'item',
-//     item_id: itemId,
-//     csrfmiddlewaretoken: csrfToken
-//   })
-//   .done(function(data) {
-//     updateBattleState(data);
-//     if (!data.battle_ended) {
-//       loadItems();
-//     }
-//   })
-//   .fail(function(xhr) {
-//     console.error('Item use failed:', xhr);
-//     addBattleLog('Erreur lors de l\'utilisation de l\'objet');
-//     $('button').prop('disabled', false);
-//   });
-// }
-
 function useItem(itemId) {
   $('button').prop('disabled', true);
   
@@ -913,6 +892,11 @@ function handleBattleEnd(data) {
   
   // Désactiver tous les boutons
   $('button').prop('disabled', true);
+
+  // Fonction pour réactiver les boutons
+  const enableButtons = () => {
+    $('button').prop('disabled', false);
+  };
   
   if (data.result === 'victory') {
     // VICTOIRE
@@ -933,6 +917,8 @@ function handleBattleEnd(data) {
     
     setTimeout(() => {
       $('#victory-modal').modal('show');
+      $('#victory-modal').find('button').prop('disabled', false);
+      $('#victory-modal').on('hidden.bs.modal', enableButtons);
     }, 1500);
     
   } else if (data.result === 'defeat') {
@@ -945,6 +931,8 @@ function handleBattleEnd(data) {
     
     setTimeout(() => {
       $('#defeat-modal').modal('show');
+      $('#defeat-modal').find('button').prop('disabled', false);
+      $('#defeat-modal').on('hidden.bs.modal', enableButtons);
     }, 1500);
     
   } else if (data.result === 'fled') {
@@ -953,6 +941,8 @@ function handleBattleEnd(data) {
     
     setTimeout(() => {
       $('#fled-modal').modal('show');
+      $('#fled-modal').find('button').prop('disabled', false);
+      $('#fled-modal').on('hidden.bs.modal', enableButtons);
     }, 1000);
     
   } else if (data.winner_id == '{{ battle.player_trainer.id }}') {
@@ -963,6 +953,8 @@ function handleBattleEnd(data) {
     
     setTimeout(() => {
       $('#victory-modal').modal('show');
+      $('#victory-modal').find('button').prop('disabled', false);
+      $('#victory-modal').on('hidden.bs.modal', enableButtons);
     }, 1500);
     
   } else {
