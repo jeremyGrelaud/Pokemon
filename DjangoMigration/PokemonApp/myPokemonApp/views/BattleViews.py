@@ -59,12 +59,51 @@ class BattleListView(generic.ListView):
         ).order_by('-created_at')
 
 
+@method_decorator(login_required, name='dispatch')
 class BattleDetailView(generic.DetailView):
     """Details d'un combat termine."""
     model               = Battle
     template_name       = 'battle/battle_detail.html'
     context_object_name = 'battle'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        battle  = self.object
+
+        viewer = get_object_or_404(Trainer, username=self.request.user.username)
+        player_won = (battle.winner == battle.player_trainer) if battle.winner else None
+
+        # Équipe complète du joueur (depuis le trainer du combat)
+        player_team = battle.player_trainer.pokemon_team.filter(
+            is_in_party=True
+        ).select_related('species', 'species__primary_type', 'species__secondary_type')
+
+        # Équipe complète de l'adversaire
+        if battle.opponent_trainer:
+            opponent_team = list(battle.opponent_trainer.pokemon_team.filter(
+                is_in_party=True
+            ).select_related('species', 'species__primary_type', 'species__secondary_type'))
+        else:
+            opponent_team = [battle.opponent_pokemon] if battle.opponent_pokemon else []
+
+        # Argent gagné depuis l'historique
+        money_earned = 0
+        try:
+            history = TrainerBattleHistory.objects.get(
+                battle=battle, player=battle.player_trainer
+            )
+            money_earned = history.money_earned
+        except (TrainerBattleHistory.DoesNotExist, Exception):
+            pass
+
+        context.update({
+            'viewer':        viewer,
+            'player_won':    player_won,
+            'player_team':   player_team,
+            'opponent_team': opponent_team,
+            'money_earned':  money_earned,
+        })
+        return context
 
 # =============================================================================
 # VUE DE COMBAT GRAPHIQUE

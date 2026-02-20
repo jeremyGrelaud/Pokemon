@@ -107,6 +107,11 @@ class OptimizedRenderTableNode(Node):
             del table.context
 
 
+@register.filter(name='same_as')
+def same_as(value, arg):
+    """Compare deux chaînes de caractères et retourne 'True' si elles sont identiques, sinon 'False'."""
+    return str(value) == str(arg)
+
 @register.filter
 def mul(value, arg):
     """Multiplie value par arg"""
