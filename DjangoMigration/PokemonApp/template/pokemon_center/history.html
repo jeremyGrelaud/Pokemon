@@ -411,7 +411,7 @@ $(document).ready(function() {
   // Chart.js - Visits per Month
   const visitsCtx = document.getElementById('visitsChart');
   if (visitsCtx) {
-    // Prepare data (you'll need to pass this from Django)
+    // TODO get real data from django get_context
     new Chart(visitsCtx, {
       type: 'line',
       data: {
@@ -445,6 +445,7 @@ $(document).ready(function() {
   }
 
   // Chart.js - Centers Distribution
+  // TODO get real data from django get_context
   const centersCtx = document.getElementById('centersChart');
   if (centersCtx) {
     new Chart(centersCtx, {
