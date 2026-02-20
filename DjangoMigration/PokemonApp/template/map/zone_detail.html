@@ -63,7 +63,7 @@
                     <h5 class="mt-2"><i class="fas fa-leaf"></i> Hautes Herbes</h5>
                     <p class="small mb-3 text-white-50">Rencontrez des Pokémon sauvages</p>
                   </div>
-                  <a href="{% url 'wild_encounter' zone.id %}?type=grass" class="btn btn-light btn-sm">
+                  <a href="{% url 'wild_encounter' zone.id %}?type=grass" class="btn btn-light text-white-50 btn-sm">
                     <i class="fas fa-search"></i> Chercher un Pokémon
                   </a>
                 </div>
@@ -89,11 +89,11 @@
                     {% endif %}
                   </div>
                   {% if pokemon_center %}
-                  <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}" class="btn btn-light btn-sm">
+                  <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}" class="btn btn-light text-white-50 btn-sm">
                     <i class="fas fa-heartbeat"></i> Entrer au centre
                   </a>
                   {% else %}
-                  <a href="{% url 'PokemonCenterListView' %}" class="btn btn-light btn-sm">
+                  <a href="{% url 'PokemonCenterListView' %}" class="btn btn-light text-white-50 btn-sm">
                     <i class="fas fa-heartbeat"></i> Soigner l'équipe
                   </a>
                   {% endif %}
@@ -120,11 +120,11 @@
                     {% endif %}
                   </div>
                   {% if zone_shop %}
-                  <a href="{% url 'ShopDetailView' zone_shop.id %}" class="btn btn-light btn-sm">
+                  <a href="{% url 'ShopDetailView' zone_shop.id %}" class="btn btn-light text-white-50 btn-sm">
                     <i class="fas fa-store"></i> Entrer dans la boutique
                   </a>
                   {% else %}
-                  <a href="{% url 'ShopListView' %}" class="btn btn-light btn-sm">
+                  <a href="{% url 'ShopListView' %}" class="btn btn-light text-white-50 btn-sm">
                     <i class="fas fa-store"></i> Voir les boutiques
                   </a>
                   {% endif %}
@@ -151,7 +151,7 @@
                       Badge : {{ gym_leader.badge_name }}
                     </p>
                   </div>
-                  <a href="{% url 'GymLeaderDetailView' gym_leader.id %}" class="btn btn-light btn-sm">
+                  <a href="{% url 'GymLeaderDetailView' gym_leader.id %}" class="btn btn-light text-white-50 btn-sm">
                     <i class="fas fa-fist-raised"></i> Défier l'Arène
                   </a>
                 </div>
@@ -240,10 +240,36 @@
           </div>
           {% endif %}
 
+        </div>{# /card #}
+      </div>{# /card #}
+    </div>{# /col principal #}
+
+    <!-- ── Colonne minimap ─────────────────────────────────────────── -->
+    <div class="col-lg-4 col-xl-3 mt-3 mt-lg-0">
+      <div class="zone-minimap-panel">
+        <div class="card shadow-sm">
+          <div class="card-header py-2 text-center">
+            <strong><i class="fas fa-map-marked-alt"></i> Position sur la carte</strong>
+          </div>
+          <div class="card-body p-2 text-center">
+            {% with minimap=zone.name|zone_minimap_path %}
+            <img src="{% static 'img/mapSprites/Kanto/' %}{{ minimap }}"
+                 alt="Localisation {{ zone.name }}"
+                 class="img-fluid minimap-gif"
+                 onerror="this.closest('.card').style.display='none';">
+            {% endwith %}
+            <p class="text-muted small mt-2 mb-0">
+              <i class="fas fa-map-marker-alt text-danger"></i>
+              <strong>{{ zone.name }}</strong>
+            </p>
+          </div>
+
           <!-- Zones connectées -->
           {% if connections %}
-          <h4><i class="fas fa-route"></i> Zones Adjacentes</h4>
-          <div class="row">
+          <div class="card-header py-2 text-center">
+            <strong><i class="fas fa-route p-2"></i> Zones Adjacentes</h4>
+          </div>
+          <div class="row p-2">
             {% for conn in connections %}
             <div class="col-md-6 mb-3">
               <div class="card">
@@ -268,29 +294,7 @@
           </div>
           {% endif %}
 
-        </div>{# /card #}
-      </div>{# /card #}
-    </div>{# /col principal #}
 
-    <!-- ── Colonne minimap ─────────────────────────────────────────── -->
-    <div class="col-lg-4 col-xl-3 mt-3 mt-lg-0">
-      <div class="zone-minimap-panel">
-        <div class="card shadow-sm">
-          <div class="card-header py-2 text-center">
-            <strong><i class="fas fa-map-marked-alt"></i> Position sur la carte</strong>
-          </div>
-          <div class="card-body p-2 text-center">
-            {% with minimap=zone.name|zone_minimap_path %}
-            <img src="{% static 'img/mapSprites/Kanto/' %}{{ minimap }}"
-                 alt="Localisation {{ zone.name }}"
-                 class="img-fluid minimap-gif"
-                 onerror="this.closest('.card').style.display='none';">
-            {% endwith %}
-            <p class="text-muted small mt-2 mb-0">
-              <i class="fas fa-map-marker-alt text-danger"></i>
-              <strong>{{ zone.name }}</strong>
-            </p>
-          </div>
         </div>
       </div>
     </div>{# /col minimap #}
