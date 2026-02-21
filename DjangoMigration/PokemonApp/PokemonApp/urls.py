@@ -105,6 +105,7 @@ urlpatterns = [
     path('battle/wild/challenge/', views.battle_create_wild_view, name='create_wild_battle'),
     path('battle/trainer/<int:trainer_id>/challenge/', views.battle_create_trainer_view, name='battle_create_trainer'),
     path('battle/gym/challenge/', views.battle_create_gym_view, name='create_gym_battle'),
+    path('battle/gym/<int:gym_leader_id>/challenge/', views.battle_challenge_gym_view, name='battle_challenge_gym'),
     path('battle/<int:battle_id>/trainer/complete/', views.battle_trainer_complete_view, name='battle_trainer_complete'),
 
     # Maps

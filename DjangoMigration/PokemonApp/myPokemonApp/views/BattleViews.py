@@ -5,7 +5,7 @@ Views Django pour les combats Pokemon Gen 1.
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import generic
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -46,11 +46,11 @@ from myPokemonApp.gameUtils import (
 
 @method_decorator(login_required, name='dispatch')
 class BattleListView(generic.ListView):
-    """Liste des combats du joueur connecte."""
+    """Liste des combats du joueur connecté."""
     model               = Battle
     template_name       = 'battle/battle_list.html'
     context_object_name = 'battles'
-    paginate_by         = 10
+    paginate_by         = 20
 
     def get_queryset(self):
         trainer = Trainer.objects.get(username=self.request.user.username)
@@ -395,10 +395,10 @@ def battle_action_view(request, pk):
 # VUE DE CREATION DE COMBAT (page avec 3 onglets)
 # =============================================================================
 
-@login_required
+@user_passes_test(lambda u: u.is_superuser, login_url='/login/')
 def battle_create_view(request):
     """
-    Page de creation de combat avec 3 onglets :
+    Page de creation de combat avec 3 onglets (super_user uniquement) :
       1. Pokemon Sauvage
       2. Dresseurs NPC
       3. Champions d'Arene
@@ -490,13 +490,27 @@ def battle_create_trainer_view(request, trainer_id):
     player_trainer   = get_object_or_404(Trainer, username=request.user.username)
     opponent_trainer = get_object_or_404(Trainer, pk=trainer_id, is_npc=True)
 
+    # Vérifier que le joueur est bien dans la zone du dresseur
+    try:
+        player_location = PlayerLocation.objects.get(trainer=player_trainer)
+        if opponent_trainer.location and player_location.current_zone.name != opponent_trainer.location:
+            messages.error(
+                request,
+                f"{opponent_trainer.get_full_title()} se trouve à {opponent_trainer.location}, "
+                f"mais vous êtes à {player_location.current_zone.name} !",
+            )
+            return redirect('zone_detail', zone_id=player_location.current_zone.id)
+    except PlayerLocation.DoesNotExist:
+        messages.error(request, "Position introuvable. Veuillez voyager vers une zone.")
+        return redirect('map_view')
+
     heal_team(opponent_trainer)
 
     # Vérifie si le dresseur a déjà été battu dans la save
     save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
     if save and save.is_trainer_defeated(opponent_trainer.id) and not opponent_trainer.can_rebattle:
         messages.warning(request, f"Vous avez deja battu {opponent_trainer.get_full_title()}")
-        return redirect('BattleCreateView')
+        return redirect('zone_detail', zone_id=player_location.current_zone.id)
 
     player_pokemon   = get_first_alive_pokemon(player_trainer)
     opponent_pokemon = get_first_alive_pokemon(opponent_trainer)
@@ -574,6 +588,92 @@ def battle_create_gym_view(request):
         request,
         opponent_trainer.intro_text
         or f"Vous defiez {opponent_trainer.username}, Champion d'Arene de {gym_leader.gym_city} !"
+    )
+    return redirect('BattleGameView', pk=battle.id)
+
+# =============================================================================
+# GYM LEADER BATTLE depuis la zone (GET)
+# =============================================================================
+
+# Correspondance gym_city (anglais) → nom de zone (français)
+_GYM_CITY_TO_ZONE = {
+    "Pewter City":    "Argenta",
+    "Cerulean City":  "Azuria",
+    "Vermilion City": "Carmin sur Mer",
+    "Celadon City":   "Céladopole",
+    "Saffron City":   "Safrania",
+    "Fuchsia City":   "Parmanie",
+    "Cinnabar Island":"Cramois'Ile",
+    "Viridian City":  "Jadielle",
+}
+
+
+@login_required
+def battle_challenge_gym_view(request, gym_leader_id):
+    """
+    Lance un combat contre un Champion d'Arène directement depuis zone_detail.
+    Accessible via GET  /battle/gym/<id>/challenge/
+    Vérifie que le joueur est bien dans la ville de l'arène.
+    """
+    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+
+    try:
+        gym_leader = GymLeader.objects.select_related('trainer').get(pk=gym_leader_id)
+    except GymLeader.DoesNotExist:
+        messages.error(request, "Champion d'Arène introuvable !")
+        return redirect('GymLeaderListView')
+
+    # Vérifier que le joueur est dans la bonne ville
+    try:
+        player_location = PlayerLocation.objects.get(trainer=player_trainer)
+        current_zone    = player_location.current_zone
+        expected_zone   = _GYM_CITY_TO_ZONE.get(gym_leader.gym_city, gym_leader.gym_city)
+        if current_zone.name != expected_zone:
+            messages.error(
+                request,
+                f"L'arène de {gym_leader.trainer.username} se trouve à {expected_zone}, "
+                f"mais vous êtes à {current_zone.name} !",
+            )
+            return redirect('zone_detail', zone_id=current_zone.id)
+    except PlayerLocation.DoesNotExist:
+        messages.error(request, "Position introuvable. Veuillez voyager vers une zone.")
+        return redirect('map_view')
+
+    # Vérification badge
+    if not gym_leader.isChallengableByPlayer(player_trainer):
+        messages.warning(
+            request,
+            f"Vous avez besoin d'au moins {gym_leader.badge_order - 1} badge(s) "
+            f"pour défier {gym_leader.trainer.username} !",
+        )
+        return redirect('zone_detail', zone_id=current_zone.id)
+
+    opponent_trainer = gym_leader.trainer
+    heal_team(opponent_trainer)
+
+    player_pokemon   = get_first_alive_pokemon(player_trainer)
+    opponent_pokemon = get_first_alive_pokemon(opponent_trainer)
+
+    if not player_pokemon:
+        messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
+        return redirect('PokemonCenterListView')
+    if not opponent_pokemon:
+        messages.error(request, "Le Champion n'a pas d'équipe configurée !")
+        return redirect('GymLeaderDetailView', pk=gym_leader.id)
+
+    battle = Battle.objects.create(
+        player_trainer=player_trainer,
+        opponent_trainer=opponent_trainer,
+        player_pokemon=player_pokemon,
+        opponent_pokemon=opponent_pokemon,
+        battle_type='gym',
+        is_active=True,
+    )
+
+    messages.info(
+        request,
+        opponent_trainer.intro_text
+        or f"Vous défiez {opponent_trainer.username}, Champion d'Arène de {gym_leader.gym_city} !",
     )
     return redirect('BattleGameView', pk=battle.id)
 
