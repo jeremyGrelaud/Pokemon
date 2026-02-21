@@ -115,7 +115,7 @@
     <div class="card shadow border-warning">
       <div class="card-body text-center">
         <h5 class="mb-3">Prêt à relever le défi ?</h5>
-        <a href="{% url 'BattleCreateView' %}?gym_leader={{ gym_leader.id }}" 
+        <a href="{% url 'battle_challenge_gym' gym_leader.id %}" 
            class="btn btn-lg btn-warning btn-block">
           <i class="fas fa-fist-raised"></i> Défier {{ gym_leader.trainer.username }}
         </a>
