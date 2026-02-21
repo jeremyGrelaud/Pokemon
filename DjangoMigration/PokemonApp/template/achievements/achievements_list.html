@@ -59,7 +59,7 @@
                 <!-- Progress bar -->
                 <div style="display:flex; align-items:center; gap:8px; min-width:120px; height: 20px;" class="mb-2">
                   <div style="flex:1; height:8px; background:#e9ecef; border-radius:4px; overflow:hidden;">
-                    <div style="height:100%; width:{{ completion_percent }}%; border-radius:4px; transition: width 0.3s ease;" class="{% if data.completed %}bg-success{% else %}bg-info{% endif %}"></div>
+                    <div style="height:100%; width:{% widthratio data.current data.required 100 %}%; border-radius:4px; transition: width 0.3s ease;" class="{% if data.completed %}bg-success{% else %}bg-info{% endif %}"></div>
                   </div>
                   <small style="color:#6c757d; white-space:nowrap; font-size:0.75rem;">
                     {{ data.current }} / {{ data.required }}

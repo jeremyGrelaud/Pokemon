@@ -21,6 +21,7 @@ TODO Roadmap :
 
 TODO BugFixes :
 
+- améliorer le menu de sélection de pokemon sur le switch normal pour se rapprocher du modal de switch forcé
 - Les achievements après avoir vaincu un champion d'arène ne s'update pas comme il faut
 - Il faudrait afficher les sprites d'objets etc là où c'est possible à la place des icônes font awesome
 - continuer la refactorisation en utilisant le plus possibles les helpers de GameUtils.py ou en en implémentant de nouveaux
