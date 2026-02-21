@@ -1348,15 +1348,17 @@ function lowerForSprite(name) {
 }
 
 /** Appelé par updateBattleState quand pending_evolution est présent */
+// Référence globale à l'audio d'évolution
+let evoAudio = null;
+
 function triggerEvolution(evoData, battleEndData = null) {
   pendingEvolutionData        = evoData;
   pendingEvolutionStatsBefore = evoData.stats_before;
-  pendingBattleEndData        = battleEndData;   // mémorisé pour après l'évolution
+  pendingBattleEndData        = battleEndData;
 
   const fromName = evoData.from_name;
   const toName   = evoData.to_name;
 
-  // Préparer les sprites
   const spriteBefore = SPRITE_BASE_BACK   + lowerForSprite(fromName) + '.png';
   const spriteAfter  = SPRITE_BASE_NORMAL + lowerForSprite(toName)   + '.png';
 
@@ -1365,37 +1367,32 @@ function triggerEvolution(evoData, battleEndData = null) {
   document.getElementById('evo-result-before-sprite').src = spriteBefore;
   document.getElementById('evo-result-after-sprite').src  = spriteAfter;
 
-  document.getElementById('evo-from-name').textContent  = fromName;
+  document.getElementById('evo-from-name').textContent   = fromName;
   document.getElementById('evo-from-name-2').textContent = fromName;
-  document.getElementById('evo-to-name').textContent    = toName;
+  document.getElementById('evo-to-name').textContent     = toName;
 
-  // Réinitialiser les phases
   document.getElementById('evo-phase-announce').classList.remove('d-none');
   document.getElementById('evo-phase-anim').classList.add('d-none');
   document.getElementById('evo-phase-result').classList.add('d-none');
 
-  // Désactiver les boutons pendant l'animation
   $('button').prop('disabled', true);
 
-  // Lancer le modal
-  $('#evolution-modal').modal('show');
+  // Couper la BGM et lancer le son d'évolution
+  if (typeof audioManager !== 'undefined') audioManager.stopBGM();
+  evoAudio = new Audio('{% static "sounds/pokemon-evolution-sound-effect.mp3" %}');
+  evoAudio.volume = 0.85;
+  evoAudio.play().catch(() => {});
 
-  // Lancer la séquence animée
+  $('#evolution-modal').modal('show');
   runEvolutionSequence(fromName, toName);
 }
 
-function playEvolutionSound() {
-  const audio = new Audio('{% static "sounds/pokemon-evolution-sound-effect.mp3" %}');
-  audio.play();
-}
-
 async function runEvolutionSequence(fromName, toName) {
-  // Lancer l'audio
-  playEvolutionSound();
+  // Durée de la fin d'animation (glow + flash + swap + reveal)
+  const seqStart = performance.now();
 
   await sleep(1800);   // lire l'annonce
 
-  // Phase 2 : animation
   document.getElementById('evo-phase-announce').classList.add('d-none');
   document.getElementById('evo-phase-anim').classList.remove('d-none');
 
@@ -1404,7 +1401,7 @@ async function runEvolutionSequence(fromName, toName) {
   const glow       = document.getElementById('evo-glow');
   const flash      = document.getElementById('evo-flash');
 
-  // 1. Scintillement du pokémon original (4 × blanc)
+  // 1. Scintillement (4×)
   for (let i = 0; i < 4; i++) {
     beforeWrap.classList.add('evo-blink');
     await sleep(220);
@@ -1412,11 +1409,9 @@ async function runEvolutionSequence(fromName, toName) {
     await sleep(180);
   }
 
-  // 2. Silhouette blanche + rotation 3D (comme dans les jeux)
+  // 2. Silhouette + accélération progressive
   beforeWrap.classList.add('evo-silhouette');
-
-  // Accélération progressive : lent → rapide → très rapide
-  const spinDurations = [380, 320, 260, 200, 160, 130, 100, 80, 70, 60, 60, 60];
+  const spinDurations = [1040, 980, 920, 860, 800, 740, 680, 620, 560, 500, 440, 380, 320, 260, 200, 160, 130, 100, 80];
   for (const dur of spinDurations) {
     beforeWrap.classList.add('evo-spin-frame');
     await sleep(dur / 2);
@@ -1424,14 +1419,28 @@ async function runEvolutionSequence(fromName, toName) {
     await sleep(dur / 2);
   }
 
-  // 3. Glow au pic de vitesse + flash global
+  // 3. Spin soutenu à pleine vitesse — s'arrête à 14s dans l'audio
+  const getAudioTimeMs = () => {
+    if (evoAudio && evoAudio.currentTime) {
+      return evoAudio.currentTime * 1000;
+    }
+    return performance.now() - seqStart;
+  };
+
+  while (getAudioTimeMs() < 14000) { // après 14 secondes d'audio commence la séquence de transformation
+    beforeWrap.classList.add('evo-spin-frame');
+    await sleep(30);
+    beforeWrap.classList.remove('evo-spin-frame');
+    await sleep(30);
+  }
+
+  // 4. Glow + flash en fin d'audio
   glow.classList.add('evo-glow-active');
   await sleep(300);
-
   flash.classList.add('evo-flash-active');
   await sleep(350);
 
-  // 4. Swap des sprites sous le flash
+  // 5. Swap sprites sous le flash
   beforeWrap.classList.add('d-none');
   afterWrap.classList.remove('d-none');
   afterWrap.classList.add('evo-silhouette');
@@ -1440,12 +1449,11 @@ async function runEvolutionSequence(fromName, toName) {
   flash.classList.remove('evo-flash-active');
   await sleep(400);
 
-  // 5. Révélation du nouveau pokémon (silhouette → couleurs)
+  // 6. Révélation couleurs
   afterWrap.classList.remove('evo-silhouette');
   afterWrap.querySelector('img').classList.add('evo-sprite-reveal-anim');
   await sleep(800);
 
-  // Phase 3 : résultat + appel serveur pour appliquer l'évolution
   applyEvolutionOnServer();
 }
 
@@ -1516,6 +1524,14 @@ function confirmEvolution() {
 
 function closeEvolutionModal() {
   $('#evolution-modal').modal('hide');
+
+  // Arrêter l'audio d'évolution s'il tourne encore
+  if (evoAudio) {
+    evoAudio.pause();
+    evoAudio.currentTime = 0;
+    evoAudio = null;
+  }
+
   pendingEvolutionData = null;
 
   // Si un combat s'est terminé pendant l'évolution, l'afficher maintenant
@@ -1556,6 +1572,7 @@ $(document).keydown(function(e) {
 // ============================================================================
 // SYSTÈME DE CAPTURE
 // ============================================================================
+
 
 async function initiateCaptureSequence(itemId) {
   // Fermer le menu items
