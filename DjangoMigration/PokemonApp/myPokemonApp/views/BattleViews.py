@@ -127,6 +127,14 @@ class BattleGameView(generic.DetailView):
         battle  = self.object
         if not battle.player_pokemon or not battle.opponent_pokemon:
             context['error'] = "Combat invalide : Pokemon manquant"
+
+        # Zone actuelle du joueur (pour les boutons "Retour" des modals)
+        try:
+            player_location = PlayerLocation.objects.get(trainer=battle.player_trainer)
+            context['current_zone'] = player_location.current_zone
+        except PlayerLocation.DoesNotExist:
+            context['current_zone'] = None
+
         return context
 
 

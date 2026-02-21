@@ -308,8 +308,8 @@
         </button>
         {% else %}
         <button type="button" class="btn btn-success" 
-                onclick="window.location.href='{% url 'home' %}'">
-          <i class="fas fa-home"></i> Retour
+                onclick="window.location.href='{% if current_zone %}{% url 'zone_detail' current_zone.id %}{% else %}{% url 'home' %}{% endif %}'">
+          <i class="fas fa-map-marker-alt"></i> Retour à la zone
         </button>
         {% endif %}
       </div>
@@ -338,8 +338,8 @@
           <i class="fas fa-hospital"></i> Voir le résultat
         </button>
         {% else %}
-        <button type="button" class="btn btn-secondary" onclick="window.location.href='{% url 'home' %}'">
-          <i class="fas fa-home"></i> Retour
+        <button type="button" class="btn btn-secondary" onclick="window.location.href='{% if current_zone %}{% url 'zone_detail' current_zone.id %}{% else %}{% url 'home' %}{% endif %}'">
+          <i class="fas fa-map-marker-alt"></i> Retour à la zone
         </button>
         {% endif %}
       </div>
@@ -361,8 +361,8 @@
         <h4>Vous avez fui le combat !</h4>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-warning" onclick="window.location.href='{% url 'home' %}'">
-          <i class="fas fa-home"></i> Retour
+        <button type="button" class="btn btn-warning" onclick="window.location.href='{% if current_zone %}{% url 'zone_detail' current_zone.id %}{% else %}{% url 'home' %}{% endif %}'">
+          <i class="fas fa-map-marker-alt"></i> Retour à la zone
         </button>
       </div>
     </div>
@@ -696,7 +696,7 @@ function tryRun() {
     if (data.fled) {
       addBattleLog('Vous avez fui le combat !');
       setTimeout(() => {
-        window.location.href = '{% url "home" %}';
+        window.location.href = '{% if current_zone %}{% url "zone_detail" current_zone.id %}{% else %}{% url "home" %}{% endif %}';
       }, 2000);
     } else {
       addBattleLog('Impossible de fuir !');
@@ -1647,8 +1647,8 @@ function showCaptureSuccessModal(captureData) {
             <p class="text-muted small">Le Pokémon a été envoyé dans votre PC</p>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-success" onclick="window.location.href='{% url 'home' %}'">
-              <i class="fas fa-home"></i> Retour
+            <button type="button" class="btn btn-success" onclick="window.location.href='{% if current_zone %}{% url 'zone_detail' current_zone.id %}{% else %}{% url 'home' %}{% endif %}'">
+              <i class="fas fa-map-marker-alt"></i> Retour à la zone
             </button>
             <button type="button" class="btn btn-primary" onclick="window.location.href='{% url 'MyTeamView' %}'">
               <i class="fas fa-laptop"></i> Voir le PC
