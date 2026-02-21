@@ -60,11 +60,12 @@
 
   <!-- Badges -->
   <div class="col-xl-3 col-md-6 mb-4">
-    <div class="card border-left-info shadow h-100 py-2">
+    <a href="{% url 'BadgeBoxView' %}" class="text-decoration-none">
+    <div class="card border-left-info shadow h-100 py-2" style="transition:transform .15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
       <div class="card-body">
         <div class="row no-gutters align-items-center">
           <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Badges</div>
+            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Badges <i class="fas fa-external-link-alt fa-xs ml-1"></i></div>
             <div class="row no-gutters align-items-center">
               <div class="col-auto">
                 <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ badges }} / 8</div>
@@ -84,6 +85,7 @@
         </div>
       </div>
     </div>
+    </a>
   </div>
 
   <!-- Argent -->
@@ -206,25 +208,31 @@
       </div>
       <div class="card-body">
         <div class="row text-center">
-          <div class="col-md-3 mb-3">
+          <div class="col-md-2 mb-3">
             <a href="{% url 'PokemonOverView' %}" class="btn btn-lg btn-block btn-outline-primary">
               <img src="{% static 'img/pokedex_transparent.png'%}" class="mb-2" style="width: 40px; height: auto;"/><br>
               Pokédex
             </a>
           </div>
-          <div class="col-md-3 mb-3">
+          <div class="col-md-2 mb-3">
             <a href="{% url 'MyTeamView' %}" class="btn btn-lg btn-block btn-outline-success">
               <img src="{% static 'img/pokeball.png' %}" class="mb-1" style="width:36px;height:36px;object-fit:contain;display:block;margin:0 auto;"><br>
               Mon Équipe
             </a>
           </div>
-          <div class="col-md-3 mb-3">
+          <div class="col-md-2 mb-3">
             <a href="{% url 'GymLeaderListView' %}" class="btn btn-lg btn-block btn-outline-warning">
               <i class="fas fa-trophy fa-2x mb-2"></i><br>
               Arènes
             </a>
           </div>
-          <div class="col-md-3 mb-3">
+          <div class="col-md-2 mb-3">
+            <a href="{% url 'BadgeBoxView' %}" class="btn btn-lg btn-block btn-outline-warning">
+              <i class="fas fa-star fa-2x mb-2"></i><br>
+              Mes Badges
+            </a>
+          </div>
+          <div class="col-md-2 mb-3">
             <a href="{% url 'ItemListView' %}" class="btn btn-lg btn-block btn-outline-info">
               <i class="fas fa-shopping-bag fa-2x mb-2"></i><br>
               Objets

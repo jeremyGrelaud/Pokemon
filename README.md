@@ -20,12 +20,10 @@ TODO Roadmap :
 - After everything, implement different game mods ?
 -  Griser et ne donner accès dans la liste des pokeCenter et pokeMart seulement au bâtiment de la ville où le joueur se trouve (se basant sur player.location)
 - améliorer le script d'initialisation de la base de données avec des données sur les moves appris par chaque pokémon ...
--  ajout d'une vue "boîte à badges" avec les sprites des badges obtenus
 
 TODO BugFixes :
 
-- Il faudrait afficher les sprites d'objets etc là où c'est possible à la place des icônes font awesome
-- continuer la refactorisation en utilisant le plus possibles les helpers de GameUtils.py ou en en implémentant de nouveaux
+- continuer la refactorisation en utilisant/implémentant le plus possibles des helpers de GameUtils.py ou via des méthodes dans les models
 
 # Setup
 

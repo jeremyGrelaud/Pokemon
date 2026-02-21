@@ -703,6 +703,19 @@ def trainer_sprite_path(trainer):
 #   <img src="{% static 'img/mapSprites/Kanto/' %}{{ zone.name|zone_minimap_path }}">
 # ---------------------------------------------------------------------------
 
+@register.filter(name='badge_sprite_path')
+def badge_sprite_path(badge_name):
+    """
+    Retourne le nom de fichier du sprite d'un badge dans img/badges_sprites/Kanto/.
+    "Boulder Badge" → "boulder_badge.png"
+    Usage :
+        <img src="{% static 'img/badges_sprites/Kanto/' %}{{ gym_leader.badge_name|badge_sprite_path }}">
+    """
+    if not badge_name:
+        return 'unknown.png'
+    return str(badge_name).lower().replace(' ', '_') + '.png'
+
+
 @register.filter(name='zone_minimap_path')
 def zone_minimap_path(zone_name):
     """

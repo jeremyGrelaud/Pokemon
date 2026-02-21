@@ -57,6 +57,7 @@ urlpatterns = [
     # Champions d'Arène
     path('gym-leaders/', views.GymLeaderListView.as_view(), name='GymLeaderListView'),
     path('gym-leader/<int:pk>/', views.GymLeaderDetailView.as_view(), name='GymLeaderDetailView'),
+    path('badges/', views.BadgeBoxView.as_view(), name='BadgeBoxView'),
     
     # Objets
     path('items/', views.ItemListView.as_view(), name='ItemListView'),
