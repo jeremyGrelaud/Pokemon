@@ -15,6 +15,7 @@ from myPokemonApp.gameUtils import (
     deposit_pokemon,
     withdraw_pokemon,
     get_or_create_player_trainer,
+    get_player_trainer,
     serialize_pokemon_moves,
     auto_reorganize_party,
 )
@@ -36,24 +37,17 @@ class MyTeamView(generic.ListView):
     
     def get_queryset(self):
         trainer = get_or_create_player_trainer(self.request.user)
-        return trainer.pokemon_team.filter(is_in_party=True).order_by('party_position')
-    
+        return trainer.party   # Trainer.party property
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         trainer = get_or_create_player_trainer(self.request.user)
-        
-        # PC (Pokémon en réserve)
-        pc_pokemon = trainer.pokemon_team.filter(is_in_party=False).order_by('species__pokedex_number')
-        
-        # Inventaire
-        inventory = trainer.inventory.all().select_related('item')
-        
+
         context.update({
-            'trainer': trainer,
-            'pc_pokemon': pc_pokemon,
-            'inventory': inventory
+            'trainer':    trainer,
+            'pc_pokemon': trainer.pc.order_by('species__pokedex_number'),  # Trainer.pc property
+            'inventory':  trainer.inventory.all().select_related('item'),
         })
-        
         return context
 
 
@@ -121,7 +115,7 @@ def add_to_party_api(request):
     API pour ajouter un Pokémon du PC à l'équipe
     """
     try:
-        data = json.loads(request.body)
+        data       = json.loads(request.body)
         pokemon_id = data.get('pokemon_id')
 
         pokemon = get_object_or_404(PlayablePokemon, pk=pokemon_id)
@@ -129,15 +123,17 @@ def add_to_party_api(request):
         if pokemon.trainer != trainer:
             return JsonResponse({'success': False, 'error': 'Ce Pokémon ne vous appartient pas'})
 
-        team_count = trainer.pokemon_team.filter(is_in_party=True).count()
-        if team_count >= 6:
+        if trainer.party_count >= 6:
             return JsonResponse({'success': False, 'error': 'Votre équipe est complète (6/6)'})
 
-        pokemon.is_in_party = True
-        pokemon.save()
-        auto_reorganize_party(trainer)
+        # withdraw_pokemon gère is_in_party + party_position + save()
+        next_position = trainer.party_count + 1
+        success, message = withdraw_pokemon(pokemon, next_position)
+        if not success:
+            return JsonResponse({'success': False, 'error': message})
 
-        return JsonResponse({'success': True, 'message': f'{pokemon} a été ajouté à l\'équipe'})
+        auto_reorganize_party(trainer)
+        return JsonResponse({'success': True, 'message': message})
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)

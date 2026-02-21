@@ -75,6 +75,55 @@ class Trainer(models.Model):
             return f"{self.npc_class} {self.username}"
         return self.username
 
+    # ------------------------------------------------------------------
+    # Helpers badges
+    # ------------------------------------------------------------------
+
+    def has_badge(self, badge_order: int) -> bool:
+        """Retourne True si le trainer a obtenu le badge d'ordre badge_order."""
+        return self.badges >= badge_order
+
+    # ------------------------------------------------------------------
+    # Helpers équipe / PC — évitent de réécrire le filtre partout
+    # ------------------------------------------------------------------
+
+    @property
+    def party(self):
+        """QuerySet des Pokémon actifs, triés par position."""
+        return self.pokemon_team.filter(is_in_party=True).order_by('party_position')
+
+    @property
+    def pc(self):
+        """QuerySet des Pokémon en réserve (PC)."""
+        return self.pokemon_team.filter(is_in_party=False)
+
+    @property
+    def party_count(self) -> int:
+        """Nombre de Pokémon dans l'équipe active."""
+        return self.pokemon_team.filter(is_in_party=True).count()
+
+    @property
+    def pc_count(self) -> int:
+        """Nombre de Pokémon dans le PC."""
+        return self.pokemon_team.filter(is_in_party=False).count()
+
+    # ------------------------------------------------------------------
+    # Helpers argent — garantissent un .save() systématique
+    # ------------------------------------------------------------------
+
+    def spend_money(self, amount: int) -> bool:
+        """Dépense amount₽. Retourne False si fonds insuffisants."""
+        if self.money < amount:
+            return False
+        self.money -= amount
+        self.save(update_fields=['money'])
+        return True
+
+    def earn_money(self, amount: int) -> None:
+        """Crédite amount₽ sur le solde du trainer."""
+        self.money += amount
+        self.save(update_fields=['money'])
+
 class GymLeader(models.Model):
     """Champion d'Arène avec informations spécifiques"""
     
@@ -137,5 +186,3 @@ class TrainerInventory(models.Model):
     
     def __str__(self):
         return f"{self.trainer.username} - {self.item.name} x{self.quantity}"
-
-

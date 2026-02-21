@@ -1115,6 +1115,63 @@ def get_or_create_player_trainer(user):
     return trainer
 
 
+def get_player_trainer(user):
+    """
+    Recupere le Trainer du joueur connecte (404 si inexistant).
+
+    A utiliser dans les vues ou le trainer est garanti d'exister deja
+    (apres le flow choose_starter). Pour les nouveaux joueurs, preferer
+    get_or_create_player_trainer().
+
+    Usage :
+        trainer = get_player_trainer(request.user)
+    """
+    from django.shortcuts import get_object_or_404
+    return get_object_or_404(Trainer, username=user.username)
+
+
+def get_player_location(trainer, create_if_missing=True):
+    """
+    Recupere le PlayerLocation du trainer, en creant la position initiale
+    (Bourg Palette ou premiere zone) si elle n'existe pas encore et que
+    create_if_missing=True.
+
+    Usage :
+        location = get_player_location(trainer)
+        current_zone = location.current_zone
+    """
+    from .models import PlayerLocation, Zone
+
+    try:
+        return PlayerLocation.objects.get(trainer=trainer)
+    except PlayerLocation.DoesNotExist:
+        if not create_if_missing:
+            return None
+        start_zone = (
+            Zone.objects.filter(name__icontains='Bourg Palette').first()
+            or Zone.objects.first()
+        )
+        return PlayerLocation.objects.create(trainer=trainer, current_zone=start_zone)
+
+
+def trainer_is_at_zone_with(trainer, zone_attr: str) -> bool:
+    """
+    Retourne True si le trainer se trouve dans une zone possedant l'attribut
+    boolen zone_attr (ex. 'has_shop', 'has_pokemon_center').
+
+    Si le trainer n'a pas de PlayerLocation connue, retourne True par defaut
+    pour ne pas bloquer les joueurs sans position.
+
+    Usage :
+        if not trainer_is_at_zone_with(trainer, 'has_shop'):
+            return redirect('map_view')
+    """
+    location = get_player_location(trainer, create_if_missing=False)
+    if location is None:
+        return True  # pas de position connue → on ne bloque pas
+    return bool(getattr(location.current_zone, zone_attr, False))
+
+
 def serialize_pokemon_moves(pokemon):
     """
     Serialise les moves actifs d'un Pokemon pour les reponses JSON (modale

@@ -306,6 +306,23 @@ class PlayablePokemon(models.Model):
     def is_fainted(self):
         """Vérifie si le Pokémon est KO"""
         return self.current_hp <= 0
+
+    @property
+    def needs_healing(self) -> bool:
+        """True si le Pokémon n'est pas à pleine forme (HP ou statut)."""
+        return self.current_hp < self.max_hp or bool(self.status_condition)
+
+    @property
+    def hp_percent(self) -> float:
+        """Pourcentage de HP restants (0.0 – 100.0)."""
+        if not self.max_hp:
+            return 0.0
+        return round(self.current_hp / self.max_hp * 100, 1)
+
+    @property
+    def display_name(self) -> str:
+        """Nom affiché : surnom si présent, sinon nom de l'espèce."""
+        return self.nickname or self.species.name
     
     def heal(self, hp_amount=None):
         """Soigne le Pokémon"""

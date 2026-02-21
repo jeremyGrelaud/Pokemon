@@ -23,6 +23,8 @@ from myPokemonApp.gameUtils import (
     # Pokemon / trainer
     get_first_alive_pokemon,
     get_or_create_wild_trainer,
+    get_player_trainer,
+    get_or_create_player_trainer,
     create_wild_pokemon,
     # Combats
     start_battle,
@@ -37,6 +39,7 @@ from myPokemonApp.gameUtils import (
     # Serialisation
     build_battle_response,
     serialize_pokemon,
+    serialize_pokemon_moves,
     # Utilitaires
     heal_team,
     learn_moves_up_to_level,
@@ -56,7 +59,7 @@ class BattleListView(generic.ListView):
     paginate_by         = 20
 
     def get_queryset(self):
-        trainer = Trainer.objects.get(username=self.request.user.username)
+        trainer = get_or_create_player_trainer(self.request.user)
         return Battle.objects.filter(
             Q(player_trainer=trainer) | Q(opponent_trainer=trainer)
         ).order_by('-created_at')
@@ -73,7 +76,7 @@ class BattleDetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         battle  = self.object
 
-        viewer = get_object_or_404(Trainer, username=self.request.user.username)
+        viewer = get_player_trainer(self.request.user)
         player_won = (battle.winner == battle.player_trainer) if battle.winner else None
 
         # Équipe complète du joueur (depuis le trainer du combat)
@@ -122,7 +125,7 @@ class BattleGameView(generic.DetailView):
     context_object_name = 'battle'
 
     def get_queryset(self):
-        trainer = get_object_or_404(Trainer, username=self.request.user.username)
+        trainer = get_player_trainer(self.request.user)
         return Battle.objects.filter(player_trainer=trainer)
 
     def get_context_data(self, **kwargs):
@@ -162,7 +165,7 @@ def battle_action_view(request, pk):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
     battle  = get_object_or_404(Battle, pk=pk)
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
 
     if battle.player_trainer != trainer:
         return JsonResponse({'error': 'Not your battle'}, status=403)
@@ -910,20 +913,19 @@ def battle_learn_move_view(request, pk):
     from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
 
     battle  = get_object_or_404(Battle, pk=pk)
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
 
     if battle.player_trainer != trainer:
         return JsonResponse({'error': 'Not your battle'}, status=403)
 
     new_move_id      = request.POST.get('new_move_id')
-    replaced_move_id = request.POST.get('replaced_move_id')  # 'skip' = ne pas apprendre
+    replaced_move_id = request.POST.get('replaced_move_id')
     pokemon_id       = request.POST.get('pokemon_id')
 
     pokemon  = get_object_or_404(PlayablePokemon, pk=pokemon_id, trainer=trainer)
     new_move = get_object_or_404(PokemonMove, pk=new_move_id)
 
     if replaced_move_id and replaced_move_id != 'skip':
-        # Oublier le move choisi et apprendre le nouveau
         PokemonMoveInstance.objects.filter(
             pokemon=pokemon, move_id=replaced_move_id
         ).delete()
@@ -934,24 +936,12 @@ def battle_learn_move_view(request, pk):
         )
         message = f"{pokemon.species.name} oublie et apprend {new_move.name} !"
     else:
-        # Joueur decide de ne pas apprendre le move
         message = f"{pokemon.species.name} n'apprend pas {new_move.name}."
 
-    # Retourner les moves mis a jour
-    moves = [
-        {
-            'id':         mi.move.id,
-            'name':       mi.move.name,
-            'type':       mi.move.type.name if mi.move.type else '',
-            'power':      mi.move.power,
-            'accuracy':   mi.move.accuracy,
-            'pp':         mi.move.pp,
-            'current_pp': mi.current_pp,
-            'max_pp':     mi.move.pp,
-        }
-        for mi in PokemonMoveInstance.objects.filter(
-            pokemon=pokemon
-        ).select_related('move', 'move__type')
-    ]
+    # serialize_pokemon_moves remplace le rebuild inline
+    moves = serialize_pokemon_moves(pokemon)
+    # Ajouter max_pp pour la compatibilité avec le template existant
+    for m in moves:
+        m.setdefault('max_pp', m['pp'])
 
     return JsonResponse({'success': True, 'message': message, 'moves': moves})
