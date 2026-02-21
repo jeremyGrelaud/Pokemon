@@ -117,12 +117,12 @@ def zone_detail_view(request, zone_id):
     zone_translations = {
         "Argenta": "Pewter City",
         "Azuria": "Cerulean City",
-        "Cramois'Ile": "Vermilion City",
-        "Jadielle": "Celadon City",
-        "Parmanie": "Saffron City",
-        "Céladopole": "Fuchsia City",
+        "Carmin sur Mer": "Vermilion City",
+        "Céladopole": "Celadon City",
+        "Jadielle": "Viridian City",
+        "Safrania": "Saffron City",
+        "Parmanie": "Fuchsia City",
         "Cramois'Ile": "Cinnabar Island",
-        "Bourg Palette": "Viridian City",
     }
 
     english_zone_name = zone_translations.get(zone.name, zone.name).strip() # Si pas de traduction, garde le nom original
