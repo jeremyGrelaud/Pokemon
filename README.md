@@ -18,14 +18,14 @@ TODO Roadmap :
 - système de quêtes ?
 - système de shiny (sprites présents)
 - After everything, implement different game mods ?
+-  Griser et ne donner accès dans la liste des pokeCenter et pokeMart seulement au bâtiment de la ville où le joueur se trouve (se basant sur player.location)
+- améliorer le script d'initialisation de la base de données avec des données sur les moves appris par chaque pokémon ...
+-  ajout d'une vue "boîte à badges" avec les sprites des badges obtenus
 
 TODO BugFixes :
 
-- améliorer le menu de sélection de pokemon sur le switch normal pour se rapprocher du modal de switch forcé
-- Les achievements après avoir vaincu un champion d'arène ne s'update pas comme il faut
 - Il faudrait afficher les sprites d'objets etc là où c'est possible à la place des icônes font awesome
 - continuer la refactorisation en utilisant le plus possibles les helpers de GameUtils.py ou en en implémentant de nouveaux
-
 
 # Setup
 

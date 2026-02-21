@@ -28,7 +28,7 @@
             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_caught }} / {{ total_pokemon }}</div>
           </div>
           <div class="col-auto">
-            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+            <img src="{% static 'img/pokedex_transparent.png' %}" style="width:2rem;height:2rem;object-fit:contain;opacity:.4;">
           </div>
         </div>
       </div>
@@ -45,7 +45,13 @@
             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ team_size }} / 6</div>
           </div>
           <div class="col-auto">
-            <i class="fas fa-users fa-2x text-gray-300"></i>
+            {% if first_team_pokemon %}
+            <img src="{% static 'img/sprites_gen5/normal/' %}{{ first_team_pokemon.species.name|lowerPokemonFileNames }}.png"
+                 style="width:2.4rem;height:2.4rem;object-fit:contain;opacity:.5;"
+                 onerror="this.src='{% static 'img/pokeball.png' %}'">
+            {% else %}
+            <img src="{% static 'img/pokeball.png' %}" style="width:2rem;height:2rem;object-fit:contain;opacity:.4;">
+            {% endif %}
           </div>
         </div>
       </div>
@@ -153,11 +159,20 @@
             <div class="d-flex w-100 justify-content-between">
               <h6 class="mb-1">
                 {% if battle.battle_type == 'wild' %}
-                  <i class="fas fa-leaf text-success"></i> Pokémon Sauvage
+                  <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}"
+                       style="height:2em;object-fit:contain;vertical-align:middle;"
+                       onerror="this.outerHTML='<i class=\'fas fa-leaf text-success\'></i>'">
+                    Pokémon Sauvage
                 {% elif battle.battle_type == 'trainer' %}
-                  <i class="fas fa-user text-info"></i> {{ battle.opponent_trainer.username }}
+                  <img src="{% static 'img/trainer_sprites/' %}{{ battle.opponent_trainer|trainer_sprite_path }}"
+                       style="height:3em;object-fit:contain;vertical-align:middle;"
+                       onerror="this.outerHTML='<i class=\'fas fa-user text-info\'></i>'">
+                  {{ battle.opponent_trainer.username }}
                 {% elif battle.battle_type == 'gym' %}
-                  <i class="fas fa-trophy text-warning"></i> {{ battle.opponent_trainer.username }}
+                  <img src="{% static 'img/trainer_sprites/' %}{{ battle.opponent_trainer|trainer_sprite_path }}"
+                       style="height:3em;object-fit:contain;vertical-align:middle;"
+                       onerror="this.outerHTML='<i class=\'fas fa-trophy text-warning\'></i>'">
+                  {{ battle.opponent_trainer.username }}
                 {% endif %}
               </h6>
               <small>{{ battle.created_at|timesince }}</small>
@@ -199,7 +214,7 @@
           </div>
           <div class="col-md-3 mb-3">
             <a href="{% url 'MyTeamView' %}" class="btn btn-lg btn-block btn-outline-success">
-              <i class="fas fa-users fa-2x mb-2"></i><br>
+              <img src="{% static 'img/pokeball.png' %}" class="mb-1" style="width:36px;height:36px;object-fit:contain;display:block;margin:0 auto;"><br>
               Mon Équipe
             </a>
           </div>

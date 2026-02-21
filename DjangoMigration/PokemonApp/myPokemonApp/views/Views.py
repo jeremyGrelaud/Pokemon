@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-
+from myPokemonApp.gameUtils import get_or_create_player_trainer, create_starter_pokemon, give_item_to_trainer
 from ..models import *
 
 # ============================================================================
@@ -39,10 +39,7 @@ class DashboardView(generic.TemplateView):
     def dispatch(self, request, *args, **kwargs):
         """Redirige vers la sélection du starter si le joueur n'a pas encore de Pokémon"""
         if request.user.is_authenticated:
-            trainer, _ = Trainer.objects.get_or_create(
-                username=request.user.username,
-                defaults={'trainer_type': 'player'}
-            )
+            trainer = get_or_create_player_trainer(request.user)
             if not trainer.pokemon_team.exists():
                 return redirect('choose_starter')
         return super().dispatch(request, *args, **kwargs)
@@ -50,12 +47,7 @@ class DashboardView(generic.TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        # Récupérer le trainer
-        trainer, created = Trainer.objects.get_or_create(
-            username=self.request.user.username,
-            defaults={'trainer_type': 'player'}
-        )
+        trainer = get_or_create_player_trainer(self.request.user)
         
         # Statistiques
         total_pokemon = Pokemon.objects.count()
@@ -80,7 +72,8 @@ class DashboardView(generic.TemplateView):
             'total_caught': total_caught,
             'badges': badges,
             'recent_battles': recent_battles,
-            'next_gym': next_gym
+            'next_gym': next_gym,
+            'first_team_pokemon': trainer.pokemon_team.filter(is_in_party=True).order_by('party_position').first(),
         })
         
         return context
@@ -96,12 +89,8 @@ def choose_starter_view(request):
     Permet au nouveau joueur de choisir son Pokémon de départ.
     Lui donne aussi 5 Pokéballs de départ.
     """
-    from myPokemonApp.gameUtils import create_starter_pokemon, give_item_to_trainer
 
-    trainer, _ = Trainer.objects.get_or_create(
-        username=request.user.username,
-        defaults={'trainer_type': 'player'}
-    )
+    trainer = get_or_create_player_trainer(request.user)
 
     # Si le joueur a déjà un Pokémon, rediriger vers le dashboard
     if trainer.pokemon_team.exists():

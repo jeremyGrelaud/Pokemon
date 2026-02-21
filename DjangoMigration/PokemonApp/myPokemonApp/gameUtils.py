@@ -1089,3 +1089,78 @@ def calculate_pokemon_stats_with_nature(pokemon):
     if decreased:
         setattr(pokemon, decreased, int(getattr(pokemon, decreased) * 0.9))
     pokemon.save()
+
+
+# =============================================================================
+# 11. HELPERS VIEWS
+# =============================================================================
+
+def get_or_create_player_trainer(user):
+    """
+    Recupere ou cree le Trainer associe a un utilisateur Django.
+
+    Centralise le pattern repete dans chaque view :
+        trainer, _ = Trainer.objects.get_or_create(
+            username=request.user.username,
+            defaults={'trainer_type': 'player'}
+        )
+
+    Usage :
+        trainer = get_or_create_player_trainer(request.user)
+    """
+    trainer, _ = Trainer.objects.get_or_create(
+        username=user.username,
+        defaults={'trainer_type': 'player'}
+    )
+    return trainer
+
+
+def serialize_pokemon_moves(pokemon):
+    """
+    Serialise les moves actifs d'un Pokemon pour les reponses JSON (modale
+    de gestion des capacites, etc.).
+
+    Distinct de serialize_pokemon(include_moves=True) qui est oriente combat
+    et ne retourne que id/name/type/power/current_pp/max_pp.
+    Ici on ajoute category, accuracy et pp (max) pour la gestion d'equipe.
+
+    Usage :
+        moves = serialize_pokemon_moves(pokemon)
+        return JsonResponse({'moves': moves})
+    """
+    from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+
+    return [
+        {
+            'id':         mi.move.id,
+            'name':       mi.move.name,
+            'type':       mi.move.type.name if mi.move.type else '',
+            'category':   mi.move.category,
+            'power':      mi.move.power,
+            'accuracy':   mi.move.accuracy,
+            'pp':         mi.move.pp,
+            'current_pp': mi.current_pp,
+        }
+        for mi in PokemonMoveInstance.objects.filter(
+            pokemon=pokemon
+        ).select_related('move', 'move__type')
+    ]
+
+
+def auto_reorganize_party(trainer):
+    """
+    Reassigne des positions sequentielles (1-6) aux Pokemon de l'equipe
+    active dans leur ordre courant (party_position, id).
+
+    A appeler apres un depot au PC ou un ajout depuis le PC pour garantir
+    que les positions restent continues et sans trous.
+
+    Distinct de organize_party(trainer, pokemon_order) qui reordonne selon
+    une liste d'IDs fournie par le client (drag-and-drop).
+    """
+    for position, pokemon in enumerate(
+        trainer.pokemon_team.filter(is_in_party=True).order_by('party_position', 'id'),
+        start=1
+    ):
+        pokemon.party_position = position
+        pokemon.save()
