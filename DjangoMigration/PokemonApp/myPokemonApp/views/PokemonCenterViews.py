@@ -40,13 +40,26 @@ class PokemonCenterListView(generic.ListView):
         context = super().get_context_data(**kwargs)
         trainer = get_player_trainer(self.request.user)
         visits  = CenterVisit.objects.filter(trainer=trainer)
-
-        # Agrégation DB au lieu d'un sum() Python sur un queryset
         agg = visits.aggregate(total_pokemon_healed=Sum('pokemon_healed'))
 
+        # Zone actuelle pour griser les centres hors de la ville du joueur
+        from myPokemonApp.gameUtils import get_player_location
+        location        = get_player_location(trainer)
+        current_zone    = location.current_zone if location else None
+        zone_name_lower = current_zone.name.lower() if current_zone else ''
+
+        # Enrichir chaque centre avec un flag is_local
+        centers_with_local = []
+        for center in context['centers']:
+            loc_lower = center.location.lower() if center.location else ''
+            is_local  = (zone_name_lower in loc_lower or loc_lower in zone_name_lower) if zone_name_lower else True
+            centers_with_local.append({'center': center, 'is_local': is_local})
+
+        context['centers']              = centers_with_local
         context['trainer']              = trainer
         context['total_visits']         = visits.count()
         context['total_pokemon_healed'] = agg['total_pokemon_healed'] or 0
+        context['current_zone']         = current_zone
         return context
 
 
@@ -56,6 +69,24 @@ class PokemonCenterDetailView(generic.DetailView):
     model = PokemonCenter
     template_name = 'pokemon_center/center_detail.html'
     context_object_name = 'center'
+
+    def dispatch(self, request, *args, **kwargs):
+        trainer = get_player_trainer(request.user)
+        # 1. La zone actuelle doit avoir un centre
+        if not trainer_is_at_zone_with(trainer, 'has_pokemon_center'):
+            messages.warning(request, "Vous devez être dans une ville possédant un Centre Pokémon pour y accéder.")
+            return redirect('map_view')
+        # 2. Le centre demandé doit être celui de la zone actuelle
+        center = get_object_or_404(PokemonCenter, pk=kwargs.get('pk'))
+        from myPokemonApp.gameUtils import get_player_location
+        location = get_player_location(trainer, create_if_missing=False)
+        if location is not None:
+            zone_name = location.current_zone.name.lower()
+            bldg_loc  = (center.location or '').lower()
+            if zone_name not in bldg_loc and bldg_loc not in zone_name:
+                messages.warning(request, "Ce Centre Pokémon ne se trouve pas dans votre ville actuelle.")
+                return redirect('PokemonCenterListView')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

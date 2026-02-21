@@ -23,7 +23,7 @@ from myPokemonApp.gameUtils import (
 
 def _location_guard(request, zone_attr, redirect_name='map_view', warning_msg=None):
     """
-    Helper interne : recupere le trainer et verifie sa localisation.
+    Vérifie que le trainer est dans une zone possédant zone_attr (booléen).
     Retourne (trainer, None) si OK, (None, redirect_response) sinon.
     """
     trainer = get_player_trainer(request.user)
@@ -31,6 +31,25 @@ def _location_guard(request, zone_attr, redirect_name='map_view', warning_msg=No
         messages.warning(request, warning_msg or "Vous n'êtes pas au bon endroit.")
         return None, redirect(redirect_name)
     return trainer, None
+
+
+def _building_location_matches(trainer, building_location: str) -> bool:
+    """
+    Vérifie que le bâtiment spécifique demandé (boutique / centre) se trouve
+    dans la zone actuelle du joueur.
+
+    Compare building_location avec current_zone.name (matching souple,
+    insensible à la casse, dans les deux sens).
+
+    Retourne True si la position n'est pas connue (pas de blocage).
+    """
+    from myPokemonApp.gameUtils import get_player_location
+    location = get_player_location(trainer, create_if_missing=False)
+    if location is None:
+        return True
+    zone_name = location.current_zone.name.lower()
+    bldg_loc  = (building_location or '').lower()
+    return zone_name in bldg_loc or bldg_loc in zone_name
 
 
 @method_decorator(login_required, name='dispatch')
@@ -50,7 +69,23 @@ class ShopListView(generic.ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['trainer'] = get_player_trainer(self.request.user)
+        trainer = get_player_trainer(self.request.user)
+
+        from myPokemonApp.gameUtils import get_player_location
+        location        = get_player_location(trainer)
+        current_zone    = location.current_zone if location else None
+        zone_name_lower = current_zone.name.lower() if current_zone else ''
+
+        # Enrichir chaque boutique avec un flag is_local
+        shops_with_local = []
+        for shop in context['shops']:
+            loc_lower = shop.location.lower() if shop.location else ''
+            is_local  = (zone_name_lower in loc_lower or loc_lower in zone_name_lower) if zone_name_lower else True
+            shops_with_local.append({'shop': shop, 'is_local': is_local})
+
+        context['shops']        = shops_with_local
+        context['trainer']      = trainer
+        context['current_zone'] = current_zone
         return context
 
 
@@ -62,12 +97,16 @@ class ShopDetailView(generic.DetailView):
     context_object_name = 'shop'
 
     def dispatch(self, request, *args, **kwargs):
-        trainer, redir = _location_guard(
-            request, 'has_shop', 'map_view',
-            "Vous devez être dans une ville possédant une boutique pour y accéder."
-        )
-        if redir:
-            return redir
+        trainer = get_player_trainer(request.user)
+        # 1. La zone actuelle doit avoir une boutique
+        if not trainer_is_at_zone_with(trainer, 'has_shop'):
+            messages.warning(request, "Vous devez être dans une ville possédant une boutique pour y accéder.")
+            return redirect('map_view')
+        # 2. La boutique demandée doit être celle de la zone actuelle
+        shop = get_object_or_404(Shop, pk=kwargs.get('pk'))
+        if not _building_location_matches(trainer, shop.location):
+            messages.warning(request, "Cette boutique ne se trouve pas dans votre ville actuelle.")
+            return redirect('ShopListView')
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
