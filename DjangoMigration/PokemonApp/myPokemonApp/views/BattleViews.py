@@ -56,7 +56,7 @@ class BattleListView(generic.ListView):
     model               = Battle
     template_name       = 'battle/battle_list.html'
     context_object_name = 'battles'
-    paginate_by         = 20
+    paginate_by         = 10
 
     def get_queryset(self):
         trainer = get_or_create_player_trainer(self.request.user)
