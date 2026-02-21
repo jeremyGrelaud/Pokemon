@@ -369,7 +369,59 @@
   </div>
 </div>
 
-<!-- Modal d'Apprentissage de Move -->
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║          MODAL D'ÉVOLUTION                          ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div class="modal fade" id="evolution-modal" tabindex="-1" role="dialog"
+     data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content evolution-modal-content">
+
+      <!-- Phase 1 : annonce -->
+      <div id="evo-phase-announce" class="evo-phase text-center py-4 px-3">
+        <p class="evo-subtitle mb-2">Quoi ?!</p>
+        <h3 class="evo-title" id="evo-from-name"></h3>
+        <p class="evo-subtitle">commence à évoluer !</p>
+      </div>
+
+      <!-- Phase 2 : animation des sprites -->
+      <div id="evo-phase-anim" class="evo-phase d-none py-3">
+        <div class="evo-arena">
+          <!-- Sprite AVANT -->
+          <div class="evo-sprite-wrap" id="evo-before-wrap">
+            <img id="evo-sprite-before" class="evo-sprite" src="" alt="">
+            <div class="evo-glow" id="evo-glow"></div>
+          </div>
+          <!-- Sprite APRÈS (caché au début) -->
+          <div class="evo-sprite-wrap d-none" id="evo-after-wrap">
+            <img id="evo-sprite-after" class="evo-sprite evo-sprite-reveal" src="" alt="">
+          </div>
+        </div>
+        <div class="evo-flash-overlay" id="evo-flash"></div>
+      </div>
+
+      <!-- Phase 3 : résultat + stats -->
+      <div id="evo-phase-result" class="evo-phase d-none text-center py-4 px-4">
+        <div class="d-flex justify-content-center align-items-center mb-3 gap-3">
+          <img id="evo-result-before-sprite" class="evo-result-sprite" src="" alt="">
+          <i class="fas fa-arrow-right fa-2x text-warning"></i>
+          <img id="evo-result-after-sprite" class="evo-result-sprite evo-result-after-bounce" src="" alt="">
+        </div>
+        <h4 class="text-warning mb-1">
+          <i class="fas fa-star"></i>
+          <span id="evo-from-name-2"></span> évolue en
+          <strong id="evo-to-name"></strong> !
+        </h4>
+        <!-- Tableau de comparaison des stats -->
+        <div class="evo-stats-table mt-3" id="evo-stats-table"></div>
+        <button class="btn btn-warning btn-lg mt-3 px-5" id="evo-confirm-btn" onclick="confirmEvolution()">
+          <i class="fas fa-check-circle"></i> Super !
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
 <div class="modal fade" id="learn-move-modal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
   <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
     <div class="modal-content border-warning">
@@ -777,8 +829,12 @@ function updateBattleState(data) {
     data.log.forEach(msg => addBattleLog(msg));
   }
   
-  // Check battle end
-  if (data.battle_ended) {
+  // Check battle end — l'évolution est PRIORITAIRE sur la victoire :
+  // si le pokemon évolue sur le dernier coup, on montre l'évolution d'abord,
+  // puis le modal de victoire s'affiche quand le joueur clique "Super !".
+  if (data.pending_evolution) {
+    triggerEvolution(data.pending_evolution, data.battle_ended ? data : null);
+  } else if (data.battle_ended) {
     handleBattleEnd(data);
   } else if (data.pending_moves && data.pending_moves.length > 0) {
     // Moves en attente d'apprentissage → afficher la modal de sélection
@@ -1277,6 +1333,209 @@ function skipLearnMove() {
 }
 
 // ============================================================================
+// SYSTÈME D'ÉVOLUTION
+// ============================================================================
+
+let pendingEvolutionData        = null;
+let pendingEvolutionStatsBefore = null;
+let pendingBattleEndData        = null;  // fin de combat à déclencher après l'évolution
+
+const SPRITE_BASE_NORMAL = "{% static 'img/sprites_gen5/normal/' %}";
+const SPRITE_BASE_BACK   = "{% static 'img/sprites_gen5/back/' %}";
+
+function lowerForSprite(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Appelé par updateBattleState quand pending_evolution est présent */
+function triggerEvolution(evoData, battleEndData = null) {
+  pendingEvolutionData        = evoData;
+  pendingEvolutionStatsBefore = evoData.stats_before;
+  pendingBattleEndData        = battleEndData;   // mémorisé pour après l'évolution
+
+  const fromName = evoData.from_name;
+  const toName   = evoData.to_name;
+
+  // Préparer les sprites
+  const spriteBefore = SPRITE_BASE_BACK   + lowerForSprite(fromName) + '.png';
+  const spriteAfter  = SPRITE_BASE_NORMAL + lowerForSprite(toName)   + '.png';
+
+  document.getElementById('evo-sprite-before').src = spriteBefore;
+  document.getElementById('evo-sprite-after').src  = spriteAfter;
+  document.getElementById('evo-result-before-sprite').src = spriteBefore;
+  document.getElementById('evo-result-after-sprite').src  = spriteAfter;
+
+  document.getElementById('evo-from-name').textContent  = fromName;
+  document.getElementById('evo-from-name-2').textContent = fromName;
+  document.getElementById('evo-to-name').textContent    = toName;
+
+  // Réinitialiser les phases
+  document.getElementById('evo-phase-announce').classList.remove('d-none');
+  document.getElementById('evo-phase-anim').classList.add('d-none');
+  document.getElementById('evo-phase-result').classList.add('d-none');
+
+  // Désactiver les boutons pendant l'animation
+  $('button').prop('disabled', true);
+
+  // Lancer le modal
+  $('#evolution-modal').modal('show');
+
+  // Lancer la séquence animée
+  runEvolutionSequence(fromName, toName);
+}
+
+function playEvolutionSound() {
+  const audio = new Audio('{% static "sounds/pokemon-evolution-sound-effect.mp3" %}');
+  audio.play();
+}
+
+async function runEvolutionSequence(fromName, toName) {
+  // Lancer l'audio
+  playEvolutionSound();
+
+  await sleep(1800);   // lire l'annonce
+
+  // Phase 2 : animation
+  document.getElementById('evo-phase-announce').classList.add('d-none');
+  document.getElementById('evo-phase-anim').classList.remove('d-none');
+
+  const beforeWrap = document.getElementById('evo-before-wrap');
+  const afterWrap  = document.getElementById('evo-after-wrap');
+  const glow       = document.getElementById('evo-glow');
+  const flash      = document.getElementById('evo-flash');
+
+  // 1. Scintillement du pokémon original (4 × blanc)
+  for (let i = 0; i < 4; i++) {
+    beforeWrap.classList.add('evo-blink');
+    await sleep(220);
+    beforeWrap.classList.remove('evo-blink');
+    await sleep(180);
+  }
+
+  // 2. Silhouette blanche + rotation 3D (comme dans les jeux)
+  beforeWrap.classList.add('evo-silhouette');
+
+  // Accélération progressive : lent → rapide → très rapide
+  const spinDurations = [380, 320, 260, 200, 160, 130, 100, 80, 70, 60, 60, 60];
+  for (const dur of spinDurations) {
+    beforeWrap.classList.add('evo-spin-frame');
+    await sleep(dur / 2);
+    beforeWrap.classList.remove('evo-spin-frame');
+    await sleep(dur / 2);
+  }
+
+  // 3. Glow au pic de vitesse + flash global
+  glow.classList.add('evo-glow-active');
+  await sleep(300);
+
+  flash.classList.add('evo-flash-active');
+  await sleep(350);
+
+  // 4. Swap des sprites sous le flash
+  beforeWrap.classList.add('d-none');
+  afterWrap.classList.remove('d-none');
+  afterWrap.classList.add('evo-silhouette');
+  await sleep(200);
+
+  flash.classList.remove('evo-flash-active');
+  await sleep(400);
+
+  // 5. Révélation du nouveau pokémon (silhouette → couleurs)
+  afterWrap.classList.remove('evo-silhouette');
+  afterWrap.querySelector('img').classList.add('evo-sprite-reveal-anim');
+  await sleep(800);
+
+  // Phase 3 : résultat + appel serveur pour appliquer l'évolution
+  applyEvolutionOnServer();
+}
+
+function applyEvolutionOnServer() {
+  $.post('{% url "BattleActionView" battle.id %}', {
+    action:       'confirm_evolution',
+    evolution_id: pendingEvolutionData.evolution_id,
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    const statsAfter = data.stats_after || {};
+    renderEvolutionStats(pendingEvolutionStatsBefore, statsAfter);
+
+    // Phase résultat
+    document.getElementById('evo-phase-anim').classList.add('d-none');
+    document.getElementById('evo-phase-result').classList.remove('d-none');
+    document.getElementById('evo-confirm-btn').disabled = false;
+
+    // Mettre à jour le combat avec les nouvelles données
+    if (data.player_pokemon) {
+      updatePokemonDisplay('player', data.player_pokemon);
+    }
+    if (data.log) data.log.forEach(m => addBattleLog(m));
+  })
+  .fail(function() {
+    addBattleLog('Erreur lors de l\'évolution.');
+    document.getElementById('evo-confirm-btn').disabled = false;
+    closeEvolutionModal();
+  });
+}
+
+function renderEvolutionStats(before, after) {
+  const stats = [
+    { key: 'hp',              label: 'PV' },
+    { key: 'attack',          label: 'Attaque' },
+    { key: 'defense',         label: 'Défense' },
+    { key: 'special_attack',  label: 'Att. Spé.' },
+    { key: 'special_defense', label: 'Def. Spé.' },
+    { key: 'speed',           label: 'Vitesse' },
+  ];
+
+  const rows = stats.map(s => {
+    const bVal = before[s.key] || 0;
+    const aVal = after[s.key]  || 0;
+    const diff = aVal - bVal;
+    const diffHtml = diff > 0
+      ? `<span class="text-success">+${diff}</span>`
+      : diff < 0
+        ? `<span class="text-danger">${diff}</span>`
+        : `<span class="text-muted">—</span>`;
+
+    return `<div class="evo-stat-row">
+      <span class="evo-stat-label">${s.label}</span>
+      <span class="evo-stat-before">${bVal}</span>
+      <span class="evo-stat-arrow">→</span>
+      <span class="evo-stat-after font-weight-bold">${aVal}</span>
+      <span class="evo-stat-diff">${diffHtml}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('evo-stats-table').innerHTML = rows;
+}
+
+function confirmEvolution() {
+  // Refermer le modal et re-autoriser les actions
+  closeEvolutionModal();
+}
+
+function closeEvolutionModal() {
+  $('#evolution-modal').modal('hide');
+  pendingEvolutionData = null;
+
+  // Si un combat s'est terminé pendant l'évolution, l'afficher maintenant
+  if (pendingBattleEndData) {
+    const battleData     = pendingBattleEndData;
+    pendingBattleEndData = null;
+    setTimeout(() => handleBattleEnd(battleData), 400);
+    return;
+  }
+
+  // Sinon réactiver les boutons normalement
+  if (!pendingMovesQueue.length) {
+    $('button').prop('disabled', false);
+    showMainMenu();
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ============================================================================
 // KEYBOARD SHORTCUTS
 // ============================================================================
 
@@ -1297,7 +1556,6 @@ $(document).keydown(function(e) {
 // ============================================================================
 // SYSTÈME DE CAPTURE
 // ============================================================================
-
 
 async function initiateCaptureSequence(itemId) {
   // Fermer le menu items
@@ -1389,4 +1647,97 @@ function showCaptureSuccessModal(captureData) {
 }
 
 </script>
+
+<style>
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  ÉVOLUTION — styles du modal                           ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+.evolution-modal-content {
+  background: radial-gradient(ellipse at center, #0d1b4b 0%, #020820 100%);
+  border: 2px solid #ffd700;
+  border-radius: 12px;
+  overflow: hidden;
+  color: #fff;
+  min-height: 320px;
+  position: relative;
+}
+.evo-phase { width: 100%; }
+.evo-title    { font-size: 2rem; font-weight: 900; color: #ffd700; letter-spacing: 1px; }
+.evo-subtitle { font-size: 1.1rem; color: #a0c4ff; }
+.evo-arena {
+  display: flex; justify-content: center; align-items: center;
+  min-height: 220px; position: relative;
+}
+.evo-sprite-wrap { position: relative; display: flex; justify-content: center; align-items: center; }
+.evo-sprite {
+  width: 180px; height: 180px; object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 12px rgba(255,215,0,.5));
+}
+/* Rotation 3D de la silhouette (effet morph des jeux) —
+   Le JS toggle rapidement cette classe pour simuler un flip 3D
+   avec accélération progressive */
+.evo-spin-frame {
+  transform: scaleX(0) scaleY(1.12) !important;
+  transition: transform 0.04s linear !important;
+}
+.evo-silhouette {
+  transition: transform 0.04s linear;
+}
+
+@keyframes evoBlink {
+  0%,100% { filter: drop-shadow(0 0 8px #fff) brightness(1); }
+  50%     { filter: drop-shadow(0 0 24px #fff) brightness(10) saturate(0); }
+}
+.evo-blink { animation: evoBlink .3s ease-in-out; }
+.evo-silhouette, .evo-silhouette img {
+  filter: brightness(0) drop-shadow(0 0 18px #fff) !important;
+}
+.evo-glow {
+  position: absolute; inset: -20px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0) 40%, transparent 70%);
+  pointer-events: none; transition: background .5s;
+}
+.evo-glow-active {
+  background: radial-gradient(circle, rgba(255,255,255,.55) 30%, rgba(100,160,255,.3) 60%, transparent 80%);
+  animation: evoGlowPulse .6s ease-in-out infinite alternate;
+}
+@keyframes evoGlowPulse {
+  from { opacity:.7; transform:scale(.95); } to { opacity:1; transform:scale(1.05); }
+}
+.evo-flash-overlay {
+  position: absolute; inset: 0; background: #fff;
+  opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10;
+}
+.evo-flash-active { opacity: 1; }
+@keyframes evoReveal {
+  0%   { filter: brightness(0); transform: scale(.85); }
+  40%  { filter: brightness(3) saturate(0); }
+  70%  { transform: scale(1.12); }
+  100% { filter: none; transform: scale(1); }
+}
+.evo-sprite-reveal-anim { animation: evoReveal .9s ease-out forwards; }
+.evo-result-sprite {
+  width: 100px; height: 100px; object-fit: contain; image-rendering: pixelated;
+}
+@keyframes evoBounce {
+  0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); }
+}
+.evo-result-after-bounce { animation: evoBounce .8s ease-in-out infinite; }
+.evo-stats-table {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 4px 16px; max-width: 420px; margin: 0 auto; font-size: .85rem;
+}
+.evo-stat-row {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.08); border-radius: 6px; padding: 4px 8px;
+}
+.evo-stat-label  { width: 68px; color: #a0c4ff; font-size: .78rem; }
+.evo-stat-before { width: 28px; text-align: right; color: #ccc; }
+.evo-stat-arrow  { color: #ffd700; }
+.evo-stat-after  { width: 28px; text-align: right; color: #fff; font-weight: bold; }
+.evo-stat-diff   { width: 36px; text-align: right; font-size: .8rem; }
+</style>
+
 {% endblock js %}

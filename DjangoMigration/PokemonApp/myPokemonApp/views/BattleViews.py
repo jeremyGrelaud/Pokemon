@@ -157,7 +157,10 @@ def battle_action_view(request, pk):
         return JsonResponse({'error': 'Not your battle'}, status=403)
 
     if not battle.is_active:
-        return JsonResponse({'error': 'Battle already ended'}, status=400)
+        # confirm_evolution peut arriver après la fin du combat (animation côté client)
+        action_type = request.POST.get('action')
+        if action_type != 'confirm_evolution':
+            return JsonResponse({'error': 'Battle already ended'}, status=400)
 
     action_type   = request.POST.get('action')
     response_data = build_battle_response(battle)
@@ -185,6 +188,10 @@ def battle_action_view(request, pk):
                 # Moves en attente d'apprentissage (pokemon a deja 4 moves)
                 if exp_result.get('pending_moves'):
                     response_data['pending_moves'] = exp_result['pending_moves']
+
+                # Évolution en attente (prioritaire sur la fin de combat)
+                if exp_result.get('pending_evolution'):
+                    response_data['pending_evolution'] = exp_result['pending_evolution']
 
                 # Switch adversaire si dresseur avec d'autres Pokemon
                 if battle.opponent_trainer:
@@ -304,11 +311,44 @@ def battle_action_view(request, pk):
             return JsonResponse(response_data)
 
         # ------------------------------------------------------------------
-        # Fin du traitement de l'action : rafraichir et reconstruire la reponse
+        elif action_type == 'confirm_evolution':
+            # Le client a termine l'animation, on applique l'evolution.
+            from myPokemonApp.models.PokemonEvolution import PokemonEvolution
+            from myPokemonApp.models import Pokemon as PokemonSpecies
+
+            evolution_id = request.POST.get('evolution_id')
+            evolution    = get_object_or_404(PokemonEvolution, pk=evolution_id)
+            pokemon      = battle.player_pokemon
+
+            # Sécurité : vérifier que l'évolution concerne bien ce pokémon
+            if evolution.pokemon != pokemon.species:
+                return JsonResponse({'error': 'Evolution invalide'}, status=400)
+
+            old_name    = pokemon.species.name
+            new_species = evolution.evolves_to
+            evolve_msg  = pokemon.evolve_to(new_species)
+
+            battle.refresh_from_db()
+            response_data = build_battle_response(battle)
+            response_data['log']         = [evolve_msg]
+            response_data['evolved']     = True
+            response_data['new_species'] = new_species.name
+            # Stats après évolution pour les afficher dans le modal
+            response_data['stats_after'] = {
+                'hp':              pokemon.max_hp,
+                'attack':          pokemon.attack,
+                'defense':         pokemon.defense,
+                'special_attack':  pokemon.special_attack,
+                'special_defense': pokemon.special_defense,
+                'speed':           pokemon.speed,
+            }
+            return JsonResponse(response_data)
         battle.refresh_from_db()
-        ended_before  = response_data.get('battle_ended', False)
-        result_before = response_data.get('result')        # 'victory' / 'defeat' / 'fled'
-        extra_logs    = response_data.get('log', [])       # logs EXP / level-up ajoutés avant le rebuild
+        ended_before       = response_data.get('battle_ended', False)
+        result_before      = response_data.get('result')
+        extra_logs         = response_data.get('log', [])
+        pending_evolution  = response_data.get('pending_evolution')   # ← sauvegarder
+        pending_moves      = response_data.get('pending_moves')       # ← sauvegarder
 
         response_data = build_battle_response(battle)
 
@@ -316,6 +356,10 @@ def battle_action_view(request, pk):
             response_data['battle_ended'] = True
         if result_before:
             response_data['result'] = result_before
+        if pending_evolution:                                          # ← réinjecter
+            response_data['pending_evolution'] = pending_evolution
+        if pending_moves:                                              # ← réinjecter
+            response_data['pending_moves'] = pending_moves
 
         # Logs recents depuis le journal de combat
         if battle.battle_log:

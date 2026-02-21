@@ -560,6 +560,30 @@ def apply_exp_gain(pokemon, exp_amount):
                     'current_moves': current_moves,
                 })
 
+    # Vérifier l'évolution après tous les level-ups
+    # On ne l'applique pas ici : le joueur voit l'animation côté client,
+    # puis envoie confirm_evolution pour effectuer le changement.
+    if result['level_up'] and 'pending_evolution' not in result:
+        evo = pokemon.check_evolution()
+        if evo:
+            result['pending_evolution'] = {
+                'evolution_id':    evo.id,
+                'pokemon_id':      pokemon.id,
+                'from_name':       pokemon.species.name,
+                'from_species_id': pokemon.species.id,
+                'to_name':         evo.evolves_to.name,
+                'to_species_id':   evo.evolves_to.id,
+                # Stats actuelles (avant évolution)
+                'stats_before': {
+                    'hp':              pokemon.max_hp,
+                    'attack':          pokemon.attack,
+                    'defense':         pokemon.defense,
+                    'special_attack':  pokemon.special_attack,
+                    'special_defense': pokemon.special_defense,
+                    'speed':           pokemon.speed,
+                },
+            }
+
     pokemon.save()
     return result
 
