@@ -24,13 +24,22 @@
     <!-- Auto-save -->
     {% if has_active_save %}
       <script>
+      // ID du slot actif — mis à jour dynamiquement après chaque sauvegarde manuelle
+      let activeSaveId = {{ active_save.id }};
+
       function autoSave() {
-        fetch('{% url "auto_save" active_save.id %}', {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
+        if (!activeSaveId) return;
+        fetch(`/saves/${activeSaveId}/save/`, {
+          method: 'GET',
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.save_id) {
+            activeSaveId = data.save_id; // rester synchronisé
           }
-        });
+        })
+        .catch(() => {}); // silencieux
       }
 
       setInterval(autoSave, 5 * 60 * 1000);
@@ -62,7 +71,7 @@
         </li>
 
         <hr class="sidebar-divider" />
-        <div class="sidebar-heading">Pokémon</div>
+        <div class="sidebar-heading">Encyclopédies</div>
 
         <!-- Pokédex -->
         <li class="nav-item {% if 'Pokemon' in request.resolver_match.url_name %}active{% endif %}">
@@ -79,23 +88,11 @@
             <span>Capacités</span>
           </a>
         </li>
-
-        <hr class="sidebar-divider" />
-        <div class="sidebar-heading">Mon Jeu</div>
-
-        <!-- Mon Équipe -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'MyTeamView' %}">
-            <i class="fas fa-users"></i>
-            <span>Mon Équipe</span>
-          </a>
-        </li>
-
-        <!-- Combats -->
-        <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'BattleListView' %}">
-            <i class="fas fa-fist-raised"></i>
-            <span>Combats</span>
+        <!-- Objets -->
+        <li class="nav-item {% if 'Item' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'ItemListView' %}">
+            <i class="fas fa-shopping-bag"></i>
+            <span>Objets</span>
           </a>
         </li>
 
@@ -107,13 +104,34 @@
           </a>
         </li>
 
-        <!-- Objets -->
-        <li class="nav-item {% if 'Item' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'ItemListView' %}">
-            <i class="fas fa-shopping-bag"></i>
-            <span>Objets</span>
+        <hr class="sidebar-divider" />
+        <div class="sidebar-heading">Gameplay</div>
+
+        <!-- Mon Équipe -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'MyTeamView' %}">
+            <i class="fas fa-users"></i>
+            <span>Mon Équipe</span>
           </a>
         </li>
+
+        <!-- Maps  -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'map_view' %}">
+            <i class="fas fa-map-location-dot"></i>
+            <span>Maps</span>
+          </a>
+        </li>
+
+        <!-- Combats -->
+        {% if user.is_superuser %}
+        <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'BattleListView' %}">
+            <i class="fas fa-fist-raised"></i>
+            <span>Combats (admin view)</span>
+          </a>
+        </li>
+        {% endif %}
 
         <!-- Boutiques -->
         <li class="nav-item {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}">
@@ -134,7 +152,7 @@
         <!-- Centre Pokémon -->
         <li class="nav-item {% if request.resolver_match.url_name == 'CaptureJournalView' %}active{% endif %}">
           <a class="nav-link" href="{% url 'CaptureJournalView' %}">
-            <i class="fas fa-hospital"></i>
+            <i class="fas fa-book"></i>
             <span>Journal de captures</span>
           </a>
         </li>
@@ -144,14 +162,6 @@
           <a class="nav-link" href="{% url 'save_select' %}">
             <i class="fas fa-save"></i>
             <span>Liste des sauvegardes</span>
-          </a>
-        </li>
-
-        <!-- Maps  -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'map_view' %}">
-            <i class="fas fa-map-location-dot"></i>
-            <span>Maps</span>
           </a>
         </li>
 
@@ -354,12 +364,15 @@
         // Créer nouveau slot
         const name = prompt(`Nom pour Slot ${slotNum}:`, `Aventure ${slotNum}`);
         if (!name) return;
-        
+
         $.post(`/saves/create/${slotNum}/quick/`, {
           csrfmiddlewaretoken: '{{ csrf_token }}',
           save_name: name
         }, function(data) {
           if (data.success) {
+            if (typeof activeSaveId !== 'undefined' && data.save_id) {
+              activeSaveId = data.save_id;
+            }
             alert(`Sauvegardé dans Slot ${slotNum} !`);
             $('#saveModal').modal('hide');
             location.reload();
@@ -371,6 +384,9 @@
           .then(r => r.json())
           .then(data => {
             if (data.success) {
+              if (typeof activeSaveId !== 'undefined' && data.save_id) {
+                activeSaveId = data.save_id;
+              }
               alert(`Sauvegardé dans Slot ${slotNum} !`);
               $('#saveModal').modal('hide');
               location.reload();
@@ -381,6 +397,32 @@
     </script>
     {% endif %}
 
+    <!-- Django Messages → our Toast model -->
+    {% if messages %}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var djangoTagMap = {
+          'debug':   'info',
+          'info':    'info',
+          'success': 'success',
+          'warning': 'warning',
+          'error':   'error',
+        };
+        {% for message in messages %}
+        (function () {
+          var rawTag = '{{ message.tags }}';
+          var type = 'info';
+          ['error', 'warning', 'success', 'info', 'debug'].forEach(function (t) {
+            if (rawTag.indexOf(t) !== -1 && type === 'info') {
+              type = djangoTagMap[t] || 'info';
+            }
+          });
+          showToast('{{ message|escapejs }}', type, type === 'error' ? 7000 : 4000);
+        })();
+        {% endfor %}
+      });
+    </script>
+    {% endif %}
 
     {% block css %}
     {% endblock css %}

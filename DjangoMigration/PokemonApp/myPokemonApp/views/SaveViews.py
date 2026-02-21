@@ -286,19 +286,24 @@ def save_game_view(request, save_id):
     
     # Créer snapshot
     snapshot = create_game_snapshot(trainer, save)
-    
+
     # Sauvegarder
     save.game_snapshot = snapshot
-    
+
     # Mettre à jour temps de jeu
     time_since_last = (timezone.now() - save.last_saved).seconds
     save.play_time += time_since_last
-    
+
+    # Marquer ce slot comme actif (corrige le bug "toujours slot 1")
+    GameSave.objects.filter(trainer=trainer).update(is_active=False)
+    save.is_active = True
     save.save()
-    
+
     return JsonResponse({
         'success': True,
         'message': 'Partie sauvegardée !',
+        'save_id': save.id,
+        'slot': save.slot,
         'play_time': save.get_play_time_display(),
         'snapshot_size': len(json.dumps(snapshot))
     })
@@ -398,10 +403,15 @@ def save_create_quick_view(request, slot):
     # Snapshot
     snapshot = create_game_snapshot(trainer, save)
     save.game_snapshot = snapshot
+
+    # Marquer comme actif
+    GameSave.objects.filter(trainer=trainer).update(is_active=False)
+    save.is_active = True
     save.save()
-    
+
     return JsonResponse({
         'success': True,
         'save_id': save.id,
+        'slot': slot,
         'message': f"Sauvegarde '{save_name}' créée !"
     })

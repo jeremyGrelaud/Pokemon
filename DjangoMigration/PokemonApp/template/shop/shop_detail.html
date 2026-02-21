@@ -23,7 +23,10 @@
         <div class="row align-items-center">
           <div class="col-md-8">
             <h1 class="display-4 mb-2">
-              <i class="fas fa-store"></i> {{ shop.name }}
+              <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}" 
+               alt="{{ battle.player_pokemon.species.name }}"
+               style="width: 120px; height: 120px;">
+               {{ shop.name }}
             </h1>
             <p class="lead mb-2">{{ shop.location }}</p>
             <p class="mb-0">
@@ -148,9 +151,29 @@
         <div class="card item-card h-100 shadow-sm">
           <div class="card-body">
             <div class="text-center mb-2">
-              <i class="fas fa-box fa-3x text-muted"></i>
+              {% with sprite=trainer_inv.item|item_sprite_path %}
+                {% if sprite %}
+                  <img src="{% static 'img/items_sprites/' %}{{ sprite }}"
+                      alt="{{ trainer_inv.item.name }}"
+                      style="width: 64px; height: 64px; object-fit: contain; "
+                      onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+                  <!-- Fallback FontAwesome si image introuvable -->
+                  <span style="display:none;">
+                    {% if trainer_inv.item.item_type == 'potion' %}<i class="fas fa-flask fa-4x text-danger"></i>
+                    {% elif trainer_inv.item.item_type == 'pokeball' %}<i class="fas fa-circle fa-4x text-primary"></i>
+                    {% elif trainer_inv.item.item_type == 'evolution' %}<i class="fas fa-gem fa-4x text-success"></i>
+                    {% elif trainer_inv.item.item_type == 'status' %}<i class="fas fa-plus-circle fa-4x text-info"></i>
+                    {% else %}<i class="fas fa-box fa-4x text-secondary"></i>{% endif %}
+                  </span>
+                {% else %}
+                  {% if trainer_inv.item.item_type == 'potion' %}<i class="fas fa-flask fa-4x text-danger"></i>
+                  {% elif trainer_inv.item.item_type == 'pokeball' %}<i class="fas fa-circle fa-4x text-primary"></i>
+                  {% elif trainer_inv.item.item_type == 'evolution' %}<i class="fas fa-gem fa-4x text-success"></i>
+                  {% elif trainer_inv.item.item_type == 'status' %}<i class="fas fa-plus-circle fa-4x text-info"></i>
+                  {% else %}<i class="fas fa-box fa-4x text-secondary"></i>{% endif %}
+                {% endif %}
+              {% endwith %}
             </div>
-            
             <h6 class="text-center mb-2">{{ trainer_inv.item.name }}</h6>
             
             <div class="text-center mb-2">

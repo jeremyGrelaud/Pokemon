@@ -40,7 +40,9 @@
           </div>
           <div class="col-md-4 text-center">
             <div class="p-3">
-              <i class="fas fa-hospital fa-5x pulse-animation"></i>
+              <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}" 
+              alt="{{ battle.player_pokemon.species.name }}"
+              style="width: 120px; height: 120px;">
             </div>
           </div>
         </div>
@@ -58,11 +60,7 @@
         <!-- Nurse Joy -->
         <div class="nurse-section text-center mb-4">
           <div class="nurse-sprite-container mb-3">
-            {% if center.nurse_sprite %}
-              <img src="{% static center.nurse_sprite %}" alt="{{ center.nurse_name }}" class="nurse-sprite">
-            {% else %}
-              <i class="fas fa-user-nurse fa-5x text-danger"></i>
-            {% endif %}
+            <img src="{% static 'img/nurse_joy_pokemon_gen_3.png' %}"  class="nurse-sprite">
           </div>
           
           <h3 class="mb-3">{{ center.nurse_name }}</h3>
@@ -192,11 +190,10 @@
     <!-- PC Access -->
     <div class="card shadow mb-4 border-info">
       <div class="card-body text-center">
-        <i class="fas fa-database fa-3x text-info mb-3"></i>
         <h5>Accès PC</h5>
         <p class="text-muted small">Gérez votre collection de Pokémon</p>
         <a href="{% url 'MyTeamView' %}" class="btn btn-info btn-block">
-          <i class="fas fa-desktop"></i> Ouvrir le PC
+          <img src="{% static 'img/pc.png' %}"> Ouvrir le PC
         </a>
       </div>
     </div>

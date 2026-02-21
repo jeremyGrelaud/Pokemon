@@ -131,7 +131,7 @@
               </td>
               <td>Niv. {{ entry.level_at_capture }}</td>
               <td>
-                <img src="{% static 'img/' %}{{ entry.ball_used.name|lower }}.png" 
+                <img src="{% static 'img/pokeballSprites/' %}{{ entry.ball_used.name|lower }}_Sprite.png"
                      width="25" class="mr-1"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">
                 {{ entry.ball_used.name }}

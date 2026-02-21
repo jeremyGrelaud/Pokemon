@@ -1,38 +1,206 @@
 {% extends "base.html" %}
+{% load static %} {% load custom_filters %}
 
-{% block title %}<title>Mes Combats</title>{% endblock %}
+{% block title %}<title>Historique des Combats</title>{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-4"><i class="fas fa-fist-raised"></i> Historique des Combats</h1>
 
+<!-- Header -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0 text-gray-800">
+    <i class="fas fa-fist-raised"></i> Historique des Combats
+  </h1>
+  <a href="{% url 'BattleCreateView' %}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+    <i class="fas fa-plus fa-sm text-white-50"></i> Nouveau Combat
+  </a>
+</div>
 
+{% if battles %}
 
-<a href="{% url 'BattleCreateView' %}" class="btn btn-sm btn-primary">Nouveau combat</a>
+<!-- Stats rapides -->
+<div class="row mb-4">
+  {% with total=page_obj.paginator.count %}
+  <div class="col-6 col-md-3 mb-3">
+    <div class="card border-left-primary shadow h-100 py-2">
+      <div class="card-body py-2">
+        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total }}</div>
+      </div>
+    </div>
+  </div>
+  {% endwith %}
+</div>
 
-
-
+<!-- Table des combats -->
 <div class="card shadow mb-4">
-  <div class="card-body">
-    {% if battles %}
-    <div class="list-group">
+  <div class="card-header py-3">
+    <h6 class="m-0 font-weight-bold text-primary">Combats récents</h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="list-group list-group-flush">
       {% for battle in battles %}
-      <a href="{% url 'BattleDetailView' battle.id %}" class="list-group-item list-group-item-action">
-        <div class="d-flex justify-content-between">
-          <h6>{{ battle.get_battle_type_display }} - {{ battle.created_at|date:"d/m/Y H:i" }}</h6>
-          {% if battle.winner == request.user.trainer %}
-          <span class="badge badge-success">Victoire</span>
-          {% elif battle.winner %}
-          <span class="badge badge-danger">Défaite</span>
-          {% else %}
-          <span class="badge badge-warning">En cours</span>
-          {% endif %}
+
+      {% with is_player=battle.player_trainer.username|stringformat:"s" viewer_name=request.user.username %}
+      {% with player_won=battle.winner.id|stringformat:"s"|same_as:battle.player_trainer.id|stringformat:"s" %}
+
+      <a href="{% url 'BattleDetailView' battle.id %}"
+         class="list-group-item list-group-item-action px-4 py-3
+                {% if battle.winner == battle.player_trainer %}list-group-item-success
+                {% elif battle.winner %}list-group-item-danger
+                {% elif battle.is_active %}list-group-item-warning
+                {% else %}list-group-item{% endif %}"
+         style="border-left: 4px solid
+                {% if battle.winner == battle.player_trainer %}#28a745
+                {% elif battle.winner %}#dc3545
+                {% elif battle.is_active %}#ffc107
+                {% else %}#6c757d{% endif %};">
+
+        <div class="row align-items-center no-gutters">
+
+          <!-- Résultat + Type -->
+          <div class="col-auto mr-3 text-center" style="min-width:64px;">
+            {% if battle.winner == battle.player_trainer %}
+              <i class="fas fa-trophy fa-2x text-warning"></i>
+              <div><small class="text-success font-weight-bold">Victoire</small></div>
+            {% elif battle.winner %}
+              <i class="fas fa-times-circle fa-2x text-danger"></i>
+              <div><small class="text-danger font-weight-bold">Défaite</small></div>
+            {% elif battle.is_active %}
+              <i class="fas fa-hourglass-half fa-2x text-warning"></i>
+              <div><small class="text-warning font-weight-bold">En cours</small></div>
+            {% else %}
+              <i class="fas fa-minus-circle fa-2x text-muted"></i>
+              <div><small class="text-muted">—</small></div>
+            {% endif %}
+          </div>
+
+          <!-- Infos combat -->
+          <div class="col">
+            <div class="d-flex align-items-center mb-1 flex-wrap">
+              <!-- Type badge -->
+              {% if battle.battle_type == 'wild' %}
+                <span class="badge badge-success mr-2"><i class="fas fa-leaf"></i> Sauvage</span>
+              {% elif battle.battle_type == 'trainer' %}
+                <span class="badge badge-info mr-2"><i class="fas fa-user"></i> Dresseur</span>
+              {% elif battle.battle_type == 'gym' %}
+                <span class="badge badge-warning text-dark mr-2"><i class="fas fa-medal"></i> Arène</span>
+              {% else %}
+                <span class="badge badge-secondary mr-2">{{ battle.get_battle_type_display }}</span>
+              {% endif %}
+
+              <!-- Adversaire -->
+              <span class="font-weight-bold text-gray-800 mr-2">
+                {% if battle.opponent_trainer %}
+                  {{ battle.opponent_trainer.get_full_title }}
+                {% else %}
+                  Pokémon Sauvage
+                {% endif %}
+              </span>
+
+              <small class="text-muted ml-auto">{{ battle.created_at|date:"d/m/Y H:i" }}</small>
+            </div>
+
+            <!-- Pokémon du joueur + adversaire -->
+            <div class="d-flex align-items-center flex-wrap">
+              <!-- Pokémon principal du joueur -->
+              {% if battle.player_pokemon %}
+              <div class="d-flex align-items-center mr-3">
+                <img src="{% static 'img/sprites_gen5/normal/' %}{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
+                     alt="{{ battle.player_pokemon.species.name }}"
+                     style="width:40px;height:40px;object-fit:contain;"
+                     onerror="this.src='{% static 'img/pokeball.png' %}'">
+                <small class="ml-1 text-muted">
+                  {{ battle.player_pokemon.nickname|default:battle.player_pokemon.species.name }}
+                  <span class="text-gray-500">Niv.{{ battle.player_pokemon.level }}</span>
+                </small>
+              </div>
+              {% endif %}
+
+              <span class="text-muted mr-3"><i class="fas fa-arrow-right"></i></span>
+
+              <!-- Équipe adversaire (sprites miniatures) -->
+              {% if battle.battle_type == 'wild' %}
+                {% if battle.opponent_pokemon %}
+                <div class="d-flex align-items-center">
+                  <img src="{% static 'img/sprites_gen5/normal/' %}{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
+                       alt="{{ battle.opponent_pokemon.species.name }}"
+                       style="width:40px;height:40px;object-fit:contain;"
+                       onerror="this.src='{% static 'img/pokeball.png' %}'">
+                  <small class="ml-1 text-muted">
+                    {{ battle.opponent_pokemon.species.name }}
+                    <span class="text-gray-500">Niv.{{ battle.opponent_pokemon.level }}</span>
+                  </small>
+                </div>
+                {% endif %}
+              {% else %}
+                {% if battle.opponent_trainer %}
+                  {% for poke in battle.opponent_trainer.pokemon_team.all %}
+                  <img src="{% static 'img/sprites_gen5/normal/' %}{{ poke.species.name|lowerPokemonFileNames }}.png"
+                       alt="{{ poke.species.name }}"
+                       title="{{ poke.nickname|default:poke.species.name }} Niv.{{ poke.level }}"
+                       style="width:36px;height:36px;object-fit:contain;"
+                       onerror="this.src='{% static 'img/pokeball.png' %}'">
+                  {% empty %}
+                  <small class="text-muted">—</small>
+                  {% endfor %}
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Tours + flèche -->
+          <div class="col-auto ml-3 text-right d-none d-md-block">
+            <small class="text-muted d-block">{{ battle.current_turn }} tours</small>
+            <i class="fas fa-chevron-right text-muted"></i>
+          </div>
+
         </div>
       </a>
+
+      {% endwith %}{% endwith %}
       {% endfor %}
     </div>
-    {% else %}
-    <p class="text-center text-muted">Aucun combat</p>
-    {% endif %}
+  </div>
+
+  <!-- Pagination -->
+  {% if is_paginated %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination justify-content-center mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+            <i class="fas fa-chevron-left"></i>
+          </a>
+        </li>
+        {% endif %}
+        <li class="page-item disabled">
+          <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+
+</div>
+
+{% else %}
+<div class="card shadow mb-4">
+  <div class="card-body text-center py-5">
+    <i class="fas fa-fist-raised fa-3x text-gray-400 mb-3"></i>
+    <p class="text-muted">Aucun combat pour le moment.</p>
+    <a href="{% url 'BattleCreateView' %}" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Commencer un combat
+    </a>
   </div>
 </div>
+{% endif %}
+
 {% endblock %}

@@ -226,9 +226,9 @@ Pokemon Platforms
 
 /* Pokemon Sprites */
 .pokemon-sprite {
+  bottom: -40px;
   width: 200px;
   height: 200px;
-  image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
   filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6));
@@ -249,6 +249,7 @@ Pokemon Platforms
 
 .opponent-sprite {
   animation: pokemon-idle-opponent 2.5s ease-in-out infinite;
+  bottom: -60px;
 }
 
 .player-sprite {

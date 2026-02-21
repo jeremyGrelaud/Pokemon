@@ -12,13 +12,36 @@ import json
 
 from myPokemonApp.models import Shop, ShopInventory, Item, Trainer, TrainerInventory, Transaction
 
+from django.contrib import messages
+from myPokemonApp.models import PlayerLocation
 
+def _trainer_is_at_shop(trainer):
+    """
+    Renvoie True si le trainer se trouve actuellement dans une zone
+    possédant une boutique (has_shop=True).
+    Même logique que _trainer_is_at_pokemon_center dans PokemonCenterViews.py.
+    """
+    try:
+        loc = PlayerLocation.objects.get(trainer=trainer)
+        return loc.current_zone.has_shop
+    except PlayerLocation.DoesNotExist:
+        return True  # Pas de localisation connue → on ne bloque pas
+    
 @method_decorator(login_required, name='dispatch')
 class ShopListView(generic.ListView):
-    """Liste de toutes les boutiques"""
     model = Shop
     template_name = 'shop/shop_list.html'
     context_object_name = 'shops'
+
+    def dispatch(self, request, *args, **kwargs):
+        trainer = get_object_or_404(Trainer, username=request.user.username)
+        if not _trainer_is_at_shop(trainer):
+            messages.warning(
+                request,
+                "Vous devez être dans une ville possédant une boutique pour y accéder."
+            )
+            return redirect('map_view')
+        return super().dispatch(request, *args, **kwargs)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -26,13 +49,22 @@ class ShopListView(generic.ListView):
         context['trainer'] = trainer
         return context
 
-
 @method_decorator(login_required, name='dispatch')
 class ShopDetailView(generic.DetailView):
     """Vue détaillée d'une boutique"""
     model = Shop
     template_name = 'shop/shop_detail.html'
     context_object_name = 'shop'
+
+    def dispatch(self, request, *args, **kwargs):
+        trainer = get_object_or_404(Trainer, username=request.user.username)
+        if not _trainer_is_at_shop(trainer):
+            messages.warning(
+                request,
+                "Vous devez être dans une ville possédant une boutique pour y accéder."
+            )
+            return redirect('map_view')
+        return super().dispatch(request, *args, **kwargs)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

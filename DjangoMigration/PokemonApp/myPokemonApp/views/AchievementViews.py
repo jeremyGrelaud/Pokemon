@@ -75,22 +75,35 @@ def trigger_achievements_after_battle(trainer, battle_result):
     notifications = []
     
     if battle_result.get('won'):
-        # Premier combat
-        result = check_achievement(trainer, 'Premier Combat')
-        if result.get('newly_completed'):
-            notifications.append({
-                'title': '🏆 Premier Combat',
-                'message': f"Débloqué ! +{result['reward_money']}₽"
-            })
-        
-        # Combattant Aguerri
-        result = check_achievement(trainer, 'Combattant Aguerri')
-        if result.get('newly_completed'):
-            notifications.append({
-                'title': '🏆 Combattant Aguerri',
-                'message': f"Débloqué ! +{result['reward_money']}₽"
-            })
+        for achievement_name in ['Premier Combat', 'Combattant Aguerri', 'Vétéran']:
+            result = check_achievement(trainer, achievement_name)
+            if result.get('newly_completed'):
+                notifications.append({
+                    'title': f'🏆 {achievement_name}',
+                    'message': f"Débloqué ! +{result['reward_money']}₽"
+                })
     
+    return notifications
+
+
+def trigger_achievements_after_gym_win(trainer, badges_count):
+    """
+    Déclenche les achievements liés aux badges après une victoire contre un Champion d'Arène.
+
+    Args:
+        trainer: Trainer
+        badges_count: int — nombre total de badges détenus après la victoire
+    """
+    notifications = []
+
+    for achievement_name in ['Champion de Arène', 'Maître de la Ligue']:
+        result = check_achievement(trainer, achievement_name)
+        if result.get('newly_completed'):
+            notifications.append({
+                'title': f'🏅 {achievement_name}',
+                'message': f"Débloqué ! +{result['reward_money']}₽"
+            })
+
     return notifications
 
 

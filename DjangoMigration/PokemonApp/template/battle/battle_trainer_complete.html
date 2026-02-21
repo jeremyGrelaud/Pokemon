@@ -27,6 +27,16 @@
             <i class="fas fa-quote-right"></i>
           </div>
           
+          {% if badge_earned %}
+          <div class="alert alert-warning">
+            <i class="fas fa-medal"></i>
+            <strong>Vous avez obtenu le {{ badge_earned.badge_name }} !</strong>
+            {% if badge_earned.tm_reward %}
+            <br><small>+ CT : {{ badge_earned.tm_reward.name }}</small>
+            {% endif %}
+          </div>
+          {% endif %}
+          
           {% if money_earned > 0 %}
           <div class="alert alert-success">
             <i class="fas fa-coins"></i>
@@ -54,6 +64,7 @@
           </h2>
         </div>
         <div class="card-body text-center">
+          {% if opponent %}
           <h4 class="mb-4">
             {{ opponent.get_full_title }} vous a battu...
           </h4>
@@ -63,9 +74,15 @@
             <em>{{ dialogue }}</em>
             <i class="fas fa-quote-right"></i>
           </div>
+          {% endif %}
+          
+          <div class="alert alert-info">
+            <i class="fas fa-hospital"></i>
+            Vous avez été transporté au Centre Pokémon le plus proche.
+          </div>
           
           <div class="mt-4">
-            <a href="{% url 'pokemon_center' %}" class="btn btn-warning">
+            <a href="{% url 'PokemonCenterListView' %}" class="btn btn-warning">
               <i class="fas fa-hospital"></i> Centre Pokémon
             </a>
             <a href="{% url 'home' %}" class="btn btn-secondary">
