@@ -496,6 +496,9 @@ let audioManager;
 const battleId = {{ battle.id }};
 const csrfToken = '{{ csrf_token }}';
 
+// ID du Pokémon actuellement en combat — mis à jour à chaque switch
+let currentPlayerPokemonId = {{ battle.player_pokemon.id }};
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
@@ -758,7 +761,7 @@ function loadTeam() {
   
   $.get('{% url "GetTrainerTeam" %}', {
     trainer_id: '{{ battle.player_trainer.id }}',
-    exclude_pokemon_id: '{{ battle.player_pokemon.id }}'
+    exclude_pokemon_id: currentPlayerPokemonId
   })
   .done(function(data) {
     if (!data.team || data.team.length === 0) {
@@ -766,25 +769,41 @@ function loadTeam() {
       return;
     }
     
-    let html = '<div class="team-grid">';
+    let html = '<div class="team-switch-grid">';
     data.team.forEach(pokemon => {
       const hpPercent = (pokemon.current_hp / pokemon.max_hp) * 100;
       const hpClass = hpPercent > 50 ? 'hp-high' : (hpPercent > 20 ? 'hp-medium' : 'hp-low');
       const isKO = pokemon.current_hp === 0;
-      
+      const spriteName = lowerPokemonFileNames(pokemon.species.name);
+      const spriteUrl = "{% static 'img/sprites_gen5/normal/' %}" + spriteName + ".png";
+
       html += `
-        <button class="team-btn ${isKO ? 'disabled' : ''}" 
+        <button class="list-group-item list-group-item-action team-switch-item ${isKO ? 'team-switch-ko' : ''}"
                 onclick="switchPokemon(${pokemon.id})"
                 ${isKO ? 'disabled' : ''}>
-          <div class="team-info">
-            <div class="team-name">${pokemon.nickname || pokemon.species.name}</div>
-            <div class="team-level">Niv. ${pokemon.level}</div>
-          </div>
-          <div class="team-hp">
-            <div class="hp-bar-mini">
-              <div class="hp-bar-fill-mini ${hpClass}" style="width: ${hpPercent}%"></div>
+          <div class="d-flex justify-content-between align-items-center" style="width:100%;">
+            <div class="d-flex align-items-center">
+              <div class="team-switch-sprite-wrap ${isKO ? 'ko-sprite' : ''}">
+                <img src="${spriteUrl}"
+                     alt="${pokemon.nickname || pokemon.species.name}"
+                     style="width:56px;height:56px;object-fit:contain;"
+                     onerror="this.style.display='none'">
+                ${isKO ? '<div class="ko-badge">K.O.</div>' : ''}
+              </div>
+              <div class="ml-3">
+                <h6 class="mb-0" style="color:#2c3e50;"><strong>${pokemon.nickname || pokemon.species.name}</strong></h6>
+                <small style="color:#7f8c8d;">Niv. ${pokemon.level}</small>
+                ${pokemon.status_condition ? `<span class="badge badge-secondary ml-1" style="font-size:0.65em;">${pokemon.status_condition.toUpperCase()}</span>` : ''}
+              </div>
             </div>
-            <small>${pokemon.current_hp}/${pokemon.max_hp}</small>
+            <div class="text-right" style="min-width:110px;">
+              <div class="team-hp-bar-track">
+                <div class="team-hp-bar-fill ${hpClass}" style="width:${isKO ? 0 : hpPercent}%;"></div>
+              </div>
+              <small style="color:${isKO ? '#e74c3c' : '#7f8c8d'}; font-weight:${isKO ? '700' : '400'};">
+                ${isKO ? 'K.O.' : `${pokemon.current_hp}/${pokemon.max_hp} HP`}
+              </small>
+            </div>
           </div>
         </button>
       `;
@@ -868,6 +887,11 @@ function updatePokemonDisplay(side, pokemonData) {
   const sprite = $(`#${side}-sprite`);
   const name = $(`#${side}-name`);
   const level = $(`#${side}-level`);
+  
+  // Mettre à jour l'ID du Pokémon actif si c'est le joueur
+  if (side === 'player' && pokemonData.id) {
+    currentPlayerPokemonId = pokemonData.id;
+  }
   
   // IMPORTANT: Retirer la classe fainted si présente (fix du bug de sprite invisible)
   sprite.removeClass('fainted fade-out taking-damage');
@@ -1115,7 +1139,7 @@ function showForcedSwitchModal() {
   
   $.get('{% url "GetTrainerTeam" %}', {
     trainer_id: '{{ battle.player_trainer.id }}',
-    exclude_pokemon_id: '{{ battle.player_pokemon.id }}'
+    exclude_pokemon_id: currentPlayerPokemonId
   })
   .done(function(data) {
     if (!data.team || data.team.length === 0) {
@@ -1666,6 +1690,93 @@ function showCaptureSuccessModal(captureData) {
 </script>
 
 <style>
+/* ──────────────────────────────────────────────────
+   MENU SWITCH ÉQUIPE — style aligné sur switch forcé
+   ────────────────────────────────────────────────── */
+
+/* Grille 2 colonnes x 3 lignes max */
+.team-switch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 colonnes */
+  gap: 12px;
+  max-height: calc(3 * (60px + 20px) + 2 * 12px);
+  overflow-y: auto;
+  padding: 8px;
+}
+
+
+.team-switch-item {
+  display: flex !important;
+  border: 2px solid #bdc3c7 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #2c3e50 !important;
+  padding: 10px 14px !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+}
+
+.team-switch-item:not(:disabled):hover {
+  border-color: #3498db !important;
+  background: #eaf4fd !important;
+  transform: translateX(4px);
+  box-shadow: 0 4px 14px rgba(52,152,219,0.18);
+}
+
+.team-switch-item:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.55 !important;
+}
+
+.team-switch-ko {
+  border-color: #e74c3c !important;
+  background: #fdf0ee !important;
+}
+
+.team-switch-sprite-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ko-sprite img {
+  filter: grayscale(1) opacity(0.55);
+}
+
+.ko-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -6px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Barre HP custom (remplace .progress Bootstrap non chargé) */
+.team-hp-bar-track {
+  width: 100%;
+  height: 8px;
+  background: #ecf0f1;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+
+.team-hp-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.team-hp-bar-fill.hp-high   { background: #2ecc71; }
+.team-hp-bar-fill.hp-medium { background: #f39c12; }
+.team-hp-bar-fill.hp-low    { background: #e74c3c; }
+
+
 /* ╔══════════════════════════════════════════════════════════╗
    ║  ÉVOLUTION — styles du modal                           ║
    ╚══════════════════════════════════════════════════════════╝ */

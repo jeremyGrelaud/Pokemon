@@ -56,7 +56,7 @@ def init_kanto_map():
         ('Lavanville',     'city',   'Ville hantée avec sa célèbre Tour Pokémon.',                 20, 25, 28,  True,  True,  True ),
         ('Safrania',       'city',   'Grande métropole (Morgane, type Psy).',                      24, 35, 42,  True,  True,  True ),
         ('Céladopole',     'city',   'Ville du Grand Magasin (Olga, type Plante).',                22, 30, 35,  True,  True,  True ),
-        ('Fuchsia',        'city',   'Ville du Zoo Safari (Stella, type Poison).',                 28, 40, 46,  True,  True,  True ),
+        ('Parmanie',        'city',   'Ville du Zoo Safari (Stella, type Poison).',                 28, 40, 46,  True,  True,  True ),
         ("Cramois'Île",    'city',   'Île volcanique (Pyro, type Feu).',                           34, 45, 50,  True,  True,  True ),
         ('Plateau Indigo', 'city',   'Siège de la Ligue Pokémon. Terminus du voyage.',             38, 50, 55,  True,  True,  True ),
 
@@ -74,10 +74,10 @@ def init_kanto_map():
         ('Route 11', 'route', 'À l\'est de Carmin sur Mer.',                 18, 13, 17,  False, False, False),
         ('Route 12', 'route', 'Longue route côtière au sud de Lavanville.',  26, 20, 25,  False, False, False),
         ('Route 13', 'route', 'Route venteuse au sud.',                      27, 20, 25,  False, False, False),
-        ('Route 14', 'route', 'Route au sud menant vers Fuchsia.',           28, 20, 25,  False, False, False),
-        ('Route 15', 'route', 'Relie Route 14 à Fuchsia.',                   29, 22, 26,  False, False, False),
+        ('Route 14', 'route', 'Route au sud menant vers Parmanie.',           28, 20, 25,  False, False, False),
+        ('Route 15', 'route', 'Relie Route 14 à Parmanie.',                   29, 22, 26,  False, False, False),
         ('Route 16', 'route', 'À l\'ouest de Céladopole, Route du Vélo.',   30, 20, 24,  False, False, False),
-        ('Route 17', 'route', 'Route du Vélo — longue descente vers Fuchsia.', 31, 22, 26, False, False, False),
+        ('Route 17', 'route', 'Route du Vélo — longue descente vers Parmanie.', 31, 22, 26, False, False, False),
         ('Route 18', 'route', 'Prolongement est de la Route du Vélo.',       32, 22, 26,  False, False, False),
         ('Route 21', 'route', 'Route maritime entre Cramois\'Île et Bourg Palette.', 35, 25, 35, False, False, False),
         ('Route 22', 'route', 'Entre Jadielle et les Gardes de la Ligue.',    4,  3,  5,  False, False, False),
@@ -90,12 +90,12 @@ def init_kanto_map():
         ('Mont Sélénite',       'cave',     'Grotte rocheuse entre Argenta et Azuria.',                   9,  8, 12,  False, False, False),
         ('Tunnel Roche',        'cave',     'Grotte sombre entre la Route 9 et Route 10.',               13, 15, 20,  False, False, False),
         ('Tour Pokémon',        'building', 'Tour hantée de Lavanville, repère de Spectreux.',           19, 15, 22,  False, False, False),
-        ('Zone Safari',         'route',    'Parc Safari de Fuchsia — Pokémon rares à attraper.',        28, 22, 30,  True,  False, False),
+        ('Zone Safari',         'route',    'Parc Safari de Parmanie — Pokémon rares à attraper.',        28, 22, 30,  True,  False, False),
         ('Îles Écume',          'cave',     'Réseau de grottes et rivières glacées, repaire d\'Artikodin.', 33, 35, 44, False, False, False),
         ('Centrale',            'building', 'Centrale électrique abandonnée entre Route 10 et 9.',       15, 22, 35,  False, False, False),
         ('Grottes Inconnues',   'cave',     'Grotte secrète au nord d\'Azuria — Mewtwo s\'y cache.',    40, 60, 70,  False, False, False),
         ('Chemin de la Victoire','cave',    'Dernière épreuve avant la Ligue Pokémon.',                  37, 40, 50,  False, False, False),
-        ("Route 19",            'water',    'Route maritime entre Fuchsia et les Îles Écume.',           33, 25, 35,  False, False, False),
+        ("Route 19",            'water',    'Route maritime entre Parmanie et les Îles Écume.',           33, 25, 35,  False, False, False),
         ("Route 20",            'water',    'Route maritime entre les Îles Écume et Cramois\'Île.',      34, 25, 35,  False, False, False),
     ]
 
@@ -154,22 +154,22 @@ def init_kanto_map():
         ('Route 7',        'Céladopole'),
         ('Safrania',       'Route 8'),
         ('Route 8',        'Lavanville'),
-        # Axe Céladopole → Fuchsia
+        # Axe Céladopole → Parmanie
         ('Céladopole',     'Route 16'),
         ('Route 16',       'Route 17'),
         ('Route 17',       'Route 18'),
-        ('Route 18',       'Fuchsia'),
+        ('Route 18',       'Parmanie'),
         # Routes 13-15 sud
         ('Route 12',       'Route 13'),
         ('Route 13',       'Route 14'),
         ('Route 14',       'Route 15'),
-        ('Route 15',       'Fuchsia'),
+        ('Route 15',       'Parmanie'),
         # Lavanville → Tour Pokémon
         ('Lavanville',     'Tour Pokémon'),
-        # Fuchsia → Zone Safari
-        ('Fuchsia',        'Zone Safari'),
+        # Parmanie → Zone Safari
+        ('Parmanie',        'Zone Safari'),
         # Routes maritimes vers Cramois'Île
-        ('Fuchsia',        'Route 19'),
+        ('Parmanie',        'Route 19'),
         ('Route 19',       'Îles Écume'),
         ('Îles Écume',     'Route 20'),
         ("Route 20",       "Cramois'Île"),

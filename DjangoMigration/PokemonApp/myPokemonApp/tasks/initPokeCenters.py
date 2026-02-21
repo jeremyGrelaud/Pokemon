@@ -222,12 +222,12 @@ def scriptToInitializePokeCenters():
     })
 
     # =========================================================================
-    # FUCHSIA
+    # Parmanie
     # =========================================================================
     c = _create_center(
-        "Centre Pokémon de Fuchsia",
-        "Fuchsia",
-        "Bienvenue à Fuchsia ! Le zoo Safari est tout proche !"
+        "Centre Pokémon de Parmanie",
+        "Parmanie",
+        "Bienvenue à Parmanie ! Le zoo Safari est tout proche !"
     )
     _add_dialogues(c, {
         'greeting': [

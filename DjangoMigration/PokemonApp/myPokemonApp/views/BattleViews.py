@@ -15,7 +15,10 @@ from ..models import *
 # Zone/location models needed for defeat redirect
 from myPokemonApp.models import Zone, ZoneConnection, PlayerLocation
 
-from myPokemonApp.views.AchievementViews import trigger_achievements_after_battle
+from myPokemonApp.views.AchievementViews import (
+    trigger_achievements_after_battle,
+    trigger_achievements_after_gym_win,
+)
 from myPokemonApp.gameUtils import (
     # Pokemon / trainer
     get_first_alive_pokemon,
@@ -635,6 +638,7 @@ def battle_challenge_gym_view(request, gym_leader_id):
     try:
         player_location = PlayerLocation.objects.get(trainer=player_trainer)
         current_zone    = player_location.current_zone
+        print(gym_leader.gym_city)
         expected_zone   = _GYM_CITY_TO_ZONE.get(gym_leader.gym_city, gym_leader.gym_city)
         if current_zone.name != expected_zone:
             messages.error(
@@ -739,6 +743,12 @@ def battle_trainer_complete_view(request, battle_id):
                         request,
                         f"🏅 Vous avez obtenu le {gym_info.badge_name} !"
                     )
+                    # Achievements badges
+                    gym_notifications = trigger_achievements_after_gym_win(
+                        player_trainer, player_trainer.badges
+                    )
+                    for notif in gym_notifications:
+                        messages.success(request, f"{notif['title']} : {notif['message']}")
             except GymLeader.DoesNotExist:
                 pass  # Pas un Champion d'Arène
 

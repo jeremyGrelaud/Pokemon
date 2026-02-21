@@ -274,10 +274,10 @@ def initShops():
     ])
 
     # =========================================================================
-    # FUCHSIA — Après 5e badge
+    # Parmanie — Après 5e badge
     # =========================================================================
     shop = _create_shop(
-        "PokéMart de Fuchsia", "Fuchsia",
+        "PokéMart de Parmanie", "Parmanie",
         greeting="La Zone Safari est épuisante. Réapprovisionnez-vous ici !"
     )
     _add_items(shop, [
