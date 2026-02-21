@@ -149,30 +149,78 @@ def heal_team_api(request):
 @login_required
 def center_history_view(request):
     """Historique des visites aux Centres Pokémon"""
+    import json
+    from datetime import date, timedelta
+    from django.db.models import Count, Sum
+    from django.db.models.functions import TruncMonth
+
     trainer = get_object_or_404(Trainer, username=request.user.username)
-    
-    visits = CenterVisit.objects.filter(trainer=trainer).select_related('center')
-    
-    # Statistiques
+    visits  = CenterVisit.objects.filter(trainer=trainer).select_related('center')
+
+    # ── Statistiques globales ─────────────────────────────────────────────
     total_visits = visits.count()
-    total_healed = sum(visit.pokemon_healed for visit in visits)
-    total_spent = sum(visit.cost for visit in visits)
-    
+    total_healed = visits.aggregate(s=Sum('pokemon_healed'))['s'] or 0
+    total_spent  = visits.aggregate(s=Sum('cost'))['s'] or 0
+
     # Centre le plus visité
-    from django.db.models import Count
-    favorite_center = visits.values('center__name').annotate(
-        visit_count=Count('id')
-    ).order_by('-visit_count').first()
-    
+    favorite_center = (
+        visits.values('center__name')
+        .annotate(visit_count=Count('id'))
+        .order_by('-visit_count')
+        .first()
+    )
+
+    # ── Chart 1 : visites par mois (6 derniers mois) ──────────────────────
+    today      = date.today()
+    six_months = today - timedelta(days=180)
+
+    monthly_qs = (
+        visits.filter(visited_at__date__gte=six_months)
+        .annotate(month=TruncMonth('visited_at'))
+        .values('month')
+        .annotate(count=Count('id'))
+        .order_by('month')
+    )
+
+    # Construire une liste complète des 6 derniers mois (avec 0 si aucune visite)
+    months_map = {row['month'].strftime('%Y-%m'): row['count'] for row in monthly_qs}
+    chart_months_labels = []
+    chart_months_data   = []
+    MONTH_FR = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
+    for i in range(5, -1, -1):
+        d = (today.replace(day=1) - timedelta(days=i * 28)).replace(day=1)
+        # Recalibrage : on remonte mois par mois depuis aujourd'hui
+        month_key = d.strftime('%Y-%m')
+        label     = f"{MONTH_FR[d.month - 1]} {d.year}"
+        chart_months_labels.append(label)
+        chart_months_data.append(months_map.get(month_key, 0))
+
+    # ── Chart 2 : distribution par centre (top 6) ─────────────────────────
+    centers_qs = (
+        visits.values('center__name')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:6]
+    )
+    chart_centers_labels = [row['center__name'] for row in centers_qs]
+    chart_centers_data   = [row['count'] for row in centers_qs]
+
+    CHART_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c']
+
     context = {
-        'trainer': trainer,
-        'visits': visits[:50],  # 50 dernières visites
-        'total_visits': total_visits,
-        'total_healed': total_healed,
-        'total_spent': total_spent,
+        'trainer':        trainer,
+        'visits':         visits.order_by('-visited_at')[:50],
+        'total_visits':   total_visits,
+        'total_healed':   total_healed,
+        'total_spent':    total_spent,
         'favorite_center': favorite_center,
+        # Charts
+        'chart_months_labels':  json.dumps(chart_months_labels),
+        'chart_months_data':    json.dumps(chart_months_data),
+        'chart_centers_labels': json.dumps(chart_centers_labels),
+        'chart_centers_data':   json.dumps(chart_centers_data),
+        'chart_colors':         json.dumps(CHART_COLORS[:len(chart_centers_labels)]),
     }
-    
+
     return render(request, 'pokemon_center/history.html', context)
 
 

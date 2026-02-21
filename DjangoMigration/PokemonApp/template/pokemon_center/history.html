@@ -408,69 +408,79 @@ $(document).ready(function() {
   });
 
   {% if visits %}
-  // Chart.js - Visits per Month
+  // ── Chart 1 : Visites par mois (données réelles) ──────────────────────
   const visitsCtx = document.getElementById('visitsChart');
   if (visitsCtx) {
-    // TODO get real data from django get_context
     new Chart(visitsCtx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
+        labels:   {{ chart_months_labels|safe }},
         datasets: [{
-          label: 'Visites',
-          data: [5, 8, 12, 15, 10, 14],
-          borderColor: '#e74c3c',
+          label:           'Visites',
+          data:            {{ chart_months_data|safe }},
+          borderColor:     '#e74c3c',
           backgroundColor: 'rgba(231, 76, 60, 0.1)',
-          tension: 0.4
+          borderWidth:     2,
+          pointRadius:     4,
+          pointBackgroundColor: '#e74c3c',
+          tension:         0.4,
+          fill:            true,
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: true,
         plugins: {
-          legend: {
-            display: false
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.parsed.y + ' visite(s)'
+            }
           }
         },
         scales: {
           y: {
             beginAtZero: true,
-            ticks: {
-              stepSize: 5
-            }
+            ticks: { stepSize: 1, precision: 0 }
           }
         }
       }
     });
   }
 
-  // Chart.js - Centers Distribution
-  // TODO get real data from django get_context
+  // ── Chart 2 : Distribution par centre (données réelles) ───────────────
   const centersCtx = document.getElementById('centersChart');
   if (centersCtx) {
-    new Chart(centersCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Bourg Palette', 'Jadielle', 'Carmin sur Mer'],
-        datasets: [{
-          data: [{{ favorite_center.visit_count|default:0 }}, 5, 3],
-          backgroundColor: [
-            '#e74c3c',
-            '#3498db',
-            '#2ecc71'
-          ]
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: {
-            position: 'bottom'
+    const centersData = {{ chart_centers_data|safe }};
+    if (centersData.length > 0) {
+      new Chart(centersCtx, {
+        type: 'doughnut',
+        data: {
+          labels:   {{ chart_centers_labels|safe }},
+          datasets: [{
+            data:            centersData,
+            backgroundColor: {{ chart_colors|safe }},
+            borderWidth:     2,
+            borderColor:     '#fff',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: ctx => ctx.label + ': ' + ctx.parsed + ' visite(s)'
+              }
+            }
           }
         }
-      }
-    });
+      });
+    } else {
+      centersCtx.closest('.card-body').innerHTML =
+        '<p class="text-muted text-center pt-4">Aucune donnée disponible.</p>';
+    }
   }
   {% endif %}
 });
