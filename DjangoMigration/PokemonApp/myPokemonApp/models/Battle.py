@@ -6,6 +6,7 @@ from django.db import models
 import random
 
 from .PlayablePokemon import PokemonMoveInstance
+from .PokemonMove import PokemonMove
 from .Trainer import Trainer
 from .PlayablePokemon import PlayablePokemon
 from .Trainer import TrainerInventory
@@ -447,6 +448,152 @@ class Battle(models.Model):
         
         return exp
     
+    # =========================================================================
+    # IA ADVERSAIRE
+    # =========================================================================
+
+    def choose_enemy_move(self, attacker, defender):
+        """
+        Sélectionne intelligemment le move de l'ennemi via un système de scoring.
+        Tient compte de : l'efficacité des types, le STAB, la puissance, les KO
+        potentiels, les soins si en danger, les statuts, et une légère dose
+        d'aléatoire pour ne pas être trop prévisible.
+
+        Retourne un dict d'action {'type': 'attack', 'move': <PokemonMove>}.
+        """
+        from .PlayablePokemon import PokemonMoveInstance
+
+        # Récupérer les moves avec PP restants
+        move_instances = PokemonMoveInstance.objects.filter(
+            pokemon=attacker, current_pp__gt=0
+        ).select_related('move', 'move__type')
+
+        available_moves = [mi.move for mi in move_instances]
+
+        # Fallback sur Struggle si aucun move dispo
+        if not available_moves:
+            struggle = PokemonMove.objects.filter(name__iexact='Struggle').first()
+            if struggle:
+                return {'type': 'attack', 'move': struggle}
+            return None
+
+        best_move  = None
+        best_score = -9999
+
+        for move in available_moves:
+            score = self._score_enemy_move(move, attacker, defender)
+            if score > best_score:
+                best_score = score
+                best_move  = move
+
+        return {'type': 'attack', 'move': best_move}
+
+    def _score_enemy_move(self, move, attacker, defender):
+        """
+        Calcule un score de pertinence pour un move donné.
+        Retourne un float : plus il est élevé, plus le move est intéressant.
+        """
+        score = 0.0
+
+        # ── 1. Efficacité de type ──────────────────────────────────────────
+        type_mult = self.get_type_effectiveness(move.type, defender)
+        if type_mult >= 2.0:
+            score += 80    # Super efficace
+        elif type_mult > 1.0:
+            score += 40
+        elif type_mult == 0:
+            score -= 200   # Immunité → à éviter absolument
+        elif type_mult < 1.0:
+            score -= 30    # Pas très efficace
+
+        # ── 2. STAB ───────────────────────────────────────────────────────
+        attacker_types = [attacker.species.primary_type, attacker.species.secondary_type]
+        if move.type in attacker_types:
+            score += 20
+
+        # ── 3. Puissance de base ──────────────────────────────────────────
+        if move.power and move.power > 0:
+            score += move.power * 0.25
+
+        # ── 4. Précision ──────────────────────────────────────────────────
+        accuracy = move.accuracy if move.accuracy else 100
+        score *= (accuracy / 100.0)
+
+        # ── 5. KO potentiel (priorité absolue) ───────────────────────────
+        if move.power and move.power > 0:
+            estimated = self._estimate_enemy_damage(move, attacker, defender)
+            if estimated >= defender.current_hp:
+                score += 200   # KO garanti → on le fait toujours
+            elif estimated >= defender.current_hp * 0.75:
+                score += 50    # Presque KO
+
+        # ── 6. Moves de statut ────────────────────────────────────────────
+        if not move.power or move.power == 0:
+            if move.inflicts_status:
+                if not defender.status_condition:
+                    score += 30   # Infliger un statut a de la valeur
+                else:
+                    score -= 40   # Inutile si déjà statué
+            elif move.stat_changes:
+                # Boost de stats utile en début de combat
+                hp_ratio_enemy = attacker.current_hp / max(attacker.max_hp, 1)
+                if hp_ratio_enemy > 0.6:
+                    score += 20
+                else:
+                    score -= 10   # Trop tard pour booster
+            else:
+                score -= 20   # Move de statut sans effet clair
+
+        # ── 7. Moves de soin ──────────────────────────────────────────────
+        if hasattr(move, 'healing') and move.healing and move.healing > 0:
+            hp_ratio = attacker.current_hp / max(attacker.max_hp, 1)
+            if hp_ratio < 0.3:
+                score += 120   # Critique → se soigner d'urgence
+            elif hp_ratio < 0.5:
+                score += 50
+            elif hp_ratio < 0.7:
+                score += 10
+            else:
+                score -= 30    # HP OK, inutile de se soigner
+
+        # ── 8. Moves prioritaires (Quick Attack etc.) ─────────────────────
+        if hasattr(move, 'priority') and move.priority and move.priority > 0:
+            if defender.current_hp <= attacker.current_hp * 0.4:
+                score += 25   # Finir un ennemi affaibli
+
+        # ── 9. Légère dose d'aléatoire (anti-prévisibilité) ──────────────
+        score += random.uniform(0, 8)
+
+        return score
+
+    def _estimate_enemy_damage(self, move, attacker, defender):
+        """
+        Estimation rapide des dégâts sans les effets aléatoires de calculate_damage.
+        Sert uniquement à détecter les KO potentiels pour le scoring IA.
+        """
+        if not move.power or move.power == 0:
+            return 0
+
+        if move.category == 'physical':
+            atk_stat = attacker.get_effective_attack()
+            def_stat = defender.get_effective_defense()
+        else:
+            atk_stat = attacker.get_effective_special_attack()
+            def_stat = defender.get_effective_special_defense()
+
+        if def_stat == 0:
+            def_stat = 1
+
+        base   = ((2 * attacker.level / 5 + 2) * move.power * atk_stat / def_stat) / 50 + 2
+        mult   = self.get_type_effectiveness(move.type, defender)
+
+        # STAB
+        attacker_types = [attacker.species.primary_type, attacker.species.secondary_type]
+        if move.type in attacker_types:
+            base *= 1.5
+
+        return int(base * mult * 0.925)   # 0.925 ≈ moyenne de la variation aléatoire
+
     def end_battle(self, winner):
         """Termine le combat.
         XP distribution is generated in BattleViews.py.

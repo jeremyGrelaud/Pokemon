@@ -405,52 +405,23 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
 
 def get_opponent_ai_action(battle):
     """
-    Determine l'action de l'adversaire pour ce tour.
+    Retourne l'action de l'adversaire IA pour ce tour de combat.
 
-    Priorites (dans l'ordre) :
-      1. HP < 20% et potion disponible  -> utiliser potion  (30 % de chance)
-      2. HP < 10% et remplacant dispo   -> changer          (50 % de chance)
-      3. Choisir le move le plus efficace (puissance x type x STAB)
-      4. Struggle si plus aucun PP
-
-    Retourne un dict action compatible avec battle.execute_turn().
+    Utilise Battle.choose_enemy_move() qui implémente un scoring multi-critères :
+      • Efficacité de type (immunité évitée, super-efficace privilégié)
+      • STAB
+      • KO potentiel détecté → priorité absolue
+      • Soin d'urgence si HP < 30 %
+      • Infliger un statut si la cible n'en a pas
+      • Légère dose d'aléatoire pour rester imprévisible
     """
-    from .models.PlayablePokemon import PokemonMoveInstance
+    opponent = battle.opponent_pokemon
+    player   = battle.player_pokemon
 
-    pokemon  = battle.opponent_pokemon
-    opponent = battle.player_pokemon
+    if opponent is None or opponent.is_fainted():
+        return {'type': 'pass'}
 
-    # 1. Utiliser une potion si HP critique
-    if pokemon.current_hp < pokemon.max_hp * 0.2:
-        potions = pokemon.trainer.inventory.filter(
-            item__item_type='potion', quantity__gt=0
-        )
-        if potions.exists() and random.random() < 0.3:
-            return {'type': 'item', 'item': potions.first().item, 'target': pokemon}
-
-    # 2. Changer si presque KO
-    if pokemon.current_hp < pokemon.max_hp * 0.1:
-        bench = pokemon.trainer.pokemon_team.filter(
-            is_in_party=True, current_hp__gt=0
-        ).exclude(id=pokemon.id)
-        if bench.exists() and random.random() < 0.5:
-            return {'type': 'switch', 'pokemon': random.choice(list(bench))}
-
-    # 3. Meilleur move selon efficacite
-    moves = PokemonMoveInstance.objects.filter(pokemon=pokemon, current_pp__gt=0)
-    if not moves.exists():
-        return {'type': 'struggle'}
-
-    best_move, best_score = None, -1
-    for mi in moves:
-        score = (mi.move.power or 0) * battle.get_type_effectiveness(mi.move.type, opponent)
-        if mi.move.type in (pokemon.species.primary_type, pokemon.species.secondary_type):
-            score *= 1.5
-        if score > best_score:
-            best_score, best_move = score, mi.move
-
-    return {'type': 'attack', 'move': best_move}
-
+    return battle.choose_enemy_move(opponent, player)
 
 # --- XP et level-up ---
 
