@@ -875,9 +875,8 @@ def scriptToInitializeDatabase():
     # ============================================================================
     # ÉTAPE Y: CAPACITÉS APPRISES PAR LES POKÉMON
     # ============================================================================
-    # ⚠️  Cette étape est maintenant gérée par initLearnableMovesGen3.py
-    # Les learnsets Gen 3 (FireRed/LeafGreen) sont plus équilibrés.
-    # initAllDatabase.py appelle update_learnable_moves_gen3() après cette fonction.
+    # ⚠️  Cette étape est maintenant gérée par initLearnableMovesGen9.py
+    # Les learnsets Gen 9 sont plus équilibrés.
     
     
     logging.info("\n" + "="*60)
