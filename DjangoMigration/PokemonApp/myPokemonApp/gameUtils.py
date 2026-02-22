@@ -896,14 +896,14 @@ def serialize_pokemon(pokemon, include_moves=False):
 
 def build_battle_response(battle):
     """
-    Construit le dict JSON complet renvoye au client apres chaque action.
-    Remplace le build_response_data() qui etait defini inline dans battle_action_view.
+    Construit le dict JSON complet renvoyé au client après chaque action.
 
     Contient :
       - player_pokemon   (avec moves + champs EXP)
       - opponent_pokemon (sans moves)
-      - champs de retrocompatibilite (player_hp, opponent_hp, ...)
-      - battle_ended: False  (le caller le passe a True si besoin)
+      - champs de rétrocompatibilité (player_hp, opponent_hp, …)
+      - battle_ended: False  (le caller le passe à True si besoin)
+      - état volatil de combat (météo, confusion, Vampigraine, Toxic, écrans, etc.)
     """
     exp_for_next = battle.player_pokemon.exp_for_next_level() or 100
     current_exp  = battle.player_pokemon.current_exp or 0
@@ -913,17 +913,84 @@ def build_battle_response(battle):
     player_data['exp_for_next_level'] = exp_for_next
     player_data['exp_percent']        = int((current_exp / exp_for_next) * 100)
 
+    # ── État volatil ──────────────────────────────────────────────────────────
+    state = battle.battle_state if isinstance(battle.battle_state, dict) else {}
+
+    def pstate(pokemon):
+        return state.get(str(pokemon.pk), {}) if pokemon else {}
+
+    pp = pstate(battle.player_pokemon)
+    op = pstate(battle.opponent_pokemon)
+
+    battle_state_data = {
+        # Météo
+        'weather':       battle.weather,
+        'weather_turns': state.get('weather_turns', 0),
+
+        # Confusion
+        'player_confused':   pp.get('confusion_turns', 0) > 0,
+        'opponent_confused': op.get('confusion_turns', 0) > 0,
+
+        # Vampigraine
+        'player_leech_seed':   bool(pp.get('leech_seed')),
+        'opponent_leech_seed': bool(op.get('leech_seed')),
+
+        # Piège
+        'player_trapped':   pp.get('trap_turns', 0) > 0,
+        'opponent_trapped': op.get('trap_turns', 0) > 0,
+
+        # Poison sévère (Toxic)
+        'player_badly_poisoned':   bool(pp.get('badly_poisoned')),
+        'opponent_badly_poisoned': bool(op.get('badly_poisoned')),
+
+        # Charge
+        'player_charging':   pp.get('charging'),
+        'opponent_charging': op.get('charging'),
+
+        # Rechargement
+        'player_recharge':   bool(pp.get('recharge')),
+        'opponent_recharge': bool(op.get('recharge')),
+
+        # Protect
+        'player_protected':   bool(pp.get('protected')),
+        'opponent_protected': bool(op.get('protected')),
+
+        # Focus Energy
+        'player_focus_energy':   bool(pp.get('focus_energy')),
+        'opponent_focus_energy': bool(op.get('focus_energy')),
+
+        # Ingrain
+        'player_ingrain':   bool(pp.get('ingrain')),
+        'opponent_ingrain': bool(op.get('ingrain')),
+
+        # Écrans (Light Screen / Reflect)
+        'player_screens': {
+            'light_screen': state.get('player_light_screen', 0),
+            'reflect':      state.get('player_reflect', 0),
+        },
+        'opponent_screens': {
+            'light_screen': state.get('opponent_light_screen', 0),
+            'reflect':      state.get('opponent_reflect', 0),
+        },
+
+        # Rampage
+        'player_rampaging':   bool(pp.get('rampage_turns', 0) > 0),
+        'opponent_rampaging': bool(op.get('rampage_turns', 0) > 0),
+    }
+
     return {
         'success':          True,
         'log':              [],
         'player_pokemon':   player_data,
         'opponent_pokemon': serialize_pokemon(battle.opponent_pokemon),
-        # Champs de retrocompatibilite pour le JS existant
+        # Rétrocompatibilité
         'player_hp':        battle.player_pokemon.current_hp,
         'player_max_hp':    battle.player_pokemon.max_hp,
         'opponent_hp':      battle.opponent_pokemon.current_hp,
         'opponent_max_hp':  battle.opponent_pokemon.max_hp,
         'battle_ended':     False,
+        # Données volatiles enrichies
+        'battle_state':     battle_state_data,
     }
 
 

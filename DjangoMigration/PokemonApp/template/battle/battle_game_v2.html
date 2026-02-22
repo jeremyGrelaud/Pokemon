@@ -56,6 +56,19 @@
               </div>
             </div>
 
+            <!-- Météo -->
+            <div id="weather-banner"></div>
+
+            <!-- Badges volatiles adversaire -->
+            <div id="opponent-volatile-badges" style="display:flex;flex-wrap:wrap;gap:2px;"></div>
+            <span id="opponent-light-screen"></span>
+            <span id="opponent-reflect"></span>
+
+            <!-- Badges volatiles joueur (près de la barre de stats joueur) -->
+            <div id="player-volatile-badges" style="display:flex;flex-wrap:wrap;gap:2px;"></div>
+            <span id="player-light-screen"></span>
+            <span id="player-reflect"></span>
+
             <!-- Status Icon -->
             <div class="status-container" id="opponent-status">
               {% if battle.opponent_pokemon.status_condition %}
@@ -487,6 +500,7 @@
 <script src="{% static 'js/battle-effects.js' %}"></script>
 <script src="{% static 'js/audio-manager.js' %}"></script>
 <script src="{% static 'js/capture-system.js' %}"></script>
+<script src="{% static 'js/battle-volatile-states.js' %}"></script>
 
 <script>
 // ============================================================================
@@ -626,6 +640,7 @@ function useMove(moveId) {
     })
     .done(function(data) {
       updateBattleState(data);
+      updateVolatileStates(data);
     })
     .fail(function(xhr) {
       console.error('Attack failed:', xhr);
