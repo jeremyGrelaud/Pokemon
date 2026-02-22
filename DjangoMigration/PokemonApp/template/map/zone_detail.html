@@ -136,24 +136,31 @@
             <!-- Arène / Gym Leader -->
             {% if gym_leader %}
             <div class="col-md-6 col-lg-3 mb-3">
-              <div class="card text-white h-100" style="background-color: #e67e22;">
+              <div class="card text-white h-100" style="background-color: {% if gym_leader_defeated %}#95a5a6{% else %}#e67e22{% endif %};">
                 <div class="card-body text-center d-flex flex-column justify-content-between">
                   <div>
-                    <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}" 
+                    <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}"
                         alt="{{ gym_leader.trainer.username }}"
-                        style="width:64px;height:64px;object-fit:contain;"
+                        style="width:64px;height:64px;object-fit:contain;{% if gym_leader_defeated %}filter:grayscale(60%);opacity:.7;{% endif %}"
                         onerror="this.style.display='none';">
                     <h5 class="mt-2"><i class="fas fa-trophy"></i> Arène</h5>
-                    <p class="small mb-1 text-white-50">
-                      <strong>{{ gym_leader.trainer.username }}</strong>
-                    </p>
-                    <p class="small mb-3 text-white-50">
-                      Badge : {{ gym_leader.badge_name }}
-                    </p>
+                    <p class="small mb-1 text-white-50"><strong>{{ gym_leader.trainer.username }}</strong></p>
+                    <p class="small mb-1 text-white-50">Badge : {{ gym_leader.badge_name }}</p>
+                    {% if gym_leader_defeated %}
+                    <span class="badge badge-light text-secondary mt-1">
+                      <i class="fas fa-check mr-1"></i>Badge obtenu
+                    </span>
+                    {% endif %}
                   </div>
-                  <a href="{% url 'battle_challenge_gym' gym_leader.id %}" class="btn btn-light text-white-50 btn-sm">
+                  {% if gym_leader_defeated %}
+                  <button class="btn btn-light text-secondary btn-sm mt-2" disabled>
+                    <i class="fas fa-medal"></i> Badge déjà obtenu
+                  </button>
+                  {% else %}
+                  <a href="{% url 'battle_challenge_gym' gym_leader.id %}" class="btn btn-light text-white-50 btn-sm mt-2">
                     <i class="fas fa-fist-raised"></i> Défier l'Arène
                   </a>
+                  {% endif %}
                 </div>
               </div>
             </div>
@@ -219,23 +226,64 @@
           {% if trainers %}
           <h4><i class="fas fa-users"></i> Dresseurs</h4>
           <div class="list-group mb-4">
-            {% for trainer in trainers %}
-            <a href="{% url 'battle_create_trainer' trainer.id %}" class="list-group-item list-group-item-action">
+            {% for entry in trainers %}
+            {% with npc=entry.npc is_defeated=entry.is_defeated can_rebattle=entry.can_rebattle %}
+            {% if is_defeated and not can_rebattle %}
+            {# Dresseur vaincu non re-défiable : grisé #}
+            <div class="list-group-item list-group-item-action disabled" style="opacity:.55;cursor:default;">
               <div class="d-flex align-items-center">
-                <img src="{% static 'img/trainer_sprites/' %}{{ trainer|trainer_sprite_path }}"
-                    alt="{{ trainer.get_full_title }}"
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                    alt="{{ npc.get_full_title }}"
+                    style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;filter:grayscale(100%);"
+                    onerror="this.style.display='none';">
+                <div class="flex-grow-1">
+                  <strong>{{ npc.get_full_title }}</strong>
+                  <br>
+                  <small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
+                </div>
+                <span class="badge badge-secondary align-self-center">
+                  <i class="fas fa-check"></i> Vaincu
+                </span>
+              </div>
+            </div>
+            {% elif is_defeated and can_rebattle %}
+            {# Vaincu mais re-défiable #}
+            <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                    alt="{{ npc.get_full_title }}"
                     style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;"
                     onerror="this.style.display='none';">
                 <div class="flex-grow-1">
-                  <strong>{{ trainer.get_full_title }}</strong>
+                  <strong>{{ npc.get_full_title }}</strong>
                   <br>
-                  <small class="text-muted">{{ trainer.intro_text|truncatewords:10 }}</small>
+                  <small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
+                </div>
+                <span class="badge badge-warning align-self-center">
+                  <i class="fas fa-redo"></i> Revancher
+                </span>
+              </div>
+            </a>
+            {% else %}
+            {# Non encore vaincu #}
+            <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                    alt="{{ npc.get_full_title }}"
+                    style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;"
+                    onerror="this.style.display='none';">
+                <div class="flex-grow-1">
+                  <strong>{{ npc.get_full_title }}</strong>
+                  <br>
+                  <small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
                 </div>
                 <span class="badge badge-danger align-self-center">
                   <i class="fas fa-fist-raised"></i> Combattre
                 </span>
               </div>
             </a>
+            {% endif %}
+            {% endwith %}
             {% endfor %}
           </div>
           {% endif %}

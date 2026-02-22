@@ -1115,6 +1115,28 @@ def get_or_create_player_trainer(user):
     return trainer
 
 
+def get_defeated_trainer_ids(player_trainer) -> set:
+    """
+    Retourne le set des IDs de Trainers NPC vaincus par ce joueur.
+
+    Recupere la save active en une seule requete DB, et retourne
+    un set Python pour des tests d'appartenance en O(1).
+
+    A utiliser dans les vues qui itèrent sur N trainers pour eviter
+    le N+1 que produirait npc.is_defeated_by_player() dans une boucle.
+
+    Usage :
+        defeated_ids = get_defeated_trainer_ids(trainer)
+        for npc in trainers:
+            is_beaten = npc.id in defeated_ids
+    """
+    from .models.GameSave import GameSave
+    save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+    if save is None:
+        return set()
+    return set(save.defeated_trainers)
+
+
 def get_player_trainer(user):
     """
     Recupere le Trainer du joueur connecte (404 si inexistant).

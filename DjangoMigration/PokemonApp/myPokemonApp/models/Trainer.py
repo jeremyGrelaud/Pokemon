@@ -76,6 +76,28 @@ class Trainer(models.Model):
         return self.username
 
     # ------------------------------------------------------------------
+    # Statut de defaite per-joueur
+    # ------------------------------------------------------------------
+
+    def is_defeated_by_player(self, player_trainer) -> bool:
+        """
+        Retourne True si CE joueur a deja vaincu ce Trainer NPC.
+
+        La source de verite est GameSave.defeated_trainers (liste d IDs JSON),
+        qui est strictement per-joueur. On ne se base PAS sur Trainer.is_defeated
+        qui est un booleen global inutilisable en contexte multi-joueur.
+
+        Performance : dans les vues qui iterent sur N trainers, preferer
+        get_defeated_trainer_ids(player_trainer) pour recuperer le set
+        d IDs en une seule requete, puis tester npc.id in defeated_ids.
+        """
+        from .GameSave import GameSave
+        save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+        if save is None:
+            return False
+        return self.id in save.defeated_trainers
+
+    # ------------------------------------------------------------------
     # Helpers badges
     # ------------------------------------------------------------------
 
@@ -160,12 +182,16 @@ class GymLeader(models.Model):
     def __str__(self):
         return f"{self.trainer.username} - {self.gym_name} ({self.gym_city})"
     
-    def isChallengableByPlayer(self, player):
-        if not self.trainer.is_defeated:
-            required_badges = self.badge_order - 1
-            if player.badges >= required_badges:
-                return True
-        return  False
+    def isChallengableByPlayer(self, player_trainer) -> bool:
+        """
+        Retourne True si le joueur peut defier cet Arena Leader.
+        - Utilise is_defeated_by_player() (per-joueur) au lieu de trainer.is_defeated (global).
+        - Verifie que le joueur possede les badges requis (badge_order - 1).
+        """
+        if self.trainer.is_defeated_by_player(player_trainer):
+            return False
+        required_badges = self.badge_order - 1
+        return player_trainer.badges >= required_badges
 
 
 

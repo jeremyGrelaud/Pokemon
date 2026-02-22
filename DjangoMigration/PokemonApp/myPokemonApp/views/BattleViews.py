@@ -427,7 +427,7 @@ def battle_create_view(request):
 
     fightable_gym_leaders = [
         gl for gl in GymLeader.objects.all()
-        if gl.isChallengableByPlayer(player=player_trainer)
+        if gl.isChallengableByPlayer(player_trainer=player_trainer)
     ]
 
     context = {

@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
 from myPokemonApp.models import *
-from myPokemonApp.gameUtils import get_random_wild_pokemon, get_player_trainer, get_player_location
+from myPokemonApp.gameUtils import get_random_wild_pokemon, get_player_trainer, get_player_location, get_defeated_trainer_ids
 
 # ============================================================================
 # MAP OVERVIEW
@@ -63,6 +63,18 @@ def zone_detail_view(request, zone_id):
     wild_spawns        = zone.wild_spawns.all()
     trainers_in_zone   = Trainer.objects.filter(is_npc=True, location=zone.name)
 
+    # Calcul des dresseurs vaincus en UNE seule requête DB
+    # (évite le N+1 que produirait npc.is_defeated_by_player() dans le template)
+    defeated_ids = get_defeated_trainer_ids(trainer)
+    trainers_with_status = [
+        {
+            'npc':         npc,
+            'is_defeated': npc.id in defeated_ids,
+            'can_rebattle': npc.can_rebattle,
+        }
+        for npc in trainers_in_zone
+    ]
+
     pokemon_center = None
     if zone.has_pokemon_center:
         pokemon_center = PokemonCenter.objects.filter(
@@ -91,18 +103,23 @@ def zone_detail_view(request, zone_id):
     except Exception:
         pass
 
+    # Gym Leader : défaite per-joueur via la save
+    gym_leader_defeated = gym_leader and gym_leader.trainer.id in defeated_ids
+
     return render(request, 'map/zone_detail.html', {
-        'zone':          zone,
-        'can_access':    can_access,
-        'access_reason': reason,
-        'is_current':    is_current,
-        'connections':   connections,
-        'wild_spawns':   wild_spawns,
-        'trainers':      trainers_in_zone,
-        'current_zone':  player_location.current_zone,
-        'pokemon_center': pokemon_center,
-        'zone_shop':     zone_shop,
-        'gym_leader':    gym_leader,
+        'zone':               zone,
+        'can_access':         can_access,
+        'access_reason':      reason,
+        'is_current':         is_current,
+        'connections':        connections,
+        'wild_spawns':        wild_spawns,
+        'trainers':           trainers_with_status,
+        'current_zone':       player_location.current_zone,
+        'pokemon_center':     pokemon_center,
+        'zone_shop':          zone_shop,
+        'gym_leader':         gym_leader,
+        'gym_leader_defeated': gym_leader_defeated,
+        'player_trainer':     trainer,
     })
 
 from myPokemonApp.views.AchievementViews import check_achievement
