@@ -6,14 +6,21 @@ Usage :
     python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase()"
 
 Ordre d'exécution (respecte les dépendances) :
-    1. Types, Moves, Pokémon, LearnableMoves  (base de tout)
-    2. Items                                   (dépend de rien)
-    3. PokeballItems                           (dépend de Items)
-    4. Gym Leaders, NPCs, Elite 4, Champion   (dépend de Pokémon + Moves)
-    5. Zones Kanto + Spawn rates              (dépend de Pokémon)
-    6. Pokémon Centers                         (dépend de Zones)
-    7. Shops                                   (dépend de Items)
-    8. Achievements                            (indépendant)
+    1.  Types, Moves, Pokémon Gen 1                 (base de tout — SANS learnsets)
+    2.  Moves Gen 3 manquants                        (Aerial Ace, Blaze Kick, etc.)
+    3.  Learnsets Gen 3 (FireRed/LeafGreen)          (remplace les niveaux Gen 1)
+    4.  Items                                        (dépend de rien)
+    5.  PokeballItems                                (dépend de Items)
+    6.  Champions d'Arène                            (dépend de Pokémon + Moves)
+    7.  Dresseurs NPC de base                        (initializeItemsAndNpcs)
+    8.  Dresseurs NPC complets Kanto                 (initNPCTrainersComplete)
+    9.  Combats Rival                                (dépend de Pokémon + Moves)
+    10. Conseil des 4                                (dépend de Pokémon + Moves)
+    11. Champion de la Ligue                         (dépend de Pokémon + Moves)
+    12. Zones Kanto + Spawn rates                    (dépend de Pokémon)
+    13. Centres Pokémon                              (dépend de Zones)
+    14. Boutiques (Pokémarts)                        (dépend de Items)
+    15. Succès / Achievements                        (indépendant)
 """
 
 import logging
@@ -29,6 +36,7 @@ logging.basicConfig(
 # Imports des fonctions d'initialisation
 # ---------------------------------------------------------------------------
 
+# ── Anciens scripts (mis à jour) ───────────────────────────────────────────
 from myPokemonApp.tasks.initializeDatabase import scriptToInitializeDatabase
 from myPokemonApp.tasks.initializeItemsAndNpcs import (
     initialize_items,
@@ -44,6 +52,11 @@ from myPokemonApp.tasks.initPokeCenters import scriptToInitializePokeCenters
 from myPokemonApp.tasks.initShops import initShops
 from myPokemonApp.tasks.initAchievments import init_achievements
 
+# ── Nouveaux scripts Gen 3 ─────────────────────────────────────────────────
+from myPokemonApp.tasks.initMissingMovesGen3 import add_missing_gen3_moves
+from myPokemonApp.tasks.initLearnableMovesGen3 import update_learnable_moves_gen3
+from myPokemonApp.tasks.initNPCTrainersComplete import run_complete_npc_initialization
+
 
 # ---------------------------------------------------------------------------
 # Étapes individuelles avec gestion d'erreur uniforme
@@ -52,8 +65,7 @@ from myPokemonApp.tasks.initAchievments import init_achievements
 def _run_step(step_num, label, fn, *args, **kwargs):
     """
     Exécute une étape d'initialisation avec logging et gestion d'erreur.
-    Retourne True si succès, False si échec (sans stopper les étapes suivantes
-    si stop_on_error=False).
+    Retourne True si succès, False si échec.
     """
     logging.info(f"{'─'*60}")
     logging.info(f"  ÉTAPE {step_num} — {label}")
@@ -91,25 +103,67 @@ def initAllDatabase(stop_on_error=True):
     logging.info("=" * 60 + "\n")
 
     steps = [
-        # (numéro, label, fonction, *args)
-        (1,  "Types, Capacités, Pokémon Gen 1, Learnable Moves",  scriptToInitializeDatabase),
-        (2,  "Objets (Potions, Balls, Pierres, etc.)",            initialize_items),
-        (3,  "PokeballItems (modificateurs de capture)",          scriptToInitNewPokeBalls),
-        (4,  "Champions d'Arène",                                 initialize_gym_leaders),
-        (5,  "Dresseurs NPC",                                     initialize_npc_trainers),
-        (6,  "Combats Rival",                                     initialize_rival_battles),
-        (7,  "Conseil des 4",                                     initialize_elite_four),
-        (8,  "Champion de la Ligue",                              create_champion),
-        (9,  "Zones Kanto + Spawn rates",                         init_kanto_map),
-        (10, "Centres Pokémon",                                   scriptToInitializePokeCenters),
-        (11, "Boutiques (Pokémarts)",                             initShops),
-        (12, "Succès / Achievements",                             init_achievements),
+        # ── SOCLE ─────────────────────────────────────────────────────────────
+        # scriptToInitializeDatabase ne génère PLUS les learnsets (étape 3).
+        (1,  "Types, Capacités, Pokémon Gen 1",
+             scriptToInitializeDatabase),
+
+        # ── MOVES GEN 3 ───────────────────────────────────────────────────────
+        # Doit tourner AVANT les learnsets pour que les moves existent en base.
+        (2,  "Moves Gen 3 manquants (Aerial Ace, Blaze Kick, Discharge…)",
+             add_missing_gen3_moves),
+
+        # ── LEARNSETS GEN 3 (FRLG) ────────────────────────────────────────────
+        # Remplace les niveaux Gen 1 par les niveaux FireRed/LeafGreen.
+        # True = clear_existing : vide les anciens learnsets avant recréation.
+        (3,  "Learnsets Gen 3 — FireRed / LeafGreen",
+             update_learnable_moves_gen3, True),
+
+        # ── ITEMS ─────────────────────────────────────────────────────────────
+        (4,  "Objets (Potions, Balls, Pierres, etc.)",
+             initialize_items),
+        (5,  "PokeballItems (modificateurs de capture)",
+             scriptToInitNewPokeBalls),
+
+        # ── DRESSEURS & LEADERS ───────────────────────────────────────────────
+        (6,  "Champions d'Arène",
+             initialize_gym_leaders),
+
+        # NPCs de base : Bourg-Palette, Mt. Moon, Grotte Azurée, quelques routes.
+        (7,  "Dresseurs NPC de base",
+             initialize_npc_trainers),
+
+        # NPCs complets : toutes les routes de Kanto, Centrale électrique,
+        # Tour Pokémon, S.S. Anne, Îles Écume, Silph Co., etc. (FRLG).
+        (8,  "Dresseurs NPC complets — Toutes zones Kanto",
+             run_complete_npc_initialization),
+
+        (9,  "Combats Rival",
+             initialize_rival_battles),
+        (10, "Conseil des 4",
+             initialize_elite_four),
+        (11, "Champion de la Ligue",
+             create_champion),
+
+        # ── MONDE ─────────────────────────────────────────────────────────────
+        (12, "Zones Kanto + Spawn rates",
+             init_kanto_map),
+        (13, "Centres Pokémon",
+             scriptToInitializePokeCenters),
+        (14, "Boutiques (Pokémarts)",
+             initShops),
+
+        # ── SUCCÈS ────────────────────────────────────────────────────────────
+        (15, "Succès / Achievements",
+             init_achievements),
     ]
 
     failed_steps = []
 
-    for step_num, label, fn, *args in steps:
-        success = _run_step(step_num, label, fn, *args)
+    for entry in steps:
+        step_num, label, fn = entry[0], entry[1], entry[2]
+        extra_args = entry[3:]
+        success = _run_step(step_num, label, fn, *extra_args)
 
         if not success:
             if stop_on_error:
