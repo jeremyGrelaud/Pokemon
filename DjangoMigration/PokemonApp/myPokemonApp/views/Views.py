@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from myPokemonApp.gameUtils import get_or_create_player_trainer, create_starter_pokemon, give_item_to_trainer
+from myPokemonApp.gameUtils import get_or_create_player_trainer, create_starter_pokemon, give_item_to_trainer, grant_pokedex
 from ..models import *
 
 # ============================================================================
@@ -117,6 +117,9 @@ def choose_starter_view(request):
         # Donne les objets de départ
         give_item_to_trainer(trainer, Item.objects.get(name='Poke Ball'), 5)
         give_item_to_trainer(trainer, Item.objects.get(name='Potion'), 3)
+
+        # Donne le Pokédex (débloque les Poke Balls à la boutique de Jadielle)
+        grant_pokedex(trainer)
 
 
         messages.success(

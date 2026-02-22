@@ -66,13 +66,18 @@
               <i class="fas fa-signal"></i> Niv. {{ zone_data.zone.recommended_level_min }}-{{ zone_data.zone.recommended_level_max }}
             </span>
             {% if zone_data.zone.has_pokemon_center %}
-            <span class="badge badge-info">
+            <span class="badge badge-danger">
               <i class="fas fa-hospital"></i> Centre
             </span>
             {% endif %}
             {% if zone_data.zone.has_shop %}
             <span class="badge badge-warning">
               <i class="fas fa-shopping-cart"></i> Boutique
+            </span>
+            {% endif %}
+            {% if zone_data.has_gym %}
+            <span class="badge badge-primary">
+              <i class="fas fa-trophy"></i> Arène
             </span>
             {% endif %}
           </div>

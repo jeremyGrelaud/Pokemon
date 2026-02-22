@@ -18,7 +18,6 @@ TODO Roadmap :
 - système de quêtes ?
 - système de shiny (sprites présents)
 - After everything, implement different game mods ?
--  Griser et ne donner accès dans la liste des pokeCenter et pokeMart seulement au bâtiment de la ville où le joueur se trouve (se basant sur player.location)
 - améliorer le script d'initialisation de la base de données avec des données sur les moves appris par chaque pokémon ...
 
 TODO BugFixes :

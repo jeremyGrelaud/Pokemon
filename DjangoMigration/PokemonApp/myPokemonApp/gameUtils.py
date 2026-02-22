@@ -1095,6 +1095,59 @@ def calculate_pokemon_stats_with_nature(pokemon):
 # 11. HELPERS VIEWS
 # =============================================================================
 
+# Correspondance noms de zones français → gym_city anglais (tel qu'en base GymLeader)
+# Source unique : importé ici et utilisé dans map_view + zone_detail_view
+ZONE_TRANSLATIONS = {
+    "Argenta":       "Pewter City",
+    "Azuria":        "Cerulean City",
+    "Carmin sur Mer":"Vermilion City",
+    "Céladopole":    "Celadon City",
+    "Jadielle":      "Viridian City",
+    "Safrania":      "Saffron City",
+    "Parmanie":      "Fuchsia City",
+    "Cramois'Ile":   "Cinnabar Island",
+}
+
+def has_pokedex(player_trainer) -> bool:
+    """
+    Retourne True si le joueur a reçu son Pokédex.
+    Vérifie le story_flag 'has_pokedex' dans la GameSave active.
+
+    Usage :
+        if not has_pokedex(trainer):
+            return HttpResponseForbidden(...)
+    """
+    from .models.GameSave import GameSave
+    save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+    return bool(save and save.story_flags.get('has_pokedex', False))
+
+
+def grant_pokedex(player_trainer) -> None:
+    """
+    Donne le Pokédex au joueur en posant le story_flag 'has_pokedex'
+    sur sa GameSave active, quel que soit son numéro de slot.
+
+    Si aucune save active n'existe encore (nouveau joueur), en crée une
+    au slot 1 comme fallback.
+
+    À appeler dès que le joueur choisit son starter (même moment que
+    dans le jeu original où le Prof. Chen remet le Pokédex).
+
+    Usage :
+        grant_pokedex(trainer)
+    """
+    from .models.GameSave import GameSave
+    # Priorité : save active existante (peu importe le slot)
+    save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+    if save is None:
+        # Nouveau joueur sans save — fallback slot 1
+        save, _ = GameSave.objects.get_or_create(
+            trainer=player_trainer,
+            slot=1,
+            defaults={'is_active': True}
+        )
+    save.set_story_flag('has_pokedex', True)
+
 def get_or_create_player_trainer(user):
     """
     Recupere ou cree le Trainer associe a un utilisateur Django.

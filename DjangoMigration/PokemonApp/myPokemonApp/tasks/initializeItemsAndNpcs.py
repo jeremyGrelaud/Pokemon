@@ -70,7 +70,7 @@ def initialize_items():
         {'name': 'Quick Ball', 'description': "Efficace si utilisée en premier tour.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 4.0, 'is_consumable': True},
         {'name': 'Heal Ball', 'description': "Soigne les problèmes de statut du Pokémon capturé.", 'item_type': 'pokeball', 'price': 300, 'catch_rate_modifier': 1.0, 'is_consumable': True},
         {'name': 'Luxury Ball', 'description': "Améliore l'amitié du Pokémon capturé.", 'item_type': 'pokeball', 'price': 1200, 'catch_rate_modifier': 1.0, 'is_consumable': True},
-        {'name': 'Premier Ball', 'description': "Une Poké Ball commémorative.", 'item_type': 'pokeball', 'price': 200, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Premier Ball', 'description': "Une Poke Ball commémorative.", 'item_type': 'pokeball', 'price': 200, 'catch_rate_modifier': 1.0, 'is_consumable': True},
         {'name': 'Cherry Ball', 'description': "Efficace contre les Pokémon avec une évolution unique.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
         {'name': 'Fast Ball', 'description': "Efficace contre les Pokémon rapides.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
         {'name': 'Level Ball', 'description': "Plus efficace contre les Pokémon de niveau inférieur.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True},# To implement in pokeballItem class catch_rate_modifier = user_level, pokemon_level: (4 * user_level / pokemon_level) if user_level > pokemon_level else 1.0
@@ -79,7 +79,7 @@ def initialize_items():
         {'name': 'Love Ball', 'description': "Efficace contre les Pokémon du sexe opposé.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 8.0, 'is_consumable': True},
         {'name': 'Moon Ball', 'description': "Efficace contre les Pokémon qui évoluent avec une Pierre Lune.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 4.0, 'is_consumable': True},
         {'name': 'Friend Ball', 'description': "Le Pokémon capturé a une amitié instantanée maximale.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True},
-        {'name': 'Sport Ball', 'description': "Une Poké Ball spéciale pour les concours.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.5, 'is_consumable': True},
+        {'name': 'Sport Ball', 'description': "Une Poke Ball spéciale pour les concours.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.5, 'is_consumable': True},
         {'name': 'Park Ball', 'description': "Utilisée dans le Parc des Amis.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.0, 'is_consumable': True},
         {'name': 'Dream Ball', 'description': "Utilisée dans le Monde des Rêves.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 3.0, 'is_consumable': True},
         {'name': 'Beast Ball', 'description': "Spéciale pour les Ultra-Chimères.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 0.1, 'is_consumable': True},

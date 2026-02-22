@@ -37,6 +37,11 @@ class Shop(models.Model):
 
 class ShopInventory(models.Model):
     """Inventaire d'une boutique - quels items sont vendus où"""
+
+    UNLOCK_CONDITIONS = [
+        ('none',        'Aucune condition'),
+        ('has_pokedex', 'Avoir reçu un Pokédex'),
+    ]
     
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='inventory')
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
@@ -46,6 +51,12 @@ class ShopInventory(models.Model):
     
     # Conditions de déverrouillage
     unlock_badge_required = models.IntegerField(default=0)
+    unlock_condition = models.CharField(
+        max_length=30,
+        choices=UNLOCK_CONDITIONS,
+        default='none',
+        help_text="Condition spéciale requise (ex. avoir reçu un Pokédex)"
+    )
     
     # Prix (si différent du prix de base)
     custom_price = models.IntegerField(null=True, blank=True)
@@ -66,10 +77,8 @@ class ShopInventory(models.Model):
     def get_final_price(self):
         """Retourne le prix final après réduction"""
         base_price = self.custom_price if self.custom_price else self.item.price
-        
         if self.discount_percentage > 0:
             return int(base_price * (1 - self.discount_percentage / 100))
-        
         return base_price
     
     def get_sell_price(self):
@@ -77,13 +86,27 @@ class ShopInventory(models.Model):
         return self.get_final_price() // 2
     
     def is_available_for_trainer(self, trainer):
-        """Vérifie si l'item est disponible pour ce dresseur"""
-        return trainer.badges >= self.unlock_badge_required
+        """
+        Vérifie si l'item est disponible pour ce dresseur.
+
+        Vérifie dans l'ordre :
+          1. Condition de badge  (unlock_badge_required)
+          2. Condition spéciale  (unlock_condition)
+             - 'none'         → toujours disponible
+             - 'has_pokedex'  → le joueur doit avoir reçu son Pokédex
+                                (story_flag 'has_pokedex' dans GameSave)
+        """
+        if trainer.badges < self.unlock_badge_required:
+            return False
+        if self.unlock_condition == 'has_pokedex':
+            from myPokemonApp.gameUtils import has_pokedex
+            if not has_pokedex(trainer):
+                return False
+        return True
     
     def can_afford(self, trainer, quantity=1):
         """Vérifie si le dresseur peut acheter"""
-        total_cost = self.get_final_price() * quantity
-        return trainer.money >= total_cost
+        return trainer.money >= self.get_final_price() * quantity
     
     def has_stock(self, quantity=1):
         """Vérifie le stock"""

@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
 from myPokemonApp.models import *
-from myPokemonApp.gameUtils import get_random_wild_pokemon, get_player_trainer, get_player_location, get_defeated_trainer_ids
+from myPokemonApp.gameUtils import get_random_wild_pokemon, get_player_trainer, get_player_location, get_defeated_trainer_ids, ZONE_TRANSLATIONS
 
 # ============================================================================
 # MAP OVERVIEW
@@ -21,12 +21,17 @@ def map_view(request):
 
     all_zones = Zone.objects.all()
 
+    # Zones ayant une arène : on croise GymLeader.gym_city avec le dict de traductions
+    gym_cities      = set(GymLeader.objects.values_list('gym_city', flat=True))
+    zones_with_gym  = {fr for fr, en in ZONE_TRANSLATIONS.items() if en in gym_cities}
+
     accessible_zones = [
         {
             'zone':       zone,
             'accessible': can_access,
             'reason':     reason,
             'visited':    player_location.visited_zones.filter(id=zone.id).exists(),
+            'has_gym':    zone.name in zones_with_gym,
         }
         for zone in all_zones
         for can_access, reason in [zone.is_accessible_by(trainer)]
@@ -85,17 +90,7 @@ def zone_detail_view(request, zone_id):
     if zone.has_shop:
         zone_shop = Shop.objects.filter(location__icontains=zone.name).first()
 
-    zone_translations = {
-        "Argenta": "Pewter City",
-        "Azuria": "Cerulean City",
-        "Carmin sur Mer": "Vermilion City",
-        "Céladopole": "Celadon City",
-        "Jadielle": "Viridian City",
-        "Safrania": "Saffron City",
-        "Parmanie": "Fuchsia City",
-        "Cramois'Ile": "Cinnabar Island",
-    }
-    english_zone_name = zone_translations.get(zone.name, zone.name).strip()
+    english_zone_name = ZONE_TRANSLATIONS.get(zone.name, zone.name).strip()
 
     gym_leader = None
     try:
