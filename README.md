@@ -18,6 +18,8 @@ TODO Roadmap :
 - système de quêtes ?
 - After everything, implement different game mods ?
 - améliorer le script d'initialisation de la base de données avec des données sur les moves appris par chaque pokémon ...
+- il manque encore des dresseurs dans les zones comme la 'forêt de jade', le 'mont sélénite', ...
+- changer les formules de gain d'xp et calcul de dmg pour les formules gen3 ou plus
 
 TODO BugFixes :
 
