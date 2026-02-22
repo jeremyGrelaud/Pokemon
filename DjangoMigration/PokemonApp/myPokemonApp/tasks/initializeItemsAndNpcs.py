@@ -463,7 +463,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Bug Catcher Rick',
         trainer_type='trainer',
-        location='Viridian Forest',
+        location='Forêt de Jade',
         team_data=[
             {
                 'species': get_pokemon('Weedle'),
@@ -482,7 +482,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Bug Catcher Doug',
         trainer_type='trainer',
-        location='Viridian Forest',
+        location='Forêt de Jade',
         team_data=[
             {
                 'species': get_pokemon('Weedle'),
@@ -506,7 +506,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Bug Catcher Sammy',
         trainer_type='trainer',
-        location='Viridian Forest',
+        location='Forêt de Jade',
         team_data=[
             {
                 'species': get_pokemon('Weedle'),
@@ -604,7 +604,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Lass Iris',
         trainer_type='trainer',
-        location='Mt. Moon',
+        location='Mont Sélénite',
         team_data=[
             {
                 'species': get_pokemon('Clefairy'),
@@ -618,7 +618,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Super Nerd Jovan',
         trainer_type='trainer',
-        location='Mt. Moon',
+        location='Mont Sélénite',
         team_data=[
             {
                 'species': get_pokemon('Magnemite'),
@@ -637,7 +637,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Hiker Marcos',
         trainer_type='trainer',
-        location='Mt. Moon',
+        location='Mont Sélénite',
         team_data=[
             {
                 'species': get_pokemon('Geodude'),
@@ -661,7 +661,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Team Rocket Grunt',
         trainer_type='trainer',
-        location='Mt. Moon',
+        location='Mont Sélénite',
         team_data=[
             {
                 'species': get_pokemon('Rattata'),
@@ -819,7 +819,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Sailor Edmond',
         trainer_type='trainer',
-        location='S.S. Anne',
+        location='Carmin sur Mer',
         team_data=[
             {
                 'species': get_pokemon('Machop'),
@@ -838,7 +838,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Gentleman Thomas',
         trainer_type='trainer',
-        location='S.S. Anne',
+        location='Carmin sur Mer',
         team_data=[
             {
                 'species': get_pokemon('Growlithe'),
@@ -857,7 +857,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Lass Ann',
         trainer_type='trainer',
-        location='S.S. Anne',
+        location='Carmin sur Mer',
         team_data=[
             {
                 'species': get_pokemon('Pidgey'),
@@ -959,7 +959,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Hiker Lenny',
         trainer_type='trainer',
-        location='Rock Tunnel',
+        location='Tunnel Roche',
         team_data=[
             {
                 'species': get_pokemon('Geodude'),
@@ -983,7 +983,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Picnicker Dana',
         trainer_type='trainer',
-        location='Rock Tunnel',
+        location='Tunnel Roche',
         team_data=[
             {
                 'species': get_pokemon('Meowth'),
@@ -1007,7 +1007,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Pokemaniac Mark',
         trainer_type='trainer',
-        location='Rock Tunnel',
+        location='Tunnel Roche',
         team_data=[
             {
                 'species': get_pokemon('Rhyhorn'),
@@ -1095,7 +1095,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Channeler Hope',
         trainer_type='trainer',
-        location='Pokemon Tower',
+        location='Tour Pokémon',
         team_data=[
             {
                 'species': get_pokemon('Gastly'),
@@ -1109,7 +1109,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Channeler Patricia',
         trainer_type='trainer',
-        location='Pokemon Tower',
+        location='Tour Pokémon',
         team_data=[
             {
                 'species': get_pokemon('Gastly'),
@@ -1132,7 +1132,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Team Rocket Grunt',
         trainer_type='trainer',
-        location='Rocket Game Corner',
+        location='Céladopole',
         team_data=[
             {
                 'species': get_pokemon('Raticate'),
@@ -1155,7 +1155,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Team Rocket Grunt',
         trainer_type='trainer',
-        location='Silph Co.',
+        location='Safrania',
         team_data=[
             {
                 'species': get_pokemon('Cubone'),
@@ -1174,7 +1174,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Scientist Jose',
         trainer_type='trainer',
-        location='Silph Co.',
+        location='Safrania',
         team_data=[
             {
                 'species': get_pokemon('Electrode'),
@@ -1197,7 +1197,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Biker Jaren',
         trainer_type='trainer',
-        location='Cycling Road',
+        location='Route 17',
         team_data=[
             {
                 'species': get_pokemon('Grimer'),
@@ -1216,7 +1216,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Cue Ball Corey',
         trainer_type='trainer',
-        location='Cycling Road',
+        location='Route 17',
         team_data=[
             {
                 'species': get_pokemon('Primeape'),
@@ -1245,7 +1245,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Swimmer Bryce',
         trainer_type='trainer',
-        location='Seafoam Islands',
+        location='Îles Écume',
         team_data=[
             {
                 'species': get_pokemon('Shellder'),
@@ -1268,7 +1268,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Black Belt Atsushi',
         trainer_type='trainer',
-        location='Victory Road',
+        location='Chemin de la Victoire',
         team_data=[
             {
                 'species': get_pokemon('Machop'),
@@ -1287,7 +1287,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Cool Trainer Samuel',
         trainer_type='trainer',
-        location='Victory Road',
+        location='Chemin de la Victoire',
         team_data=[
             {
                 'species': get_pokemon('Sandslash'),
@@ -1311,7 +1311,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Juggler Nelson',
         trainer_type='trainer',
-        location='Victory Road',
+        location='Chemin de la Victoire',
         team_data=[
             {
                 'species': get_pokemon('Drowzee'),
@@ -1335,7 +1335,7 @@ def initialize_npc_trainers():
     create_npc_trainer(
         username='Tamer Vincent',
         trainer_type='trainer',
-        location='Victory Road',
+        location='Chemin de la Victoire',
         team_data=[
             {
                 'species': get_pokemon('Persian'),
@@ -1393,7 +1393,7 @@ def initialize_rival_battles(player_starter_choice='Bulbasaur'):
     create_npc_trainer(
         username='Rival - Pallet Town',
         trainer_type='rival',
-        location='Oak Laboratory',
+        location='Bourg Palette',
         team_data=[
             {
                 'species': get_pokemon(rival_line[0]),
@@ -1475,7 +1475,7 @@ def initialize_rival_battles(player_starter_choice='Bulbasaur'):
     create_npc_trainer(
         username='Rival - S.S. Anne',
         trainer_type='rival',
-        location='S.S. Anne',
+        location='Carmin sur Mer',
         team_data=[
             {
                 'species': get_pokemon('Pidgeotto'),
@@ -1510,7 +1510,7 @@ def initialize_rival_battles(player_starter_choice='Bulbasaur'):
     create_npc_trainer(
         username='Rival - Pokemon Tower',
         trainer_type='rival',
-        location='Pokemon Tower',
+        location='Tour Pokémon',
         team_data=[
             {
                 'species': get_pokemon('Pidgeotto'),
@@ -1552,7 +1552,7 @@ def initialize_rival_battles(player_starter_choice='Bulbasaur'):
     create_npc_trainer(
         username='Rival - Silph Co.',
         trainer_type='rival',
-        location='Silph Co.',
+        location='Safrania',
         team_data=[
             {
                 'species': get_pokemon('Pidgeot'),
@@ -1653,7 +1653,7 @@ def initialize_rival_battles(player_starter_choice='Bulbasaur'):
     create_npc_trainer(
         username='Champion Blue',
         trainer_type='champion',
-        location='Pokemon League',
+        location='Plateau Indigo',
         team_data=[
             {
                 'species': get_pokemon('Pidgeot'),
@@ -1748,7 +1748,7 @@ def initialize_elite_four():
     create_npc_trainer(
         username='Lorelei',
         trainer_type='elite_four',
-        location='Pokemon League',
+        location='Plateau Indigo',
         team_data=lorelei_team,
         intro_text="Bienvenue dans le Conseil des 4. Je suis Lorelei, maître du type Glace!"
     )
@@ -1787,7 +1787,7 @@ def initialize_elite_four():
     create_npc_trainer(
         username='Bruno',
         trainer_type='elite_four',
-        location='Pokemon League',
+        location='Plateau Indigo',
         team_data=bruno_team,
         intro_text="Je suis Bruno, maître du Combat!"
     )
@@ -1826,7 +1826,7 @@ def initialize_elite_four():
     create_npc_trainer(
         username='Agatha',
         trainer_type='elite_four',
-        location='Pokemon League',
+        location='Plateau Indigo',
         team_data=agatha_team,
         intro_text="Je suis Agatha, maître des Spectres!"
     )
@@ -1865,7 +1865,7 @@ def initialize_elite_four():
     create_npc_trainer(
         username='Lance',
         trainer_type='elite_four',
-        location='Pokemon League',
+        location='Plateau Indigo',
         team_data=lance_team,
         intro_text="Je suis Lance, maître des Dragons et dernier membre du Conseil des 4!"
     )
@@ -1922,7 +1922,7 @@ def create_champion():
     create_npc_trainer(
         username='Blue',
         trainer_type='champion',
-        location='Pokemon League',
+        location='Plateau Indigo',
         team_data=champion_team,
         intro_text="Je t'attendais! Je suis maintenant le Champion de la Ligue Pokémon!",
     )

@@ -668,7 +668,7 @@ def init_lavender_town():
     create_npc_trainer(
         username='Channeler Margaret',
         trainer_type='trainer',
-        location='Pokemon Tower',
+        location='Tour Pokémon',
         team_data=[
             {'species': get_pokemon('Gastly'), 'level': 22, 'moves': get_moves(['Lick', 'Spite'])},
         ],
@@ -678,7 +678,7 @@ def init_lavender_town():
     create_npc_trainer(
         username='Channeler Tammy',
         trainer_type='trainer',
-        location='Pokemon Tower',
+        location='Tour Pokémon',
         team_data=[
             {'species': get_pokemon('Gastly'), 'level': 23, 'moves': get_moves(['Lick', 'Spite', 'Confuse Ray'])},
             {'species': get_pokemon('Haunter'), 'level': 25, 'moves': get_moves(['Lick', 'Hypnosis', 'Night Shade'])},
@@ -689,7 +689,7 @@ def init_lavender_town():
     create_npc_trainer(
         username='Channeler Karina',
         trainer_type='trainer',
-        location='Pokemon Tower',
+        location='Tour Pokémon',
         team_data=[
             {'species': get_pokemon('Haunter'), 'level': 24, 'moves': get_moves(['Lick', 'Night Shade', 'Hypnosis'])},
         ],
@@ -699,7 +699,7 @@ def init_lavender_town():
     create_npc_trainer(
         username='Team Rocket Jesse',
         trainer_type='trainer',
-        location='Pokemon Tower',
+        location='Tour Pokémon',
         team_data=[
             {'species': get_pokemon('Ekans'), 'level': 23, 'moves': get_moves(['Wrap', 'Bite', 'Poison Sting'])},
             {'species': get_pokemon('Drowzee'), 'level': 23, 'moves': get_moves(['Pound', 'Hypnosis', 'Confusion'])},
@@ -710,7 +710,7 @@ def init_lavender_town():
     create_npc_trainer(
         username='Team Rocket James',
         trainer_type='trainer',
-        location='Pokemon Tower',
+        location='Tour Pokémon',
         team_data=[
             {'species': get_pokemon('Koffing'), 'level': 23, 'moves': get_moves(['Tackle', 'Smog', 'Poison Gas'])},
             {'species': get_pokemon('Zubat'), 'level': 23, 'moves': get_moves(['Leech Life', 'Bite', 'Supersonic'])},
@@ -726,7 +726,7 @@ def init_celadon_city():
     create_npc_trainer(
         username='Team Rocket Grunt',
         trainer_type='trainer',
-        location='Rocket Game Corner',
+        location='Céladopole',
         team_data=[
             {'species': get_pokemon('Grimer'), 'level': 26, 'moves': get_moves(['Pound', 'Disable', 'Sludge'])},
             {'species': get_pokemon('Koffing'), 'level': 26, 'moves': get_moves(['Smog', 'Tackle', 'Poison Gas'])},
@@ -737,7 +737,7 @@ def init_celadon_city():
     create_npc_trainer(
         username='Team Rocket Executive Archer',
         trainer_type='trainer',
-        location='Rocket Game Corner',
+        location='Céladopole',
         team_data=[
             {'species': get_pokemon('Arbok'), 'level': 28, 'moves': get_moves(['Wrap', 'Bite', 'Screech'])},
             {'species': get_pokemon('Weezing'), 'level': 28, 'moves': get_moves(['Smog', 'Tackle', 'Sludge'])},
@@ -754,7 +754,7 @@ def init_saffron_city():
     create_npc_trainer(
         username='Team Rocket Grunt',
         trainer_type='trainer',
-        location='Silph Co.',
+        location='Safrania',
         team_data=[
             {'species': get_pokemon('Rattata'), 'level': 27, 'moves': get_moves(['Hyper Fang', 'Quick Attack'])},
             {'species': get_pokemon('Zubat'), 'level': 27, 'moves': get_moves(['Bite', 'Leech Life', 'Supersonic'])},
@@ -765,7 +765,7 @@ def init_saffron_city():
     create_npc_trainer(
         username='Scientist Franklin',
         trainer_type='trainer',
-        location='Silph Co.',
+        location='Safrania',
         team_data=[
             {'species': get_pokemon('Magnemite'), 'level': 29, 'moves': get_moves(['Thunder Shock', 'Sonic Boom', 'Thunder Wave'])},
             {'species': get_pokemon('Electrode'), 'level': 29, 'moves': get_moves(['Tackle', 'Screech', 'Self-Destruct'])},
@@ -776,7 +776,7 @@ def init_saffron_city():
     create_npc_trainer(
         username='Team Rocket Giovanni Shadow',
         trainer_type='trainer',
-        location='Silph Co.',
+        location='Safrania',
         team_data=[
             {'species': get_pokemon('Nidorino'), 'level': 35, 'moves': get_moves(['Horn Attack', 'Double Kick', 'Poison Sting'])},
             {'species': get_pokemon('Kangaskhan'), 'level': 35, 'moves': get_moves(['Headbutt', 'Dizzy Punch', 'Tail Whip'])},
@@ -793,7 +793,7 @@ def init_victory_road_extra():
     create_npc_trainer(
         username='Cool Trainer Caroline',
         trainer_type='trainer',
-        location='Victory Road',
+        location='Chemin de la Victoire',
         team_data=[
             {'species': get_pokemon('Haunter'), 'level': 43, 'moves': get_moves(['Night Shade', 'Hypnosis', 'Confuse Ray'])},
             {'species': get_pokemon('Kadabra'), 'level': 43, 'moves': get_moves(['Psybeam', 'Recover', 'Psychic'])},
@@ -804,7 +804,7 @@ def init_victory_road_extra():
     create_npc_trainer(
         username='Pokemaniac Bernard',
         trainer_type='trainer',
-        location='Victory Road',
+        location='Chemin de la Victoire',
         team_data=[
             {'species': get_pokemon('Slowbro'), 'level': 44, 'moves': get_moves(['Confusion', 'Psychic', 'Amnesia'])},
             {'species': get_pokemon('Kangaskhan'), 'level': 44, 'moves': get_moves(['Headbutt', 'Dizzy Punch', 'Body Slam'])},
@@ -815,7 +815,7 @@ def init_victory_road_extra():
     create_npc_trainer(
         username='Black Belt Takashi',
         trainer_type='trainer',
-        location='Victory Road',
+        location='Chemin de la Victoire',
         team_data=[
             {'species': get_pokemon('Primeape'), 'level': 43, 'moves': get_moves(['Karate Chop', 'Cross Chop', 'Fury Swipes'])},
             {'species': get_pokemon('Machamp'), 'level': 45, 'moves': get_moves(['Karate Chop', 'Cross Chop', 'Submission'])},
@@ -831,7 +831,7 @@ def init_mt_moon_extra():
     create_npc_trainer(
         username='Hiker Eric',
         trainer_type='trainer',
-        location='Mt. Moon',
+        location='Mont Sélénite',
         team_data=[
             {'species': get_pokemon('Geodude'), 'level': 11, 'moves': get_moves(['Tackle', 'Defense Curl'])},
             {'species': get_pokemon('Graveler'), 'level': 11, 'moves': get_moves(['Tackle', 'Defense Curl', 'Rock Throw'])},
@@ -842,7 +842,7 @@ def init_mt_moon_extra():
     create_npc_trainer(
         username='Team Rocket Cassidy',
         trainer_type='trainer',
-        location='Mt. Moon',
+        location='Mont Sélénite',
         team_data=[
             {'species': get_pokemon('Rattata'), 'level': 12, 'moves': get_moves(['Tackle', 'Hyper Fang'])},
             {'species': get_pokemon('Ekans'), 'level': 12, 'moves': get_moves(['Wrap', 'Leer', 'Bite'])},
@@ -853,7 +853,7 @@ def init_mt_moon_extra():
     create_npc_trainer(
         username='Super Nerd Clifford',
         trainer_type='trainer',
-        location='Mt. Moon',
+        location='Mont Sélénite',
         team_data=[
             {'species': get_pokemon('Clefairy'), 'level': 13, 'moves': get_moves(['Pound', 'Growl', 'Sing'])},
             {'species': get_pokemon('Clefairy'), 'level': 13, 'moves': get_moves(['Pound', 'Growl', 'Sing'])},
@@ -864,7 +864,7 @@ def init_mt_moon_extra():
     create_npc_trainer(
         username='Team Rocket Butch',
         trainer_type='trainer',
-        location='Mt. Moon',
+        location='Mont Sélénite',
         team_data=[
             {'species': get_pokemon('Zubat'), 'level': 13, 'moves': get_moves(['Leech Life', 'Supersonic', 'Bite'])},
             {'species': get_pokemon('Sandshrew'), 'level': 13, 'moves': get_moves(['Scratch', 'Defense Curl', 'Sand Attack'])},
@@ -880,7 +880,7 @@ def init_rock_tunnel_extra():
     create_npc_trainer(
         username='Hiker Allen',
         trainer_type='trainer',
-        location='Rock Tunnel',
+        location='Tunnel Roche',
         team_data=[
             {'species': get_pokemon('Geodude'), 'level': 20, 'moves': get_moves(['Defense Curl', 'Rock Throw', 'Magnitude'])},
             {'species': get_pokemon('Machop'), 'level': 20, 'moves': get_moves(['Low Kick', 'Karate Chop', 'Leer'])},
@@ -891,7 +891,7 @@ def init_rock_tunnel_extra():
     create_npc_trainer(
         username='Picnicker Leah',
         trainer_type='trainer',
-        location='Rock Tunnel',
+        location='Tunnel Roche',
         team_data=[
             {'species': get_pokemon('Clefairy'), 'level': 20, 'moves': get_moves(['Pound', 'Sing', 'Defense Curl'])},
         ],
@@ -901,7 +901,7 @@ def init_rock_tunnel_extra():
     create_npc_trainer(
         username='Hiker Lucas',
         trainer_type='trainer',
-        location='Rock Tunnel',
+        location='Tunnel Roche',
         team_data=[
             {'species': get_pokemon('Onix'), 'level': 22, 'moves': get_moves(['Tackle', 'Screech', 'Bind', 'Rock Throw'])},
             {'species': get_pokemon('Graveler'), 'level': 22, 'moves': get_moves(['Defense Curl', 'Rock Throw', 'Earthquake'])},
@@ -917,7 +917,7 @@ def init_ss_anne_extra():
     create_npc_trainer(
         username='Sailor Eddy',
         trainer_type='trainer',
-        location='S.S. Anne',
+        location='Carmin sur Mer',
         team_data=[
             {'species': get_pokemon('Tentacool'), 'level': 19, 'moves': get_moves(['Acid', 'Constrict'])},
             {'species': get_pokemon('Machop'), 'level': 19, 'moves': get_moves(['Low Kick', 'Karate Chop', 'Leer'])},
@@ -928,7 +928,7 @@ def init_ss_anne_extra():
     create_npc_trainer(
         username='Gentleman Brooks',
         trainer_type='trainer',
-        location='S.S. Anne',
+        location='Carmin sur Mer',
         team_data=[
             {'species': get_pokemon('Nidoran♂'), 'level': 18, 'moves': get_moves(['Leer', 'Tackle', 'Poison Sting'])},
             {'species': get_pokemon('Nidoran♀'), 'level': 18, 'moves': get_moves(['Scratch', 'Tail Whip', 'Poison Sting'])},
@@ -939,7 +939,7 @@ def init_ss_anne_extra():
     create_npc_trainer(
         username='Super Nerd Felix',
         trainer_type='trainer',
-        location='S.S. Anne',
+        location='Carmin sur Mer',
         team_data=[
             {'species': get_pokemon('Magnemite'), 'level': 20, 'moves': get_moves(['Thunder Shock', 'Sonic Boom'])},
             {'species': get_pokemon('Magnemite'), 'level': 20, 'moves': get_moves(['Thunder Shock', 'Sonic Boom'])},
@@ -956,7 +956,7 @@ def init_seafoam_extra():
     create_npc_trainer(
         username='Swimmer Anya',
         trainer_type='trainer',
-        location='Seafoam Islands',
+        location='Îles Écume',
         team_data=[
             {'species': get_pokemon('Dewgong'), 'level': 39, 'moves': get_moves(['Headbutt', 'Aurora Beam', 'Ice Beam'])},
             {'species': get_pokemon('Cloyster'), 'level': 39, 'moves': get_moves(['Aurora Beam', 'Ice Beam', 'Spikes'])},
@@ -967,11 +967,242 @@ def init_seafoam_extra():
     create_npc_trainer(
         username='Juggler Nate',
         trainer_type='trainer',
-        location='Seafoam Islands',
+        location='Îles Écume',
         team_data=[
             {'species': get_pokemon('Jynx'), 'level': 40, 'moves': get_moves(['Pound', 'Lovely Kiss', 'Ice Beam', 'Psychic'])},
         ],
         intro_text="La glace et le mystère... c'est mon style!"
+    )
+
+
+# ==============================================================================
+# ZONES MANQUANTES — Forêt de Jade, Routes 1/3/4/6/9/10/11/24/25
+# Ces zones existent dans initializeItemsAndNpcs.py mais avec des noms
+# anglais incorrects. Ici on ajoute des trainers supplémentaires avec
+# les vrais noms de zones (français).
+# ==============================================================================
+
+def init_foret_de_jade():
+    """Forêt de Jade — dresseurs insectes supplémentaires"""
+    logging.info("[*] Forêt de Jade — trainers")
+    create_npc_trainer(
+        username='Lasseur Sacha',
+        trainer_type='trainer',
+        location='Forêt de Jade',
+        team_data=[
+            {'species': get_pokemon('Caterpie'), 'level': 6, 'moves': get_moves(['Tackle', 'String Shot'])},
+            {'species': get_pokemon('Weedle'),   'level': 6, 'moves': get_moves(['Poison Sting', 'String Shot'])},
+        ],
+        intro_text="Tu veux traverser ma forêt ? Il faut d'abord me battre !"
+    )
+    create_npc_trainer(
+        username='Lasseur Éric',
+        trainer_type='trainer',
+        location='Forêt de Jade',
+        team_data=[
+            {'species': get_pokemon('Metapod'),  'level': 7, 'moves': get_moves(['Harden'])},
+            {'species': get_pokemon('Caterpie'), 'level': 7, 'moves': get_moves(['Tackle', 'String Shot'])},
+        ],
+        intro_text="Mon Chrysacier va vous bloquer la route !"
+    )
+    create_npc_trainer(
+        username='Lasseur Damien',
+        trainer_type='trainer',
+        location='Forêt de Jade',
+        team_data=[
+            {'species': get_pokemon('Weedle'),  'level': 7, 'moves': get_moves(['Poison Sting', 'String Shot'])},
+            {'species': get_pokemon('Kakuna'),  'level': 7, 'moves': get_moves(['Harden'])},
+            {'species': get_pokemon('Weedle'),  'level': 7, 'moves': get_moves(['Poison Sting', 'String Shot'])},
+        ],
+        intro_text="Les chenilles de la forêt m'obéissent !"
+    )
+
+
+def init_route_1_extra():
+    """Route 1 — dresseurs supplémentaires (nom FR correct)"""
+    logging.info("[*] Route 1 extra — trainers")
+    create_npc_trainer(
+        username='Gamin Luc',
+        trainer_type='trainer',
+        location='Route 1',
+        team_data=[
+            {'species': get_pokemon('Pidgey'),  'level': 3, 'moves': get_moves(['Tackle', 'Sand Attack'])},
+        ],
+        intro_text="Hé toi ! Viens te battre avec moi !"
+    )
+    create_npc_trainer(
+        username='Gamine Lucie',
+        trainer_type='trainer',
+        location='Route 1',
+        team_data=[
+            {'species': get_pokemon('Rattata'), 'level': 4, 'moves': get_moves(['Tackle', 'Tail Whip'])},
+        ],
+        intro_text="Mon Rattata est adorable ET puissant !"
+    )
+
+
+def init_route_3_extra():
+    """Route 3 — trainers additionnels (nom FR)"""
+    logging.info("[*] Route 3 extra — trainers")
+    create_npc_trainer(
+        username='Gamin Martin',
+        trainer_type='trainer',
+        location='Route 3',
+        team_data=[
+            {'species': get_pokemon('Pidgey'),   'level': 10, 'moves': get_moves(['Gust', 'Sand Attack'])},
+            {'species': get_pokemon('Rattata'),  'level': 10, 'moves': get_moves(['Tackle', 'Quick Attack'])},
+        ],
+        intro_text="J'aime les Pokémon communs mais je me bats bien !"
+    )
+    create_npc_trainer(
+        username='Infirmière Joy',
+        trainer_type='trainer',
+        location='Route 3',
+        team_data=[
+            {'species': get_pokemon('Jigglypuff'), 'level': 11, 'moves': get_moves(['Pound', 'Sing'])},
+        ],
+        intro_text="Mes soins Pokémon sont les meilleurs !"
+    )
+
+
+def init_route_4_extra():
+    """Route 4 — trainers additionnels (nom FR)"""
+    logging.info("[*] Route 4 extra — trainers")
+    create_npc_trainer(
+        username='Gamine Sandra',
+        trainer_type='trainer',
+        location='Route 4',
+        team_data=[
+            {'species': get_pokemon('Nidoran♀'), 'level': 13, 'moves': get_moves(['Scratch', 'Tail Whip', 'Bite'])},
+        ],
+        intro_text="Je chasse les mauvais dresseurs de cette route !"
+    )
+    create_npc_trainer(
+        username='Rocker Jim',
+        trainer_type='trainer',
+        location='Route 4',
+        team_data=[
+            {'species': get_pokemon('Geodude'), 'level': 12, 'moves': get_moves(['Tackle', 'Defense Curl'])},
+            {'species': get_pokemon('Geodude'), 'level': 12, 'moves': get_moves(['Tackle', 'Defense Curl'])},
+        ],
+        intro_text="Rock n' roll Pokémon forever !"
+    )
+
+
+def init_route_6_extra():
+    """Route 6 — trainers additionnels (nom FR)"""
+    logging.info("[*] Route 6 extra — trainers")
+    create_npc_trainer(
+        username='Gamin Cyril',
+        trainer_type='trainer',
+        location='Route 6',
+        team_data=[
+            {'species': get_pokemon('Ekans'),  'level': 15, 'moves': get_moves(['Wrap', 'Leer', 'Poison Sting'])},
+        ],
+        intro_text="Je veux devenir le meilleur dresseur de Carmin !"
+    )
+    create_npc_trainer(
+        username='Gamine Petra',
+        trainer_type='trainer',
+        location='Route 6',
+        team_data=[
+            {'species': get_pokemon('Oddish'), 'level': 14, 'moves': get_moves(['Absorb', 'Growl', 'Acid'])},
+            {'species': get_pokemon('Bellsprout'), 'level': 14, 'moves': get_moves(['Vine Whip', 'Growth'])},
+        ],
+        intro_text="Les Pokémon Plante sont les plus beaux !"
+    )
+
+
+def init_route_9_extra():
+    """Route 9 — trainers additionnels (nom FR)"""
+    logging.info("[*] Route 9 extra — trainers")
+    create_npc_trainer(
+        username='Gamin Tom',
+        trainer_type='trainer',
+        location='Route 9',
+        team_data=[
+            {'species': get_pokemon('Ekans'),     'level': 20, 'moves': get_moves(['Bite', 'Glare', 'Poison Sting'])},
+            {'species': get_pokemon('Spearow'),   'level': 20, 'moves': get_moves(['Peck', 'Leer', 'Fury Attack'])},
+        ],
+        intro_text="Cette route est dangereuse. Comme moi !"
+    )
+
+
+def init_route_10_extra():
+    """Route 10 — trainers additionnels (nom FR)"""
+    logging.info("[*] Route 10 extra — trainers")
+    create_npc_trainer(
+        username='Rocker Max',
+        trainer_type='trainer',
+        location='Route 10',
+        team_data=[
+            {'species': get_pokemon('Voltorb'),  'level': 21, 'moves': get_moves(['Screech', 'Spark', 'Tackle'])},
+            {'species': get_pokemon('Magneton'), 'level': 21, 'moves': get_moves(['Thunder Wave', 'Spark', 'Sonic Boom'])},
+        ],
+        intro_text="La Centrale est tout près... méfie-toi des Voltorb !"
+    )
+    create_npc_trainer(
+        username='Gamine Nadia',
+        trainer_type='trainer',
+        location='Route 10',
+        team_data=[
+            {'species': get_pokemon('Voltorb'), 'level': 20, 'moves': get_moves(['Tackle', 'Screech', 'Spark'])},
+        ],
+        intro_text="Allez, Voltorb, montre-leur ce que tu vaux !"
+    )
+
+
+def init_route_11_extra():
+    """Route 11 — trainers additionnels (nom FR)"""
+    logging.info("[*] Route 11 extra — trainers")
+    create_npc_trainer(
+        username='Gamin Alexis',
+        trainer_type='trainer',
+        location='Route 11',
+        team_data=[
+            {'species': get_pokemon('Ekans'),  'level': 17, 'moves': get_moves(['Bite', 'Poison Sting'])},
+            {'species': get_pokemon('Ekans'),  'level': 17, 'moves': get_moves(['Bite', 'Glare'])},
+        ],
+        intro_text="Les serpents Pokémon sont mes alliés !"
+    )
+
+
+def init_route_24_extra():
+    """Route 24 — trainers additionnels (nom FR)"""
+    logging.info("[*] Route 24 extra — trainers")
+    create_npc_trainer(
+        username='Nageur Louis',
+        trainer_type='trainer',
+        location='Route 24',
+        team_data=[
+            {'species': get_pokemon('Goldeen'),   'level': 17, 'moves': get_moves(['Water Gun', 'Horn Attack'])},
+        ],
+        intro_text="Le Pont Cerclef est mon terrain de jeu !"
+    )
+
+
+def init_route_25_extra():
+    """Route 25 — trainers additionnels (nom FR)"""
+    logging.info("[*] Route 25 extra — trainers")
+    create_npc_trainer(
+        username='Lasseur Théo',
+        trainer_type='trainer',
+        location='Route 25',
+        team_data=[
+            {'species': get_pokemon('Caterpie'), 'level': 14, 'moves': get_moves(['Tackle', 'String Shot'])},
+            {'species': get_pokemon('Weedle'),   'level': 14, 'moves': get_moves(['Poison Sting', 'String Shot'])},
+            {'species': get_pokemon('Kakuna'),   'level': 14, 'moves': get_moves(['Harden'])},
+        ],
+        intro_text="Cette route mène au labo du Prof. Boulmich !"
+    )
+    create_npc_trainer(
+        username='Naïade Emma',
+        trainer_type='trainer',
+        location='Route 25',
+        team_data=[
+            {'species': get_pokemon('Staryu'),   'level': 15, 'moves': get_moves(['Tackle', 'Water Gun', 'Harden'])},
+        ],
+        intro_text="La mer est magnifique ici. Mais gare à moi !"
     )
 
 
@@ -987,6 +1218,18 @@ def run_complete_npc_initialization():
     # Trainer.objects.filter(trainer_type='trainer').delete()
 
     try:
+        # ── Zones manquantes ou sans trainers ────────────────────────────────
+        init_foret_de_jade()
+        init_route_1_extra()
+        init_route_3_extra()
+        init_route_4_extra()
+        init_route_6_extra()
+        init_route_9_extra()
+        init_route_10_extra()
+        init_route_11_extra()
+        init_route_24_extra()
+        init_route_25_extra()
+        # ── Zones du fichier original (locations FR corrigées) ────────────────
         init_route_2()
         init_route_5()
         init_route_7()
