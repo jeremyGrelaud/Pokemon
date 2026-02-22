@@ -33,6 +33,7 @@ from myPokemonApp.gameUtils import (
     opponent_switch_pokemon,
     calculate_exp_gain,
     apply_exp_gain,
+    apply_ev_gains,
     # Capture
     attempt_pokemon_capture,
     calculate_capture_rate,
@@ -190,8 +191,14 @@ def battle_action_view(request, pk):
 
             if battle.opponent_pokemon.current_hp == 0:
                 btype      = 'trainer' if battle.opponent_trainer else 'wild'
-                exp_amount = calculate_exp_gain(battle.opponent_pokemon, btype)
+                exp_amount = calculate_exp_gain(
+                    battle.opponent_pokemon, btype,
+                    winner_pokemon=battle.player_pokemon   # Gen 5+ : niveau du vainqueur
+                )
                 exp_result = apply_exp_gain(battle.player_pokemon, exp_amount)
+
+                # Gains d'EVs (Effort Values) — Gen 3+
+                apply_ev_gains(battle.player_pokemon, battle.opponent_pokemon)
 
                 response_data['log'].append(f"+{exp_amount} EXP")
                 if exp_result['level_up']:

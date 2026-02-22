@@ -629,10 +629,102 @@ def scriptToInitializeDatabase():
         ("Zubat", 41, "poison", "flying", 40, 45, 35, 30, 40, 55, 255, 49),
     ]
     
+    # Table des groupes de croissance par Pokémon Gen 1
+    # Sources : Bulbapedia FRLG / Gen 3
+    GROWTH_RATES = {
+        # ── Erratic (600 000 XP) ─────────────────────────────────────────────
+        # (aucun Pokémon Gen 1 n'est dans ce groupe — réservé Gen 2+)
+
+        # ── Fast (800 000 XP) ─────────────────────────────────────────────────
+        'Caterpie': 'fast', 'Metapod': 'fast', 'Butterfree': 'fast',
+        'Weedle': 'fast', 'Kakuna': 'fast', 'Beedrill': 'fast',
+        'Pikachu': 'fast', 'Raichu': 'fast',
+        'Clefairy': 'fast', 'Clefable': 'fast',
+        'Jigglypuff': 'fast', 'Wigglytuff': 'fast',
+        'Abra': 'fast', 'Kadabra': 'fast', 'Alakazam': 'fast',
+        'Gastly': 'fast', 'Haunter': 'fast', 'Gengar': 'fast',
+        'Mr. Mime': 'fast',
+        'Scyther': 'fast',
+        'Jynx': 'fast',
+        'Electabuzz': 'fast',
+        'Magmar': 'fast',
+        'Pinsir': 'fast',
+        'Eevee': 'fast', 'Vaporeon': 'fast', 'Jolteon': 'fast', 'Flareon': 'fast',
+        'Porygon': 'fast',
+        'Ditto': 'fast',
+
+        # ── Medium Slow (1 059 860 XP) ────────────────────────────────────────
+        'Bulbasaur': 'medium_slow', 'Ivysaur': 'medium_slow', 'Venusaur': 'medium_slow',
+        'Charmander': 'medium_slow', 'Charmeleon': 'medium_slow', 'Charizard': 'medium_slow',
+        'Squirtle': 'medium_slow', 'Wartortle': 'medium_slow', 'Blastoise': 'medium_slow',
+        'Oddish': 'medium_slow', 'Gloom': 'medium_slow', 'Vileplume': 'medium_slow',
+        'Paras': 'medium_slow', 'Parasect': 'medium_slow',
+        'Venonat': 'medium_slow', 'Venomoth': 'medium_slow',
+        'Diglett': 'medium_slow', 'Dugtrio': 'medium_slow',
+        'Psyduck': 'medium_slow', 'Golduck': 'medium_slow',
+        'Mankey': 'medium_slow', 'Primeape': 'medium_slow',
+        'Machop': 'medium_slow', 'Machoke': 'medium_slow', 'Machamp': 'medium_slow',
+        'Bellsprout': 'medium_slow', 'Weepinbell': 'medium_slow', 'Victreebel': 'medium_slow',
+        'Tentacool': 'medium_slow', 'Tentacruel': 'medium_slow',
+        'Exeggcute': 'medium_slow', 'Exeggutor': 'medium_slow',
+        'Cubone': 'medium_slow', 'Marowak': 'medium_slow',
+        'Hitmonlee': 'medium_slow', 'Hitmonchan': 'medium_slow',
+        'Lickitung': 'medium_slow',
+        'Koffing': 'medium_slow', 'Weezing': 'medium_slow',
+        'Chansey': 'medium_slow',
+        'Tangela': 'medium_slow',
+        'Scyther': 'medium_slow',   # override Fast → Medium Slow en Gen 3
+        'Onix': 'medium_slow',
+        'Kabuto': 'medium_slow', 'Kabutops': 'medium_slow',
+        'Omanyte': 'medium_slow', 'Omastar': 'medium_slow',
+        'Dratini': 'medium_slow', 'Dragonair': 'medium_slow', 'Dragonite': 'medium_slow',
+
+        # ── Medium Fast (1 000 000 XP) — la majorité ─────────────────────────
+        'Pidgey': 'medium_fast', 'Pidgeotto': 'medium_fast', 'Pidgeot': 'medium_fast',
+        'Rattata': 'medium_fast', 'Raticate': 'medium_fast',
+        'Spearow': 'medium_fast', 'Fearow': 'medium_fast',
+        'Ekans': 'medium_fast', 'Arbok': 'medium_fast',
+        'Sandshrew': 'medium_fast', 'Sandslash': 'medium_fast',
+        'Vulpix': 'medium_fast', 'Ninetales': 'medium_fast',
+        'Zubat': 'medium_fast', 'Golbat': 'medium_fast',
+        'Meowth': 'medium_fast', 'Persian': 'medium_fast',
+        'Growlithe': 'medium_fast', 'Arcanine': 'medium_fast',
+        'Poliwag': 'medium_fast', 'Poliwhirl': 'medium_fast', 'Poliwrath': 'medium_fast',
+        'Geodude': 'medium_fast', 'Graveler': 'medium_fast', 'Golem': 'medium_fast',
+        'Ponyta': 'medium_fast', 'Rapidash': 'medium_fast',
+        'Slowpoke': 'medium_fast', 'Slowbro': 'medium_fast',
+        'Magnemite': 'medium_fast', 'Magneton': 'medium_fast',
+        'Doduo': 'medium_fast', 'Dodrio': 'medium_fast',
+        'Seel': 'medium_fast', 'Dewgong': 'medium_fast',
+        'Grimer': 'medium_fast', 'Muk': 'medium_fast',
+        'Shellder': 'medium_fast', 'Cloyster': 'medium_fast',
+        'Drowzee': 'medium_fast', 'Hypno': 'medium_fast',
+        'Krabby': 'medium_fast', 'Kingler': 'medium_fast',
+        'Voltorb': 'medium_fast', 'Electrode': 'medium_fast',
+        'Rhyhorn': 'medium_fast', 'Rhydon': 'medium_fast',
+        'Kangaskhan': 'medium_fast',
+        'Horsea': 'medium_fast', 'Seadra': 'medium_fast',
+        'Goldeen': 'medium_fast', 'Seaking': 'medium_fast',
+        'Staryu': 'medium_fast', 'Starmie': 'medium_fast',
+        'Tauros': 'medium_fast',
+        'Magikarp': 'medium_fast', 'Gyarados': 'medium_fast',
+        'Lapras': 'medium_fast',
+        'Aerodactyl': 'medium_fast',
+
+        # ── Slow (1 250 000 XP) — légendaires et espèces puissantes ──────────
+        'Nidoran♀': 'slow', 'Nidorina': 'slow', 'Nidoqueen': 'slow',
+        'Nidoran♂': 'slow', 'Nidorino': 'slow', 'Nidoking': 'slow',
+        'Snorlax': 'slow',
+        'Articuno': 'slow', 'Zapdos': 'slow', 'Moltres': 'slow',
+        'Mewtwo': 'slow',
+        'Mew': 'slow',
+    }
+
     pokemon_dict = {}
     for poke_data in pokemon_data:
         name, dex_num, primary, secondary, hp, atk, defense, sp_atk, sp_def, speed, catch, exp = poke_data
-        
+        growth_rate = GROWTH_RATES.get(name, 'medium_fast')
+
         pokemon, created = Pokemon.objects.get_or_create(
             pokedex_number=dex_num,
             defaults={
@@ -647,9 +739,13 @@ def scriptToInitializeDatabase():
                 'base_speed': speed,
                 'catch_rate': catch,
                 'base_experience': exp,
-                'growth_rate': 'medium_fast'
+                'growth_rate': growth_rate,
             }
         )
+        # Mettre à jour le growth_rate si le Pokémon existe déjà
+        if not created and pokemon.growth_rate != growth_rate:
+            pokemon.growth_rate = growth_rate
+            pokemon.save(update_fields=['growth_rate'])
         pokemon_dict[name] = pokemon
         if created:
             logging.info(f"  [+] Pokémon créé: #{dex_num:03d} {name}")

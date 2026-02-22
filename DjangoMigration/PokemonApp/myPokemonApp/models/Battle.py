@@ -329,41 +329,60 @@ class Battle(models.Model):
                 self.modify_stat(attacker, stat, change)
     
     def calculate_damage(self, attacker, defender, move):
-        """Calcule les dégâts d'une attaque"""
-        # Formule Gen 1
+        """
+        Calcule les dégâts d'une attaque.
+
+        Formule Gen 3+ (base identique Gen 3-9) :
+            damage = floor( floor( floor(2*L/5 + 2) * Power * A/D ) / 50 + 2 )
+                     × STAB × type_eff × crit × random × burn × ...
+
+        Différences Gen 1 → Gen 6+ appliquées ici :
+          - Coup critique : ×1.5 (Gen 6+) au lieu de ×2 (Gen 1-5)
+          - Taux crit de base : 1/16 ≈ 6.25% (Gen 3-5) — inchangé
+          - Brûlure : ×0.5 sur physique (Gen 1+) — inchangé
+          - Aléatoire : 85–100% (Gen 1+) — inchangé
+        """
         level = attacker.level
-        
+
         if move.category == 'physical':
-            attack_stat = attacker.get_effective_attack()
+            attack_stat  = attacker.get_effective_attack()
             defense_stat = defender.get_effective_defense()
         else:
-            attack_stat = attacker.get_effective_special_attack()
+            attack_stat  = attacker.get_effective_special_attack()
             defense_stat = defender.get_effective_special_defense()
-        
-        # Dégâts de base
-        damage = ((2 * level / 5 + 2) * move.power * attack_stat / defense_stat) / 50 + 2
-        
-        # STAB (Same Type Attack Bonus)
-        if move.type == attacker.species.primary_type or move.type == attacker.species.secondary_type:
+
+        # ── Dégâts de base ────────────────────────────────────────────────────
+        damage = (((2 * level / 5 + 2) * move.power * attack_stat / defense_stat) / 50) + 2
+
+        # ── STAB ──────────────────────────────────────────────────────────────
+        if (move.type == attacker.species.primary_type or
+                move.type == attacker.species.secondary_type):
             damage *= 1.5
-        
-        # Efficacité des types
+
+        # ── Efficacité des types ───────────────────────────────────────────────
         effectiveness = self.get_type_effectiveness(move.type, defender)
         damage *= effectiveness
-        
-        # Coup critique (6.25% de chance)
-        if random.random() < 0.0625:
-            damage *= 2
-            self.add_to_log("Coup critique!")
-        
-        # Variation aléatoire (85% à 100%)
+
+        # ── Coup critique (Gen 6+ : ×1.5) ─────────────────────────────────────
+        # Taux de base : 1/16 ≈ 6.25 %
+        is_critical = random.random() < (1 / 16)
+        if is_critical:
+            damage *= 1.5
+            self.add_to_log("Coup critique !")
+
+        # ── Variation aléatoire 85–100 % ──────────────────────────────────────
         damage *= random.uniform(0.85, 1.0)
-        
-        # Brûlure réduit l'attaque physique de moitié
+
+        # ── Brûlure : ×0.5 sur les coups physiques ────────────────────────────
         if attacker.status_condition == 'burn' and move.category == 'physical':
             damage *= 0.5
-        
-        return int(damage)
+
+        # ── Garantir au moins 1 dégât si le move a de la puissance ────────────
+        result = int(damage)
+        if move.power > 0 and result < 1:
+            result = 1
+
+        return result
     
     def get_type_effectiveness(self, attack_type, defender):
         """Calcule l'efficacité du type d'attaque"""
@@ -429,24 +448,223 @@ class Battle(models.Model):
     
 
     def calculate_exp_reward(self, defeated_pokemon):
-        """Calcule l'XP gagnée après avoir vaincu un Pokémon Formule Gen 1
         """
-        # a = 1 si Pokémon sauvage, 1.5 si Pokémon de dresseur
-        a = 1.5 if self.battle_type in ['trainer', 'gym', 'elite_four'] else 1.0
-        
-        # b = base experience du Pokémon vaincu
-        b = defeated_pokemon.species.base_experience
-        
-        # L = niveau du Pokémon vaincu
-        L = defeated_pokemon.level
-        
-        # s = nombre de Pokémon ayant participé (simplifié à 1 pour l'instant)
-        s = 1
-        
-        # Formule: exp = (a * b * L) / (7 * s)
-        exp = int((a * b * L) / (7 * s))
-        
-        return exp
+        Calcule l'XP gagnée après avoir vaincu un Pokémon.
+
+        Formule Gen 5+ (Noire/Blanche → présent) :
+            exp = round( (b × Lf / 5) × √((2×Lf + 10)³ / (Lf + Lp + 10)³) + 1 ) × t
+
+        Où :
+          b  = base_experience du Pokémon vaincu
+          Lf = niveau du Pokémon vaincu
+          Lp = niveau du Pokémon vainqueur
+          t  = 1.5 si combat de dresseur, 1.0 si Pokémon sauvage
+
+        L'écart de niveau est intégré : battre un Pokémon plus fort rapporte
+        plus d'XP, battre un Pokémon bien plus faible rapporte très peu.
+        """
+        b  = defeated_pokemon.species.base_experience or 64
+        Lf = defeated_pokemon.level
+        Lp = self.player_pokemon.level
+        t  = 1.5 if self.battle_type in ('trainer', 'gym', 'elite_four') else 1.0
+
+        numerator   = (2 * Lf + 10) ** 3
+        denominator = (Lf + Lp + 10) ** 3
+        level_factor = (numerator / denominator) ** 0.5   # racine cubique = **0.5 non — c'est **0.5 sur le rapport de cubes = (**1.5) sur le ratio
+
+        # Formule exacte : √( ratio³ ) = ratio^1.5, mais on applique:
+        # level_factor = ((2*Lf+10)/(Lf+Lp+10))^2.5 (approximation de Bulbapedia)
+        ratio = (2 * Lf + 10) / (Lf + Lp + 10)
+        level_factor = ratio ** 2.5
+
+        exp = round((b * Lf / 5) * level_factor + 1) * t
+        return max(1, int(exp))
+
+    def grant_ev_gains(self, defeated_pokemon):
+        """
+        Accorde les EV (Effort Values) au Pokémon vainqueur après le combat.
+
+        Chaque Pokémon vaincue accorde des EVs dans certaines stats selon
+        son espèce. Limites Gen 3+ : 252 EVs par stat, 510 EVs au total.
+        """
+        # Table EV simplifiée Gen 3 (stat → EV accordés)
+        EV_YIELDS = {
+            # (stat_name, valeur)
+            'Bulbasaur':   [('ev_special_attack', 1)],
+            'Ivysaur':     [('ev_special_attack', 1), ('ev_special_defense', 1)],
+            'Venusaur':    [('ev_special_attack', 2), ('ev_special_defense', 1)],
+            'Charmander':  [('ev_speed', 1)],
+            'Charmeleon':  [('ev_speed', 1), ('ev_attack', 1)],
+            'Charizard':   [('ev_speed', 3)],
+            'Squirtle':    [('ev_defense', 1)],
+            'Wartortle':   [('ev_defense', 1), ('ev_special_defense', 1)],
+            'Blastoise':   [('ev_defense', 1), ('ev_special_defense', 2)],
+            'Caterpie':    [('ev_hp', 1)],
+            'Metapod':     [('ev_defense', 1)],
+            'Butterfree':  [('ev_special_attack', 2), ('ev_special_defense', 1)],
+            'Weedle':      [('ev_speed', 1)],
+            'Kakuna':      [('ev_defense', 1)],
+            'Beedrill':    [('ev_attack', 2), ('ev_speed', 1)],
+            'Pidgey':      [('ev_speed', 1)],
+            'Pidgeotto':   [('ev_speed', 1), ('ev_attack', 1)],
+            'Pidgeot':     [('ev_speed', 3)],
+            'Rattata':     [('ev_speed', 1)],
+            'Raticate':    [('ev_speed', 2)],
+            'Spearow':     [('ev_speed', 1)],
+            'Fearow':      [('ev_speed', 2)],
+            'Ekans':       [('ev_attack', 1)],
+            'Arbok':       [('ev_attack', 2)],
+            'Pikachu':     [('ev_speed', 2)],
+            'Raichu':      [('ev_speed', 3)],
+            'Sandshrew':   [('ev_defense', 1)],
+            'Sandslash':   [('ev_defense', 2)],
+            'Nidoran♀':   [('ev_hp', 1)],
+            'Nidorina':    [('ev_hp', 2)],
+            'Nidoqueen':   [('ev_hp', 3)],
+            'Nidoran♂':   [('ev_attack', 1)],
+            'Nidorino':    [('ev_attack', 2)],
+            'Nidoking':    [('ev_attack', 3)],
+            'Clefairy':    [('ev_hp', 2)],
+            'Clefable':    [('ev_hp', 3)],
+            'Vulpix':      [('ev_special_attack', 1)],
+            'Ninetales':   [('ev_special_attack', 2), ('ev_speed', 1)],
+            'Jigglypuff':  [('ev_hp', 2)],
+            'Wigglytuff':  [('ev_hp', 3)],
+            'Zubat':       [('ev_speed', 1)],
+            'Golbat':      [('ev_speed', 2)],
+            'Oddish':      [('ev_special_attack', 1)],
+            'Gloom':       [('ev_special_attack', 1), ('ev_special_defense', 1)],
+            'Vileplume':   [('ev_special_attack', 2), ('ev_special_defense', 1)],
+            'Paras':       [('ev_attack', 1)],
+            'Parasect':    [('ev_attack', 2), ('ev_defense', 1)],
+            'Venonat':     [('ev_special_defense', 1)],
+            'Venomoth':    [('ev_special_attack', 2), ('ev_special_defense', 1)],
+            'Diglett':     [('ev_speed', 1)],
+            'Dugtrio':     [('ev_speed', 2)],
+            'Meowth':      [('ev_speed', 1)],
+            'Persian':     [('ev_speed', 2)],
+            'Psyduck':     [('ev_special_attack', 1)],
+            'Golduck':     [('ev_special_attack', 2)],
+            'Mankey':      [('ev_attack', 1)],
+            'Primeape':    [('ev_attack', 2)],
+            'Growlithe':   [('ev_attack', 1)],
+            'Arcanine':    [('ev_attack', 2), ('ev_speed', 1)],
+            'Poliwag':     [('ev_speed', 1)],
+            'Poliwhirl':   [('ev_speed', 2)],
+            'Poliwrath':   [('ev_defense', 1), ('ev_special_defense', 1)],
+            'Abra':        [('ev_special_attack', 1)],
+            'Kadabra':     [('ev_special_attack', 2)],
+            'Alakazam':    [('ev_special_attack', 3)],
+            'Machop':      [('ev_attack', 1)],
+            'Machoke':     [('ev_attack', 2)],
+            'Machamp':     [('ev_attack', 3)],
+            'Bellsprout':  [('ev_attack', 1)],
+            'Weepinbell':  [('ev_attack', 2)],
+            'Victreebel':  [('ev_attack', 3)],
+            'Tentacool':   [('ev_special_defense', 1)],
+            'Tentacruel':  [('ev_special_defense', 2)],
+            'Geodude':     [('ev_defense', 1)],
+            'Graveler':    [('ev_defense', 2)],
+            'Golem':       [('ev_defense', 3)],
+            'Ponyta':      [('ev_speed', 1)],
+            'Rapidash':    [('ev_speed', 2)],
+            'Slowpoke':    [('ev_hp', 1)],
+            'Slowbro':     [('ev_defense', 1), ('ev_special_attack', 1)],
+            'Magnemite':   [('ev_special_attack', 1)],
+            'Magneton':    [('ev_special_attack', 2)],
+            'Doduo':       [('ev_attack', 1)],
+            'Dodrio':      [('ev_attack', 2)],
+            'Seel':        [('ev_special_defense', 1)],
+            'Dewgong':     [('ev_special_defense', 2)],
+            'Grimer':      [('ev_hp', 1)],
+            'Muk':         [('ev_hp', 2)],
+            'Shellder':    [('ev_defense', 1)],
+            'Cloyster':    [('ev_defense', 2)],
+            'Gastly':      [('ev_special_attack', 1)],
+            'Haunter':     [('ev_special_attack', 2)],
+            'Gengar':      [('ev_special_attack', 3)],
+            'Onix':        [('ev_defense', 1)],
+            'Drowzee':     [('ev_special_defense', 1)],
+            'Hypno':       [('ev_special_defense', 2)],
+            'Krabby':      [('ev_attack', 1)],
+            'Kingler':     [('ev_attack', 2)],
+            'Voltorb':     [('ev_speed', 1)],
+            'Electrode':   [('ev_speed', 2)],
+            'Exeggcute':   [('ev_special_attack', 1)],
+            'Exeggutor':   [('ev_special_attack', 2)],
+            'Cubone':      [('ev_defense', 1)],
+            'Marowak':     [('ev_defense', 2)],
+            'Hitmonlee':   [('ev_attack', 2)],
+            'Hitmonchan':  [('ev_special_defense', 2)],
+            'Lickitung':   [('ev_hp', 1)],
+            'Koffing':     [('ev_defense', 1)],
+            'Weezing':     [('ev_defense', 2)],
+            'Rhyhorn':     [('ev_defense', 1)],
+            'Rhydon':      [('ev_attack', 2)],
+            'Chansey':     [('ev_hp', 2)],
+            'Tangela':     [('ev_defense', 1)],
+            'Kangaskhan':  [('ev_hp', 2)],
+            'Horsea':      [('ev_special_attack', 1)],
+            'Seadra':      [('ev_special_attack', 2)],
+            'Goldeen':     [('ev_attack', 1)],
+            'Seaking':     [('ev_attack', 2)],
+            'Staryu':      [('ev_speed', 1)],
+            'Starmie':     [('ev_speed', 2)],
+            'Mr. Mime':    [('ev_special_defense', 2)],
+            'Scyther':     [('ev_attack', 1), ('ev_speed', 1)],
+            'Jynx':        [('ev_special_attack', 2)],
+            'Electabuzz':  [('ev_special_attack', 2)],
+            'Magmar':      [('ev_special_attack', 2)],
+            'Pinsir':      [('ev_attack', 2)],
+            'Tauros':      [('ev_attack', 1), ('ev_speed', 1)],
+            'Magikarp':    [('ev_speed', 1)],
+            'Gyarados':    [('ev_attack', 2)],
+            'Lapras':      [('ev_hp', 2)],
+            'Ditto':       [('ev_hp', 1)],
+            'Eevee':       [('ev_hp', 1)],
+            'Vaporeon':    [('ev_hp', 2)],
+            'Jolteon':     [('ev_speed', 2)],
+            'Flareon':     [('ev_attack', 2)],
+            'Porygon':     [('ev_special_attack', 1)],
+            'Omanyte':     [('ev_defense', 1)],
+            'Omastar':     [('ev_defense', 1), ('ev_special_attack', 1)],
+            'Kabuto':      [('ev_defense', 1)],
+            'Kabutops':    [('ev_attack', 2)],
+            'Aerodactyl':  [('ev_speed', 2)],
+            'Snorlax':     [('ev_hp', 2)],
+            'Articuno':    [('ev_special_defense', 3)],
+            'Zapdos':      [('ev_special_attack', 3)],
+            'Moltres':     [('ev_special_attack', 3)],
+            'Dratini':     [('ev_attack', 1)],
+            'Dragonair':   [('ev_attack', 2)],
+            'Dragonite':   [('ev_attack', 3)],
+            'Mewtwo':      [('ev_special_attack', 3)],
+            'Mew':         [('ev_hp', 3)],
+        }
+
+        EV_CAP_PER_STAT = 252
+        EV_TOTAL_CAP    = 510
+
+        winner = self.player_pokemon
+        species_name = defeated_pokemon.species.name
+        yields = EV_YIELDS.get(species_name, [('ev_hp', 1)])
+
+        # Total EVs actuels du vainqueur
+        current_total = (
+            winner.ev_hp + winner.ev_attack + winner.ev_defense +
+            winner.ev_special_attack + winner.ev_special_defense + winner.ev_speed
+        )
+
+        for stat_field, amount in yields:
+            if current_total >= EV_TOTAL_CAP:
+                break
+            current_val = getattr(winner, stat_field)
+            gain = min(amount, EV_CAP_PER_STAT - current_val, EV_TOTAL_CAP - current_total)
+            if gain > 0:
+                setattr(winner, stat_field, current_val + gain)
+                current_total += gain
+
+        winner.save()
     
     # =========================================================================
     # IA ADVERSAIRE
