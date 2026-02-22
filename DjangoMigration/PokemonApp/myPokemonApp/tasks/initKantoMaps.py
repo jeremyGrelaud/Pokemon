@@ -1,218 +1,497 @@
 """
-Initialise la carte de Kanto avec zones et spawn rates
+Initialise la carte complète de Kanto Gen 1
+Toutes les villes, routes, grottes et zones spéciales avec leurs spawns canoniques.
 """
 
-from myPokemonApp.models import *
+from myPokemonApp.models import Zone, ZoneConnection, WildPokemonSpawn, Pokemon
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+def _get_pokemon(name):
+    """Helper : retourne le Pokémon par nom (insensible à la casse), ou None."""
+    return Pokemon.objects.filter(name__iexact=name).first()
+
+
+def _add_spawns(zone, spawns, encounter_type='grass'):
+    """
+    Helper : crée les WildPokemonSpawn pour une zone.
+    spawns = [(nom_pokemon, spawn_rate%, level_min, level_max), ...]
+    """
+    for poke_name, rate, lv_min, lv_max in spawns:
+        pokemon = _get_pokemon(poke_name)
+        if pokemon:
+            WildPokemonSpawn.objects.get_or_create(
+                zone=zone,
+                pokemon=pokemon,
+                encounter_type=encounter_type,
+                defaults={
+                    'spawn_rate': rate,
+                    'level_min': lv_min,
+                    'level_max': lv_max,
+                }
+            )
+        else:
+            logging.warning(f"[!] Pokémon introuvable : {poke_name}")
+
 
 def init_kanto_map():
-    """Crée toutes les zones de Kanto Gen 1"""
-    
-    print("🗺️ Initialisation de la carte Kanto...")
-    
-    # ===== VILLES ET ROUTES =====
-    
+    """Crée toutes les zones de Kanto Gen 1 avec connexions et spawn rates."""
+
+    logging.info("🗺️  Initialisation de la carte Kanto (Gen 1)...")
+
+    # =========================================================================
+    # 1. DÉFINITION DES ZONES
+    #    (name, zone_type, description, order, level_min, level_max, flags)
+    # =========================================================================
+
     zones_data = [
-        # Début
-        {
-            'name': 'Bourg Palette',
-            'zone_type': 'city',
-            'description': 'Ville natale du joueur. Petit village paisible.',
-            'order': 1,
-            'level_min': 1,
-            'level_max': 5,
-            'is_safe_zone': True,
-            'has_pokemon_center': True,
-        },
-        {
-            'name': 'Route 1',
-            'zone_type': 'route',
-            'description': 'Première route entre Bourg Palette et Jadielle.',
-            'order': 2,
-            'level_min': 2,
-            'level_max': 4,
-        },
-        {
-            'name': 'Jadielle',
-            'zone_type': 'city',
-            'description': 'Première ville avec une boutique.',
-            'order': 3,
-            'level_min': 3,
-            'level_max': 6,
-            'is_safe_zone': True,
-            'has_pokemon_center': True,
-            'has_shop': True,
-        },
-        {
-            'name': 'Route 22',
-            'zone_type': 'route',
-            'description': 'Route vers la Ligue Pokémon (bloquée au début).',
-            'order': 4,
-            'level_min': 3,
-            'level_max': 5,
-        },
-        {
-            'name': 'Route 2',
-            'zone_type': 'route',
-            'description': 'Route au nord de Jadielle vers la Forêt de Jade.',
-            'order': 5,
-            'level_min': 3,
-            'level_max': 5,
-        },
-        {
-            'name': 'Forêt de Jade',
-            'zone_type': 'forest',
-            'description': 'Forêt dense remplie de Pokémon Insecte.',
-            'order': 6,
-            'level_min': 4,
-            'level_max': 6,
-        },
-        {
-            'name': 'Argenta',
-            'zone_type': 'city',
-            'description': 'Ville avec la première Arène (Pierre, type Roche).',
-            'order': 7,
-            'level_min': 8,
-            'level_max': 12,
-            'is_safe_zone': True,
-            'has_pokemon_center': True,
-            'has_shop': True,
-        },
-        {
-            'name': 'Route 3',
-            'zone_type': 'route',
-            'description': 'Route vers le Mont Sélénite.',
-            'order': 8,
-            'level_min': 6,
-            'level_max': 10,
-        },
-        {
-            'name': 'Mont Sélénite',
-            'zone_type': 'cave',
-            'description': 'Grotte sombre pleine de Pokémon Roche et Sol.',
-            'order': 9,
-            'level_min': 8,
-            'level_max': 12,
-        },
-        {
-            'name': 'Route 4',
-            'zone_type': 'route',
-            'description': 'Sortie du Mont Sélénite vers Azuria.',
-            'order': 10,
-            'level_min': 10,
-            'level_max': 14,
-        },
-        {
-            'name': 'Azuria',
-            'zone_type': 'city',
-            'description': 'Grande ville avec l\'Arène Eau (Ondine).',
-            'order': 11,
-            'level_min': 18,
-            'level_max': 21,
-            'is_safe_zone': True,
-            'has_pokemon_center': True,
-            'has_shop': True,
-        },
-        # Ajoutez les autres zones...
+
+        # ── VILLES ────────────────────────────────────────────────────────────
+        ('Bourg Palette',  'city',   'Ville natale du joueur. Petit village paisible.',              1,  1,  5,  True,  True,  False),
+        ('Jadielle',       'city',   'Première ville. Une boutique s\'ouvre après la livraison.',    3,  3,  6,  True,  True,  True ),
+        ('Argenta',        'city',   'Ville du premier Champion d\'Arène (Pierre, type Roche).',     7,  8, 12,  True,  True,  True ),
+        ('Azuria',         'city',   'Grande ville au bord du lac (Ondine, type Eau).',             11, 18, 21,  True,  True,  True ),
+        ('Carmin sur Mer', 'city',   'Port animé (Capitaine, type Électrique).',                   16, 20, 25,  True,  True,  True ),
+        ('Lavanville',     'city',   'Ville hantée avec sa célèbre Tour Pokémon.',                 20, 25, 28,  True,  True,  True ),
+        ('Safrania',       'city',   'Grande métropole (Morgane, type Psy).',                      24, 35, 42,  True,  True,  True ),
+        ('Céladopole',     'city',   'Ville du Grand Magasin (Olga, type Plante).',                22, 30, 35,  True,  True,  True ),
+        ('Parmanie',        'city',   'Ville du Zoo Safari (Stella, type Poison).',                 28, 40, 46,  True,  True,  True ),
+        ("Cramois'Île",    'city',   'Île volcanique (Pyro, type Feu).',                           34, 45, 50,  True,  True,  True ),
+        ('Plateau Indigo', 'city',   'Siège de la Ligue Pokémon. Terminus du voyage.',             38, 50, 55,  True,  True,  True ),
+
+        # ── ROUTES ────────────────────────────────────────────────────────────
+        ('Route 1',  'route', 'Entre Bourg Palette et Jadielle.',             2,  2,  4,  False, False, False),
+        ('Route 2',  'route', 'Entre Jadielle et la Forêt de Jade.',          4,  3,  5,  False, False, False),
+        ('Route 3',  'route', 'Entre Argenta et le Mont Sélénite.',           8,  6, 10,  False, False, False),
+        ('Route 4',  'route', 'Entre Mont Sélénite et Azuria.',              10, 10, 14,  False, False, False),
+        ('Route 5',  'route', 'Entre Azuria et le souterrain de Safrania.',  21, 13, 17,  False, False, False),
+        ('Route 6',  'route', 'Entre Safrania et Carmin sur Mer.',           17, 13, 17,  False, False, False),
+        ('Route 7',  'route', 'Entre Safrania et Céladopole.',               23, 18, 22,  False, False, False),
+        ('Route 8',  'route', 'Entre Safrania et Lavanville.',               21, 18, 22,  False, False, False),
+        ('Route 9',  'route', 'Entre Azuria et le Tunnel Roche.',            12, 16, 20,  False, False, False),
+        ('Route 10', 'route', 'Descente vers Lavanville (Centrale au nord).', 13, 18, 22,  False, False, False),
+        ('Route 11', 'route', 'À l\'est de Carmin sur Mer.',                 18, 13, 17,  False, False, False),
+        ('Route 12', 'route', 'Longue route côtière au sud de Lavanville.',  26, 20, 25,  False, False, False),
+        ('Route 13', 'route', 'Route venteuse au sud.',                      27, 20, 25,  False, False, False),
+        ('Route 14', 'route', 'Route au sud menant vers Parmanie.',           28, 20, 25,  False, False, False),
+        ('Route 15', 'route', 'Relie Route 14 à Parmanie.',                   29, 22, 26,  False, False, False),
+        ('Route 16', 'route', 'À l\'ouest de Céladopole, Route du Vélo.',   30, 20, 24,  False, False, False),
+        ('Route 17', 'route', 'Route du Vélo — longue descente vers Parmanie.', 31, 22, 26, False, False, False),
+        ('Route 18', 'route', 'Prolongement est de la Route du Vélo.',       32, 22, 26,  False, False, False),
+        ('Route 21', 'route', 'Route maritime entre Cramois\'Île et Bourg Palette.', 35, 25, 35, False, False, False),
+        ('Route 22', 'route', 'Entre Jadielle et les Gardes de la Ligue.',    4,  3,  5,  False, False, False),
+        ('Route 23', 'route', 'Chemin vers le Plateau Indigo (8 Gardes).',   36, 35, 45,  False, False, False),
+        ('Route 24', 'route', 'Au nord d\'Azuria — Pont Cerclef.',           14, 13, 16,  False, False, False),
+        ('Route 25', 'route', 'Bout du Monde — laboratoire du Dr Boulmich.',  15, 13, 16,  False, False, False),
+
+        # ── ZONES SPÉCIALES ───────────────────────────────────────────────────
+        ('Forêt de Jade',       'forest',   'Forêt dense infestée de Pokémon Insecte.',                  6,  3,  6,  False, False, False),
+        ('Mont Sélénite',       'cave',     'Grotte rocheuse entre Argenta et Azuria.',                   9,  8, 12,  False, False, False),
+        ('Tunnel Roche',        'cave',     'Grotte sombre entre la Route 9 et Route 10.',               13, 15, 20,  False, False, False),
+        ('Tour Pokémon',        'building', 'Tour hantée de Lavanville, repère de Spectreux.',           19, 15, 22,  False, False, False),
+        ('Zone Safari',         'route',    'Parc Safari de Parmanie — Pokémon rares à attraper.',        28, 22, 30,  True,  False, False),
+        ('Îles Écume',          'cave',     'Réseau de grottes et rivières glacées, repaire d\'Artikodin.', 33, 35, 44, False, False, False),
+        ('Centrale',            'building', 'Centrale électrique abandonnée entre Route 10 et 9.',       15, 22, 35,  False, False, False),
+        ('Grottes Inconnues',   'cave',     'Grotte secrète au nord d\'Azuria — Mewtwo s\'y cache.',    40, 60, 70,  False, False, False),
+        ('Chemin de la Victoire','cave',    'Dernière épreuve avant la Ligue Pokémon.',                  37, 40, 50,  False, False, False),
+        ("Route 19",            'water',    'Route maritime entre Parmanie et les Îles Écume.',           33, 25, 35,  False, False, False),
+        ("Route 20",            'water',    'Route maritime entre les Îles Écume et Cramois\'Île.',      34, 25, 35,  False, False, False),
     ]
-    
+
     created_zones = {}
-    for data in zones_data:
+    for (name, ztype, desc, order, lv_min, lv_max,
+         is_safe, has_center, has_shop) in zones_data:
         zone, created = Zone.objects.get_or_create(
-            name=data['name'],
+            name=name,
             defaults={
-                'zone_type': data['zone_type'],
-                'description': data['description'],
-                'recommended_level_min': data['level_min'],
-                'recommended_level_max': data['level_max'],
-                'order': data['order'],
-                'is_safe_zone': data.get('is_safe_zone', False),
-                'has_pokemon_center': data.get('has_pokemon_center', False),
-                'has_shop': data.get('has_shop', False),
+                'zone_type': ztype,
+                'description': desc,
+                'order': order,
+                'recommended_level_min': lv_min,
+                'recommended_level_max': lv_max,
+                'is_safe_zone': is_safe,
+                'has_pokemon_center': has_center,
+                'has_shop': has_shop,
             }
         )
-        created_zones[data['name']] = zone
-        print(f"  {'✅' if created else '⏭️'} {data['name']}")
-    
-    # ===== CONNEXIONS =====
-    
-    connections_data = [
-        ('Bourg Palette', 'Route 1'),
-        ('Route 1', 'Jadielle'),
-        ('Jadielle', 'Route 22'),
-        ('Jadielle', 'Route 2'),
-        ('Route 2', 'Forêt de Jade'),
-        ('Forêt de Jade', 'Argenta'),
-        ('Argenta', 'Route 3'),
-        ('Route 3', 'Mont Sélénite'),
-        ('Mont Sélénite', 'Route 4'),
-        ('Route 4', 'Azuria'),
+        created_zones[name] = zone
+        logging.info(f"  {'✅' if created else '⭕'} {name}")
+
+    # =========================================================================
+    # 2. CONNEXIONS
+    # =========================================================================
+
+    logging.info("\n🔗 Connexions...")
+    connections = [
+        # Axe principal Nord-Sud
+        ('Bourg Palette',  'Route 1'),
+        ('Route 1',        'Jadielle'),
+        ('Jadielle',       'Route 2'),
+        ('Route 2',        'Forêt de Jade'),
+        ('Forêt de Jade',  'Argenta'),
+        ('Argenta',        'Route 3'),
+        ('Route 3',        'Mont Sélénite'),
+        ('Mont Sélénite',  'Route 4'),
+        ('Route 4',        'Azuria'),
+        # Routes autour d'Azuria
+        ('Azuria',         'Route 24'),
+        ('Route 24',       'Route 25'),
+        ('Azuria',         'Route 9'),
+        ('Route 9',        'Route 10'),
+        ('Route 10',       'Lavanville'),
+        ('Route 10',       'Centrale'),
+        # Axes depuis Carmin
+        ('Azuria',         'Route 5'),
+        ('Route 5',        'Safrania'),
+        ('Safrania',       'Route 6'),
+        ('Route 6',        'Carmin sur Mer'),
+        ('Carmin sur Mer', 'Route 11'),
+        ('Route 11',       'Route 12'),
+        ('Route 12',       'Lavanville'),
+        # Axes depuis Safrania/Céladopole
+        ('Safrania',       'Route 7'),
+        ('Route 7',        'Céladopole'),
+        ('Safrania',       'Route 8'),
+        ('Route 8',        'Lavanville'),
+        # Axe Céladopole → Parmanie
+        ('Céladopole',     'Route 16'),
+        ('Route 16',       'Route 17'),
+        ('Route 17',       'Route 18'),
+        ('Route 18',       'Parmanie'),
+        # Routes 13-15 sud
+        ('Route 12',       'Route 13'),
+        ('Route 13',       'Route 14'),
+        ('Route 14',       'Route 15'),
+        ('Route 15',       'Parmanie'),
+        # Lavanville → Tour Pokémon
+        ('Lavanville',     'Tour Pokémon'),
+        # Parmanie → Zone Safari
+        ('Parmanie',        'Zone Safari'),
+        # Routes maritimes vers Cramois'Île
+        ('Parmanie',        'Route 19'),
+        ('Route 19',       'Îles Écume'),
+        ('Îles Écume',     'Route 20'),
+        ("Route 20",       "Cramois'Île"),
+        # Cramois'Île → Bourg Palette par mer
+        ("Cramois'Île",    'Route 21'),
+        ('Route 21',       'Bourg Palette'),
+        # Ligue
+        ('Jadielle',       'Route 22'),
+        ('Route 23',       'Chemin de la Victoire'),
+        ('Chemin de la Victoire', 'Plateau Indigo'),
+        # Grottes Inconnues (Azuria)
+        ('Azuria',         'Grottes Inconnues'),
+        # Tunnel Roche
+        ('Route 9',        'Tunnel Roche'),
+        ('Tunnel Roche',   'Route 10'),
     ]
-    
-    print("\n🔗 Connexions...")
-    for from_name, to_name in connections_data:
-        from_zone = created_zones.get(from_name)
-        to_zone = created_zones.get(to_name)
-        
-        if from_zone and to_zone:
-            conn, created = ZoneConnection.objects.get_or_create(
-                from_zone=from_zone,
-                to_zone=to_zone,
+
+    for from_name, to_name in connections:
+        from_z = created_zones.get(from_name)
+        to_z   = created_zones.get(to_name)
+        if from_z and to_z:
+            ZoneConnection.objects.get_or_create(
+                from_zone=from_z, to_zone=to_z,
                 defaults={'is_bidirectional': True}
             )
-            print(f"  {'✅' if created else '⏭️'} {from_name} ↔ {to_name}")
-    
-    # ===== SPAWN RATES =====
-    
-    print("\n🎲 Spawns...")
-    
-    # Route 1
-    route1 = created_zones.get('Route 1')
-    if route1:
-        spawns = [
-            ('Rattata', 50.0, 2, 4),
-            ('Roucool', 50.0, 2, 4),
-        ]
-        
-        for poke_name, rate, lv_min, lv_max in spawns:
-            pokemon = Pokemon.objects.filter(name__icontains=poke_name).first()
-            if pokemon:
-                WildPokemonSpawn.objects.get_or_create(
-                    zone=route1,
-                    pokemon=pokemon,
-                    defaults={
-                        'spawn_rate': rate,
-                        'level_min': lv_min,
-                        'level_max': lv_max,
-                        'encounter_type': 'grass'
-                    }
-                )
-                print(f"  ✅ {poke_name} dans {route1.name}")
-    
-    # Forêt de Jade
-    forest = created_zones.get('Forêt de Jade')
-    if forest:
-        spawns = [
-            ('Chenipan', 25.0, 3, 5),
-            ('Aspicot', 25.0, 3, 5),
-            ('Roucool', 30.0, 4, 6),
-            ('Pikachu', 20.0, 3, 5),
-        ]
-        
-        for poke_name, rate, lv_min, lv_max in spawns:
-            pokemon = Pokemon.objects.filter(name__icontains=poke_name).first()
-            if pokemon:
-                WildPokemonSpawn.objects.get_or_create(
-                    zone=forest,
-                    pokemon=pokemon,
-                    defaults={
-                        'spawn_rate': rate,
-                        'level_min': lv_min,
-                        'level_max': lv_max,
-                        'encounter_type': 'grass'
-                    }
-                )
-                print(f"  ✅ {poke_name} dans {forest.name}")
-    
-    print("\n✅ Carte Kanto initialisée !")
+        else:
+            logging.warning(f"[!] Connexion impossible : {from_name} ↔ {to_name}")
 
+    # =========================================================================
+    # 3. SPAWN RATES (données canoniques Gen 1)
+    # =========================================================================
 
+    logging.info("\n🎲 Spawn rates...")
+
+    def add(zone_name, spawns, enc='grass'):
+        z = created_zones.get(zone_name)
+        if z:
+            _add_spawns(z, spawns, enc)
+        else:
+            logging.warning(f"[!] Zone introuvable pour spawns : {zone_name}")
+
+    # ── Route 1 ──────────────────────────────────────────────────────────────
+    add('Route 1', [
+        ('Rattata', 50.0, 2, 4),
+        ('Pidgey',  50.0, 2, 4),
+    ])
+
+    # ── Route 2 ──────────────────────────────────────────────────────────────
+    add('Route 2', [
+        ('Rattata',    30.0, 3, 5),
+        ('Pidgey',     30.0, 3, 5),
+        ('Nidoran♂',  20.0, 3, 5),
+        ('Nidoran♀',  20.0, 3, 5),
+    ])
+
+    # ── Forêt de Jade ────────────────────────────────────────────────────────
+    add('Forêt de Jade', [
+        ('Pidgey',   30.0, 4, 6),
+        ('Caterpie', 25.0, 3, 5),
+        ('Weedle',   25.0, 3, 5),
+        ('Pikachu',  20.0, 3, 5),
+    ])
+
+    # ── Route 3 ──────────────────────────────────────────────────────────────
+    add('Route 3', [
+        ('Pidgey',    30.0, 6, 10),
+        ('Nidoran♂', 20.0, 6, 10),
+        ('Nidoran♀', 20.0, 6, 10),
+        ('Jigglypuff', 15.0, 8, 10),
+        ('Mankey',    15.0, 8, 10),
+    ])
+
+    # ── Mont Sélénite ─────────────────────────────────────────────────────────
+    add('Mont Sélénite', [
+        ('Zubat',    40.0,  8, 12),
+        ('Geodude',  30.0,  8, 12),
+        ('Clefairy', 15.0,  8, 12),
+        ('Paras',    15.0,  8, 12),
+    ], enc='cave')
+
+    # ── Route 4 ──────────────────────────────────────────────────────────────
+    add('Route 4', [
+        ('Rattata',   30.0, 10, 14),
+        ('Spearow',   30.0, 10, 14),
+        ('Ekans',     20.0, 10, 14),
+        ('Mankey',    20.0, 10, 14),
+    ])
+
+    # ── Route 24/25 (Pont Cerclef) ───────────────────────────────────────────
+    add('Route 24', [
+        ('Caterpie',  20.0, 13, 15),
+        ('Weedle',    20.0, 13, 15),
+        ('Bellsprout', 30.0, 13, 15),
+        ('Oddish',    30.0, 13, 15),
+    ])
+    add('Route 25', [
+        ('Caterpie',  15.0, 13, 15),
+        ('Weedle',    15.0, 13, 15),
+        ('Bellsprout', 35.0, 13, 15),
+        ('Oddish',    35.0, 13, 15),
+    ])
+
+    # ── Route 9 ──────────────────────────────────────────────────────────────
+    add('Route 9', [
+        ('Rattata',    25.0, 16, 20),
+        ('Nidoran♂',  25.0, 16, 20),
+        ('Nidoran♀',  25.0, 16, 20),
+        ('Ekans',      25.0, 16, 20),
+    ])
+
+    # ── Tunnel Roche ─────────────────────────────────────────────────────────
+    add('Tunnel Roche', [
+        ('Zubat',    40.0, 15, 20),
+        ('Geodude',  30.0, 15, 20),
+        ('Machop',   20.0, 15, 20),
+        ('Onix',     10.0, 15, 20),
+    ], enc='cave')
+
+    # ── Route 10 ─────────────────────────────────────────────────────────────
+    add('Route 10', [
+        ('Voltorb',   30.0, 18, 22),
+        ('Magnemite', 30.0, 18, 22),
+        ('Rattata',   20.0, 16, 20),
+        ('Spearow',   20.0, 16, 20),
+    ])
+
+    # ── Centrale ─────────────────────────────────────────────────────────────
+    add('Centrale', [
+        ('Pikachu',   30.0, 22, 26),
+        ('Raichu',    10.0, 28, 34),
+        ('Magnemite', 25.0, 22, 26),
+        ('Magneton',  10.0, 28, 34),
+        ('Voltorb',   15.0, 22, 26),
+        ('Electabuzz', 10.0, 30, 35),
+    ])
+
+    # ── Route 5/6 ────────────────────────────────────────────────────────────
+    add('Route 5', [
+        ('Pidgey',   25.0, 13, 17),
+        ('Meowth',   25.0, 13, 17),
+        ('Mankey',   25.0, 13, 17),
+        ('Abra',     25.0, 13, 17),
+    ])
+    add('Route 6', [
+        ('Pidgey',   25.0, 13, 17),
+        ('Meowth',   25.0, 13, 17),
+        ('Mankey',   25.0, 13, 17),
+        ('Doduo',    25.0, 13, 17),
+    ])
+
+    # ── Route 11 ─────────────────────────────────────────────────────────────
+    add('Route 11', [
+        ('Ekans',    30.0, 13, 17),
+        ('Drowzee',  30.0, 13, 17),
+        ('Spearow',  25.0, 13, 17),
+        ('Rattata',  15.0, 13, 17),
+    ])
+
+    # ── Route 7/8 ────────────────────────────────────────────────────────────
+    add('Route 7', [
+        ('Pidgey',     20.0, 18, 22),
+        ('Vulpix',     20.0, 18, 22),
+        ('Growlithe',  20.0, 18, 22),
+        ('Drowzee',    20.0, 18, 22),
+        ('Pidgeotto',  20.0, 22, 26),
+    ])
+    add('Route 8', [
+        ('Pidgey',     25.0, 18, 22),
+        ('Drowzee',    25.0, 18, 22),
+        ('Growlithe',  25.0, 18, 22),
+        ('Ekans',      25.0, 18, 22),
+    ])
+
+    # ── Tour Pokémon ─────────────────────────────────────────────────────────
+    add('Tour Pokémon', [
+        ('Gastly',   50.0, 15, 20),
+        ('Haunter',  30.0, 17, 22),
+        ('Cubone',   20.0, 15, 20),
+    ], enc='cave')
+
+    # ── Route 12/13/14/15 ────────────────────────────────────────────────────
+    add('Route 12', [
+        ('Bellsprout', 25.0, 20, 24),
+        ('Pidgeotto',  20.0, 22, 26),
+        ('Venonat',    30.0, 20, 24),
+        ('Weepinbell', 25.0, 22, 26),
+    ])
+    add('Route 13', [
+        ('Bellsprout', 25.0, 20, 24),
+        ('Pidgeotto',  20.0, 22, 26),
+        ('Venonat',    30.0, 20, 24),
+        ('Weepinbell', 25.0, 22, 26),
+    ])
+    add('Route 14', [
+        ('Pidgeotto',  30.0, 22, 26),
+        ('Venonat',    30.0, 22, 26),
+        ('Weepinbell', 25.0, 22, 26),
+        ('Gloom',      15.0, 22, 26),
+    ])
+    add('Route 15', [
+        ('Pidgeotto',  30.0, 22, 26),
+        ('Venonat',    30.0, 22, 26),
+        ('Weepinbell', 20.0, 22, 26),
+        ('Gloom',      20.0, 22, 26),
+    ])
+
+    # ── Routes 16/17/18 ──────────────────────────────────────────────────────
+    add('Route 16', [
+        ('Rattata',  25.0, 20, 24),
+        ('Doduo',    25.0, 20, 24),
+        ('Spearow',  25.0, 20, 24),
+        ('Drowzee',  25.0, 20, 24),
+    ])
+    add('Route 17', [
+        ('Rattata',  20.0, 20, 24),
+        ('Doduo',    35.0, 20, 26),
+        ('Fearow',   15.0, 25, 30),
+        ('Ponyta',   30.0, 22, 26),
+    ])
+    add('Route 18', [
+        ('Doduo',    40.0, 22, 26),
+        ('Fearow',   20.0, 25, 30),
+        ('Ponyta',   25.0, 22, 26),
+        ('Rattata',  15.0, 20, 24),
+    ])
+
+    # ── Zone Safari ──────────────────────────────────────────────────────────
+    add('Zone Safari', [
+        ('Nidoran♂',  10.0, 22, 26),
+        ('Nidoran♀',  10.0, 22, 26),
+        ('Nidorino',    5.0, 28, 32),
+        ('Nidorina',    5.0, 28, 32),
+        ('Rhyhorn',    10.0, 25, 30),
+        ('Kangaskhan',  5.0, 25, 30),
+        ('Tauros',      5.0, 22, 26),
+        ('Scyther',     5.0, 23, 27),
+        ('Pinsir',      5.0, 23, 27),
+        ('Exeggcute',  10.0, 20, 25),
+        ('Parasect',    5.0, 25, 30),
+        ('Paras',      10.0, 20, 25),
+        ('Slowpoke',    8.0, 20, 25),
+        ('Chansey',     2.0, 20, 25),
+        ('Drowzee',     5.0, 22, 26),
+    ])
+    # Pokémon aquatiques dans le Safari
+    add('Zone Safari', [
+        ('Psyduck',   40.0, 22, 27),
+        ('Slowpoke',  40.0, 22, 27),
+        ('Golduck',   20.0, 28, 33),
+    ], enc='water')
+
+    # ── Îles Écume ───────────────────────────────────────────────────────────
+    add('Îles Écume', [
+        ('Zubat',    30.0, 35, 42),
+        ('Golbat',   20.0, 38, 44),
+        ('Geodude',  20.0, 35, 42),
+        ('Graveler', 10.0, 38, 43),
+        ('Slowpoke', 20.0, 33, 40),
+    ], enc='cave')
+    add('Îles Écume', [
+        ('Seel',      30.0, 30, 35),
+        ('Dewgong',   20.0, 35, 40),
+        ('Psyduck',   25.0, 28, 33),
+        ('Slowpoke',  25.0, 28, 33),
+    ], enc='water')
+
+    # ── Routes maritimes 19/20/21 ────────────────────────────────────────────
+    add('Route 19', [
+        ('Tentacool',   80.0, 20, 30),
+        ('Tentacruel',  20.0, 25, 35),
+    ], enc='water')
+    add('Route 20', [
+        ('Tentacool',   80.0, 20, 30),
+        ('Tentacruel',  20.0, 25, 35),
+    ], enc='water')
+    add('Route 21', [
+        ('Tentacool',   60.0, 20, 30),
+        ('Tentacruel',  20.0, 25, 35),
+        ('Pidgey',      10.0, 22, 26),
+        ('Pidgeotto',   10.0, 24, 28),
+    ])
+    add('Route 21', [
+        ('Tentacool',   70.0, 20, 30),
+        ('Tentacruel',  30.0, 25, 35),
+    ], enc='water')
+
+    # ── Route 22 ─────────────────────────────────────────────────────────────
+    add('Route 22', [
+        ('Nidoran♂',  40.0, 3, 5),
+        ('Nidoran♀',  40.0, 3, 5),
+        ('Mankey',     20.0, 2, 4),
+    ])
+
+    # ── Route 23 ─────────────────────────────────────────────────────────────
+    add('Route 23', [
+        ('Ekans',   20.0, 30, 40),
+        ('Spearow', 20.0, 30, 40),
+        ('Arbok',   15.0, 35, 45),
+        ('Fearow',  15.0, 35, 45),
+        ('Ditto',   20.0, 30, 35),
+        ('Weezing', 10.0, 35, 42),
+    ])
+
+    # ── Chemin de la Victoire ─────────────────────────────────────────────────
+    add('Chemin de la Victoire', [
+        ('Zubat',    25.0, 35, 40),
+        ('Golbat',   25.0, 40, 45),
+        ('Geodude',  20.0, 35, 40),
+        ('Graveler', 10.0, 38, 43),
+        ('Onix',     10.0, 35, 40),
+        ('Machoke',  10.0, 35, 40),
+    ], enc='cave')
+
+    # ── Grottes Inconnues ─────────────────────────────────────────────────────
+    add('Grottes Inconnues', [
+        ('Machoke',  20.0, 45, 50),
+        ('Golbat',   25.0, 45, 55),
+        ('Ditto',    25.0, 45, 50),
+        ('Kadabra',  15.0, 45, 55),
+        ('Parasect', 10.0, 45, 50),
+        ('Hypno',     5.0, 45, 50),
+    ], enc='cave')
+    # Mewtwo est un combat unique, pas un spawn aléatoire → pas de WildPokemonSpawn
+
+    logging.info("\n✅ Carte Kanto initialisée !")

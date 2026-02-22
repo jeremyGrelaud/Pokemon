@@ -63,9 +63,9 @@
       </div>
       <div class="card-body">
         <div class="text-center mb-3">
-          <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer.username|lower|gymleaderescape }}.png" 
+          <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}" 
                alt="{{ gym_leader.trainer.username }}"
-               style="width: 150px; height: 150px; border-radius: 50%;"
+               style="height: 160px;  object-fit: contain;"
                onerror="this.src='{% static 'img/pokeball.png' %}'">
         </div>
         
@@ -115,7 +115,7 @@
     <div class="card shadow border-warning">
       <div class="card-body text-center">
         <h5 class="mb-3">Prêt à relever le défi ?</h5>
-        <a href="{% url 'BattleCreateView' %}?gym_leader={{ gym_leader.id }}" 
+        <a href="{% url 'battle_challenge_gym' gym_leader.id %}" 
            class="btn btn-lg btn-warning btn-block">
           <i class="fas fa-fist-raised"></i> Défier {{ gym_leader.trainer.username }}
         </a>

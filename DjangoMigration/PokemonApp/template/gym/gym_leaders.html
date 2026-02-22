@@ -1,23 +1,59 @@
 {% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
 
 {% block title %}<title>Champions d'Arène</title>{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-4"><i class="fas fa-trophy"></i> Champions d'Arène</h1>
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0"><i class="fas fa-trophy text-warning"></i> Champions d'Arène</h1>
+</div>
 
 <div class="row">
   {% for gym in gym_leaders %}
-  <div class="col-md-6 mb-4">
-    <div class="card shadow">
-      <div class="card-body">
-        <h5>{{ gym.gym_name }} - {{ gym.gym_city }}</h5>
-        <p><strong>Champion:</strong> {{ gym.trainer.username }}</p>
-        <p><strong>Type:</strong> <span class="badge badge-type-{{ gym.specialty_type.name }}">{{ gym.specialty_type.name }}</span></p>
-        <p><strong>Badge:</strong> {{ gym.badge_name }} (Badge #{{ gym.badge_order }})</p>
-        <a href="{% url 'GymLeaderDetailView' gym.id %}" class="btn btn-primary">Voir Détails</a>
+  <div class="col-md-6 col-lg-4 mb-4">
+    <div class="card shadow h-100 border-0" style="transition: transform 0.2s;">
+      
+      <!-- Bandeau type -->
+      <div class="card-header py-2 badge-type-{{ gym.specialty_type.name }}" 
+           style="border-radius: .35rem .35rem 0 0;">
+        <span class="font-weight-bold text-white text-uppercase" style="letter-spacing:1px;">
+          <i class="fas fa-star"></i> Type {{ gym.specialty_type.name }}
+        </span>
+        <span class="float-right text-white-50 small">Badge #{{ gym.badge_order }}</span>
       </div>
+
+      <div class="card-body d-flex align-items-center">
+        <!-- Sprite du champion -->
+        <div class="mr-3 flex-shrink-0 text-center" style="width:80px;">
+          <img src="{% static 'img/trainer_sprites/' %}{{ gym.trainer|trainer_sprite_path }}"
+               alt="{{ gym.trainer.username }}"
+               style="height:80px; object-fit:contain;"
+               onerror="this.src='{% static 'img/pokeball.png' %}';">
+        </div>
+
+        <div>
+          <h5 class="mb-1">{{ gym.gym_name }}</h5>
+          <p class="text-muted small mb-1"><i class="fas fa-map-marker-alt"></i> {{ gym.gym_city }}</p>
+          <p class="mb-1">
+            <strong>Champion :</strong> {{ gym.trainer.username }}
+          </p>
+          <p class="mb-2">
+            <i class="fas fa-medal text-warning"></i>
+            <strong>{{ gym.badge_name }}</strong>
+          </p>
+          <a href="{% url 'GymLeaderDetailView' gym.id %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-eye"></i> Voir Détails
+          </a>
+        </div>
+      </div>
+
     </div>
   </div>
   {% endfor %}
 </div>
+
+<style>
+.card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.15) !important; }
+</style>
 {% endblock %}

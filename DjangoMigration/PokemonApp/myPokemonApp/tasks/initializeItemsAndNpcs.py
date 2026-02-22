@@ -6,253 +6,128 @@ Script d'initialisation pour les objets, NPCs et Champions d'Arène
 
 from myPokemonApp.models import (
     Item, PokemonType, Pokemon, PokemonMove,
-    Trainer, GymLeader
+    Trainer
 )
 from myPokemonApp.gameUtils import (
     create_gym_leader, create_npc_trainer
 )
+
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
 
 def initialize_items():
-    """Initialise tous les objets du jeu"""
-    
+    """Initialise tous les objets Gen 1 (complet)"""
+
     logging.info("[*] Initialisation des objets...")
-    
-    # ============================================================================
-    # POTIONS
-    # ============================================================================
+
     items_data = [
-        # Potions
-        {
-            'name': 'Potion',
-            'description': 'Restaure 20 HP d\'un Pokémon',
-            'item_type': 'potion',
-            'price': 300,
-            'heal_amount': 20,
-        },
-        {
-            'name': 'Super Potion',
-            'description': 'Restaure 50 HP d\'un Pokémon',
-            'item_type': 'potion',
-            'price': 700,
-            'heal_amount': 50,
-        },
-        {
-            'name': 'Hyper Potion',
-            'description': 'Restaure 200 HP d\'un Pokémon',
-            'item_type': 'potion',
-            'price': 1200,
-            'heal_amount': 200,
-        },
-        {
-            'name': 'Max Potion',
-            'description': 'Restaure tous les HP d\'un Pokémon',
-            'item_type': 'potion',
-            'price': 2500,
-            'heal_percentage': 100,
-        },
-        {
-            'name': 'Full Restore',
-            'description': 'Restaure tous les HP et soigne le statut',
-            'item_type': 'potion',
-            'price': 3000,
-            'heal_percentage': 100,
-            'cures_status': True,
-        },
-        
-        # ============================================================================
+
+        # POTIONS
+        {'name': 'Potion', 'description': 'Restaure 20 HP.', 'item_type': 'potion', 'price': 300, 'heal_amount': 20, 'is_consumable': True},
+        {'name': 'Super Potion', 'description': 'Restaure 50 HP.', 'item_type': 'potion', 'price': 700, 'heal_amount': 50, 'is_consumable': True},
+        {'name': 'Hyper Potion', 'description': 'Restaure 200 HP.', 'item_type': 'potion', 'price': 1200, 'heal_amount': 200, 'is_consumable': True},
+        {'name': 'Max Potion', 'description': 'Restaure tous les HP.', 'item_type': 'potion', 'price': 2500, 'heal_percentage': 100, 'is_consumable': True},
+        {'name': 'Full Restore', 'description': 'Restaure tous les HP et soigne le statut.', 'item_type': 'potion', 'price': 3000, 'heal_percentage': 100, 'cures_status': True, 'is_consumable': True},
+        {'name': 'Revive', 'description': 'Ranime un Pokemon evanoui (moitie HP).', 'item_type': 'potion', 'price': 1500, 'heal_percentage': 50, 'is_consumable': True},
+        {'name': 'Max Revive', 'description': 'Ranime un Pokemon evanoui (HP max).', 'item_type': 'potion', 'price': 4000, 'heal_percentage': 100, 'is_consumable': True},
+
         # SOINS DE STATUT
-        # ============================================================================
-        {
-            'name': 'Antidote',
-            'description': 'Soigne l\'empoisonnement',
-            'item_type': 'status',
-            'price': 100,
-            'cures_status': True,
-            'specific_status': 'poison',
-        },
-        {
-            'name': 'Awakening',
-            'description': 'Réveille un Pokémon endormi',
-            'item_type': 'status',
-            'price': 250,
-            'cures_status': True,
-            'specific_status': 'sleep',
-        },
-        {
-            'name': 'Burn Heal',
-            'description': 'Soigne une brûlure',
-            'item_type': 'status',
-            'price': 250,
-            'cures_status': True,
-            'specific_status': 'burn',
-        },
-        {
-            'name': 'Ice Heal',
-            'description': 'Dégèle un Pokémon',
-            'item_type': 'status',
-            'price': 250,
-            'cures_status': True,
-            'specific_status': 'freeze',
-        },
-        {
-            'name': 'Paralyze Heal',
-            'description': 'Soigne la paralysie',
-            'item_type': 'status',
-            'price': 200,
-            'cures_status': True,
-            'specific_status': 'paralysis',
-        },
-        {
-            'name': 'Full Heal',
-            'description': 'Soigne tous les problèmes de statut',
-            'item_type': 'status',
-            'price': 600,
-            'cures_status': True,
-        },
-        
-        # ============================================================================
-        # POKÉ BALLS
-        # ============================================================================
-        {
-            'name': 'Poké Ball',
-            'description': 'Un appareil pour capturer les Pokémon sauvages',
-            'item_type': 'pokeball',
-            'price': 200,
-            'catch_rate_modifier': 1.0,
-        },
-        {
-            'name': 'Great Ball',
-            'description': 'Une bonne Ball avec un taux de capture élevé',
-            'item_type': 'pokeball',
-            'price': 600,
-            'catch_rate_modifier': 1.5,
-        },
-        {
-            'name': 'Ultra Ball',
-            'description': 'Une Ball ultra-performante',
-            'item_type': 'pokeball',
-            'price': 1200,
-            'catch_rate_modifier': 2.0,
-        },
-        {
-            'name': 'Master Ball',
-            'description': 'La meilleure Ball. Capture à coup sûr',
-            'item_type': 'pokeball',
-            'price': 0,
-            'catch_rate_modifier': 255.0,
-        },
-        
-        # ============================================================================
-        # PIERRES D'ÉVOLUTION
-        # ============================================================================
-        {
-            'name': 'Fire Stone',
-            'description': 'Fait évoluer certains Pokémon de type Feu',
-            'item_type': 'evolution',
-            'price': 2100,
-            'is_consumable': True,
-        },
-        {
-            'name': 'Water Stone',
-            'description': 'Fait évoluer certains Pokémon de type Eau',
-            'item_type': 'evolution',
-            'price': 2100,
-            'is_consumable': True,
-        },
-        {
-            'name': 'Thunder Stone',
-            'description': 'Fait évoluer certains Pokémon de type Électrique',
-            'item_type': 'evolution',
-            'price': 2100,
-            'is_consumable': True,
-        },
-        {
-            'name': 'Leaf Stone',
-            'description': 'Fait évoluer certains Pokémon de type Plante',
-            'item_type': 'evolution',
-            'price': 2100,
-            'is_consumable': True,
-        },
-        {
-            'name': 'Moon Stone',
-            'description': 'Fait évoluer certains Pokémon',
-            'item_type': 'evolution',
-            'price': 2100,
-            'is_consumable': True,
-        },
-        
-        # ============================================================================
+        {'name': 'Antidote', 'description': 'Soigne l empoisonnement.', 'item_type': 'status', 'price': 100, 'cures_status': True, 'specific_status': 'poison', 'is_consumable': True},
+        {'name': 'Awakening', 'description': 'Reveille un Pokemon endormi.', 'item_type': 'status', 'price': 250, 'cures_status': True, 'specific_status': 'sleep', 'is_consumable': True},
+        {'name': 'Burn Heal', 'description': 'Soigne une brulure.', 'item_type': 'status', 'price': 250, 'cures_status': True, 'specific_status': 'burn', 'is_consumable': True},
+        {'name': 'Ice Heal', 'description': 'Degele un Pokemon gele.', 'item_type': 'status', 'price': 250, 'cures_status': True, 'specific_status': 'freeze', 'is_consumable': True},
+        {'name': 'Paralyze Heal', 'description': 'Soigne la paralysie.', 'item_type': 'status', 'price': 200, 'cures_status': True, 'specific_status': 'paralysis', 'is_consumable': True},
+        {'name': 'Full Heal', 'description': 'Soigne tous les problemes de statut.', 'item_type': 'status', 'price': 600, 'cures_status': True, 'is_consumable': True},
+
+        # PP
+        {'name': 'Ether', 'description': 'Restaure 10 PP d une capacite.', 'item_type': 'status', 'price': 1200, 'is_consumable': True},
+        {'name': 'Max Ether', 'description': 'Restaure tous les PP d une capacite.', 'item_type': 'status', 'price': 2000, 'is_consumable': True},
+        {'name': 'Elixir', 'description': 'Restaure 10 PP de toutes les capacites.', 'item_type': 'status', 'price': 3000, 'is_consumable': True},
+        {'name': 'Max Elixir', 'description': 'Restaure tous les PP de toutes les capacites.', 'item_type': 'status', 'price': 4500, 'is_consumable': True},
+        {'name': 'PP Up', 'description': 'Augmente definitivement le max PP d une capacite.', 'item_type': 'battle', 'price': 9800, 'is_consumable': True},
+        {'name': 'PP Max', 'description': 'Augmente au maximum les PP d une capacite.', 'item_type': 'battle', 'price': 0, 'is_consumable': True},
+
+        # REPULSIFS
+        {'name': 'Repel', 'description': 'Empeche les Pokemon sauvages faibles pendant 100 pas.', 'item_type': 'battle', 'price': 350, 'is_consumable': True},
+        {'name': 'Super Repel', 'description': 'Empeche les Pokemon sauvages faibles pendant 200 pas.', 'item_type': 'battle', 'price': 500, 'is_consumable': True},
+        {'name': 'Max Repel', 'description': 'Empeche les Pokemon sauvages faibles pendant 250 pas.', 'item_type': 'battle', 'price': 700, 'is_consumable': True},
+
+        # POKEBALLS
+        {'name': 'Poke Ball', 'description': 'Capture les Pokemon sauvages.', 'item_type': 'pokeball', 'price': 200, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Great Ball', 'description': 'Ball avec un meilleur taux de capture.', 'item_type': 'pokeball', 'price': 600, 'catch_rate_modifier': 1.5, 'is_consumable': True},
+        {'name': 'Ultra Ball', 'description': 'Ball ultra-performante.', 'item_type': 'pokeball', 'price': 1200, 'catch_rate_modifier': 2.0, 'is_consumable': True},
+        {'name': 'Master Ball', 'description': 'La meilleure Ball. Capture a coup sur.', 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 255.0, 'is_consumable': True},
+        {'name': 'Safari Ball', 'description': 'Ball speciale de la Zone Safari.', 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.5, 'is_consumable': True},
+        # POKEBALLS spéciales
+        {'name': 'Net Ball', 'description': "Efficace contre les Pokémon de type Eau ou Insecte.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Dive Ball', 'description': "Efficace sous l'eau ou contre les Pokémon aquatiques.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.5, 'is_consumable': True},
+        {'name': 'Nest Ball', 'description': "Plus efficace contre les Pokémon de bas niveau.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True}, # To implement in pokeballItem class catch_rate_modifier = pokemon_level: (40 - pokemon_level) / 10 if pokemon_level < 30 else 1.0
+        {'name': 'Repeat Ball', 'description': "Efficace contre les Pokémon déjà capturés.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Timer Ball', 'description': "Plus efficace après plusieurs tours.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True}, # To implement in pokeballItem class catch_rate_modifier = turn: 1 + (turn / 10)
+        {'name': 'Dusk Ball', 'description': "Efficace la nuit ou dans les grottes.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.5, 'is_consumable': True},
+        {'name': 'Quick Ball', 'description': "Efficace si utilisée en premier tour.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 4.0, 'is_consumable': True},
+        {'name': 'Heal Ball', 'description': "Soigne les problèmes de statut du Pokémon capturé.", 'item_type': 'pokeball', 'price': 300, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Luxury Ball', 'description': "Améliore l'amitié du Pokémon capturé.", 'item_type': 'pokeball', 'price': 1200, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Premier Ball', 'description': "Une Poke Ball commémorative.", 'item_type': 'pokeball', 'price': 200, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Cherry Ball', 'description': "Efficace contre les Pokémon avec une évolution unique.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Fast Ball', 'description': "Efficace contre les Pokémon rapides.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Level Ball', 'description': "Plus efficace contre les Pokémon de niveau inférieur.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True},# To implement in pokeballItem class catch_rate_modifier = user_level, pokemon_level: (4 * user_level / pokemon_level) if user_level > pokemon_level else 1.0
+        {'name': 'Lure Ball', 'description': "Efficace contre les Pokémon pêchés.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Heavy Ball', 'description': "Plus efficace contre les Pokémon lourds.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True}, # To implement in pokeballItem class catch_rate_modifier = weight: (weight / 10) if weight > 200 else 1.0
+        {'name': 'Love Ball', 'description': "Efficace contre les Pokémon du sexe opposé.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 8.0, 'is_consumable': True},
+        {'name': 'Moon Ball', 'description': "Efficace contre les Pokémon qui évoluent avec une Pierre Lune.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 4.0, 'is_consumable': True},
+        {'name': 'Friend Ball', 'description': "Le Pokémon capturé a une amitié instantanée maximale.", 'item_type': 'pokeball', 'price': 1000, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Sport Ball', 'description': "Une Poke Ball spéciale pour les concours.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.5, 'is_consumable': True},
+        {'name': 'Park Ball', 'description': "Utilisée dans le Parc des Amis.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 1.0, 'is_consumable': True},
+        {'name': 'Dream Ball', 'description': "Utilisée dans le Monde des Rêves.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 3.0, 'is_consumable': True},
+        {'name': 'Beast Ball', 'description': "Spéciale pour les Ultra-Chimères.", 'item_type': 'pokeball', 'price': 0, 'catch_rate_modifier': 0.1, 'is_consumable': True},
+
+        # PIERRES D EVOLUTION
+        {'name': 'Fire Stone', 'description': 'Fait evoluer Goupix, Caninos, Evoli (Pyroli).', 'item_type': 'evolution', 'price': 2100, 'is_consumable': True},
+        {'name': 'Water Stone', 'description': 'Fait evoluer Ptitard, Stari, Evoli (Aquali).', 'item_type': 'evolution', 'price': 2100, 'is_consumable': True},
+        {'name': 'Thunder Stone', 'description': 'Fait evoluer Pikachu, Evoli (Voltali).', 'item_type': 'evolution', 'price': 2100, 'is_consumable': True},
+        {'name': 'Leaf Stone', 'description': 'Fait evoluer Phytofali, Ortide, Exekul.', 'item_type': 'evolution', 'price': 2100, 'is_consumable': True},
+        {'name': 'Moon Stone', 'description': 'Fait evoluer Melo, Nidorina, Nidorino, Melodelfe, Mystherbe.', 'item_type': 'evolution', 'price': 2100, 'is_consumable': True},
+
         # OBJETS TENUS
-        # ============================================================================
-        {
-            'name': 'Lucky Egg',
-            'description': 'Double l\'expérience gagnée',
-            'item_type': 'held',
-            'price': 0,
-            'held_effect': 'exp_boost',
-            'is_consumable': False,
-        },
-        {
-            'name': 'Leftovers',
-            'description': 'Restaure un peu de HP à chaque tour',
-            'item_type': 'held',
-            'price': 0,
-            'held_effect': 'hp_regen',
-            'is_consumable': False,
-        },
-        
-        # ============================================================================
+        {'name': 'Lucky Egg', 'description': 'Augmente l experience gagnee.', 'item_type': 'held', 'price': 0, 'held_effect': 'exp_boost', 'is_consumable': False},
+        {'name': 'Leftovers', 'description': 'Restaure un peu de HP a chaque tour.', 'item_type': 'held', 'price': 0, 'held_effect': 'hp_regen', 'is_consumable': False},
+
         # OBJETS DE COMBAT
-        # ============================================================================
-        {
-            'name': 'X Attack',
-            'description': 'Augmente l\'Attaque d\'un Pokémon en combat',
-            'item_type': 'battle',
-            'price': 500,
-        },
-        {
-            'name': 'X Defense',
-            'description': 'Augmente la Défense d\'un Pokémon en combat',
-            'item_type': 'battle',
-            'price': 550,
-        },
-        {
-            'name': 'X Speed',
-            'description': 'Augmente la Vitesse d\'un Pokémon en combat',
-            'item_type': 'battle',
-            'price': 350,
-        },
-        {
-            'name': 'X Special',
-            'description': 'Augmente l\'Attaque Spéciale d\'un Pokémon en combat',
-            'item_type': 'battle',
-            'price': 350,
-        },
-        {
-            'name': 'Guard Spec.',
-            'description': 'Empêche la baisse de stats pendant 5 tours',
-            'item_type': 'battle',
-            'price': 700,
-        },
-        {
-            'name': 'Dire Hit',
-            'description': 'Augmente le taux de coup critique',
-            'item_type': 'battle',
-            'price': 650,
-        },
+        {'name': 'X Attack', 'description': 'Augmente l Attaque en combat.', 'item_type': 'battle', 'price': 500, 'is_consumable': True},
+        {'name': 'X Defense', 'description': 'Augmente la Defense en combat.', 'item_type': 'battle', 'price': 550, 'is_consumable': True},
+        {'name': 'X Speed', 'description': 'Augmente la Vitesse en combat.', 'item_type': 'battle', 'price': 350, 'is_consumable': True},
+        {'name': 'X Special', 'description': 'Augmente l Attaque Speciale en combat.', 'item_type': 'battle', 'price': 350, 'is_consumable': True},
+        {'name': 'Guard Spec.', 'description': 'Empeche la baisse de stats pendant 5 tours.', 'item_type': 'battle', 'price': 700, 'is_consumable': True},
+        {'name': 'Dire Hit', 'description': 'Augmente le taux de coup critique.', 'item_type': 'battle', 'price': 650, 'is_consumable': True},
+
+        # OBJETS CLES
+        {'name': 'Escape Rope', 'description': 'Permet de s echapper d une grotte.', 'item_type': 'key', 'price': 550, 'is_consumable': True},
+        {'name': 'Bicycle', 'description': 'Velo ultra-leger pour se deplacer rapidement.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Old Rod', 'description': 'Vieille canne a peche (Pokemon Eau basiques).', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Good Rod', 'description': 'Canne a peche correcte (Pokemon Eau moyens).', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Super Rod', 'description': 'Meilleure canne a peche (Pokemon Eau rares).', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Silph Scope', 'description': 'Identifie les Pokemon fantomes dans la Tour Pokemon.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Poke Flute', 'description': 'Reveille les Pokemon endormis, notamment Ronflex.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Card Key', 'description': 'Carte magnetique pour la Tour Sylphe.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Town Map', 'description': 'Carte de Kanto offerte par le rival.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'S.S. Ticket', 'description': 'Ticket pour le SS Anne.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Dome Fossil', 'description': 'Ressuscite Kabuto.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Helix Fossil', 'description': 'Ressuscite Amonita.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Old Amber', 'description': 'Ressuscite Aerodactyl.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Coin Case', 'description': 'Porte-monnaie pour les Pokeocoins du Casino.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
+        {'name': 'Itemfinder', 'description': 'Detecte les objets caches sur le sol.', 'item_type': 'key', 'price': 0, 'is_consumable': False},
     ]
-    
+
     for item_data in items_data:
         Item.objects.get_or_create(
             name=item_data['name'],
             defaults=item_data
         )
-    
-    logging.info(f"[+] {len(items_data)} objets créés")
+
+    logging.info(f"[+] {len(items_data)} objets crees/verifies")
 
 
 def initialize_gym_leaders():

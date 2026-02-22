@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 from myPokemonApp.models import *
+from myPokemonApp.gameUtils import get_player_trainer
 
 # ============================================================================
 # ACHIEVEMENT TRACKING
@@ -75,22 +76,35 @@ def trigger_achievements_after_battle(trainer, battle_result):
     notifications = []
     
     if battle_result.get('won'):
-        # Premier combat
-        result = check_achievement(trainer, 'Premier Combat')
-        if result.get('newly_completed'):
-            notifications.append({
-                'title': '🏆 Premier Combat',
-                'message': f"Débloqué ! +{result['reward_money']}₽"
-            })
-        
-        # Combattant Aguerri
-        result = check_achievement(trainer, 'Combattant Aguerri')
-        if result.get('newly_completed'):
-            notifications.append({
-                'title': '🏆 Combattant Aguerri',
-                'message': f"Débloqué ! +{result['reward_money']}₽"
-            })
+        for achievement_name in ['Premier Combat', 'Combattant Aguerri', 'Vétéran']:
+            result = check_achievement(trainer, achievement_name)
+            if result.get('newly_completed'):
+                notifications.append({
+                    'title': f'🏆 {achievement_name}',
+                    'message': f"Débloqué ! +{result['reward_money']}₽"
+                })
     
+    return notifications
+
+
+def trigger_achievements_after_gym_win(trainer, badges_count):
+    """
+    Déclenche les achievements liés aux badges après une victoire contre un Champion d'Arène.
+
+    Args:
+        trainer: Trainer
+        badges_count: int — nombre total de badges détenus après la victoire
+    """
+    notifications = []
+
+    for achievement_name in ['Champion de Arène', 'Maître de la Ligue']:
+        result = check_achievement(trainer, achievement_name)
+        if result.get('newly_completed'):
+            notifications.append({
+                'title': f'🏅 {achievement_name}',
+                'message': f"Débloqué ! +{result['reward_money']}₽"
+            })
+
     return notifications
 
 
@@ -137,85 +151,69 @@ def trigger_achievements_after_capture(trainer):
 @login_required
 def achievements_list_view(request):
     """Liste de tous les achievements"""
-    
-    trainer = get_object_or_404(Trainer, username=request.user.username)
-    
-    # Tous les achievements
+    trainer = get_player_trainer(request.user)
+
+    # prefetch_related évite le N+1 (une requête par achievement → 1 requête totale)
     all_achievements = Achievement.objects.all()
-    
-    # Progress du joueur
+    progress_map = {
+        ta.achievement_id: ta
+        for ta in TrainerAchievement.objects.filter(trainer=trainer).select_related('achievement')
+    }
+
     achievements_data = []
-    total_completed = 0
-    
+    total_completed   = 0
+
     for achievement in all_achievements:
-        try:
-            progress = TrainerAchievement.objects.get(
-                trainer=trainer,
-                achievement=achievement
-            )
-            current = progress.current_progress
-            completed = progress.is_completed
-            completed_at = progress.completed_at
-        except TrainerAchievement.DoesNotExist:
-            current = 0
-            completed = False
-            completed_at = None
-        
+        ta         = progress_map.get(achievement.id)
+        current    = ta.current_progress if ta else 0
+        completed  = ta.is_completed     if ta else False
+        completed_at = ta.completed_at   if ta else None
+
         if completed:
             total_completed += 1
-        
+
         achievements_data.append({
-            'achievement': achievement,
-            'current': current,
-            'required': achievement.required_value,
-            'completed': completed,
-            'completed_at': completed_at,
-            'progress_percent': int((current / achievement.required_value) * 100) if achievement.required_value > 0 else 0
+            'achievement':       achievement,
+            'current':           current,
+            'required':          achievement.required_value,
+            'completed':         completed,
+            'completed_at':      completed_at,
+            'progress_percent':  int((current / achievement.required_value) * 100)
+                                 if achievement.required_value > 0 else 0,
         })
-    
+
     # Grouper par catégorie
     by_category = {}
     for data in achievements_data:
         cat = data['achievement'].category
-        if cat not in by_category:
-            by_category[cat] = []
-        by_category[cat].append(data)
-    
+        by_category.setdefault(cat, []).append(data)
+
+    total_achievements = all_achievements.count()
     context = {
-        'achievements': achievements_data,
-        'by_category': by_category,
-        'total_completed': total_completed,
-        'total_achievements': all_achievements.count(),
-        'completion_percent': int((total_completed / all_achievements.count()) * 100) if all_achievements.count() > 0 else 0
+        'achievements':       achievements_data,
+        'by_category':        by_category,
+        'total_completed':    total_completed,
+        'total_achievements': total_achievements,
+        'completion_percent': int((total_completed / total_achievements) * 100)
+                              if total_achievements > 0 else 0,
     }
-    
     return render(request, 'achievements/achievements_list.html', context)
 
 
 @login_required
 def achievements_widget_view(request):
-    """
-    Widget AJAX pour afficher les achievements dans le navbar
-    Retourne HTML pour être injecté
-    """
-    
-    trainer = get_object_or_404(Trainer, username=request.user.username)
-    
-    # Derniers 3 achievements débloqués
+    """Widget AJAX pour afficher les achievements dans le navbar"""
+    trainer = get_player_trainer(request.user)
+
     recent = TrainerAchievement.objects.filter(
-        trainer=trainer,
-        is_completed=True
+        trainer=trainer, is_completed=True
     ).order_by('-completed_at')[:3]
-    
-    # Achievements en cours (les plus proches de complétion)
+
     in_progress = TrainerAchievement.objects.filter(
-        trainer=trainer,
-        is_completed=False
+        trainer=trainer, is_completed=False
     ).exclude(current_progress=0).order_by('-current_progress')[:3]
-    
-    context = {
-        'recent': recent,
-        'in_progress': in_progress
-    }
-    
-    return render(request, 'achievements/achievements_widget.html', context)
+
+    return render(request, 'achievements/achievements_widget.html', {
+        'recent':      recent,
+        'in_progress': in_progress,
+    })

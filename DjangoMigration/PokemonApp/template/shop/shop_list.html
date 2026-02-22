@@ -11,48 +11,62 @@
   <h1 class="h3 mb-0 text-gray-800">
     <i class="fas fa-shopping-cart text-primary"></i> Boutiques Pokémon
   </h1>
-  <div>
-    <span class="badge badge-warning p-2" style="font-size: 1.1rem;">
-      <i class="fas fa-coins"></i> {{ trainer.money }}₽
-    </span>
-  </div>
+  <span class="badge badge-warning p-2" style="font-size: 1.1rem;">
+    <i class="fas fa-coins"></i> {{ trainer.money }}₽
+  </span>
 </div>
 
-<!-- Info Alert -->
+{% if current_zone %}
+<div class="alert alert-info border-left-info mb-4">
+  <div class="d-flex align-items-center">
+    <i class="fas fa-map-marker-alt fa-2x mr-3 text-info"></i>
+    <div>
+      <strong>Vous êtes à : {{ current_zone.name }}</strong>
+      <p class="mb-0 mt-1 text-muted" style="font-size:.9rem;">
+        Seule la boutique de votre ville actuelle est accessible. Voyagez pour en visiter d'autres.
+      </p>
+    </div>
+  </div>
+</div>
+{% else %}
 <div class="alert alert-info mb-4">
   <i class="fas fa-info-circle"></i>
-  <strong>Astuce :</strong> Visitez les boutiques pour acheter des Potions, Poké Balls et autres objets utiles !
-  Certains objets ne sont disponibles qu'après avoir obtenu des badges.
+  <strong>Astuce :</strong> Certains objets ne sont disponibles qu'après avoir obtenu des badges.
 </div>
+{% endif %}
 
 <!-- Shops Grid -->
 <div class="row">
-  {% for shop in shops %}
+  {% for entry in shops %}
+  {% with shop=entry.shop is_local=entry.is_local %}
   <div class="col-lg-4 col-md-6 mb-4">
-    <div class="card shop-card h-100 shadow-sm border-0">
-      <div class="card-header bg-gradient-primary text-white">
-        <h5 class="mb-0">
-          <i class="fas fa-store"></i> {{ shop.name }}
-        </h5>
+    <div class="card h-100 shadow-sm border-0 {% if not is_local %}shop-card-greyed{% else %}shop-card{% endif %}">
+
+      <div class="card-header text-white {% if is_local %}bg-gradient-primary{% else %}bg-secondary{% endif %}">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-store"></i> {{ shop.name }}</h5>
+          {% if not is_local %}
+          <span class="badge badge-light text-secondary"><i class="fas fa-map-marker-alt"></i> Autre ville</span>
+          {% endif %}
+        </div>
       </div>
+
       <div class="card-body">
-        <!-- Shop Icon -->
         <div class="text-center mb-3">
-          <i class="fas fa-shopping-bag fa-4x text-primary"></i>
+          <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}"
+               alt="{{ shop.name }}"
+               style="width:120px;height:120px;{% if not is_local %}filter:grayscale(100%);opacity:0.4;{% endif %}">
         </div>
 
-        <!-- Shop Info -->
         <div class="mb-3">
           <p class="mb-2">
-            <strong><i class="fas fa-map-marker-alt text-danger"></i> Localisation :</strong><br>
+            <strong><i class="fas fa-map-marker-alt {% if is_local %}text-danger{% else %}text-muted{% endif %}"></i> Localisation :</strong><br>
             {{ shop.location }}
           </p>
-          
           <p class="mb-2">
             <strong><i class="fas fa-tag text-success"></i> Type :</strong><br>
             <span class="badge badge-secondary p-2">{{ shop.get_shop_type_display }}</span>
           </p>
-
           {% if shop.description %}
           <p class="text-muted small mb-0">
             <i class="fas fa-quote-left"></i> {{ shop.description|truncatewords:15 }}
@@ -60,43 +74,43 @@
           {% endif %}
         </div>
 
-        <!-- Shop Stats -->
         <div class="row text-center mb-3">
-          <div class="col-6">
+          <div class="col-12">
             <div class="p-2 bg-light rounded">
-              <h4 class="mb-0 text-primary">{{ shop.inventory.count }}</h4>
-              <small class="text-muted">Articles</small>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="p-2 bg-light rounded">
-              <h4 class="mb-0 text-success">
-                {% with available=shop.inventory.filter|length %}
-                {{ shop.inventory.count }}
-                {% endwith %}
-              </h4>
-              <small class="text-muted">Disponibles</small>
+              <h4 class="mb-0 {% if is_local %}text-primary{% else %}text-muted{% endif %}">{{ shop.inventory.count }}</h4>
+              <small class="text-muted">Articles disponibles</small>
             </div>
           </div>
         </div>
 
-        <!-- Greeting -->
         {% if shop.shopkeeper_greeting %}
-        <div class="alert alert-light border-left border-primary mb-3">
-          <small class="text-muted font-italic">
-            "{{ shop.shopkeeper_greeting }}"
-          </small>
+        <div class="alert alert-light border-left border-{% if is_local %}primary{% else %}secondary{% endif %} mb-3">
+          <small class="text-muted font-italic">"{{ shop.shopkeeper_greeting }}"</small>
+        </div>
+        {% endif %}
+
+        {% if not is_local %}
+        <div class="alert alert-secondary py-2 text-center mb-0" style="font-size:.85rem;">
+          <i class="fas fa-map-marker-alt mr-1"></i>
+          Voyagez à <strong>{{ shop.location }}</strong> pour accéder à cette boutique.
         </div>
         {% endif %}
       </div>
-      
+
       <div class="card-footer bg-transparent border-0">
+        {% if is_local %}
         <a href="{% url 'ShopDetailView' shop.id %}" class="btn btn-primary btn-block">
           <i class="fas fa-shopping-cart"></i> Visiter la Boutique
         </a>
+        {% else %}
+        <button class="btn btn-secondary btn-block" disabled>
+          <i class="fas fa-map-marker-alt"></i> Pas dans cette ville
+        </button>
+        {% endif %}
       </div>
     </div>
   </div>
+  {% endwith %}
   {% empty %}
   <div class="col-12">
     <div class="card shadow">
@@ -110,38 +124,29 @@
   {% endfor %}
 </div>
 
-<!-- Featured Shops Section (si vous voulez mettre en avant certaines boutiques) -->
 {% if shops %}
 <div class="row mt-4">
   <div class="col-12">
     <div class="card shadow border-warning">
       <div class="card-header bg-warning text-white">
-        <h5 class="mb-0">
-          <i class="fas fa-star"></i> Conseils d'Achat
-        </h5>
+        <h5 class="mb-0"><i class="fas fa-star"></i> Conseils d'Achat</h5>
       </div>
       <div class="card-body">
         <div class="row">
-          <div class="col-md-4 mb-3">
-            <div class="text-center">
-              <i class="fas fa-flask fa-3x text-danger mb-2"></i>
-              <h6>Potions</h6>
-              <p class="small text-muted">Indispensables pour soigner vos Pokémon en combat</p>
-            </div>
+          <div class="col-md-4 mb-3 text-center">
+            <i class="fas fa-flask fa-3x text-danger mb-2"></i>
+            <h6>Potions</h6>
+            <p class="small text-muted">Indispensables pour soigner vos Pokémon en combat</p>
           </div>
-          <div class="col-md-4 mb-3">
-            <div class="text-center">
-              <i class="fas fa-circle fa-3x text-primary mb-2"></i>
-              <h6>Poké Balls</h6>
-              <p class="small text-muted">Capturez de nouveaux Pokémon pour compléter votre Pokédex</p>
-            </div>
+          <div class="col-md-4 mb-3 text-center">
+            <i class="fas fa-circle fa-3x text-primary mb-2"></i>
+            <h6>Poké Balls</h6>
+            <p class="small text-muted">Capturez de nouveaux Pokémon pour compléter votre Pokédex</p>
           </div>
-          <div class="col-md-4 mb-3">
-            <div class="text-center">
-              <i class="fas fa-gem fa-3x text-success mb-2"></i>
-              <h6>Pierres d'Évolution</h6>
-              <p class="small text-muted">Faites évoluer certains Pokémon spéciaux</p>
-            </div>
+          <div class="col-md-4 mb-3 text-center">
+            <i class="fas fa-gem fa-3x text-success mb-2"></i>
+            <h6>Pierres d'Évolution</h6>
+            <p class="small text-muted">Faites évoluer certains Pokémon spéciaux</p>
           </div>
         </div>
       </div>
@@ -150,7 +155,6 @@
 </div>
 {% endif %}
 
-<!-- Back Button -->
 <div class="mt-4">
   <a href="{% url 'home' %}" class="btn btn-secondary">
     <i class="fas fa-arrow-left"></i> Retour au Dashboard
@@ -164,21 +168,22 @@
 .shop-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
+  border: 2px solid transparent;
 }
-
 .shop-card:hover {
-  transform: translateY(-10px);
+  transform: translateY(-6px);
   box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
 }
-
-.bg-gradient-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.shop-card-greyed {
+  opacity: 0.6;
+  border: 2px dashed #bbb !important;
+  cursor: not-allowed;
 }
+.bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.border-left-info { border-left: 4px solid #17a2b8; }
 </style>
-
 <script>
 $(document).ready(function() {
-  // Animation d'entrée
   $('.shop-card').each(function(index) {
     $(this).css('opacity', 0);
     $(this).delay(index * 100).animate({opacity: 1}, 500);

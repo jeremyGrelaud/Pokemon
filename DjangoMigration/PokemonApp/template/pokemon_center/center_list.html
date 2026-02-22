@@ -9,7 +9,9 @@
 <!-- Page Heading -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
   <h1 class="h3 mb-0 text-gray-800">
-    <i class="fas fa-hospital text-danger"></i> Centres Pokémon
+    <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}"
+        alt="Centre Pokémon"
+        style="width: 40px; height: 40px; object-fit:contain; vertical-align:middle;"> Centres Pokémon
   </h1>
   <div>
     <span class="badge badge-info p-2">
@@ -21,130 +23,114 @@
   </div>
 </div>
 
-<!-- Info Alert -->
+{% if current_zone %}
 <div class="alert alert-info border-left-info mb-4">
   <div class="d-flex align-items-center">
-    <i class="fas fa-info-circle fa-2x mr-3"></i>
+    <i class="fas fa-map-marker-alt fa-2x mr-3 text-info"></i>
     <div>
-      <strong>Bienvenue aux Centres Pokémon !</strong>
-      <p class="mb-0 mt-1">
-        Les Centres Pokémon sont des lieux où vous pouvez soigner gratuitement vos Pokémon blessés.
-        Profitez également de l'accès au PC pour gérer votre collection !
+      <strong>Vous êtes à : {{ current_zone.name }}</strong>
+      <p class="mb-0 mt-1 text-muted" style="font-size:.9rem;">
+        Seul le Centre Pokémon de votre ville actuelle est accessible. Voyagez pour accéder aux autres.
       </p>
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- Centers Grid -->
 <div class="row">
-  {% for center in centers %}
+  {% for entry in centers %}
+  {% with center=entry.center is_local=entry.is_local %}
   <div class="col-lg-4 col-md-6 mb-4">
-    <div class="card center-card h-100 shadow-sm">
-      <!-- Card Header -->
-      <div class="card-header bg-gradient-danger text-white">
+    <div class="card h-100 shadow-sm {% if not is_local %}center-card-greyed{% else %}center-card{% endif %}">
+
+      <div class="card-header text-white {% if is_local %}bg-gradient-danger{% else %}bg-secondary{% endif %}">
         <div class="d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">
-            <i class="fas fa-plus-circle"></i> {{ center.name }}
-          </h5>
-          {% if center.is_available %}
-          <span class="badge badge-success">
-            <i class="fas fa-check"></i> Ouvert
-          </span>
+          <h5 class="mb-0"><i class="fas fa-plus-circle"></i> {{ center.name }}</h5>
+          {% if not is_local %}
+          <span class="badge badge-light text-secondary"><i class="fas fa-map-marker-alt"></i> Autre ville</span>
+          {% elif center.is_available %}
+          <span class="badge badge-success"><i class="fas fa-check"></i> Ouvert</span>
           {% else %}
-          <span class="badge badge-secondary">
-            <i class="fas fa-lock"></i> Fermé
-          </span>
+          <span class="badge badge-secondary"><i class="fas fa-lock"></i> Fermé</span>
           {% endif %}
         </div>
       </div>
 
-      <!-- Card Body -->
       <div class="card-body">
-        <!-- Center Icon -->
         <div class="text-center mb-3">
-          <i class="fas fa-hospital-alt fa-5x text-danger pulse-animation"></i>
+          <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}"
+               alt="{{ center.name }}"
+               style="width:120px;height:120px;{% if not is_local %}filter:grayscale(100%);opacity:0.4;{% endif %}"
+               class="{% if is_local %}pulse-animation{% endif %}">
         </div>
 
-        <!-- Location -->
         <div class="mb-3">
           <div class="d-flex align-items-center mb-2">
-            <i class="fas fa-map-marker-alt text-danger mr-2"></i>
+            <i class="fas fa-map-marker-alt {% if is_local %}text-danger{% else %}text-muted{% endif %} mr-2"></i>
             <strong>{{ center.location }}</strong>
           </div>
         </div>
 
-        <!-- Nurse Info -->
         <div class="mb-3 p-3 bg-light rounded">
           <div class="d-flex align-items-center mb-2">
-            <i class="fas fa-user-nurse text-danger mr-2"></i>
+            <i class="fas fa-user-nurse {% if is_local %}text-danger{% else %}text-muted{% endif %} mr-2"></i>
             <strong>{{ center.nurse_name }}</strong>
           </div>
-          <small class="text-muted font-italic">
-            "{{ center.nurse_greeting|truncatewords:15 }}"
-          </small>
+          <small class="text-muted font-italic">"{{ center.nurse_greeting|truncatewords:15 }}"</small>
         </div>
 
-        <!-- Stats -->
         <div class="row text-center mb-3">
           <div class="col-6">
-            <div class="p-2 bg-success text-white rounded">
+            <div class="p-2 {% if is_local %}bg-success{% else %}bg-secondary{% endif %} text-white rounded">
               <h5 class="mb-0">{{ center.total_healings }}</h5>
               <small>Soins effectués</small>
             </div>
           </div>
           <div class="col-6">
-            <div class="p-2 bg-info text-white rounded">
-              <h5 class="mb-0">
-                {% if center.healing_cost == 0 %}
-                GRATUIT
-                {% else %}
-                {{ center.healing_cost }}₽
-                {% endif %}
-              </h5>
+            <div class="p-2 {% if is_local %}bg-info{% else %}bg-secondary{% endif %} text-white rounded">
+              <h5 class="mb-0">{% if center.healing_cost == 0 %}GRATUIT{% else %}{{ center.healing_cost }}₽{% endif %}</h5>
               <small>Coût du soin</small>
             </div>
           </div>
         </div>
 
-        <!-- Services -->
-        <div class="mb-3">
+        {% if not is_local %}
+        <div class="alert alert-secondary py-2 text-center mb-0" style="font-size:.85rem;">
+          <i class="fas fa-map-marker-alt mr-1"></i>
+          Voyagez à <strong>{{ center.location }}</strong> pour accéder à ce centre.
+        </div>
+        {% else %}
+        <div>
           <h6 class="border-bottom pb-2">Services disponibles</h6>
           <ul class="list-unstyled mb-0">
-            <li class="mb-1">
-              <i class="fas fa-check text-success mr-2"></i>
-              Soin complet des Pokémon
-            </li>
-            <li class="mb-1">
-              <i class="fas fa-check text-success mr-2"></i>
-              Restauration des PP
-            </li>
-            <li class="mb-1">
-              <i class="fas fa-check text-success mr-2"></i>
-              Guérison des statuts
-            </li>
-            <li class="mb-1">
-              <i class="fas fa-check text-success mr-2"></i>
-              Accès au PC
-            </li>
+            <li class="mb-1"><i class="fas fa-check text-success mr-2"></i>Soin complet des Pokémon</li>
+            <li class="mb-1"><i class="fas fa-check text-success mr-2"></i>Restauration des PP</li>
+            <li class="mb-1"><i class="fas fa-check text-success mr-2"></i>Guérison des statuts</li>
+            <li class="mb-1"><i class="fas fa-check text-success mr-2"></i>Accès au PC</li>
           </ul>
         </div>
+        {% endif %}
       </div>
 
-      <!-- Card Footer -->
       <div class="card-footer bg-transparent border-0 pb-3">
-        {% if center.is_available %}
-        <a href="{% url 'PokemonCenterDetailView' center.id %}" 
-           class="btn btn-danger btn-block">
+        {% if is_local and center.is_available %}
+        <a href="{% url 'PokemonCenterDetailView' center.id %}" class="btn btn-danger btn-block">
           <i class="fas fa-hospital"></i> Visiter le Centre
         </a>
-        {% else %}
+        {% elif is_local %}
         <button class="btn btn-secondary btn-block" disabled>
           <i class="fas fa-lock"></i> Centre Fermé
+        </button>
+        {% else %}
+        <button class="btn btn-secondary btn-block" disabled>
+          <i class="fas fa-map-marker-alt"></i> Pas dans cette ville
         </button>
         {% endif %}
       </div>
     </div>
   </div>
+  {% endwith %}
   {% empty %}
   <div class="col-12">
     <div class="card shadow">
@@ -158,51 +144,31 @@
   {% endfor %}
 </div>
 
-<!-- Quick Access Section -->
 {% if centers %}
 <div class="row mt-4">
   <div class="col-12">
     <div class="card shadow border-info">
       <div class="card-header bg-info text-white">
-        <h5 class="mb-0">
-          <i class="fas fa-question-circle"></i> À Propos des Centres Pokémon
-        </h5>
+        <h5 class="mb-0"><i class="fas fa-question-circle"></i> À Propos des Centres Pokémon</h5>
       </div>
       <div class="card-body">
         <div class="row">
-          <div class="col-md-4 mb-3">
-            <div class="text-center">
-              <i class="fas fa-heart fa-3x text-danger mb-3"></i>
-              <h6>Soins Gratuits</h6>
-              <p class="small text-muted">
-                Tous les Centres Pokémon soignent vos Pokémon gratuitement. 
-                N'hésitez pas à revenir aussi souvent que nécessaire !
-              </p>
-            </div>
+          <div class="col-md-4 mb-3 text-center">
+            <i class="fas fa-heart fa-3x text-danger mb-3"></i>
+            <h6>Soins Gratuits</h6>
+            <p class="small text-muted">Tous les Centres soignent gratuitement vos Pokémon.</p>
           </div>
-          <div class="col-md-4 mb-3">
-            <div class="text-center">
-              <i class="fas fa-database fa-3x text-primary mb-3"></i>
-              <h6>Accès PC</h6>
-              <p class="small text-muted">
-                Gérez votre collection de Pokémon directement depuis le PC du centre.
-                Échangez entre votre équipe et votre stockage.
-              </p>
-            </div>
+          <div class="col-md-4 mb-3 text-center">
+            <i class="fas fa-desktop fa-3x text-primary mb-3"></i>
+            <h6>Accès PC</h6>
+            <p class="small text-muted">Gérez votre collection depuis le PC du centre.</p>
           </div>
-          <div class="col-md-4 mb-3">
-            <div class="text-center">
-              <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
-              <h6>Soin Complet</h6>
-              <p class="small text-muted">
-                HP, PP et statuts sont tous restaurés. Vos Pokémon repartent 
-                en pleine forme après chaque visite !
-              </p>
-            </div>
+          <div class="col-md-4 mb-3 text-center">
+            <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
+            <h6>Soin Complet</h6>
+            <p class="small text-muted">HP, PP et statuts restaurés à chaque visite.</p>
           </div>
         </div>
-
-        <!-- View History Button -->
         {% if total_visits > 0 %}
         <div class="text-center mt-3">
           <a href="{% url 'CenterHistoryView' %}" class="btn btn-outline-info">
@@ -216,109 +182,46 @@
 </div>
 {% endif %}
 
-<!-- Back Button -->
 <div class="mt-4 mb-4">
   <a href="{% url 'home' %}" class="btn btn-secondary">
     <i class="fas fa-arrow-left"></i> Retour au Dashboard
   </a>
 </div>
-
 {% endblock content %}
 
 {% block js %}
 {{ block.super }}
-
 <style>
-/* Center Card Styling */
 .center-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
   border: 2px solid transparent;
 }
-
 .center-card:hover {
-  transform: translateY(-10px);
+  transform: translateY(-6px);
   box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
   border-color: #e74c3c;
 }
-
-.bg-gradient-danger {
-  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+.center-card-greyed {
+  opacity: 0.6;
+  border: 2px dashed #bbb;
+  cursor: not-allowed;
 }
-
-.border-left-info {
-  border-left: 4px solid #17a2b8;
-}
-
-/* Pulse Animation */
+.bg-gradient-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+.border-left-info { border-left: 4px solid #17a2b8; }
 @keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
 }
-
-.pulse-animation {
-  animation: pulse 2s infinite ease-in-out;
-}
-
-/* Hover Effects */
-.center-card:hover .pulse-animation {
-  animation: pulse 1s infinite ease-in-out;
-  color: #c0392b;
-}
-
-/* Loading Animation */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.center-card {
-  animation: fadeInUp 0.5s ease-out;
-}
-
-.center-card:nth-child(1) { animation-delay: 0s; }
-.center-card:nth-child(2) { animation-delay: 0.1s; }
-.center-card:nth-child(3) { animation-delay: 0.2s; }
-.center-card:nth-child(4) { animation-delay: 0.3s; }
-.center-card:nth-child(5) { animation-delay: 0.4s; }
-.center-card:nth-child(6) { animation-delay: 0.5s; }
+.pulse-animation { animation: pulse 2s infinite ease-in-out; }
 </style>
-
 <script>
 $(document).ready(function() {
-  // Add click effect to cards
   $('.center-card').on('click', function(e) {
-    // Don't trigger if clicking button
     if (!$(e.target).closest('button, a').length) {
       const link = $(this).find('.btn-danger').attr('href');
-      if (link) {
-        window.location.href = link;
-      }
+      if (link) window.location.href = link;
     }
-  });
-
-  // Add ripple effect on button click
-  $('.btn-danger').on('click', function(e) {
-    const btn = $(this);
-    const ripple = $('<span class="ripple"></span>');
-    
-    btn.append(ripple);
-    
-    setTimeout(() => {
-      ripple.remove();
-    }, 600);
   });
 });
 </script>

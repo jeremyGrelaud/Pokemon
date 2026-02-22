@@ -8,22 +8,84 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.db.models import Sum, Q
 import json
 
 from myPokemonApp.models import Shop, ShopInventory, Item, Trainer, TrainerInventory, Transaction
+from django.contrib import messages
+from myPokemonApp.gameUtils import (
+    get_player_trainer,
+    trainer_is_at_zone_with,
+    give_item_to_trainer,
+    remove_item_from_trainer,
+)
+
+
+def _location_guard(request, zone_attr, redirect_name='map_view', warning_msg=None):
+    """
+    Vérifie que le trainer est dans une zone possédant zone_attr (booléen).
+    Retourne (trainer, None) si OK, (None, redirect_response) sinon.
+    """
+    trainer = get_player_trainer(request.user)
+    if not trainer_is_at_zone_with(trainer, zone_attr):
+        messages.warning(request, warning_msg or "Vous n'êtes pas au bon endroit.")
+        return None, redirect(redirect_name)
+    return trainer, None
+
+
+def _building_location_matches(trainer, building_location: str) -> bool:
+    """
+    Vérifie que le bâtiment spécifique demandé (boutique / centre) se trouve
+    dans la zone actuelle du joueur.
+
+    Compare building_location avec current_zone.name (matching souple,
+    insensible à la casse, dans les deux sens).
+
+    Retourne True si la position n'est pas connue (pas de blocage).
+    """
+    from myPokemonApp.gameUtils import get_player_location
+    location = get_player_location(trainer, create_if_missing=False)
+    if location is None:
+        return True
+    zone_name = location.current_zone.name.lower()
+    bldg_loc  = (building_location or '').lower()
+    return zone_name in bldg_loc or bldg_loc in zone_name
 
 
 @method_decorator(login_required, name='dispatch')
 class ShopListView(generic.ListView):
-    """Liste de toutes les boutiques"""
     model = Shop
     template_name = 'shop/shop_list.html'
     context_object_name = 'shops'
-    
+
+    def dispatch(self, request, *args, **kwargs):
+        trainer, redir = _location_guard(
+            request, 'has_shop', 'map_view',
+            "Vous devez être dans une ville possédant une boutique pour y accéder."
+        )
+        if redir:
+            return redir
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        trainer = get_object_or_404(Trainer, username=self.request.user.username)
-        context['trainer'] = trainer
+        trainer = get_player_trainer(self.request.user)
+
+        from myPokemonApp.gameUtils import get_player_location
+        location        = get_player_location(trainer)
+        current_zone    = location.current_zone if location else None
+        zone_name_lower = current_zone.name.lower() if current_zone else ''
+
+        # Enrichir chaque boutique avec un flag is_local
+        shops_with_local = []
+        for shop in context['shops']:
+            loc_lower = shop.location.lower() if shop.location else ''
+            is_local  = (zone_name_lower in loc_lower or loc_lower in zone_name_lower) if zone_name_lower else True
+            shops_with_local.append({'shop': shop, 'is_local': is_local})
+
+        context['shops']        = shops_with_local
+        context['trainer']      = trainer
+        context['current_zone'] = current_zone
         return context
 
 
@@ -33,37 +95,41 @@ class ShopDetailView(generic.DetailView):
     model = Shop
     template_name = 'shop/shop_detail.html'
     context_object_name = 'shop'
-    
+
+    def dispatch(self, request, *args, **kwargs):
+        trainer = get_player_trainer(request.user)
+        # 1. La zone actuelle doit avoir une boutique
+        if not trainer_is_at_zone_with(trainer, 'has_shop'):
+            messages.warning(request, "Vous devez être dans une ville possédant une boutique pour y accéder.")
+            return redirect('map_view')
+        # 2. La boutique demandée doit être celle de la zone actuelle
+        shop = get_object_or_404(Shop, pk=kwargs.get('pk'))
+        if not _building_location_matches(trainer, shop.location):
+            messages.warning(request, "Cette boutique ne se trouve pas dans votre ville actuelle.")
+            return redirect('ShopListView')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        trainer = get_object_or_404(Trainer, username=self.request.user.username)
-        
-        # Items disponibles
+        trainer = get_player_trainer(self.request.user)
+
         all_inventory = self.object.inventory.all()
-        
-        # Filtrer par badges
-        available_items = [
-            inv for inv in all_inventory 
-            if inv.is_available_for_trainer(trainer)
-        ]
-        
-        # Séparer par catégories
+        available_items = [inv for inv in all_inventory if inv.is_available_for_trainer(trainer)]
+
         featured_items = [inv for inv in available_items if inv.is_featured]
-        new_items = [inv for inv in available_items if inv.is_new and not inv.is_featured]
-        regular_items = [inv for inv in available_items if not inv.is_featured and not inv.is_new]
-        
-        # Inventaire du joueur pour vente
+        new_items      = [inv for inv in available_items if inv.is_new and not inv.is_featured]
+        regular_items  = [inv for inv in available_items if not inv.is_featured and not inv.is_new]
+
         player_inventory = trainer.inventory.filter(quantity__gt=0)
-        
+
         context.update({
-            'trainer': trainer,
+            'trainer':        trainer,
             'featured_items': featured_items,
-            'new_items': new_items,
-            'regular_items': regular_items,
+            'new_items':      new_items,
+            'regular_items':  regular_items,
             'player_inventory': player_inventory,
-            'can_sell': player_inventory.exists()
+            'can_sell':       player_inventory.exists(),
         })
-        
         return context
 
 
@@ -72,62 +138,45 @@ class ShopDetailView(generic.DetailView):
 def buy_item_api(request):
     """API pour acheter un objet"""
     try:
-        data = json.loads(request.body)
+        data              = json.loads(request.body)
         shop_inventory_id = data.get('shop_inventory_id')
-        quantity = int(data.get('quantity', 1))
-        
+        quantity          = int(data.get('quantity', 1))
+
         if quantity <= 0:
-            return JsonResponse({
-                'success': False,
-                'error': 'Quantité invalide'
-            })
-        
-        # Récupérer les objets
-        trainer = get_object_or_404(Trainer, username=request.user.username)
+            return JsonResponse({'success': False, 'error': 'Quantité invalide'})
+
+        trainer        = get_player_trainer(request.user)
         shop_inventory = get_object_or_404(ShopInventory, pk=shop_inventory_id)
-        
-        # Vérifications
+
         if not shop_inventory.is_available_for_trainer(trainer):
             return JsonResponse({
                 'success': False,
                 'error': f'Vous avez besoin de {shop_inventory.unlock_badge_required} badge(s)'
             })
-        
+
         if not shop_inventory.has_stock(quantity):
-            return JsonResponse({
-                'success': False,
-                'error': 'Stock insuffisant'
-            })
-        
+            return JsonResponse({'success': False, 'error': 'Stock insuffisant'})
+
         if not shop_inventory.can_afford(trainer, quantity):
             total_cost = shop_inventory.get_final_price() * quantity
             return JsonResponse({
                 'success': False,
-                'error': f'Pas assez d\'argent (coût: {total_cost}₽)'
+                'error': f"Pas assez d'argent (coût: {total_cost}₽)"
             })
-        
-        # Effectuer l'achat
+
         unit_price = shop_inventory.get_final_price()
         total_cost = unit_price * quantity
-        
-        trainer.money -= total_cost
-        trainer.save()
-        
-        # Mettre à jour le stock
+
+        # Trainer.spend_money gère le .save()
+        trainer.spend_money(total_cost)
+
         if shop_inventory.stock != -1:
             shop_inventory.stock -= quantity
             shop_inventory.save()
-        
-        # Ajouter à l'inventaire du joueur
-        trainer_inventory, created = TrainerInventory.objects.get_or_create(
-            trainer=trainer,
-            item=shop_inventory.item,
-            defaults={'quantity': 0}
-        )
-        trainer_inventory.quantity += quantity
-        trainer_inventory.save()
-        
-        # Enregistrer la transaction
+
+        # give_item_to_trainer gère le get_or_create + incrémentation
+        give_item_to_trainer(trainer, shop_inventory.item, quantity)
+
         Transaction.objects.create(
             trainer=trainer,
             shop=shop_inventory.shop,
@@ -135,25 +184,21 @@ def buy_item_api(request):
             transaction_type='buy',
             quantity=quantity,
             unit_price=unit_price,
-            total_price=total_cost
+            total_price=total_cost,
         )
-        
+
         return JsonResponse({
-            'success': True,
-            'message': f'{shop_inventory.item.name} x{quantity} acheté(s)!',
+            'success':     True,
+            'message':     f'{shop_inventory.item.name} x{quantity} acheté(s)!',
             'new_balance': trainer.money,
-            'total_cost': total_cost,
-            'item_name': shop_inventory.item.name,
-            'quantity': quantity
+            'total_cost':  total_cost,
+            'item_name':   shop_inventory.item.name,
+            'quantity':    quantity,
         })
-        
+
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=400)
+        import traceback; traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @login_required
@@ -161,101 +206,73 @@ def buy_item_api(request):
 def sell_item_api(request):
     """API pour vendre un objet"""
     try:
-        data = json.loads(request.body)
+        data                 = json.loads(request.body)
         trainer_inventory_id = data.get('trainer_inventory_id')
-        quantity = int(data.get('quantity', 1))
-        
+        quantity             = int(data.get('quantity', 1))
+
         if quantity <= 0:
-            return JsonResponse({
-                'success': False,
-                'error': 'Quantité invalide'
-            })
-        
-        # Récupérer les objets
-        trainer = get_object_or_404(Trainer, username=request.user.username)
+            return JsonResponse({'success': False, 'error': 'Quantité invalide'})
+
+        trainer           = get_player_trainer(request.user)
         trainer_inventory = get_object_or_404(
-            TrainerInventory, 
-            pk=trainer_inventory_id,
-            trainer=trainer
+            TrainerInventory, pk=trainer_inventory_id, trainer=trainer
         )
-        
-        # Vérifier la quantité
+
         if trainer_inventory.quantity < quantity:
-            return JsonResponse({
-                'success': False,
-                'error': 'Vous n\'avez pas assez de cet objet'
-            })
-        
-        # Vérifier si l'objet est vendable
+            return JsonResponse({'success': False, 'error': "Vous n'avez pas assez de cet objet"})
+
         if not trainer_inventory.item.is_consumable:
-            return JsonResponse({
-                'success': False,
-                'error': 'Cet objet ne peut pas être vendu'
-            })
-        
-        # Calculer le prix de vente (50% du prix d'achat)
-        unit_sell_price = trainer_inventory.item.price // 2
+            return JsonResponse({'success': False, 'error': "Cet objet ne peut pas être vendu"})
+
+        unit_sell_price  = trainer_inventory.item.price // 2
         total_sell_price = unit_sell_price * quantity
-        
-        # Effectuer la vente
-        trainer.money += total_sell_price
-        trainer.save()
-        
-        trainer_inventory.quantity -= quantity
-        if trainer_inventory.quantity == 0:
-            trainer_inventory.delete()
-        else:
-            trainer_inventory.save()
-        
-        # Enregistrer la transaction
+
+        # Trainer.earn_money gère le .save()
+        trainer.earn_money(total_sell_price)
+
+        # remove_item_from_trainer gère la décrémentation + suppression si 0
+        remove_item_from_trainer(trainer, trainer_inventory.item, quantity)
+
         Transaction.objects.create(
             trainer=trainer,
-            shop=None,  # Pas de boutique spécifique pour la vente
+            shop=None,
             item=trainer_inventory.item,
             transaction_type='sell',
             quantity=quantity,
             unit_price=unit_sell_price,
-            total_price=total_sell_price
+            total_price=total_sell_price,
         )
-        
+
         return JsonResponse({
-            'success': True,
-            'message': f'{trainer_inventory.item.name} x{quantity} vendu(s)!',
-            'new_balance': trainer.money,
+            'success':      True,
+            'message':      f'{trainer_inventory.item.name} x{quantity} vendu(s)!',
+            'new_balance':  trainer.money,
             'total_earned': total_sell_price,
-            'item_name': trainer_inventory.item.name,
-            'quantity': quantity
+            'item_name':    trainer_inventory.item.name,
+            'quantity':     quantity,
         })
-        
+
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=400)
+        import traceback; traceback.print_exc()
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @login_required
 def transaction_history_view(request):
     """Afficher l'historique des transactions"""
-    trainer = get_object_or_404(Trainer, username=request.user.username)
-    
-    transactions = Transaction.objects.filter(trainer=trainer)[:50]  # 50 dernières
-    
-    # Statistiques
-    total_spent = sum(
-        t.total_price for t in transactions.filter(transaction_type='buy')
+    trainer      = get_player_trainer(request.user)
+    transactions = Transaction.objects.filter(trainer=trainer).order_by('-created_at')[:50]
+
+    # Agrégation en DB au lieu de deux sum() Python
+    agg = Transaction.objects.filter(trainer=trainer).aggregate(
+        total_spent=Sum('total_price', filter=Q(transaction_type='buy')),
+        total_earned=Sum('total_price', filter=Q(transaction_type='sell')),
     )
-    total_earned = sum(
-        t.total_price for t in transactions.filter(transaction_type='sell')
-    )
-    
+
     context = {
-        'trainer': trainer,
+        'trainer':      trainer,
         'transactions': transactions,
-        'total_spent': total_spent,
-        'total_earned': total_earned,
+        'total_spent':  agg['total_spent'] or 0,
+        'total_earned': agg['total_earned'] or 0,
     }
-    
     return render(request, 'shop/transaction_history.html', context)

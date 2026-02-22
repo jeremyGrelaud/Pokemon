@@ -17,6 +17,11 @@
           <h5 class="mb-0">
             <i class="fas fa-folder"></i> Slot {{ save_slot.slot }}
           </h5>
+          {% if save_slot.save.is_active %}
+            <span class="badge badge-success">
+              <i class="fas fa-check"></i> Active
+            </span>
+          {% endif %}
         </div>
         
         <div class="card-body">

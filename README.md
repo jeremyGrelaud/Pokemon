@@ -1,8 +1,9 @@
 # Credits
 
-For trainer sprites credit to pokemon showdown : https://play.pokemonshowdown.com/sprites/trainers/?filter=credited
-To https://bulbapedia.bulbagarden.net for pokeball sprites and refrences to formulas (dmg, exp, catch, ...)
-
+- https://play.pokemonshowdown.com/sprites/trainers/?filter=credited (for trainer sprites)
+- https://bulbapedia.bulbagarden.net (for pokeball sprites and refrences to exp, catch, dmg formulas)
+- https://github.com/msikma/pokesprite/tree/master/items (for items HM, battle iitems ... sprites)
+- https://www.pokepedia.fr (for map sprites)
 
 # Pokemon
 For education purpose only
@@ -10,23 +11,18 @@ For education purpose only
 
 Recreating pokemon game in python
 
-TODO :
+TODO Roadmap :
 
-- Better Pokemon Center
-- Save Game data options
-- Fix battle 'GUI'
-- Battle Animations
-- Better Capture System with ball throw animation ...
-- Stats & Achievements
-- Map System ?
-- Implement different game mods ?
-- Take into account spawn rates for in the wild encounters
-- possibily use showdown battle background gen 3> instead of pure css https://play.pokemonshowdown.com/fx/
-- Rework html views of battle histories and take into account multiple pokemon opponents in recap for trainer battle
-- Give reward money at the end of a trainer fight
-- Display correct Victory or Defeat modal at the end of a fight and redirect to pokemon center or combat creation page/combat recap page
-- Sur les combats de trainer à multiples pokemon on obtient de l'exp que sur le dernier kill et en plus c'est en double le gain d'exp
+- Improve battle 'GUI'
+- ajouter un système de restriction sur le changement de map, certaines quêtes ou objets nécessaires, devoir forcément affronter certains dresseurs ou avoir une chance de trigger une wild battle ... ainsi que placer les combats contre le rival au moment de l'aventure de Kanto comme dans le jeu original
+- système de quêtes ?
+- système de shiny (sprites présents)
+- After everything, implement different game mods ?
+- améliorer le script d'initialisation de la base de données avec des données sur les moves appris par chaque pokémon ...
 
+TODO BugFixes :
+
+- continuer la refactorisation en utilisant/implémentant le plus possibles des helpers de GameUtils.py ou via des méthodes dans les models
 
 # Setup
 
@@ -38,6 +34,5 @@ python manage.py createsuperuser
 
 To init database in one command :
 ```
-python manage.py shell -c "from myPokemonApp.tasks.initializeDatabase import scriptToInitializeDatabase; from myPokemonApp.tasks.initializeItemsAndNpcs import run_full_initialization; scriptToInitializeDatabase(); run_full_initialization(); from myPokemonApp.tasks.initShops import initShops; initShops(); from myPokemonApp.tasks.initPokeCenters import scrip
-tToInitializePokeCenters; scriptToInitializePokeCenters();from myPokemonApp.tasks.initPokeballItem import scriptToInitNewPokeBalls; scriptToInitNewPokeBalls();"
+python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase()"
 ```

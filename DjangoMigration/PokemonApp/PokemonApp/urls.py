@@ -22,13 +22,17 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('login/', auth_views.LoginView.as_view(), name='account_login'), #base django login and logout
+    path('login/', auth_views.LoginView.as_view(), name='account_login'),
+    path('login/', auth_views.LoginView.as_view(), name='login'),  # alias
     path('logout/', auth_views.LogoutView.as_view(), name='account_logout'),
     # path("pokemonGame", views.PokemonGameLauncherView.as_view(), name='PokemonGameLauncherView'),
 
 
     # Dashboard
     path('', views.DashboardView.as_view(), name='home'),
+    
+    # Starter selection (nouveaux joueurs)
+    path('choose-starter/', views.choose_starter_view, name='choose_starter'),
     
     # Pokédex
     path('pokedex/', views.PokemonOverView.as_view(), name='PokemonOverView'),
@@ -40,6 +44,11 @@ urlpatterns = [
     
     # Mon équipe
     path('my-team/', views.MyTeamView.as_view(), name='MyTeamView'),
+    path('api/reorder-party/', views.reorder_party_api, name='ReorderPartyAPI'),
+    path('api/send-to-pc/', views.send_to_pc_api, name='SendToPCAPI'),
+    path('api/add-to-party/', views.add_to_party_api, name='AddToPartyAPI'),
+    path('api/pokemon/moves/', views.get_pokemon_moves_api, name='GetPokemonMovesAPI'),
+    path('api/pokemon/swap-move/', views.swap_move_api, name='SwapMoveAPI'),
     
     # Combats
     path('battles/', views.BattleListView.as_view(), name='BattleListView'),
@@ -48,6 +57,7 @@ urlpatterns = [
     # Champions d'Arène
     path('gym-leaders/', views.GymLeaderListView.as_view(), name='GymLeaderListView'),
     path('gym-leader/<int:pk>/', views.GymLeaderDetailView.as_view(), name='GymLeaderDetailView'),
+    path('badges/', views.BadgeBoxView.as_view(), name='BadgeBoxView'),
     
     # Objets
     path('items/', views.ItemListView.as_view(), name='ItemListView'),
@@ -55,16 +65,13 @@ urlpatterns = [
     # Combat graphique
     path('battle/<int:pk>/play/', views.BattleGameView.as_view(), name='BattleGameView'),
     path('battle/<int:pk>/action/', views.battle_action_view, name='BattleActionView'),    
+    path('battle/<int:pk>/learn-move/', views.battle_learn_move_view, name='BattlelearnMoveView'),
 
     # path('battle/create/', views.BattleCreateView.as_view(), name='BattleCreateView'),
 
     path('get_trainer_items/', views.GetTrainerItems, name='GetTrainerItems'),
     path('get_trainer_team/', views.GetTrainerTeam, name='GetTrainerTeam'),
 
-
-    # NOUVELLES ROUTES API
-    path('api/send-to-pc/', views.send_to_pc_api, name='SendToPCAPI'),
-    path('api/add-to-party/', views.add_to_party_api, name='AddToPartyAPI'),
 
     # Boutiques
     path('shops/', views.ShopListView.as_view(), name='ShopListView'),
@@ -99,6 +106,7 @@ urlpatterns = [
     path('battle/wild/challenge/', views.battle_create_wild_view, name='create_wild_battle'),
     path('battle/trainer/<int:trainer_id>/challenge/', views.battle_create_trainer_view, name='battle_create_trainer'),
     path('battle/gym/challenge/', views.battle_create_gym_view, name='create_gym_battle'),
+    path('battle/gym/<int:gym_leader_id>/challenge/', views.battle_challenge_gym_view, name='battle_challenge_gym'),
     path('battle/<int:battle_id>/trainer/complete/', views.battle_trainer_complete_view, name='battle_trainer_complete'),
 
     # Maps

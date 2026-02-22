@@ -72,7 +72,7 @@ class CaptureJournal(models.Model):
 
 
 class PokeballItem(models.Model):
-    """Extension du modèle Item pour les Poké Balls avec bonus"""
+    """Extension du modèle Item pour les Poke Balls avec bonus"""
     
     item = models.OneToOneField(Item, on_delete=models.CASCADE, primary_key=True)
 
@@ -97,8 +97,8 @@ class PokeballItem(models.Model):
     critical_catch_bonus = models.FloatField(default=0.0, help_text="Chance de capture critique")
     
     class Meta:
-        verbose_name = "Poké Ball (Stats)"
-        verbose_name_plural = "Poké Balls (Stats)"
+        verbose_name = "Poke Ball (Stats)"
+        verbose_name_plural = "Poke Balls (Stats)"
     
     def __str__(self):
         return f"{self.item.name} (x{self.item.catch_rate_modifier})"

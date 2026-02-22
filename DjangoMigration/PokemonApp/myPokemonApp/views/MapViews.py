@@ -7,8 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
 from myPokemonApp.models import *
-from myPokemonApp.gameUtils import get_random_wild_pokemon
-from myPokemonApp.gameUtils import learn_moves_up_to_level
+from myPokemonApp.gameUtils import get_random_wild_pokemon, get_player_trainer, get_player_location, get_defeated_trainer_ids, ZONE_TRANSLATIONS
 
 # ============================================================================
 # MAP OVERVIEW
@@ -17,202 +16,186 @@ from myPokemonApp.gameUtils import learn_moves_up_to_level
 @login_required
 def map_view(request):
     """Vue de la carte Kanto avec zones"""
-    
-    trainer = get_object_or_404(Trainer, username=request.user.username)
-    
-    # Position actuelle
-    try:
-        player_location = PlayerLocation.objects.get(trainer=trainer)
-    except PlayerLocation.DoesNotExist:
-        # Créer position initiale
-        start_zone = Zone.objects.filter(name__icontains='Bourg Palette').first()
-        if not start_zone:
-            start_zone = Zone.objects.first()
-        
-        player_location = PlayerLocation.objects.create(
-            trainer=trainer,
-            current_zone=start_zone
-        )
-    
-    # Toutes les zones
+    trainer         = get_player_trainer(request.user)
+    player_location = get_player_location(trainer)   # crée si absent
+
     all_zones = Zone.objects.all()
-    
-    # Zones accessibles
-    accessible_zones = []
-    for zone in all_zones:
-        can_access, reason = zone.is_accessible_by(trainer)
-        accessible_zones.append({
-            'zone': zone,
+
+    # Zones ayant une arène : on croise GymLeader.gym_city avec le dict de traductions
+    gym_cities      = set(GymLeader.objects.values_list('gym_city', flat=True))
+    zones_with_gym  = {fr for fr, en in ZONE_TRANSLATIONS.items() if en in gym_cities}
+
+    accessible_zones = [
+        {
+            'zone':       zone,
             'accessible': can_access,
-            'reason': reason,
-            'visited': player_location.visited_zones.filter(id=zone.id).exists()
-        })
-    
-    context = {
-        'current_zone': player_location.current_zone,
-        'zones': accessible_zones,
-        'player_location': player_location
-    }
-    
-    return render(request, 'map/map_overview.html', context)
+            'reason':     reason,
+            'visited':    player_location.visited_zones.filter(id=zone.id).exists(),
+            'has_gym':    zone.name in zones_with_gym,
+        }
+        for zone in all_zones
+        for can_access, reason in [zone.is_accessible_by(trainer)]
+    ]
+
+    return render(request, 'map/map_overview.html', {
+        'current_zone':    player_location.current_zone,
+        'zones':           accessible_zones,
+        'player_location': player_location,
+    })
 
 
 @login_required
 def zone_detail_view(request, zone_id):
     """Détail d'une zone avec options"""
-    
-    trainer = get_object_or_404(Trainer, username=request.user.username)
-    zone = get_object_or_404(Zone, pk=zone_id)
-    
-    # Vérifier accès
+    trainer         = get_player_trainer(request.user)
+    zone            = get_object_or_404(Zone, pk=zone_id)
     can_access, reason = zone.is_accessible_by(trainer)
-    
-    # Position actuelle
-    player_location = PlayerLocation.objects.get(trainer=trainer)
-    is_current = player_location.current_zone == zone
-    
-    # Zones connectées
-    connections = ZoneConnection.objects.filter(from_zone=zone)
-    
-    # Pokémon sauvages
-    wild_spawns = zone.wild_spawns.all()
-    
-    # Dresseurs
-    trainers_in_zone = Trainer.objects.filter(
-        is_npc=True,
-        location=zone.name
-    )
-    
-    context = {
-        'zone': zone,
-        'can_access': can_access,
-        'access_reason': reason,
-        'is_current': is_current,
-        'connections': connections,
-        'wild_spawns': wild_spawns,
-        'trainers': trainers_in_zone,
-        'current_zone': player_location.current_zone
-    }
-    
-    return render(request, 'map/zone_detail.html', context)
+    player_location = get_player_location(trainer)
+    is_current      = player_location.current_zone == zone
+
+    outgoing = ZoneConnection.objects.filter(from_zone=zone).select_related('to_zone')
+    incoming = ZoneConnection.objects.filter(
+        to_zone=zone, is_bidirectional=True
+    ).select_related('from_zone')
+
+    connections    = list(outgoing)
+    seen_zone_ids  = {c.to_zone_id for c in outgoing}
+    for conn in incoming:
+        if conn.from_zone_id not in seen_zone_ids:
+            conn.to_zone = conn.from_zone
+            connections.append(conn)
+
+    wild_spawns        = zone.wild_spawns.all()
+    trainers_in_zone   = Trainer.objects.filter(is_npc=True, location=zone.name)
+
+    # Calcul des dresseurs vaincus en UNE seule requête DB
+    # (évite le N+1 que produirait npc.is_defeated_by_player() dans le template)
+    defeated_ids = get_defeated_trainer_ids(trainer)
+    trainers_with_status = [
+        {
+            'npc':         npc,
+            'is_defeated': npc.id in defeated_ids,
+            'can_rebattle': npc.can_rebattle,
+        }
+        for npc in trainers_in_zone
+    ]
+
+    pokemon_center = None
+    if zone.has_pokemon_center:
+        pokemon_center = PokemonCenter.objects.filter(
+            location__icontains=zone.name, is_available=True
+        ).first()
+
+    zone_shop = None
+    if zone.has_shop:
+        zone_shop = Shop.objects.filter(location__icontains=zone.name).first()
+
+    english_zone_name = ZONE_TRANSLATIONS.get(zone.name, zone.name).strip()
+
+    gym_leader = None
+    try:
+        gym_leader = GymLeader.objects.filter(gym_city__icontains=english_zone_name).first()
+    except Exception:
+        pass
+
+    # Gym Leader : défaite per-joueur via la save
+    gym_leader_defeated = gym_leader and gym_leader.trainer.id in defeated_ids
+
+    return render(request, 'map/zone_detail.html', {
+        'zone':               zone,
+        'can_access':         can_access,
+        'access_reason':      reason,
+        'is_current':         is_current,
+        'connections':        connections,
+        'wild_spawns':        wild_spawns,
+        'trainers':           trainers_with_status,
+        'current_zone':       player_location.current_zone,
+        'pokemon_center':     pokemon_center,
+        'zone_shop':          zone_shop,
+        'gym_leader':         gym_leader,
+        'gym_leader_defeated': gym_leader_defeated,
+        'player_trainer':     trainer,
+    })
 
 from myPokemonApp.views.AchievementViews import check_achievement
 
 @login_required
 def travel_to_zone_view(request, zone_id):
     """Voyager vers une zone"""
-    
-    trainer = get_object_or_404(Trainer, username=request.user.username)
-    zone = get_object_or_404(Zone, pk=zone_id)
-    
-    player_location = PlayerLocation.objects.get(trainer=trainer)
-    
+    trainer         = get_player_trainer(request.user)
+    zone            = get_object_or_404(Zone, pk=zone_id)
+    player_location = get_player_location(trainer)
+
     success, message = player_location.travel_to(zone)
-    
+
     if success:
         messages.success(request, message)
 
-        # TRIGGER ACHIEVEMENTS
-        # Compter zones visitées
-        visited_count = player_location.visited_zones.count()
-        
-        if visited_count >= 10:
+        if player_location.visited_zones.count() >= 10:
             result = check_achievement(trainer, 'Explorateur')
             if result.get('newly_completed'):
                 messages.success(request, f"🏆 Explorateur débloqué ! +{result['reward_money']}₽")
 
-        
-        # Mettre à jour la save active
         try:
             save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
             if save:
                 save.current_location = zone.name
                 save.save()
-        except:
+        except Exception:
             pass
     else:
         messages.error(request, message)
-    
+
     return redirect('zone_detail', zone_id=zone.id)
 
 
 @login_required
 def wild_encounter_view(request, zone_id):
     """Déclencher une rencontre sauvage dans une zone"""
-    
-    trainer = get_object_or_404(Trainer, username=request.user.username)
-    zone = get_object_or_404(Zone, pk=zone_id)
-    
-    # Vérifier que c'est la zone actuelle
-    player_location = PlayerLocation.objects.get(trainer=trainer)
+    from myPokemonApp.gameUtils import create_wild_pokemon, get_first_alive_pokemon
+
+    trainer         = get_player_trainer(request.user)
+    zone            = get_object_or_404(Zone, pk=zone_id)
+    player_location = get_player_location(trainer)
+
     if player_location.current_zone != zone:
         messages.error(request, "Vous n'êtes pas dans cette zone !")
         return redirect('map_view')
-    
-    # Type de rencontre (par défaut: grass)
+
+    active_battle = Battle.objects.filter(player_trainer=trainer, is_active=True).first()
+    if active_battle:
+        messages.warning(request, "Un combat est déjà en cours !")
+        return redirect('BattleGameView', pk=active_battle.id)
+
     encounter_type = request.GET.get('type', 'grass')
-    
-    # Générer Pokémon selon spawn rates
     wild_species, level = get_random_wild_pokemon(zone, encounter_type)
-    
     if not wild_species:
         messages.warning(request, "Aucun Pokémon trouvé dans cette zone.")
         return redirect('zone_detail', zone_id=zone.id)
-    
-    # Créer le combat (même logique que battle_create_wild_view)
-    player_pokemon = trainer.pokemon_team.filter(
-        is_in_party=True,
-        current_hp__gt=0
-    ).first()
-    
+
+    player_pokemon = get_first_alive_pokemon(trainer)
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
-        return redirect('pokemon_center')
-    
-    # Trainer wild
-    wild_trainer, _ = Trainer.objects.get_or_create(
-        username='wild_pokemon',
-        defaults={'trainer_type': 'wild', 'is_npc': True}
-    )
-    
-    # Créer Pokémon sauvage
-    wild_pokemon = PlayablePokemon.objects.create(
-        species=wild_species,
-        level=level,
-        trainer=wild_trainer,
-        is_in_party=True
-    )
-    
-    wild_pokemon.calculate_stats()
-    wild_pokemon.current_hp = wild_pokemon.max_hp
-    wild_pokemon.save()
-    
-    # Ajouter moves
-    learn_moves_up_to_level(wild_pokemon, wild_pokemon.level)
+        return redirect('PokemonCenterListView')
 
-    # Si pas de moves appris, donner Tackle
-    if not wild_pokemon.pokemonmoveinstance_set.exists():
-        tackle = PokemonMove.objects.filter(name__icontains='Charge').first()
-        if not tackle:
-            tackle = PokemonMove.objects.first()
-        
-        if tackle:
-            PokemonMoveInstance.objects.create(
-                pokemon=wild_pokemon,
-                move=tackle,
-                current_pp=tackle.pp,
-            )
+    # Nettoyer les vieux Pokémon sauvages orphelins
+    active_wild_pokemon_ids = Battle.objects.filter(
+        is_active=True
+    ).values_list('opponent_pokemon_id', flat=True)
+    PlayablePokemon.objects.filter(
+        trainer__username__in=('Wild', 'wild_pokemon')
+    ).exclude(id__in=active_wild_pokemon_ids).delete()
 
-    
-    # Créer combat
+    wild_pokemon = create_wild_pokemon(wild_species, level, location=zone.name)
+
     battle = Battle.objects.create(
         player_trainer=trainer,
-        opponent_trainer=wild_trainer,
+        opponent_trainer=None,
         player_pokemon=player_pokemon,
         opponent_pokemon=wild_pokemon,
-        is_active=True
+        battle_type='wild',
+        is_active=True,
     )
-    
+
     messages.success(request, f"Un {wild_species.name} sauvage de niveau {level} apparaît !")
-    
     return redirect('BattleGameView', pk=battle.id)
