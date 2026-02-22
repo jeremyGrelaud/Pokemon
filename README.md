@@ -15,11 +15,10 @@ TODO Roadmap :
 
 - Improve battle 'GUI'
 - ajouter un système de restriction sur le changement de map, certaines quêtes ou objets nécessaires, devoir forcément affronter certains dresseurs ou avoir une chance de trigger une wild battle ... ainsi que placer les combats contre le rival au moment de l'aventure de Kanto comme dans le jeu original
-- système de quêtes ?
-- After everything, implement different game mods ?
+- système de quêtes avec les key items sur la save comme avec la fonction grant pokedex ?
 - améliorer le script d'initialisation de la base de données avec des données sur les moves appris par chaque pokémon ...
-- il manque encore des dresseurs dans les zones comme la 'forêt de jade', le 'mont sélénite', ...
-- changer les formules de gain d'xp et calcul de dmg pour les formules gen3 ou plus
+- After everything, implement different game mods ?
+- Dans le modal de swap de moves depuis my-team s'il y a moins de 4 moves d'équipé ne pas forcer à swap avec unmove existant et juste ajouter
 
 TODO BugFixes :
 

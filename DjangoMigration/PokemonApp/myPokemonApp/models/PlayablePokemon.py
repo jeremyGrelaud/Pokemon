@@ -159,47 +159,124 @@ class PlayablePokemon(models.Model):
             )
     
     def calculate_stats(self):
-        """Calcule les stats basées sur le niveau, IVs, EVs et nature"""
-        # Formule Gen 3+
+        """
+        Calcule les stats basées sur le niveau, IVs, EVs et nature.
+
+        Formule Gen 3+ :
+          HP    = floor( (2*base + IV + floor(EV/4)) * L / 100 ) + L + 10
+          Autre = floor( floor( (2*base + IV + floor(EV/4)) * L / 100 ) + 5 ) × nature
+        """
+        L = self.level
+
         self.max_hp = int(
-            ((2 * self.species.base_hp + self.iv_hp + self.ev_hp // 4) * self.level) // 100 + self.level + 10
+            ((2 * self.species.base_hp + self.iv_hp + self.ev_hp // 4) * L) // 100
+            + L + 10
         )
-        
-        # Autres stats
-        stats = {
-            'attack': (self.species.base_attack, self.iv_attack, self.ev_attack),
-            'defense': (self.species.base_defense, self.iv_defense, self.ev_defense),
-            'special_attack': (self.species.base_special_attack, self.iv_special_attack, self.ev_special_attack),
-            'special_defense': (self.species.base_special_defense, self.iv_special_defense, self.ev_special_defense),
-            'speed': (self.species.base_speed, self.iv_speed, self.ev_speed),
+
+        # Table des natures : (stat boostée, stat réduite) → multiplicateurs
+        # Nature neutre (Hardy, Docile, Serious, Bashful, Quirky) : 1.0 partout
+        NATURE_MODIFIERS = {
+            # Attaque +
+            'Lonely':  ('attack', 'defense'),
+            'Brave':   ('attack', 'speed'),
+            'Adamant': ('attack', 'special_attack'),
+            'Naughty': ('attack', 'special_defense'),
+            # Défense +
+            'Bold':    ('defense', 'attack'),
+            'Relaxed': ('defense', 'speed'),
+            'Impish':  ('defense', 'special_attack'),
+            'Lax':     ('defense', 'special_defense'),
+            # Vitesse +
+            'Timid':   ('speed', 'attack'),
+            'Hasty':   ('speed', 'defense'),
+            'Jolly':   ('speed', 'special_attack'),
+            'Naive':   ('speed', 'special_defense'),
+            # Att. Spé +
+            'Modest':  ('special_attack', 'attack'),
+            'Mild':    ('special_attack', 'defense'),
+            'Quiet':   ('special_attack', 'speed'),
+            'Rash':    ('special_attack', 'special_defense'),
+            # Déf. Spé +
+            'Calm':    ('special_defense', 'attack'),
+            'Gentle':  ('special_defense', 'defense'),
+            'Sassy':   ('special_defense', 'speed'),
+            'Careful': ('special_defense', 'special_attack'),
         }
-        
+
+        boosted_stat, reduced_stat = NATURE_MODIFIERS.get(self.nature, (None, None))
+
+        stats = {
+            'attack':          (self.species.base_attack,         self.iv_attack,         self.ev_attack),
+            'defense':         (self.species.base_defense,        self.iv_defense,        self.ev_defense),
+            'special_attack':  (self.species.base_special_attack, self.iv_special_attack, self.ev_special_attack),
+            'special_defense': (self.species.base_special_defense,self.iv_special_defense,self.ev_special_defense),
+            'speed':           (self.species.base_speed,          self.iv_speed,          self.ev_speed),
+        }
+
         for stat_name, (base, iv, ev) in stats.items():
-            value = int(
-                ((2 * base + iv + ev // 4) * self.level) // 100 + 5
-            )
-            # Application de la nature (à implémenter)
-            setattr(self, stat_name, value)
-    
-    def gain_exp(self, exp_amount):
-        """Gagne de l'expérience et monte de niveau si nécessaire"""
-        self.current_exp += exp_amount
-        
-        # Liste pour stocker les messages de level up
-        messages = []
-        
-        # Vérifier le level up
-        while self.current_exp >= self.exp_for_next_level():
-            level_up_msg = self.level_up()
-            messages.append(level_up_msg)
-        
-        self.save()
-        return messages
-    
+            value = int(((2 * base + iv + ev // 4) * L) // 100 + 5)
+
+            # Application de la nature (±10 %)
+            if stat_name == boosted_stat:
+                value = int(value * 1.1)
+            elif stat_name == reduced_stat:
+                value = int(value * 0.9)
+
+            # Plancher à 1
+            setattr(self, stat_name, max(1, value))
+
     def exp_for_next_level(self):
-        """Calcule l'exp nécessaire pour le prochain niveau"""
-        # Formule Medium Fast
-        return int((4 * (self.level + 1) ** 3) / 5)
+        """
+        Retourne l'XP totale cumulée nécessaire pour atteindre le niveau suivant.
+
+        Système cumulatif (comme dans les jeux) : current_exp est l'XP
+        totale depuis le niveau 1. On compare directement au seuil,
+        sans soustraction.
+
+        Groupes de croissance (XP requise au niveau 100) :
+          - Erratic      : 600 000  (formule complexe, non-monotone)
+          - Fast         : 800 000  (4n³/5)
+          - Medium Fast  : 1 000 000 (n³)             ← défaut
+          - Medium Slow  : 1 059 860 (6n³/5 − 15n² + 100n − 140)
+          - Slow         : 1 250 000 (5n³/4)
+          - Fluctuating  : 1 640 000 (formule complexe)
+        """
+        n = self.level + 1  # seuil pour atteindre le prochain niveau
+        if n > 100:
+            return 10_000_000  # niveau max déjà atteint
+
+        rate = getattr(self.species, 'growth_rate', 'medium_fast')
+
+        if rate == 'fast':
+            return int(4 * n ** 3 / 5)
+
+        elif rate == 'medium_slow':
+            val = int(6 * n ** 3 / 5) - 15 * n ** 2 + 100 * n - 140
+            return max(0, val)
+
+        elif rate == 'slow':
+            return int(5 * n ** 3 / 4)
+
+        elif rate == 'erratic':
+            if n <= 50:
+                return int(n ** 3 * (100 - n) / 50)
+            elif n <= 68:
+                return int(n ** 3 * (150 - n) / 100)
+            elif n <= 98:
+                return int(n ** 3 * ((1911 - 10 * n) // 3) / 500)
+            else:
+                return int(n ** 3 * (160 - n) / 100)
+
+        elif rate == 'fluctuating':
+            if n <= 15:
+                return int(n ** 3 * ((n + 1) // 3 + 24) / 50)
+            elif n <= 36:
+                return int(n ** 3 * (n + 14) / 50)
+            else:
+                return int(n ** 3 * ((n // 2) + 32) / 50)
+
+        else:  # medium_fast (défaut)
+            return n ** 3
     
     def level_up(self):
         """Monte d'un niveau"""

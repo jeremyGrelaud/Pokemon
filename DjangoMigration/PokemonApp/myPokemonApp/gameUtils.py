@@ -432,32 +432,56 @@ def get_opponent_ai_action(battle):
 
 # --- XP et level-up ---
 
-def calculate_exp_gain(defeated_pokemon, battle_type='wild'):
-    """Calcule l'XP gagne selon la formule Gen 1."""
-    base_exp = defeated_pokemon.species.base_experience or 100
-    exp = int((base_exp * defeated_pokemon.level) / 7)
-    if battle_type == 'trainer':
-        exp = int(exp * 1.5)
-    return exp
+def calculate_exp_gain(defeated_pokemon, battle_type='wild', winner_pokemon=None):
+    """
+    Calcule l'XP gagnée selon la formule Gen 5+ (Noire/Blanche → présent).
+
+        exp = round( (b × Lf / 5) × ratio^2.5 + 1 ) × t
+
+    Où :
+      b     = base_experience du Pokémon vaincu
+      Lf    = niveau du Pokémon vaincu
+      Lp    = niveau du Pokémon vainqueur (15 par défaut si inconnu)
+      ratio = (2×Lf + 10) / (Lf + Lp + 10)
+      t     = 1.5 si combat de dresseur, 1.0 si sauvage
+
+    Avantage Gen 5+ : battre un Pokémon plus fort rapporte plus d'XP ;
+    battre un Pokémon beaucoup plus faible rapporte très peu, ce qui
+    limite le grinding excessif sur des Pokémon de bas niveau.
+    """
+    b  = defeated_pokemon.species.base_experience or 64
+    Lf = defeated_pokemon.level
+    Lp = winner_pokemon.level if winner_pokemon else 15
+    t  = 1.5 if battle_type in ('trainer', 'gym', 'elite_four') else 1.0
+
+    ratio        = (2 * Lf + 10) / (Lf + Lp + 10)
+    level_factor = ratio ** 2.5
+    exp = int(round((b * Lf / 5) * level_factor + 1) * t)
+    return max(1, exp)
 
 
 def apply_exp_gain(pokemon, exp_amount):
     """
     Applique l'XP a un Pokemon et gere les level-ups avec apprentissage de moves.
 
+    Système d'XP cumulatif (comme dans les jeux) :
+      - current_exp = XP totale accumulée depuis le niveau 1
+      - exp_for_next_level() retourne le seuil cumulatif pour atteindre level+1
+      - Pas de soustraction : on compare directement l'XP totale au seuil
+
     Retourne :
         {
             'exp_gained':      int,
             'level_up':        bool,
             'new_level':       int,
-            'learned_moves':   [str],  # noms des capacites auto-apprises (< 4 moves)
-            'pending_moves':   [       # capacites en attente si le pokemon a deja 4 moves
+            'learned_moves':   [str],  # noms des capacités auto-apprises (< 4 moves)
+            'pending_moves':   [       # capacités en attente si le pokemon a déjà 4 moves
                 {
-                    'move_id':   int,
-                    'move_name': str,
-                    'move_type': str,
+                    'move_id':    int,
+                    'move_name':  str,
+                    'move_type':  str,
                     'move_power': int|None,
-                    'move_pp':   int,
+                    'move_pp':    int,
                     'current_moves': [
                         {'id': int, 'name': str, 'type': str, 'power': int|None, 'pp': int}
                     ]
@@ -477,8 +501,8 @@ def apply_exp_gain(pokemon, exp_amount):
 
     pokemon.current_exp = (pokemon.current_exp or 0) + exp_amount
 
-    while pokemon.current_exp >= pokemon.exp_for_next_level():
-        pokemon.current_exp -= pokemon.exp_for_next_level()
+    # Système cumulatif : on monte tant que l'XP totale dépasse le seuil du prochain niveau
+    while pokemon.level < 100 and pokemon.current_exp >= pokemon.exp_for_next_level():
         pokemon.level += 1
         result['level_up'] = True
         result['new_level'] = pokemon.level
@@ -491,14 +515,14 @@ def apply_exp_gain(pokemon, exp_amount):
             pokemon.max_hp
         )
 
-        # Trouver les moves apprenables exactement a ce niveau
+        # Trouver les moves apprenables exactement à ce niveau
         new_learnable = pokemon.species.learnable_moves.filter(
             level_learned=pokemon.level
         ).select_related('move', 'move__type')
 
         for lm in new_learnable:
             move = lm.move
-            # Verifier que le pokemon n'a pas deja ce move
+            # Vérifier que le pokemon n'a pas déjà ce move
             already_has = PokemonMoveInstance.objects.filter(
                 pokemon=pokemon, move=move
             ).exists()
@@ -516,7 +540,7 @@ def apply_exp_gain(pokemon, exp_amount):
                 )
                 result['learned_moves'].append(move.name)
             else:
-                # Pokemon a deja 4 moves → proposer au joueur de choisir
+                # Pokemon a déjà 4 moves → proposer au joueur de choisir
                 current_moves = [
                     {
                         'id':    mi.move.id,
@@ -565,6 +589,200 @@ def apply_exp_gain(pokemon, exp_amount):
 
     pokemon.save()
     return result
+
+
+# --- Gains d'EVs après combat ---
+
+# Table des EVs accordés par chaque Pokémon Gen 1 (source FRLG / Bulbapedia)
+# Format : { 'NomEspèce': [(champ_ev, valeur), ...] }
+_EV_YIELDS = {
+    'Bulbasaur':   [('ev_special_attack', 1)],
+    'Ivysaur':     [('ev_special_attack', 1), ('ev_special_defense', 1)],
+    'Venusaur':    [('ev_special_attack', 2), ('ev_special_defense', 1)],
+    'Charmander':  [('ev_speed', 1)],
+    'Charmeleon':  [('ev_speed', 1), ('ev_attack', 1)],
+    'Charizard':   [('ev_speed', 3)],
+    'Squirtle':    [('ev_defense', 1)],
+    'Wartortle':   [('ev_defense', 1), ('ev_special_defense', 1)],
+    'Blastoise':   [('ev_defense', 1), ('ev_special_defense', 2)],
+    'Caterpie':    [('ev_hp', 1)],
+    'Metapod':     [('ev_defense', 1)],
+    'Butterfree':  [('ev_special_attack', 2), ('ev_special_defense', 1)],
+    'Weedle':      [('ev_speed', 1)],
+    'Kakuna':      [('ev_defense', 1)],
+    'Beedrill':    [('ev_attack', 2), ('ev_speed', 1)],
+    'Pidgey':      [('ev_speed', 1)],
+    'Pidgeotto':   [('ev_speed', 1), ('ev_attack', 1)],
+    'Pidgeot':     [('ev_speed', 3)],
+    'Rattata':     [('ev_speed', 1)],
+    'Raticate':    [('ev_speed', 2)],
+    'Spearow':     [('ev_speed', 1)],
+    'Fearow':      [('ev_speed', 2)],
+    'Ekans':       [('ev_attack', 1)],
+    'Arbok':       [('ev_attack', 2)],
+    'Pikachu':     [('ev_speed', 2)],
+    'Raichu':      [('ev_speed', 3)],
+    'Sandshrew':   [('ev_defense', 1)],
+    'Sandslash':   [('ev_defense', 2)],
+    'Nidoran♀':   [('ev_hp', 1)],
+    'Nidorina':    [('ev_hp', 2)],
+    'Nidoqueen':   [('ev_hp', 3)],
+    'Nidoran♂':   [('ev_attack', 1)],
+    'Nidorino':    [('ev_attack', 2)],
+    'Nidoking':    [('ev_attack', 3)],
+    'Clefairy':    [('ev_hp', 2)],
+    'Clefable':    [('ev_hp', 3)],
+    'Vulpix':      [('ev_special_attack', 1)],
+    'Ninetales':   [('ev_special_attack', 2), ('ev_speed', 1)],
+    'Jigglypuff':  [('ev_hp', 2)],
+    'Wigglytuff':  [('ev_hp', 3)],
+    'Zubat':       [('ev_speed', 1)],
+    'Golbat':      [('ev_speed', 2)],
+    'Oddish':      [('ev_special_attack', 1)],
+    'Gloom':       [('ev_special_attack', 1), ('ev_special_defense', 1)],
+    'Vileplume':   [('ev_special_attack', 2), ('ev_special_defense', 1)],
+    'Paras':       [('ev_attack', 1)],
+    'Parasect':    [('ev_attack', 2), ('ev_defense', 1)],
+    'Venonat':     [('ev_special_defense', 1)],
+    'Venomoth':    [('ev_special_attack', 2), ('ev_special_defense', 1)],
+    'Diglett':     [('ev_speed', 1)],
+    'Dugtrio':     [('ev_speed', 2)],
+    'Meowth':      [('ev_speed', 1)],
+    'Persian':     [('ev_speed', 2)],
+    'Psyduck':     [('ev_special_attack', 1)],
+    'Golduck':     [('ev_special_attack', 2)],
+    'Mankey':      [('ev_attack', 1)],
+    'Primeape':    [('ev_attack', 2)],
+    'Growlithe':   [('ev_attack', 1)],
+    'Arcanine':    [('ev_attack', 2), ('ev_speed', 1)],
+    'Poliwag':     [('ev_speed', 1)],
+    'Poliwhirl':   [('ev_speed', 2)],
+    'Poliwrath':   [('ev_defense', 1), ('ev_special_defense', 1)],
+    'Abra':        [('ev_special_attack', 1)],
+    'Kadabra':     [('ev_special_attack', 2)],
+    'Alakazam':    [('ev_special_attack', 3)],
+    'Machop':      [('ev_attack', 1)],
+    'Machoke':     [('ev_attack', 2)],
+    'Machamp':     [('ev_attack', 3)],
+    'Bellsprout':  [('ev_attack', 1)],
+    'Weepinbell':  [('ev_attack', 2)],
+    'Victreebel':  [('ev_attack', 3)],
+    'Tentacool':   [('ev_special_defense', 1)],
+    'Tentacruel':  [('ev_special_defense', 2)],
+    'Geodude':     [('ev_defense', 1)],
+    'Graveler':    [('ev_defense', 2)],
+    'Golem':       [('ev_defense', 3)],
+    'Ponyta':      [('ev_speed', 1)],
+    'Rapidash':    [('ev_speed', 2)],
+    'Slowpoke':    [('ev_hp', 1)],
+    'Slowbro':     [('ev_defense', 1), ('ev_special_attack', 1)],
+    'Magnemite':   [('ev_special_attack', 1)],
+    'Magneton':    [('ev_special_attack', 2)],
+    'Doduo':       [('ev_attack', 1)],
+    'Dodrio':      [('ev_attack', 2)],
+    'Seel':        [('ev_special_defense', 1)],
+    'Dewgong':     [('ev_special_defense', 2)],
+    'Grimer':      [('ev_hp', 1)],
+    'Muk':         [('ev_hp', 2)],
+    'Shellder':    [('ev_defense', 1)],
+    'Cloyster':    [('ev_defense', 2)],
+    'Gastly':      [('ev_special_attack', 1)],
+    'Haunter':     [('ev_special_attack', 2)],
+    'Gengar':      [('ev_special_attack', 3)],
+    'Onix':        [('ev_defense', 1)],
+    'Drowzee':     [('ev_special_defense', 1)],
+    'Hypno':       [('ev_special_defense', 2)],
+    'Krabby':      [('ev_attack', 1)],
+    'Kingler':     [('ev_attack', 2)],
+    'Voltorb':     [('ev_speed', 1)],
+    'Electrode':   [('ev_speed', 2)],
+    'Exeggcute':   [('ev_special_attack', 1)],
+    'Exeggutor':   [('ev_special_attack', 2)],
+    'Cubone':      [('ev_defense', 1)],
+    'Marowak':     [('ev_defense', 2)],
+    'Hitmonlee':   [('ev_attack', 2)],
+    'Hitmonchan':  [('ev_special_defense', 2)],
+    'Lickitung':   [('ev_hp', 1)],
+    'Koffing':     [('ev_defense', 1)],
+    'Weezing':     [('ev_defense', 2)],
+    'Rhyhorn':     [('ev_defense', 1)],
+    'Rhydon':      [('ev_attack', 2)],
+    'Chansey':     [('ev_hp', 2)],
+    'Tangela':     [('ev_defense', 1)],
+    'Kangaskhan':  [('ev_hp', 2)],
+    'Horsea':      [('ev_special_attack', 1)],
+    'Seadra':      [('ev_special_attack', 2)],
+    'Goldeen':     [('ev_attack', 1)],
+    'Seaking':     [('ev_attack', 2)],
+    'Staryu':      [('ev_speed', 1)],
+    'Starmie':     [('ev_speed', 2)],
+    'Mr. Mime':    [('ev_special_defense', 2)],
+    'Scyther':     [('ev_attack', 1), ('ev_speed', 1)],
+    'Jynx':        [('ev_special_attack', 2)],
+    'Electabuzz':  [('ev_special_attack', 2)],
+    'Magmar':      [('ev_special_attack', 2)],
+    'Pinsir':      [('ev_attack', 2)],
+    'Tauros':      [('ev_attack', 1), ('ev_speed', 1)],
+    'Magikarp':    [('ev_speed', 1)],
+    'Gyarados':    [('ev_attack', 2)],
+    'Lapras':      [('ev_hp', 2)],
+    'Ditto':       [('ev_hp', 1)],
+    'Eevee':       [('ev_hp', 1)],
+    'Vaporeon':    [('ev_hp', 2)],
+    'Jolteon':     [('ev_speed', 2)],
+    'Flareon':     [('ev_attack', 2)],
+    'Porygon':     [('ev_special_attack', 1)],
+    'Omanyte':     [('ev_defense', 1)],
+    'Omastar':     [('ev_defense', 1), ('ev_special_attack', 1)],
+    'Kabuto':      [('ev_defense', 1)],
+    'Kabutops':    [('ev_attack', 2)],
+    'Aerodactyl':  [('ev_speed', 2)],
+    'Snorlax':     [('ev_hp', 2)],
+    'Articuno':    [('ev_special_defense', 3)],
+    'Zapdos':      [('ev_special_attack', 3)],
+    'Moltres':     [('ev_special_attack', 3)],
+    'Dratini':     [('ev_attack', 1)],
+    'Dragonair':   [('ev_attack', 2)],
+    'Dragonite':   [('ev_attack', 3)],
+    'Mewtwo':      [('ev_special_attack', 3)],
+    'Mew':         [('ev_hp', 3)],
+}
+
+_EV_CAP_PER_STAT = 252
+_EV_TOTAL_CAP    = 510
+
+
+def apply_ev_gains(winner, defeated_pokemon):
+    """
+    Accorde les EVs (Effort Values) au Pokémon vainqueur après le combat.
+    Limites Gen 3+ : 252 EVs par stat, 510 EVs au total.
+    Recalcule les stats si des EVs sont gagnés.
+    """
+    species_name = defeated_pokemon.species.name
+    yields = _EV_YIELDS.get(species_name, [('ev_hp', 1)])
+
+    current_total = (
+        winner.ev_hp + winner.ev_attack + winner.ev_defense +
+        winner.ev_special_attack + winner.ev_special_defense + winner.ev_speed
+    )
+
+    if current_total >= _EV_TOTAL_CAP:
+        return  # Plafond déjà atteint, rien à faire
+
+    gained_any = False
+    for stat_field, amount in yields:
+        if current_total >= _EV_TOTAL_CAP:
+            break
+        current_val = getattr(winner, stat_field)
+        gain = min(amount, _EV_CAP_PER_STAT - current_val, _EV_TOTAL_CAP - current_total)
+        if gain > 0:
+            setattr(winner, stat_field, current_val + gain)
+            current_total += gain
+            gained_any = True
+
+    if gained_any:
+        winner.calculate_stats()
+        winner.save()
 
 
 # --- Fin de combat ---

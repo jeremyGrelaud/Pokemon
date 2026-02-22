@@ -53,8 +53,8 @@ from myPokemonApp.tasks.initShops import initShops
 from myPokemonApp.tasks.initAchievments import init_achievements
 
 # ── Nouveaux scripts Gen 3 ─────────────────────────────────────────────────
-from myPokemonApp.tasks.initMissingMovesGen3 import add_missing_gen3_moves
-from myPokemonApp.tasks.initLearnableMovesGen3 import update_learnable_moves_gen3
+from myPokemonApp.tasks.initMovesGen9 import add_missing_gen9_moves
+from myPokemonApp.tasks.initLearnableMovesGen9 import update_learnable_moves_gen9
 from myPokemonApp.tasks.initNPCTrainersComplete import run_complete_npc_initialization
 
 
@@ -110,14 +110,13 @@ def initAllDatabase(stop_on_error=True):
 
         # ── MOVES GEN 3 ───────────────────────────────────────────────────────
         # Doit tourner AVANT les learnsets pour que les moves existent en base.
-        (2,  "Moves Gen 3 manquants (Aerial Ace, Blaze Kick, Discharge…)",
-             add_missing_gen3_moves),
+        (2,  "Moves Gen 9 manquants (Aerial Ace, Blaze Kick, Discharge…)",
+             add_missing_gen9_moves),
 
-        # ── LEARNSETS GEN 3 (FRLG) ────────────────────────────────────────────
-        # Remplace les niveaux Gen 1 par les niveaux FireRed/LeafGreen.
+        # ── LEARNSETS GEN 9 ────────────────────────────────────────────
         # True = clear_existing : vide les anciens learnsets avant recréation.
-        (3,  "Learnsets Gen 3 — FireRed / LeafGreen",
-             update_learnable_moves_gen3, True),
+        (3,  "Learnsets Gen 9",
+             update_learnable_moves_gen9, True),
 
         # ── ITEMS ─────────────────────────────────────────────────────────────
         (4,  "Objets (Potions, Balls, Pierres, etc.)",
