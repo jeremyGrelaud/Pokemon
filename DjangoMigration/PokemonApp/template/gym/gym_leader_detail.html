@@ -143,7 +143,7 @@
               <div class="card-body">
                 <div class="row align-items-center">
                   <div class="col-4 text-center">
-                    <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png" 
+                    <img src="{% static 'img/sprites_gen5/' %}{% if pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ pokemon.species.name|lowerPokemonFileNames }}.png"
                          alt="{{ pokemon.species.name }}"
                          style="width: 80px; height: 80px;"
                          onerror="this.src='{% static 'img/pokeball.png' %}'">

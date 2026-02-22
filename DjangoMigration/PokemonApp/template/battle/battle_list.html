@@ -105,7 +105,7 @@
               <!-- Pokémon principal du joueur -->
               {% if battle.player_pokemon %}
               <div class="d-flex align-items-center mr-3">
-                <img src="{% static 'img/sprites_gen5/normal/' %}{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
+                <img src="{% static 'img/sprites_gen5/' %}{% if battle.player_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
                      alt="{{ battle.player_pokemon.species.name }}"
                      style="width:40px;height:40px;object-fit:contain;"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">
@@ -122,7 +122,7 @@
               {% if battle.battle_type == 'wild' %}
                 {% if battle.opponent_pokemon %}
                 <div class="d-flex align-items-center">
-                  <img src="{% static 'img/sprites_gen5/normal/' %}{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
+                  <img src="{% static 'img/sprites_gen5/' %}{% if battle.opponent_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
                        alt="{{ battle.opponent_pokemon.species.name }}"
                        style="width:40px;height:40px;object-fit:contain;"
                        onerror="this.src='{% static 'img/pokeball.png' %}'">
@@ -135,7 +135,7 @@
               {% else %}
                 {% if battle.opponent_trainer %}
                   {% for poke in battle.opponent_trainer.pokemon_team.all %}
-                  <img src="{% static 'img/sprites_gen5/normal/' %}{{ poke.species.name|lowerPokemonFileNames }}.png"
+                  <img src="{% static 'img/sprites_gen5/' %}{% if poke.is_shiny %}shiny{% else %}normal{% endif %}/{{ poke.species.name|lowerPokemonFileNames }}.png"
                        alt="{{ poke.species.name }}"
                        title="{{ poke.nickname|default:poke.species.name }} Niv.{{ poke.level }}"
                        style="width:36px;height:36px;object-fit:contain;"

@@ -87,8 +87,12 @@ class DashboardView(generic.TemplateView):
 def choose_starter_view(request):
     """
     Permet au nouveau joueur de choisir son Pokémon de départ.
-    Lui donne aussi 5 Pokéballs de départ.
+    Lui donne aussi 5 Pokéballs et 3 Potions de départ.
+
+    Le tirage shiny est effectué à l'affichage (GET) et mémorisé en session,
+    de sorte que le joueur voit déjà les sprites chromatiques avant de choisir.
     """
+    import random
 
     trainer = get_or_create_player_trainer(request.user)
 
@@ -99,6 +103,20 @@ def choose_starter_view(request):
     # Les 3 starters Gen 1 (Bulbizarre #1, Salamèche #4, Carapuce #7)
     starters = Pokemon.objects.filter(pokedex_number__in=[1, 4, 7]).order_by('pokedex_number')
 
+    # --- Pré-tirage shiny en session ---
+    # On génère les résultats une seule fois (premier GET) et on les garde jusqu'au POST.
+    # Clé : "starter_shiny_rolls" → dict {str(starter.id): bool}
+    shiny_rolls = request.session.get('starter_shiny_rolls')
+    if not shiny_rolls:
+        shiny_rolls = {str(s.id): (random.randint(1, 8192) == 1) for s in starters}
+        request.session['starter_shiny_rolls'] = shiny_rolls
+
+    # Annoter chaque starter avec son résultat pour le template
+    starters_with_shiny = [
+        (starter, shiny_rolls.get(str(starter.id), False))
+        for starter in starters
+    ]
+
     if request.method == 'POST':
         starter_id = request.POST.get('starter_id')
         starter_species = get_object_or_404(Pokemon, pk=starter_id)
@@ -108,11 +126,18 @@ def choose_starter_view(request):
             messages.error(request, "Pokémon invalide.")
             return redirect('choose_starter')
 
-        # Créer le Pokémon de départ niveau 5
+        # Récupérer le résultat pré-tiré (fallback False si session expirée)
+        is_shiny = shiny_rolls.get(str(starter_id), False)
+
+        # Créer le Pokémon de départ niveau 5 avec le shiny déjà tiré
         create_starter_pokemon(
             species=starter_species,
             trainer=trainer,
+            is_shiny=is_shiny,
         )
+
+        # Nettoyer la session
+        request.session.pop('starter_shiny_rolls', None)
 
         # Donne les objets de départ
         give_item_to_trainer(trainer, Item.objects.get(name='Poke Ball'), 5)
@@ -121,15 +146,15 @@ def choose_starter_view(request):
         # Donne le Pokédex (débloque les Poke Balls à la boutique de Jadielle)
         grant_pokedex(trainer)
 
-
+        shiny_msg = " ✨ Et c'est un chromatique !" if is_shiny else ""
         messages.success(
             request,
-            f"Vous avez choisi {starter_species.name} ! Bonne aventure, {trainer.username} ! "
+            f"Vous avez choisi {starter_species.name} !{shiny_msg} Bonne aventure, {trainer.username} ! "
             f"Vous avez reçu 5 Pokéballs et 3 Potions."
         )
         return redirect('home')
 
     return render(request, 'choose_starter.html', {
-        'starters': starters,
+        'starters_with_shiny': starters_with_shiny,
         'trainer': trainer,
     })

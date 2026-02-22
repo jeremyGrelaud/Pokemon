@@ -114,7 +114,7 @@
             {% for entry in captures %}
             <tr>
               <td>
-                <img src="{% static 'img/sprites_gen5/normal/' %}{{ entry.pokemon.species.name|lowerPokemonFileNames }}.png" 
+                <img src="{% static 'img/sprites_gen5/' %}{% if entry.pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ entry.pokemon.species.name|lowerPokemonFileNames }}.png"
                      width="40" class="mr-2"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">
                 <strong>{{ entry.pokemon.species.name }}</strong>

@@ -45,6 +45,8 @@ class CaptureSystem {
     this.overlay.className = 'capture-overlay';
     
     const probability = Math.min(100, captureRate * 100);
+
+    const folder = pokemonData.is_shiny ? 'shiny' : 'normal';
     
     this.overlay.innerHTML = `
     <div class="capture-container">
@@ -52,7 +54,7 @@ class CaptureSystem {
         <div class="capture-probability">${probability} %</div>
         
         <!-- Pokémon -->
-        <img class="capture-pokemon" src='/static/img/sprites_gen5/normal/${lowerPokemonFileNames(pokemonData.species_name)}.png'  onerror="this.src='/static/img/pokeball.png'">
+        <img class="capture-pokemon" src='/static/img/sprites_gen5/${folder}/${lowerPokemonFileNames(pokemonData.species_name)}.png'  onerror="this.src='/static/img/pokeball.png'">
         
         <!-- Poké Ball -->
         <div class="pokeball-capture ${ballType}"></div>

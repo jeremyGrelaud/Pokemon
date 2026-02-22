@@ -49,7 +49,7 @@
 
           <div class="card-body pt-2 pb-1">
             <div class="d-flex align-items-center mb-2">
-              <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png"
+              <img src="{% static 'img/sprites_gen5/' %}{% if pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ pokemon.species.name|lowerPokemonFileNames }}.png"
                    alt="{{ pokemon.species.name }}"
                    class="pokemon-sprite-sm mr-3"
                    onerror="this.src='{% static 'img/pokeball.png' %}'">
@@ -178,7 +178,7 @@
              data-id="{{ pokemon.id }}"
              data-name="{{ pokemon.nickname|default:pokemon.species.name }}">
           <div class="card-body p-2">
-            <img src="{% static 'img/sprites_gen5/normal/' %}{{ pokemon.species.name|lowerPokemonFileNames }}.png"
+            <img src="{% static 'img/sprites_gen5/' %}{% if pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ pokemon.species.name|lowerPokemonFileNames }}.png"
                  alt="{{ pokemon.species.name }}"
                  class="pokemon-sprite-pc"
                  onerror="this.src='{% static 'img/pokeball.png' %}'">

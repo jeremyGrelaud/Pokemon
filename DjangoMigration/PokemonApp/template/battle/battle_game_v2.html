@@ -33,6 +33,7 @@
                 {% else %}
                   {{ battle.opponent_pokemon.species.name }}
                 {% endif %}
+                {% if battle.opponent_pokemon.is_shiny %}<span class="shiny-indicator" title="Chromatique !">✨</span>{% endif %}
               </span>
               <span class="pokemon-gender">♂</span>
               <span class="pokemon-level" id="opponent-level">Niv.{{ battle.opponent_pokemon.level }}</span>
@@ -75,7 +76,7 @@
             <div class="pokemon-shadow"></div>
             <img class="pokemon-sprite opponent-sprite"
                 id="opponent-sprite"
-                src="{% static 'img/sprites_gen5/normal/' %}{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
+                src="{% static 'img/sprites_gen5/' %}{% if battle.opponent_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
                 alt="{{ battle.opponent_pokemon.species.name }}"
                 onerror="this.src='{% static 'img/pokeball.png' %}'">
           </div>
@@ -93,7 +94,7 @@
             <div class="pokemon-shadow"></div>
             <img class="pokemon-sprite player-sprite"
                 id="player-sprite"
-                src="{% static 'img/sprites_gen5/back/' %}{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
+                src="{% static 'img/sprites_gen5/' %}{% if battle.player_pokemon.is_shiny %}back-shiny{% else %}back{% endif %}/{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
                 alt="{{ battle.player_pokemon.species.name }}"
                 onerror="this.src='{% static 'img/pokeball.png' %}'">
           </div>
@@ -111,6 +112,7 @@
                 {% else %}
                   {{ battle.player_pokemon.species.name }}
                 {% endif %}
+                {% if battle.player_pokemon.is_shiny %}<span class="shiny-indicator" title="Chromatique !">✨</span>{% endif %}
               </span>
               <span class="pokemon-gender">♂</span>
               <span class="pokemon-level" id="player-level">Niv.{{ battle.player_pokemon.level }}</span>
@@ -775,7 +777,8 @@ function loadTeam() {
       const hpClass = hpPercent > 50 ? 'hp-high' : (hpPercent > 20 ? 'hp-medium' : 'hp-low');
       const isKO = pokemon.current_hp === 0;
       const spriteName = lowerPokemonFileNames(pokemon.species.name);
-      const spriteUrl = "{% static 'img/sprites_gen5/normal/' %}" + spriteName + ".png";
+      const folder = pokemon.is_shiny ? 'shiny' : 'normal';
+      const spriteUrl = "{% static 'img/sprites_gen5/' %}" + folder + "/" + spriteName + ".png";
 
       html += `
         <button class="list-group-item list-group-item-action team-switch-item ${isKO ? 'team-switch-ko' : ''}"
@@ -899,10 +902,12 @@ function updatePokemonDisplay(side, pokemonData) {
   // Update sprite
   let newSrc;
   if (side === 'player') {
-    newSrc = "{% static 'img/sprites_gen5/back/' %}" + lowerPokemonFileNames(pokemonData.species_name) + ".png";
+    const folder = pokemonData.is_shiny ? 'back-shiny' : 'back';
+    newSrc = "{% static 'img/sprites_gen5/' %}" + folder + "/" + lowerPokemonFileNames(pokemonData.species_name) + ".png";
   }
   else {
-    newSrc = "{% static 'img/sprites_gen5/normal/' %}" + lowerPokemonFileNames(pokemonData.species_name)+ ".png";
+    const folder = pokemonData.is_shiny ? 'shiny' : 'normal';
+    newSrc = "{% static 'img/sprites_gen5/' %}" + folder + "/" + lowerPokemonFileNames(pokemonData.species_name) + ".png";
   }
 
   sprite.attr('src', newSrc)
@@ -1168,7 +1173,8 @@ function showForcedSwitchModal() {
       const hpPercent = (pokemon.current_hp / pokemon.max_hp) * 100;
       const hpClass = hpPercent > 50 ? 'success' : (hpPercent > 20 ? 'warning' : 'danger');
       const spriteName = lowerPokemonFileNames(pokemon.species.name);
-      const spriteUrl = "{% static 'img/sprites_gen5/normal/' %}" + spriteName + ".png";
+      const folder = pokemon.is_shiny ? 'shiny' : 'normal';
+      const spriteUrl = "{% static 'img/sprites_gen5/' %}" + folder + "/" + spriteName + ".png";
       
       html += `
         <button class="list-group-item list-group-item-action" 
@@ -1366,6 +1372,8 @@ let pendingBattleEndData        = null;  // fin de combat à déclencher après 
 
 const SPRITE_BASE_NORMAL = "{% static 'img/sprites_gen5/normal/' %}";
 const SPRITE_BASE_BACK   = "{% static 'img/sprites_gen5/back/' %}";
+const SPRITE_BASE_SHINY = "{% static 'img/sprites_gen5/shiny/' %}";
+const SPRITE_BASE_BACK_SHINY   = "{% static 'img/sprites_gen5/back-shiny/' %}";
 
 function lowerForSprite(name) {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1383,8 +1391,13 @@ function triggerEvolution(evoData, battleEndData = null) {
   const fromName = evoData.from_name;
   const toName   = evoData.to_name;
 
-  const spriteBefore = SPRITE_BASE_BACK   + lowerForSprite(fromName) + '.png';
-  const spriteAfter  = SPRITE_BASE_NORMAL + lowerForSprite(toName)   + '.png';
+  if (evoData.is_shiny){
+    const spriteBefore = SPRITE_BASE_BACK_SHINY   + lowerForSprite(fromName) + '.png';
+    const spriteAfter  = SPRITE_BASE_SHINY + lowerForSprite(toName)   + '.png';
+  } else {
+    const spriteBefore = SPRITE_BASE_BACK   + lowerForSprite(fromName) + '.png';
+    const spriteAfter  = SPRITE_BASE_NORMAL + lowerForSprite(toName)   + '.png';
+  }
 
   document.getElementById('evo-sprite-before').src = spriteBefore;
   document.getElementById('evo-sprite-after').src  = spriteAfter;

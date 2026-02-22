@@ -283,6 +283,7 @@ def battle_action_view(request, pk):
                     'ball_type':      item.name.lower().replace(' ', ''),
                     'capture_rate':   capture_rate,
                     'start_animation': True,
+                    'is_shiny': battle.opponent_pokemon.is_shiny,
                 }
                 return JsonResponse(response_data)
 
