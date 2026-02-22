@@ -46,7 +46,7 @@
           </div>
           <div class="col-auto">
             {% if first_team_pokemon %}
-            <img src="{% static 'img/sprites_gen5/normal/' %}{{ first_team_pokemon.species.name|lowerPokemonFileNames }}.png"
+            <img src="{% static 'img/sprites_gen5/' %}{% if first_team_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ first_team_pokemon.species.name|lowerPokemonFileNames }}.png"
                  style="width:2.4rem;height:2.4rem;object-fit:contain;opacity:.5;"
                  onerror="this.src='{% static 'img/pokeball.png' %}'">
             {% else %}

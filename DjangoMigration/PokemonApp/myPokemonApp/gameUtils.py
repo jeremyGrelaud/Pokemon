@@ -157,6 +157,8 @@ def create_wild_pokemon(species, level, location=None):
     """
     from .models import PlayablePokemon
 
+    is_shiny = random.randint(1, 8192) == 1  # Probabilité Gen 1 : 1/8192
+
     pokemon = PlayablePokemon(
         species=species,
         trainer=get_or_create_wild_trainer(),
@@ -165,6 +167,7 @@ def create_wild_pokemon(species, level, location=None):
         original_trainer='Wild',
         caught_location=location,
         is_in_party=True,
+        is_shiny=is_shiny,
         **_build_ivs(0, 31)
     )
     _finalize_pokemon(pokemon, level)
@@ -172,9 +175,10 @@ def create_wild_pokemon(species, level, location=None):
     return pokemon
 
 
-def create_starter_pokemon(species, trainer, nickname=None):
+def create_starter_pokemon(species, trainer, nickname=None, is_shiny=False):
     """
     Cree un Pokemon de depart pour un joueur (niveau 5, IVs favorables 10-31).
+    is_shiny est pre-roll dans la vue de sélection
     """
     from .models import PlayablePokemon
 
@@ -187,6 +191,7 @@ def create_starter_pokemon(species, trainer, nickname=None):
         original_trainer=trainer.username,
         caught_location='Pallet Town',
         party_position=1,
+        is_shiny=is_shiny,
         **_build_ivs(10, 31)
     )
     return _finalize_pokemon(pokemon, 5)
@@ -394,6 +399,8 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
         else (opponent_trainer.intro_text or f"{opponent_trainer.username} veut combattre !")
     )
     battle.add_to_log(msg)
+    if battle_type == 'wild' and opponent_pokemon.is_shiny:
+        battle.add_to_log(f"✨ Oh ! Un {opponent_pokemon.species.name} chromatique !")
     battle.add_to_log(f"{player_trainer.username} envoie {player_pokemon} !")
     opponent_label = opponent_trainer.username if opponent_trainer else 'Wild'
     battle.add_to_log(f"{opponent_label} envoie {opponent_pokemon} !")
@@ -544,6 +551,7 @@ def apply_exp_gain(pokemon, exp_amount):
                 'from_species_id': pokemon.species.id,
                 'to_name':         evo.evolves_to.name,
                 'to_species_id':   evo.evolves_to.id,
+                'is_shiny': pokemon.is_shiny,
                 # Stats actuelles (avant évolution)
                 'stats_before': {
                     'hp':              pokemon.max_hp,
@@ -649,6 +657,7 @@ def serialize_pokemon(pokemon, include_moves=False):
         'current_hp':   pokemon.current_hp,
         'max_hp':       pokemon.max_hp,
         'status':       pokemon.status_condition,
+        'is_shiny':     pokemon.is_shiny,
     }
 
     if include_moves:

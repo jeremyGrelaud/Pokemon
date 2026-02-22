@@ -16,7 +16,6 @@ TODO Roadmap :
 - Improve battle 'GUI'
 - ajouter un système de restriction sur le changement de map, certaines quêtes ou objets nécessaires, devoir forcément affronter certains dresseurs ou avoir une chance de trigger une wild battle ... ainsi que placer les combats contre le rival au moment de l'aventure de Kanto comme dans le jeu original
 - système de quêtes ?
-- système de shiny (sprites présents)
 - After everything, implement different game mods ?
 - améliorer le script d'initialisation de la base de données avec des données sur les moves appris par chaque pokémon ...
 
