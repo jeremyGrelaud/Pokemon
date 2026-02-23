@@ -143,25 +143,24 @@ def add_to_party_api(request):
 @require_POST
 def swap_move_api(request):
     """
-    API pour remplacer un move actif par un move apprenable.
+    API pour remplacer un move actif par un move apprenable, ou ajouter directement
+    si le deck a moins de 4 capacités.
     Body JSON :
-      { "pokemon_id": int, "remove_move_id": int, "add_move_id": int }
+      { "pokemon_id": int, "remove_move_id": int|null, "add_move_id": int }
+    Si remove_move_id est null/absent et que le deck a < 4 moves, le move est simplement ajouté.
     """
     from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
 
     try:
         data       = json.loads(request.body)
         pokemon_id = data.get('pokemon_id')
-        remove_id  = data.get('remove_move_id')
+        remove_id  = data.get('remove_move_id')   # peut être None
         add_id     = data.get('add_move_id')
 
         trainer = get_or_create_player_trainer(request.user)
         pokemon = get_object_or_404(PlayablePokemon, pk=pokemon_id, trainer=trainer)
 
-        to_remove = PokemonMoveInstance.objects.filter(pokemon=pokemon, move_id=remove_id).first()
-        if not to_remove:
-            return JsonResponse({'success': False, 'error': 'Ce move ne fait pas partie du deck actif.'})
-
+        # Vérifier que le move est apprenable
         learnable = pokemon.species.learnable_moves.filter(
             move_id=add_id,
             level_learned__lte=pokemon.level
@@ -173,8 +172,20 @@ def swap_move_api(request):
             return JsonResponse({'success': False, 'error': 'Ce move est déjà dans le deck.'})
 
         new_move = learnable.move
-        to_remove.delete()
-        PokemonMoveInstance.objects.create(pokemon=pokemon, move=new_move, current_pp=new_move.pp)
+        current_count = PokemonMoveInstance.objects.filter(pokemon=pokemon).count()
+
+        if remove_id is None:
+            # Ajout direct (deck non plein)
+            if current_count >= 4:
+                return JsonResponse({'success': False, 'error': 'Le deck est plein (4/4). Choisissez un move à remplacer.'})
+            PokemonMoveInstance.objects.create(pokemon=pokemon, move=new_move, current_pp=new_move.pp)
+        else:
+            # Remplacement
+            to_remove = PokemonMoveInstance.objects.filter(pokemon=pokemon, move_id=remove_id).first()
+            if not to_remove:
+                return JsonResponse({'success': False, 'error': 'Ce move ne fait pas partie du deck actif.'})
+            to_remove.delete()
+            PokemonMoveInstance.objects.create(pokemon=pokemon, move=new_move, current_pp=new_move.pp)
 
         return JsonResponse({'success': True, 'moves': serialize_pokemon_moves(pokemon)})
 

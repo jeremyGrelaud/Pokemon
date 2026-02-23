@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load django_tables2 %}
+{% load custom_filters %}
 
 {% block title %}<title>Capacités - Pokémon Gen 1</title>{% endblock %}
 
@@ -10,15 +11,35 @@
 <!-- Filters -->
 <div class="card shadow mb-4">
   <div class="card-body">
-    <form method="GET" class="form-inline">
-      <input type="text" class="form-control mr-2" name="searchQuery" placeholder="Rechercher..." value="{{ searchQuery }}">
-      <select class="form-control mr-2" name="typeFilter" onchange="this.form.submit()">
+    <form method="GET" class="form-inline flex-wrap" style="gap:8px;">
+      <input type="text" class="form-control mr-2 mb-1" name="searchQuery"
+             placeholder="Rechercher..." value="{{ searchQuery }}">
+      <select class="form-control mr-2 mb-1" name="typeFilter" onchange="this.form.submit()">
         <option value="">Tous les types</option>
         {% for type in types %}
         <option value="{{ type.name }}" {% if typeFilter == type.name %}selected{% endif %}>{{ type.name }}</option>
         {% endfor %}
       </select>
-      <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i></button>
+      <select class="form-control mr-2 mb-1" name="categoryFilter" onchange="this.form.submit()">
+        <option value="">Toutes catégories</option>
+        <option value="physical" {% if categoryFilter == 'physical' %}selected{% endif %}>
+          Physique
+        </option>
+        <option value="special" {% if categoryFilter == 'special' %}selected{% endif %}>
+          Spécial
+        </option>
+        <option value="status" {% if categoryFilter == 'status' %}selected{% endif %}>
+          Statut
+        </option>
+      </select>
+      <button class="btn btn-primary mb-1" type="submit">
+        <i class="fas fa-search"></i>
+      </button>
+      {% if searchQuery or typeFilter or categoryFilter %}
+      <a href="{% url 'PokemonMoveOverView' %}" class="btn btn-secondary mb-1">
+        <i class="fas fa-times"></i> Réinitialiser
+      </a>
+      {% endif %}
     </form>
   </div>
 </div>
@@ -26,7 +47,7 @@
 <!-- Table -->
 <div class="card shadow mb-4">
   <div class="card-body">
-    {% render_table table 'table.html' %}
+    {% optimized_render_table table 'table.html' pageObjects %}
   </div>
 </div>
 {% endblock %}

@@ -1,9 +1,10 @@
 {% load django_tables2 %}
+{% load custom_filters %}
 {% load i18n %}
 {% block table-wrapper %}
 <div class="table-container">
     {% if not table.paginated_rows %}
-        <p>No data available yet.</p>
+        <p class="text-center text-muted py-4">Aucune donnée disponible.</p>
     {% else %}
         {% block table %}
             <table {% render_attrs table.attrs %} class="table table-bordered mx-auto">
@@ -39,7 +40,7 @@
                         {% block table.tbody.empty_text %}
                         <tr><td colspan="{{ table.columns|length }}">{{ table.empty_text }}</td></tr>
                         {% endblock table.tbody.empty_text %}
-                        {% endif %}
+                            {% endif %}
                     {% endfor %}
                     </tbody>
                 {% endblock table.tbody %}
@@ -58,55 +59,73 @@
         {% endblock table %}
     {% endif %}
 
-    {% block pagination %}
-        {% if table.page and table.paginator.num_pages > 1 %}
-        <ul class="">
-            {% comment %} {% if table.page.has_previous %}
-                {% block pagination.previous %}
-                <button class="btn btn-sm btn-outline-primary previous" onclick="window.location.href='{% querystring table.prefixed_page_field=table.page.previous_page_number %}';">{% trans 'previous' %}</button>
-                {% endblock pagination.previous %}
-            {% endif %} {% endcomment %}
-            {% if table.page.has_previous or table.page.has_next %}
-            {% block pagination.range %}
-                {% for p in table.page|table_page_range:table.paginator %}
-                
-                        {% if p == '...' %}
-                            {{ p }}
-                        {% elif p == table.page.number %}
-                            <button class="btn btn-sm btn-primary previous" onclick="window.location.href='{% querystring table.prefixed_page_field=p %}';">{{ p }}</button>
-                        {% else %}
-                            <button class="btn btn-sm btn-outline-primary previous" onclick="window.location.href='{% querystring table.prefixed_page_field=p %}';">
-                            {{ p }}
-                            </button>
-                        {% endif %}
-                {% endfor %}
-            {% endblock pagination.range %}
+    {# ── Pagination ─────────────────────────────────────────────────────── #}
+    {# pageObjects est injecté par optimized_render_table dans custom_filters #}
+    {% if pageObjects and pageObjects.paginator.num_pages > 1 %}
+    <nav aria-label="Pagination" class="mt-3">
+      <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap:.5rem;">
+
+        <small class="text-muted">
+          Page <strong>{{ pageObjects.number }}</strong> / <strong>{{ pageObjects.paginator.num_pages }}</strong>
+          &mdash; <strong>{{ pageObjects.paginator.count }}</strong>
+          résultat{% if pageObjects.paginator.count != 1 %}s{% endif %}
+        </small>
+
+        <ul class="pagination pagination-sm mb-0">
+
+          {# ◀◀ Première page #}
+          {% if pageObjects.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="{% url_replace_page 1 %}" title="Première page">
+              <i class="fas fa-angle-double-left"></i>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="{% url_replace_page pageObjects.previous_page_number %}">
+              <i class="fas fa-angle-left"></i>
+            </a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-left"></i></span></li>
+          <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-left"></i></span></li>
+          {% endif %}
+
+          {# Pages numérotées #}
+          {% for p in pageObjects|table_page_range:pageObjects.paginator %}
+            {% if p == '...' %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% elif p == pageObjects.number %}
+            <li class="page-item active">
+              <span class="page-link">{{ p }}</span>
+            </li>
+            {% else %}
+            <li class="page-item">
+              <a class="page-link" href="{% url_replace_page p %}">{{ p }}</a>
+            </li>
             {% endif %}
-            {% comment %} {% if table.page.has_next %}
-                {% block pagination.next %}
-                <button class="btn btn-sm btn-outline-primary next" onclick="window.location.href='{% querystring table.prefixed_page_field=table.page.next_page_number %}';">{% trans 'next' %}</button>
-                {% endblock pagination.next %}
-            {% endif %} {% endcomment %}
+          {% endfor %}
+
+          {# ▶▶ Dernière page #}
+          {% if pageObjects.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="{% url_replace_page pageObjects.next_page_number %}">
+              <i class="fas fa-angle-right"></i>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="{% url_replace_page pageObjects.paginator.num_pages %}" title="Dernière page">
+              <i class="fas fa-angle-double-right"></i>
+            </a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-right"></i></span></li>
+          <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-right"></i></span></li>
+          {% endif %}
+
         </ul>
-        {% elif pageObjects %}
-            <ul class="">
-            {% if pageObjects.has_previous or pageObjects.has_next %}
-                {% block optimizedpagination.range %}
-                    {% for p in pageObjects|table_page_range:pageObjects.paginator %}
-                            {% if p == '...' %}
-                                {{ p }}
-                            {% elif p == pageObjects.number %}
-                                <button class="btn btn-sm btn-primary previous" onclick="window.location.href='{% querystring table.prefixed_page_field=p %}';">{{ p }}</button>
-                            {% else %}
-                                <button class="btn btn-sm btn-outline-primary previous" onclick="window.location.href='{% querystring table.prefixed_page_field=p %}';">
-                                {{ p }}
-                                </button>
-                            {% endif %}
-                    {% endfor %}
-                {% endblock optimizedpagination.range %}
-            {% endif %}
-        </ul>
-        {% endif %}
-    {% endblock pagination %}
+      </div>
+    </nav>
+    {% endif %}
+
 </div>
 {% endblock table-wrapper %}

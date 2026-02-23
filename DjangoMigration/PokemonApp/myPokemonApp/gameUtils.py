@@ -867,6 +867,7 @@ def serialize_pokemon(pokemon, include_moves=False):
                 'id':         mi.move.id,
                 'name':       mi.move.name,
                 'type':       mi.move.type.name,
+                'category':   mi.move.category,
                 'power':      mi.move.power,
                 'current_pp': mi.current_pp,
                 'max_pp':     mi.move.max_pp,

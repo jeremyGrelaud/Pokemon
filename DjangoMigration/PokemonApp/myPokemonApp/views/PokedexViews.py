@@ -93,7 +93,7 @@ class PokemonOverView(GenericOverview):
         
         context.update({
             'table': table,
-            'page_objects': page_objects,
+            'pageObjects': page_objects,
             'searchQuery': search_query,
             'typeFilter': type_filter,
             'genFilter': gen_filter,
@@ -134,7 +134,3 @@ class PokemonDetailView(generic.DetailView):
         })
         
         return context
-
-
-
-

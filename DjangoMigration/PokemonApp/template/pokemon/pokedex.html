@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load django_tables2 %}
+{% load custom_filters %}
 
 {% block title %}
 <title>Pokédex - Pokémon Gen 1</title>
@@ -75,7 +76,7 @@
   </div>
   <div class="card-body">
     <div class="table-responsive">
-      {% render_table table 'table.html' %}
+      {% optimized_render_table table 'table.html' pageObjects %}
     </div>
   </div>
 </div>
