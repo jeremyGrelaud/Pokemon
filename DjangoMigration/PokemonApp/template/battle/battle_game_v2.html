@@ -242,6 +242,10 @@
               <span class="move-type-badge type-{{ move_instance.move.type.name }}">
                 {{ move_instance.move.type.name|upper }}
               </span>
+              <img src="{% static 'img/movesTypesSprites/move-'|add:move_instance.move.category|add:'.png' %}"
+                   alt="{{ move_instance.move.category }}"
+                   title="{{ move_instance.move.get_category_display }}"
+                   style="width:18px;height:18px;object-fit:contain;vertical-align:middle;">
               <span class="move-power">
                 {% if move_instance.move.power %}PWR: {{ move_instance.move.power }}{% else %}—{% endif %}
               </span>
@@ -1016,6 +1020,9 @@ function updateMovesMenu(moves) {
   
   moves.forEach(move => {
     const disabled = move.current_pp === 0 ? 'disabled' : '';
+    const catMap = { physical: 'move-physical', special: 'move-special', status: 'move-status' };
+    const catFile = catMap[move.category] || 'move-status';
+    const catImg = `<img src="/static/img/movesTypesSprites/${catFile}.png" alt="${move.category}" title="${move.category}" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;">`;
     const html = `
       <button class="move-btn move-type-${move.type}" 
               onclick="useMove(${move.id})" ${disabled}>
@@ -1025,6 +1032,7 @@ function updateMovesMenu(moves) {
         </div>
         <div class="move-footer">
           <span class="move-type-badge type-${move.type}">${move.type}</span>
+          ${catImg}
           <span class="move-power">${move.power ? 'PWR: ' + move.power : '—'}</span>
           <span class="move-accuracy" style="font-size:0.75em;color:#aaa;">${move.accuracy ? 'PREC: ' + move.accuracy + '%' : '∞'}</span>
         </div>

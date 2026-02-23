@@ -30,7 +30,12 @@ class PokemonMoveOverView(GenericOverview):
         type = tables.TemplateColumn(
             '<span class="badge badge-type-{{record.type.name}}">{{record.type.name}}</span>'
         )
-        category = tables.Column()
+        category = tables.TemplateColumn(
+            '<img src="/static/img/movesTypesSprites/move-{{ record.category }}.png" '
+            'alt="{{ record.category }}" title="{{ record.get_category_display }}" '
+            'style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
+            '{{ record.get_category_display }}'
+        )
         power = tables.Column()
         accuracy = tables.Column()
         pp = tables.Column()
@@ -70,7 +75,7 @@ class PokemonMoveOverView(GenericOverview):
         
         context.update({
             'table': table,
-            'page_objects': page_objects,
+            'pageObjects': page_objects,
             'searchQuery': search_query,
             'typeFilter': type_filter,
             'categoryFilter': category_filter,
@@ -86,3 +91,15 @@ class PokemonMoveDetailView(generic.DetailView):
     template_name = "pokemon/move_detail.html"
     context_object_name = 'move'
 
+    def get_context_data(self, **kwargs):
+        from ..models import PokemonLearnableMove
+        context = super().get_context_data(**kwargs)
+        # Pokémon pouvant apprendre cette capacité, ordonnés par niveau
+        learners = (
+            PokemonLearnableMove.objects
+            .filter(move=self.object)
+            .select_related('pokemon', 'pokemon__primary_type')
+            .order_by('level_learned', 'pokemon__pokedex_number')
+        )
+        context['learners'] = learners
+        return context

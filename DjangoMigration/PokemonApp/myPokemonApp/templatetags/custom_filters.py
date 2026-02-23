@@ -716,6 +716,21 @@ def badge_sprite_path(badge_name):
     return str(badge_name).lower().replace(' ', '_') + '.png'
 
 
+@register.simple_tag(takes_context=True)
+def url_replace_page(context, page):
+    """
+    Reconstruit l'URL courante en remplaçant (ou ajoutant) le paramètre GET 'page'.
+    Préserve tous les autres paramètres (searchQuery, typeFilter, etc.).
+    Usage : <a href="{% url_replace_page p %}">{{ p }}</a>
+    """
+    request = context.get('request')
+    if not request:
+        return f'?page={page}'
+    params = request.GET.copy()
+    params['page'] = page
+    return f'?{params.urlencode()}'
+
+
 @register.filter(name='zone_minimap_path')
 def zone_minimap_path(zone_name):
     """

@@ -221,7 +221,13 @@
                     {{ lm.move.type.name }}
                   </span>
                 </td>
-                <td>{{ lm.move.get_category_display }}</td>
+                <td>
+                  <img src="{% static 'img/movesTypesSprites/' %}move-{{ lm.move.category }}.png"
+                       alt="{{ lm.move.category }}"
+                       title="{{ lm.move.get_category_display }}"
+                       style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:3px;">
+                  {{ lm.move.get_category_display }}
+                </td>
                 <td>{{ lm.move.power|default:"—" }}</td>
                 <td>{{ lm.move.accuracy }}%</td>
               </tr>
