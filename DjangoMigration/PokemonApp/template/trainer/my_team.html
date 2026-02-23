@@ -137,6 +137,39 @@
                       data-name="{{ pokemon.nickname|default:pokemon.species.name }}">
                 <i class="fas fa-bolt"></i> Capacités
               </button>
+              <button class="btn btn-outline-info stats-btn"
+                      data-id="{{ pokemon.id }}"
+                      data-name="{{ pokemon.nickname|default:pokemon.species.name }}"
+                      data-level="{{ pokemon.level }}"
+                      data-nature="{{ pokemon.nature }}"
+                      data-iv-hp="{{ pokemon.iv_hp }}"
+                      data-iv-atk="{{ pokemon.iv_attack }}"
+                      data-iv-def="{{ pokemon.iv_defense }}"
+                      data-iv-spa="{{ pokemon.iv_special_attack }}"
+                      data-iv-spd="{{ pokemon.iv_special_defense }}"
+                      data-iv-spe="{{ pokemon.iv_speed }}"
+                      data-ev-hp="{{ pokemon.ev_hp }}"
+                      data-ev-atk="{{ pokemon.ev_attack }}"
+                      data-ev-def="{{ pokemon.ev_defense }}"
+                      data-ev-spa="{{ pokemon.ev_special_attack }}"
+                      data-ev-spd="{{ pokemon.ev_special_defense }}"
+                      data-ev-spe="{{ pokemon.ev_speed }}"
+                      data-stat-hp="{{ pokemon.max_hp }}"
+                      data-stat-atk="{{ pokemon.attack }}"
+                      data-stat-def="{{ pokemon.defense }}"
+                      data-stat-spa="{{ pokemon.special_attack }}"
+                      data-stat-spd="{{ pokemon.special_defense }}"
+                      data-stat-spe="{{ pokemon.speed }}"
+                      data-base-hp="{{ pokemon.species.base_hp }}"
+                      data-base-atk="{{ pokemon.species.base_attack }}"
+                      data-base-def="{{ pokemon.species.base_defense }}"
+                      data-base-spa="{{ pokemon.species.base_special_attack }}"
+                      data-base-spd="{{ pokemon.species.base_special_defense }}"
+                      data-base-spe="{{ pokemon.species.base_speed }}"
+                      data-shiny="{{ pokemon.is_shiny|yesno:'1,0' }}"
+                      data-species="{{ pokemon.species.name|lowerPokemonFileNames }}">
+                <i class="fas fa-chart-bar"></i> Stats
+              </button>
             </div>
             <button class="btn btn-outline-warning btn-sm w-100 send-to-pc-btn"
                     data-id="{{ pokemon.id }}"
@@ -330,6 +363,101 @@
         <small class="text-muted mr-auto" id="modal-status-msg"></small>
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ MODAL IV / EV ════════════════════════════════════════════════════ -->
+<div class="modal fade" id="stats-modal" tabindex="-1" role="dialog" data-backdrop="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
+
+      <div class="modal-header py-3 px-4" style="background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;">
+        <div class="d-flex align-items-center" style="gap:12px;">
+          <img id="smodal-sprite" src="" alt="" style="width:56px;height:56px;object-fit:contain;image-rendering:pixelated;">
+          <div>
+            <h5 class="modal-title mb-0" id="smodal-title">—</h5>
+            <small id="smodal-subtitle" style="opacity:.75;"></small>
+          </div>
+        </div>
+        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+
+      <div class="modal-body p-0">
+        <ul class="nav nav-tabs nav-justified mb-0" style="background:#f8f9fa;">
+          <li class="nav-item">
+            <a class="nav-link active font-weight-bold" data-toggle="tab" href="#tab-ivev">
+              <i class="fas fa-dna text-primary"></i> IV / EV
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link font-weight-bold" data-toggle="tab" href="#tab-radar">
+              <i class="fas fa-chart-area text-success"></i> Radar
+            </a>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+
+          <!-- ── IV / EV ─────────────────────────────────────────────────── -->
+          <div class="tab-pane fade show active p-4" id="tab-ivev">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span style="font-size:.85rem;">
+                <i class="fas fa-coins text-warning"></i> <strong>EVs totaux :</strong>
+                <span id="smodal-ev-total" class="font-weight-bold">—</span> / 510
+              </span>
+              <span style="font-size:.85rem;">
+                <i class="fas fa-fingerprint text-info"></i> <strong>IVs moy. :</strong>
+                <span id="smodal-iv-avg" class="font-weight-bold">—</span> / 31
+              </span>
+            </div>
+            <div class="progress mb-4" style="height:6px;">
+              <div id="smodal-ev-bar" class="progress-bar bg-success" style="width:0%;transition:width .6s;"></div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead>
+                  <tr style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#6c757d;">
+                    <th style="width:80px;">Stat</th>
+                    <th class="text-center" style="width:48px;">Val.</th>
+                    <th>IV <small style="font-weight:400;">(0–31)</small></th>
+                    <th>EV <small style="font-weight:400;">(0–252)</small></th>
+                  </tr>
+                </thead>
+                <tbody id="smodal-stats-body"></tbody>
+              </table>
+            </div>
+
+            <div class="mt-3 p-2 rounded" style="background:#f0f4ff;font-size:.82rem;">
+              <i class="fas fa-leaf text-success"></i>
+              <strong>Nature :</strong>
+              <span id="smodal-nature" class="font-weight-bold"></span>
+              <span id="smodal-nature-effect" class="text-muted ml-2"></span>
+            </div>
+          </div>
+
+          <!-- ── Radar ──────────────────────────────────────────────────── -->
+          <div class="tab-pane fade p-4" id="tab-radar">
+            <div class="d-flex justify-content-center">
+              <canvas id="smodal-radar" width="340" height="340"></canvas>
+            </div>
+            <p class="text-center text-muted mt-2" style="font-size:.75rem;">
+              Stats actuelles (bleu) · Maximum possible au niveau actuel (gris)
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer py-2">
+        <small class="text-muted mr-auto">
+          <i class="fas fa-info-circle"></i> IV = valeurs individuelles · EV = points d'effort
+        </small>
+        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Fermer</button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -659,10 +787,258 @@ function updateCardMoves(pokemonId, moves) {
   }).join('');
 }
 
+
+// ── Modal Stats IV/EV ────────────────────────────────────────────────────
+
+const NATURE_EFFECTS = {
+  Hardy:{},Docile:{},Serious:{},Bashful:{},Quirky:{},
+  Lonely:{up:'attack',down:'defense'},Brave:{up:'attack',down:'speed'},
+  Adamant:{up:'attack',down:'special_attack'},Naughty:{up:'attack',down:'special_defense'},
+  Bold:{up:'defense',down:'attack'},Relaxed:{up:'defense',down:'speed'},
+  Impish:{up:'defense',down:'special_attack'},Lax:{up:'defense',down:'special_defense'},
+  Timid:{up:'speed',down:'attack'},Hasty:{up:'speed',down:'defense'},
+  Jolly:{up:'speed',down:'special_attack'},Naive:{up:'speed',down:'special_defense'},
+  Modest:{up:'special_attack',down:'attack'},Mild:{up:'special_attack',down:'defense'},
+  Quiet:{up:'special_attack',down:'speed'},Rash:{up:'special_attack',down:'special_defense'},
+  Calm:{up:'special_defense',down:'attack'},Gentle:{up:'special_defense',down:'defense'},
+  Sassy:{up:'special_defense',down:'speed'},Careful:{up:'special_defense',down:'special_attack'},
+};
+const NATURE_FR = {
+  attack:'ATK', defense:'DEF', special_attack:'SpA', special_defense:'SpD', speed:'VIT'
+};
+
+const STAT_ROWS = [
+  { key:'hp',  label:'PV',  color:'#e74c3c', natKey:'hp'              },
+  { key:'atk', label:'ATK', color:'#e67e22', natKey:'attack'          },
+  { key:'def', label:'DEF', color:'#f1c40f', natKey:'defense'         },
+  { key:'spa', label:'SpA', color:'#3498db', natKey:'special_attack'  },
+  { key:'spd', label:'SpD', color:'#2ecc71', natKey:'special_defense' },
+  { key:'spe', label:'VIT', color:'#9b59b6', natKey:'speed'           },
+];
+
+/**
+ * Formule Gen 3 pour la stat max au niveau L :
+ *   HP  : floor((2*base + 31 + floor(252/4)) * L / 100) + L + 10
+ *   Autre: floor((floor((2*base + 31 + 63) * L / 100) + 5) * 1.1)  (nature +10%)
+ */
+function calcMaxStat(base, level, isHp, natMult) {
+  const inner = Math.floor((2 * base + 31 + 63) * level / 100);
+  if (isHp) return inner + level + 10;
+  return Math.floor((inner + 5) * natMult);
+}
+
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.stats-btn');
+  if (!btn) return;
+
+  const d = btn.dataset;
+  const level  = parseInt(d.level);
+  const nature = d.nature || 'Hardy';
+  const nat    = NATURE_EFFECTS[nature] || {};
+
+  const ivs   = { hp:+d.ivHp,  atk:+d.ivAtk,  def:+d.ivDef,  spa:+d.ivSpa,  spd:+d.ivSpd,  spe:+d.ivSpe  };
+  const evs   = { hp:+d.evHp,  atk:+d.evAtk,  def:+d.evDef,  spa:+d.evSpa,  spd:+d.evSpd,  spe:+d.evSpe  };
+  const stats = { hp:+d.statHp,atk:+d.statAtk, def:+d.statDef,spa:+d.statSpa,spd:+d.statSpd,spe:+d.statSpe};
+  const bases = { hp:+d.baseHp,atk:+d.baseAtk, def:+d.baseDef,spa:+d.baseSpa,spd:+d.baseSpd,spe:+d.baseSpe};
+
+  // Sprite
+  const folder = d.shiny === '1' ? 'shiny' : 'normal';
+  document.getElementById('smodal-sprite').src = `/static/img/sprites_gen5/${folder}/${d.species}.png`;
+  document.getElementById('smodal-title').textContent    = d.name;
+  document.getElementById('smodal-subtitle').textContent = `Niv. ${level} · Nature ${nature}`;
+
+  // Total EV
+  const evTotal = Object.values(evs).reduce((a,b)=>a+b, 0);
+  document.getElementById('smodal-ev-total').textContent = evTotal;
+  const evBar = document.getElementById('smodal-ev-bar');
+  evBar.style.width = Math.min(100, (evTotal/510)*100) + '%';
+  evBar.className = 'progress-bar ' + (evTotal >= 500 ? 'bg-danger' : evTotal >= 400 ? 'bg-warning' : 'bg-success');
+
+  // Moyenne IV
+  const ivAvg = (Object.values(ivs).reduce((a,b)=>a+b,0) / 6).toFixed(1);
+  document.getElementById('smodal-iv-avg').textContent = ivAvg;
+
+  // Nature
+  document.getElementById('smodal-nature').textContent = nature;
+  document.getElementById('smodal-nature-effect').innerHTML = nat.up
+    ? `<span style="color:#27ae60">▲ ${NATURE_FR[nat.up]}</span> / <span style="color:#e74c3c">▼ ${NATURE_FR[nat.down]}</span>`
+    : '(neutre)';
+
+  // Tableau IV/EV
+  const tbody = document.getElementById('smodal-stats-body');
+  tbody.innerHTML = '';
+  STAT_ROWS.forEach(row => {
+    const iv  = ivs[row.key];
+    const ev  = evs[row.key];
+    const val = stats[row.key];
+    const ivPct = Math.round((iv/31)*100);
+    const evPct = Math.round((ev/252)*100);
+    const ivStars = iv===31 ? '<span style="color:#f39c12">★★★</span>'
+                  : iv>=28  ? '<span style="color:#27ae60">★★</span>'
+                  : iv>=20  ? '<span style="color:#3498db">★</span>' : '';
+    const isUp   = nat.up   === row.natKey;
+    const isDown = nat.down === row.natKey;
+    const cls    = isUp ? 'text-success font-weight-bold' : isDown ? 'text-danger' : '';
+    tbody.innerHTML += `
+      <tr>
+        <td>
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${row.color};margin-right:4px;"></span>
+          <strong class="${cls}">${row.label}</strong>
+          ${isUp   ? '<small class="text-success ml-1">▲</small>' : ''}
+          ${isDown ? '<small class="text-danger ml-1">▼</small>'  : ''}
+        </td>
+        <td class="text-center font-weight-bold ${cls}">${val}</td>
+        <td>
+          <div class="d-flex align-items-center" style="gap:6px;">
+            <span style="min-width:22px;font-weight:700;">${iv}</span>
+            ${ivStars}
+            <div style="flex:1;height:6px;background:#e9ecef;border-radius:3px;overflow:hidden;min-width:60px;">
+              <div style="height:100%;width:${ivPct}%;background:${row.color};border-radius:3px;transition:width .4s;"></div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="d-flex align-items-center" style="gap:6px;">
+            <span style="min-width:26px;font-weight:700;">${ev}</span>
+            <div style="flex:1;height:6px;background:#e9ecef;border-radius:3px;overflow:hidden;min-width:60px;">
+              <div style="height:100%;width:${evPct}%;background:${row.color};opacity:.75;border-radius:3px;transition:width .4s;"></div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+  });
+
+  // Radar avec max réels calculés depuis les stats de base
+  drawRadar(stats, bases, level, nat);
+
+  $('#stats-modal').modal('show');
+});
+
+function drawRadar(stats, bases, level, nat) {
+  const canvas = document.getElementById('smodal-radar');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+  const R  = Math.min(W, H) * 0.36;
+  const labels  = ['PV',  'ATK', 'DEF', 'SpA',  'SpD',  'VIT'];
+  const statKeys = ['hp', 'atk', 'def', 'spa',  'spd',  'spe'];
+  const baseKeys = ['hp', 'atk', 'def', 'spa',  'spd',  'spe'];
+  const isHp    = [true, false, false, false, false, false];
+  const N = labels.length;
+
+  // Calculer les max réels pour chaque stat (IV=31, EV=252, nature +10%)
+  const natKeys = { atk:'attack', def:'defense', spa:'special_attack', spd:'special_defense', spe:'speed' };
+  const maxVals = statKeys.map((k, i) => {
+    const natMult = (nat.up && natKeys[k] === nat.up) ? 1.1
+                  : (nat.down && natKeys[k] === nat.down) ? 0.9 : 1.0;
+    return calcMaxStat(bases[baseKeys[i]], level, isHp[i], natMult);
+  });
+
+  const vals = statKeys.map(k => stats[k] || 0);
+  const angle = i => (i * 2 * Math.PI / N) - Math.PI / 2;
+
+  // Grille de fond (cerles concentriques)
+  [0.25, 0.5, 0.75, 1].forEach(frac => {
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const a = angle(i);
+      const x = cx + Math.cos(a) * R * frac;
+      const y = cy + Math.sin(a) * R * frac;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = frac === 1 ? 'rgba(0,0,0,.15)' : 'rgba(0,0,0,.07)';
+    ctx.lineWidth = frac === 1 ? 1.5 : 1;
+    ctx.stroke();
+  });
+
+  // Axes
+  for (let i = 0; i < N; i++) {
+    const a = angle(i);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    ctx.strokeStyle = 'rgba(0,0,0,.1)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Zone max (gris clair)
+  ctx.beginPath();
+  for (let i = 0; i < N; i++) {
+    const a = angle(i);
+    const x = cx + Math.cos(a) * R;
+    const y = cy + Math.sin(a) * R;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle   = 'rgba(180,180,180,.18)';
+  ctx.strokeStyle = 'rgba(150,150,150,.4)';
+  ctx.lineWidth   = 1;
+  ctx.fill();
+  ctx.stroke();
+
+  // Zone stats actuelles
+  ctx.beginPath();
+  vals.forEach((v, i) => {
+    const frac = Math.min(1, v / maxVals[i]);
+    const a = angle(i);
+    const x = cx + Math.cos(a) * R * frac;
+    const y = cy + Math.sin(a) * R * frac;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle   = 'rgba(52,152,219,.3)';
+  ctx.strokeStyle = 'rgba(41,128,185,.9)';
+  ctx.lineWidth   = 2;
+  ctx.fill();
+  ctx.stroke();
+
+  // Points
+  vals.forEach((v, i) => {
+    const frac = Math.min(1, v / maxVals[i]);
+    const a = angle(i);
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * R * frac, cy + Math.sin(a) * R * frac, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = '#2980b9';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  // Labels avec valeur actuelle et max
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  labels.forEach((label, i) => {
+    const a    = angle(i);
+    const dist = R + 22;
+    const lx   = cx + Math.cos(a) * dist;
+    const ly   = cy + Math.sin(a) * dist;
+    ctx.font      = 'bold 11px sans-serif';
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillText(label, lx, ly);
+    ctx.font      = '9px sans-serif';
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillText(`${vals[i]}/${maxVals[i]}`, lx, ly + 13);
+  });
+}
+
 syncUI();
 </script>
 
 <style>
+
+/* ── Bouton Stats ──────────────────────────────────────────── */
+.stats-btn { border-color: #17a2b8; color: #17a2b8; }
+.stats-btn:hover { background: #17a2b8; color: #fff; }
+#stats-modal .table td, #stats-modal .table th { vertical-align: middle; padding: .4rem .5rem; }
+#stats-modal .nav-tabs .nav-link { border-radius: 0; font-size: .85rem; }
+#stats-modal .nav-tabs .nav-link.active { background: #fff; border-bottom-color: #fff; }
+
 /* ── Sprites ───────────────────────────────────────────────── */
 .pokemon-sprite-sm { width:64px; height:64px; object-fit:contain; flex-shrink:0; }
 .pokemon-sprite-pc { width:56px; height:56px; object-fit:contain; }

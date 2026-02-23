@@ -82,23 +82,6 @@ def learn_moves_up_to_level(pokemon, level):
         )
 
 
-def copy_moves_to_pokemon(source_pokemon, target_pokemon):
-    """
-    Copie les PokemonMoveInstance du source vers la cible.
-    Utilise lors de la capture. Hard cap a 4 moves.
-    """
-    from myPokemonApp.models import PokemonMoveInstance
-
-    for mi in source_pokemon.pokemonmoveinstance_set.all()[:4]:
-        if target_pokemon.pokemonmoveinstance_set.count() >= 4:
-            break
-        PokemonMoveInstance.objects.get_or_create(
-            pokemon=target_pokemon,
-            move=mi.move,
-            defaults={'current_pp': mi.current_pp}
-        )
-
-
 def ensure_has_moves(pokemon):
     """
     Garantit qu'un Pokemon a au moins un move.
@@ -896,14 +879,15 @@ def serialize_pokemon(pokemon, include_moves=False):
 
 def build_battle_response(battle):
     """
-    Construit le dict JSON complet renvoyé au client après chaque action.
+    Construit le dict JSON complet renvoye au client apres chaque action.
+    Remplace le build_response_data() qui etait defini inline dans battle_action_view.
 
     Contient :
       - player_pokemon   (avec moves + champs EXP)
       - opponent_pokemon (sans moves)
-      - champs de rétrocompatibilité (player_hp, opponent_hp, …)
-      - battle_ended: False  (le caller le passe à True si besoin)
-      - état volatil de combat (météo, confusion, Vampigraine, Toxic, écrans, etc.)
+      - champs de retrocompatibilite (player_hp, opponent_hp, ...)
+      - battle_ended: False  (le caller le passe a True si besoin)
+      - battle_state: etats volatils + stat stages pour le frontend
     """
     exp_for_next = battle.player_pokemon.exp_for_next_level() or 100
     current_exp  = battle.player_pokemon.current_exp or 0
@@ -913,69 +897,70 @@ def build_battle_response(battle):
     player_data['exp_for_next_level'] = exp_for_next
     player_data['exp_percent']        = int((current_exp / exp_for_next) * 100)
 
-    # ── État volatil ──────────────────────────────────────────────────────────
-    state = battle.battle_state if isinstance(battle.battle_state, dict) else {}
+    pp  = battle.player_pokemon
+    opp = battle.opponent_pokemon
+    bs  = battle.battle_state if isinstance(battle.battle_state, dict) else {}
 
-    def pstate(pokemon):
-        return state.get(str(pokemon.pk), {}) if pokemon else {}
+    def pst(pokemon):
+        return bs.get(str(pokemon.pk), {})
 
-    pp = pstate(battle.player_pokemon)
-    op = pstate(battle.opponent_pokemon)
+    p_pst = pst(pp)
+    o_pst = pst(opp)
 
-    battle_state_data = {
-        # Météo
-        'weather':       battle.weather,
-        'weather_turns': state.get('weather_turns', 0),
+    battle_state = {
+        # ── Météo ──────────────────────────────────────────────────────────
+        'weather':       bs.get('weather'),
+        'weather_turns': bs.get('weather_turns', 0),
 
-        # Confusion
-        'player_confused':   pp.get('confusion_turns', 0) > 0,
-        'opponent_confused': op.get('confusion_turns', 0) > 0,
-
-        # Vampigraine
-        'player_leech_seed':   bool(pp.get('leech_seed')),
-        'opponent_leech_seed': bool(op.get('leech_seed')),
-
-        # Piège
-        'player_trapped':   pp.get('trap_turns', 0) > 0,
-        'opponent_trapped': op.get('trap_turns', 0) > 0,
-
-        # Poison sévère (Toxic)
-        'player_badly_poisoned':   bool(pp.get('badly_poisoned')),
-        'opponent_badly_poisoned': bool(op.get('badly_poisoned')),
-
-        # Charge
-        'player_charging':   pp.get('charging'),
-        'opponent_charging': op.get('charging'),
-
-        # Rechargement
-        'player_recharge':   bool(pp.get('recharge')),
-        'opponent_recharge': bool(op.get('recharge')),
-
-        # Protect
-        'player_protected':   bool(pp.get('protected')),
-        'opponent_protected': bool(op.get('protected')),
-
-        # Focus Energy
-        'player_focus_energy':   bool(pp.get('focus_energy')),
-        'opponent_focus_energy': bool(op.get('focus_energy')),
-
-        # Ingrain
-        'player_ingrain':   bool(pp.get('ingrain')),
-        'opponent_ingrain': bool(op.get('ingrain')),
-
-        # Écrans (Light Screen / Reflect)
+        # ── États volatils joueur ──────────────────────────────────────────
+        'player_confused':       bool(p_pst.get('confusion_turns', 0)),
+        'player_leech_seed':     bool(p_pst.get('leech_seed')),
+        'player_trapped':        bool(p_pst.get('trap_turns', 0)),
+        'player_badly_poisoned': bool(p_pst.get('toxic')),
+        'player_charging':       p_pst.get('charging_move'),
+        'player_recharge':       bool(p_pst.get('recharge')),
+        'player_protected':      bool(p_pst.get('protect')),
+        'player_focus_energy':   bool(p_pst.get('focus_energy')),
+        'player_ingrain':        bool(p_pst.get('ingrain')),
+        'player_rampaging':      bool(p_pst.get('rampage_turns', 0)),
         'player_screens': {
-            'light_screen': state.get('player_light_screen', 0),
-            'reflect':      state.get('player_reflect', 0),
-        },
-        'opponent_screens': {
-            'light_screen': state.get('opponent_light_screen', 0),
-            'reflect':      state.get('opponent_reflect', 0),
+            'light_screen': bs.get('player_light_screen', 0),
+            'reflect':      bs.get('player_reflect', 0),
         },
 
-        # Rampage
-        'player_rampaging':   bool(pp.get('rampage_turns', 0) > 0),
-        'opponent_rampaging': bool(op.get('rampage_turns', 0) > 0),
+        # ── Stat stages joueur (champs directs sur PlayablePokemon) ────────
+        'player_atk_stage':   pp.attack_stage,
+        'player_def_stage':   pp.defense_stage,
+        'player_spatk_stage': pp.special_attack_stage,
+        'player_spdef_stage': pp.special_defense_stage,
+        'player_speed_stage': pp.speed_stage,
+        'player_acc_stage':   pp.accuracy_stage,
+        'player_eva_stage':   pp.evasion_stage,
+
+        # ── États volatils adversaire ──────────────────────────────────────
+        'opponent_confused':       bool(o_pst.get('confusion_turns', 0)),
+        'opponent_leech_seed':     bool(o_pst.get('leech_seed')),
+        'opponent_trapped':        bool(o_pst.get('trap_turns', 0)),
+        'opponent_badly_poisoned': bool(o_pst.get('toxic')),
+        'opponent_charging':       o_pst.get('charging_move'),
+        'opponent_recharge':       bool(o_pst.get('recharge')),
+        'opponent_protected':      bool(o_pst.get('protect')),
+        'opponent_focus_energy':   bool(o_pst.get('focus_energy')),
+        'opponent_ingrain':        bool(o_pst.get('ingrain')),
+        'opponent_rampaging':      bool(o_pst.get('rampage_turns', 0)),
+        'opponent_screens': {
+            'light_screen': bs.get('opponent_light_screen', 0),
+            'reflect':      bs.get('opponent_reflect', 0),
+        },
+
+        # ── Stat stages adversaire (champs directs sur PlayablePokemon) ────
+        'opponent_atk_stage':   opp.attack_stage,
+        'opponent_def_stage':   opp.defense_stage,
+        'opponent_spatk_stage': opp.special_attack_stage,
+        'opponent_spdef_stage': opp.special_defense_stage,
+        'opponent_speed_stage': opp.speed_stage,
+        'opponent_acc_stage':   opp.accuracy_stage,
+        'opponent_eva_stage':   opp.evasion_stage,
     }
 
     return {
@@ -983,14 +968,14 @@ def build_battle_response(battle):
         'log':              [],
         'player_pokemon':   player_data,
         'opponent_pokemon': serialize_pokemon(battle.opponent_pokemon),
-        # Rétrocompatibilité
-        'player_hp':        battle.player_pokemon.current_hp,
-        'player_max_hp':    battle.player_pokemon.max_hp,
-        'opponent_hp':      battle.opponent_pokemon.current_hp,
-        'opponent_max_hp':  battle.opponent_pokemon.max_hp,
+        # Champs de retrocompatibilite pour le JS existant
+        'player_hp':        pp.current_hp,
+        'player_max_hp':    pp.max_hp,
+        'opponent_hp':      opp.current_hp,
+        'opponent_max_hp':  opp.max_hp,
         'battle_ended':     False,
-        # Données volatiles enrichies
-        'battle_state':     battle_state_data,
+        # États volatils + stat stages pour le frontend
+        'battle_state':     battle_state,
     }
 
 
@@ -1103,27 +1088,22 @@ def attempt_pokemon_capture(battle, ball_item, trainer):
     return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=3)
 
 
+
 def _capture_success(battle, opponent, ball_item, trainer, attempt, shakes):
     """Gere la capture reussie d'un Pokemon (helper prive)."""
-    from myPokemonApp.models import PlayablePokemon, CaptureJournal
+    from myPokemonApp.models import CaptureJournal
     from myPokemonApp.views.AchievementViews import trigger_achievements_after_capture
 
-    captured = PlayablePokemon.objects.create(
-        species=opponent.species,
-        level=opponent.level,
-        trainer=trainer,
-        current_hp=opponent.current_hp,
-        max_hp=opponent.max_hp,
-        attack=opponent.attack,
-        defense=opponent.defense,
-        special_attack=opponent.special_attack,
-        special_defense=opponent.special_defense,
-        speed=opponent.speed,
-        status_condition=opponent.status_condition,
-        is_in_party=False,
-        current_exp=0,
-    )
-    copy_moves_to_pokemon(opponent, captured)
+    # Transférer le Pokémon sauvage existant (conserve IVs/EVs/nature/moves)
+    party_count = trainer.pokemon_team.filter(is_in_party=True).count()
+    opponent.trainer          = trainer
+    opponent.original_trainer = trainer.username
+    opponent.pokeball_used    = ball_item.name
+    opponent.friendship       = 70
+    opponent.is_in_party      = party_count < 6
+    opponent.party_position   = party_count + 1 if party_count < 6 else None
+    opponent.save()
+    captured = opponent
 
     is_first = not trainer.pokemon_team.filter(
         species=opponent.species
@@ -1161,7 +1141,6 @@ def _capture_success(battle, opponent, ball_item, trainer, attempt, shakes):
         'is_first_catch':            is_first,
         'achievement_notifications': trigger_achievements_after_capture(trainer),
     }
-
 
 # =============================================================================
 # 8. RENCONTRES SAUVAGES

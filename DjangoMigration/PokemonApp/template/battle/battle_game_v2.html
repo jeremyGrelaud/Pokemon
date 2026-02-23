@@ -64,10 +64,8 @@
             <span id="opponent-light-screen"></span>
             <span id="opponent-reflect"></span>
 
-            <!-- Badges volatiles joueur (près de la barre de stats joueur) -->
-            <div id="player-volatile-badges" style="display:flex;flex-wrap:wrap;gap:2px;"></div>
-            <span id="player-light-screen"></span>
-            <span id="player-reflect"></span>
+            <!-- Stat stages adversaire -->
+            <div class="stat-stages-container" id="opponent-stat-stages"></div>
 
             <!-- Status Icon -->
             <div class="status-container" id="opponent-status">
@@ -167,6 +165,15 @@
               </span>
               {% endif %}
             </div>
+
+            <!-- Badges volatiles joueur -->
+            <div id="player-volatile-badges" style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px;"></div>
+            <span id="player-light-screen"></span>
+            <span id="player-reflect"></span>
+
+            <!-- Stat stages joueur -->
+            <div class="stat-stages-container" id="player-stat-stages"></div>
+
           </div>
         </div>
       </div>
@@ -664,6 +671,7 @@ function switchPokemon(pokemonId) {
     $('#player-sprite').addClass('fade-out');
     setTimeout(() => {
       updateBattleState(data);
+      updateVolatileStates(data);
       $('#player-sprite').removeClass('fade-out');
     }, 500);
   })
@@ -692,6 +700,7 @@ function useItem(itemId) {
     }
 
     updateBattleState(data);
+    updateVolatileStates(data);
     if (!data.battle_ended) {
       loadItems();
     }
