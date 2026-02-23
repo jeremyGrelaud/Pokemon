@@ -179,12 +179,14 @@ function updateStatStages(side, bs) {
         const tooltipEl = row.querySelector('.ssi-tooltip');
         const trackEl   = row.querySelector('.ssi-track');
 
-        /* Couleurs */
-        const color = stage > 0 ? '#2ecc71' : stage < 0 ? '#e74c3c' : '#7f8c8d';
+        /* Couleurs bien visibles sur fond blanc */
+        const color     = stage > 0 ? '#16a34a' : stage < 0 ? '#dc2626' : '#6b7280';
+        const bgColor   = stage > 0 ? '#dcfce7' : stage < 0 ? '#fee2e2' : 'transparent';
 
-        /* Valeur numérique */
-        valueEl.textContent = stage === 0 ? '—' : (stage > 0 ? `+${stage}` : `${stage}`);
-        valueEl.style.color = color;
+        /* Valeur numérique : badge coloré */
+        valueEl.textContent      = stage === 0 ? '' : (stage > 0 ? `+${stage}` : `${stage}`);
+        valueEl.style.color      = color;
+        valueEl.style.background = bgColor;
 
         /* Flèche */
         arrowEl.textContent = stage > 0 ? '▲' : stage < 0 ? '▼' : '';
@@ -198,12 +200,12 @@ function updateStatStages(side, bs) {
         /* Barres de segments */
         _updateTrack(trackEl, stage);
 
-        /* Visibilité de la ligne */
-        row.style.display = 'flex'; // toujours visible
-        row.setAttribute('data-zero', stage === 0 ? '1' : '0');
+        /* Visibilité : n'afficher QUE les lignes avec stage ≠ 0 */
+        row.style.display = stage !== 0 ? 'flex' : 'none';
 
-        /* Animation flash si changement */
+        /* Animation flash si changement (même si la ligne vient d'apparaître/disparaître) */
         if (stage !== prevStage) {
+            if (stage !== 0) row.style.display = 'flex'; // forcer visible pour l'anim
             _flashRow(row, stage > prevStage ? 'boost' : 'drop');
         }
 
@@ -308,112 +310,119 @@ function _flashRow(row, type) {
 #player-reflect,#opponent-reflect{background:#fadbd8;color:#641e16}
 
 /* ── Bloc stat stages ────────────────────────────────────────────────────── */
+/*
+  Design : chips horizontales compactes, une ligne par stat modifiée.
+  Fond blanc de l'info-bar → couleurs pleines nécessaires pour contraste.
+*/
 .stat-stages-container{
   display:none;
-  margin-top:5px;
-  padding:4px 5px;
-  background:rgba(0,0,0,.18);
-  border-radius:6px;
-  backdrop-filter:blur(4px);
+  margin-top:4px;
+  /* Pas de padding ni fond propre : on laisse respirer l'info-bar */
 }
 
-/* ── Ligne de stat ───────────────────────────────────────────────────────── */
+/* ── Ligne = une chip ────────────────────────────────────────────────────── */
 .stat-stage-row{
-  display:flex;
+  display:none;           /* caché par défaut, JS l'active si stage ≠ 0 */
   align-items:center;
-  gap:4px;
-  padding:1px 0;
-  border-radius:3px;
+  gap:3px;
+  margin-bottom:2px;
+  border-radius:4px;
+  padding:1px 3px;
   position:relative;
+  width:100%;
+  box-sizing:border-box;
 }
-/* Atténuer les lignes à 0 (toutes visibles, mais plus discrètes) */
-.stat-stage-row[data-zero="1"]{ opacity:.42; }
 
-/* Label (ATK, DEF…) */
+/* Label */
 .ssi-label{
-  min-width:26px;
   font-size:.58rem;
-  font-weight:700;
-  color:#ccc;
+  font-weight:800;
+  color:#444;
   text-transform:uppercase;
-  letter-spacing:.04em;
-  cursor:default;
+  letter-spacing:.03em;
+  min-width:22px;
+  flex-shrink:0;
 }
 
-/* ── Barre de segments ───────────────────────────────────────────────────── */
+/* ── Barres de segments ───────────────────────────────────────────────────── */
 .ssi-track{
   display:flex;
   align-items:center;
   gap:1px;
+  flex-shrink:0;
 }
 .ssi-seg{
   display:inline-block;
-  width:5px;
+  width:4px;
   height:7px;
   border-radius:1px;
-  background:rgba(255,255,255,.12);
+  background:#d0d0d0;         /* gris clair visible sur blanc */
   transition:background .2s, transform .15s;
 }
-/* Segment central (stage 0) : un peu plus grand */
 .ssi-seg-center{
-  width:3px !important;
-  height:11px !important;
-  background:rgba(255,255,255,.3) !important;
-  border-radius:2px !important;
+  width:2px !important;
+  height:10px !important;
+  background:#999 !important;
+  border-radius:1px !important;
 }
-/* Segments actifs */
-.ssi-boost{ background:#2ecc71 !important; transform:scaleY(1.3); }
-.ssi-drop { background:#e74c3c !important; transform:scaleY(1.3); }
-.ssi-dim  { background:rgba(255,255,255,.06) !important; }
+/* Segments actifs : couleurs plein opaque sur fond blanc */
+.ssi-boost{ background:#16a34a !important; transform:scaleY(1.3); } /* vert foncé */
+.ssi-drop { background:#dc2626 !important; transform:scaleY(1.3); } /* rouge foncé */
+.ssi-dim  { background:#e5e7eb !important; }                         /* gris très clair */
 
-/* Flèche directionnelle */
+/* Flèche */
 .ssi-arrow{
-  font-size:.58rem;
+  font-size:.6rem;
   font-weight:900;
-  min-width:8px;
+  min-width:7px;
   text-align:center;
+  flex-shrink:0;
 }
-/* Valeur numérique */
+
+/* Valeur numérique : badge coloré bien visible */
 .ssi-value{
-  font-weight:700;
-  min-width:20px;
-  font-size:.64rem;
-  text-align:right;
+  font-size:.6rem;
+  font-weight:800;
+  min-width:18px;
+  text-align:center;
+  border-radius:3px;
+  padding:0 3px;
+  flex-shrink:0;
+  /* couleur posée dynamiquement par JS */
 }
 
 /* ── Tooltip ─────────────────────────────────────────────────────────────── */
 .ssi-tooltip{
   display:none;
   position:absolute;
-  left:calc(100% + 6px);
+  left:calc(100% + 4px);
   top:50%;
   transform:translateY(-50%);
-  background:rgba(10,10,20,.88);
+  background:rgba(15,15,25,.9);
   color:#f0f0f0;
-  font-size:.62rem;
-  padding:3px 8px;
-  border-radius:5px;
+  font-size:.6rem;
+  padding:2px 7px;
+  border-radius:4px;
   white-space:nowrap;
   pointer-events:none;
-  z-index:300;
-  box-shadow:0 2px 8px rgba(0,0,0,.4);
-  border:1px solid rgba(255,255,255,.12);
+  z-index:400;
+  box-shadow:0 2px 8px rgba(0,0,0,.5);
 }
 .stat-stage-row:hover .ssi-tooltip{ display:block; }
 
-/* ── Animations flash ────────────────────────────────────────────────────── */
+/* ── Flash ───────────────────────────────────────────────────────────────── */
 @keyframes ssiBoost{
   0%  {background:transparent}
-  25% {background:rgba(46,204,113,.45)}
+  30% {background:rgba(22,163,74,.25)}
   100%{background:transparent}
 }
 @keyframes ssiDrop{
   0%  {background:transparent}
-  25% {background:rgba(231,76,60,.45)}
+  30% {background:rgba(220,38,38,.25)}
   100%{background:transparent}
 }
-.ssi-flash-boost{ animation:ssiBoost .65s ease-out; border-radius:4px; }
-.ssi-flash-drop { animation:ssiDrop  .65s ease-out; border-radius:4px; }
+.ssi-flash-boost{ animation:ssiBoost .6s ease-out; }
+.ssi-flash-drop { animation:ssiDrop  .6s ease-out; }
     `;
     document.head.appendChild(s);
 })();
