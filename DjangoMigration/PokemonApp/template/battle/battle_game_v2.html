@@ -56,6 +56,17 @@
               </div>
             </div>
 
+            <!-- Météo -->
+            <div id="weather-banner"></div>
+
+            <!-- Badges volatiles adversaire -->
+            <div id="opponent-volatile-badges" style="display:flex;flex-wrap:wrap;gap:2px;"></div>
+            <span id="opponent-light-screen"></span>
+            <span id="opponent-reflect"></span>
+
+            <!-- Stat stages adversaire -->
+            <div class="stat-stages-container" id="opponent-stat-stages"></div>
+
             <!-- Status Icon -->
             <div class="status-container" id="opponent-status">
               {% if battle.opponent_pokemon.status_condition %}
@@ -146,6 +157,14 @@
               </div>
             </div>
 
+            <!-- Badges volatiles joueur -->
+            <div id="player-volatile-badges" style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px;"></div>
+            <span id="player-light-screen"></span>
+            <span id="player-reflect"></span>
+
+            <!-- Stat stages joueur -->
+            <div class="stat-stages-container" id="player-stat-stages"></div>
+
             <!-- Status Icon -->
             <div class="status-container" id="player-status">
               {% if battle.player_pokemon.status_condition %}
@@ -154,6 +173,8 @@
               </span>
               {% endif %}
             </div>
+
+
           </div>
         </div>
       </div>
@@ -487,6 +508,7 @@
 <script src="{% static 'js/battle-effects.js' %}"></script>
 <script src="{% static 'js/audio-manager.js' %}"></script>
 <script src="{% static 'js/capture-system.js' %}"></script>
+<script src="{% static 'js/battle-volatile-states.js' %}"></script>
 
 <script>
 // ============================================================================
@@ -626,6 +648,7 @@ function useMove(moveId) {
     })
     .done(function(data) {
       updateBattleState(data);
+      updateVolatileStates(data);
     })
     .fail(function(xhr) {
       console.error('Attack failed:', xhr);
@@ -649,6 +672,7 @@ function switchPokemon(pokemonId) {
     $('#player-sprite').addClass('fade-out');
     setTimeout(() => {
       updateBattleState(data);
+      updateVolatileStates(data);
       $('#player-sprite').removeClass('fade-out');
     }, 500);
   })
@@ -677,6 +701,7 @@ function useItem(itemId) {
     }
 
     updateBattleState(data);
+    updateVolatileStates(data);
     if (!data.battle_ended) {
       loadItems();
     }
