@@ -1187,7 +1187,10 @@ def get_encounter_chance(encounter_type='grass'):
 # =============================================================================
 
 def give_item_to_trainer(trainer, item, quantity=1):
-    """Donne un objet a un dresseur (cree ou incremente l'entree inventaire)."""
+    """
+    Donne un objet a un dresseur (cree ou incremente l'entree inventaire).
+    Déclenche automatiquement les quêtes de type 'have_item' pour cet objet.
+    """
     from .models import TrainerInventory
 
     inv, _ = TrainerInventory.objects.get_or_create(
@@ -1195,6 +1198,14 @@ def give_item_to_trainer(trainer, item, quantity=1):
     )
     inv.quantity += quantity
     inv.save()
+
+    # Quêtes : possession d'un item
+    try:
+        from myPokemonApp.questEngine import trigger_quest_event
+        trigger_quest_event(trainer, 'have_item', item=item)
+    except Exception:
+        pass  # Ne jamais bloquer la logique métier pour une quête
+
     return inv
 
 
@@ -1421,6 +1432,11 @@ def grant_pokedex(player_trainer) -> None:
             defaults={'is_active': True}
         )
     save.set_story_flag('has_pokedex', True)
+
+    # Note : grant_pokedex() est désormais appelé par QuestEngine.complete_quest
+    # quand la quête 'give_parcel_to_oak' se termine (hook post-complétion).
+    # On ne déclenche plus de quête ici pour éviter la circularité.
+
 
 def get_or_create_player_trainer(user):
     """

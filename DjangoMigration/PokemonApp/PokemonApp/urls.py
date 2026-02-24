@@ -115,6 +115,16 @@ urlpatterns = [
     path('map/travel/<int:zone_id>/', views.travel_to_zone_view, name='travel_to_zone'),
     path('map/encounter/<int:zone_id>/', views.wild_encounter_view, name='wild_encounter'),
 
+    # Bâtiments multi-étages
+    path('map/zone/<int:zone_id>/building/', views.building_view, name='building_view'),
+    path('map/zone/<int:zone_id>/floor/<int:floor_number>/', views.floor_detail_view, name='floor_detail'),
+    path('map/zone/<int:zone_id>/floor/<int:floor_number>/encounter/', views.floor_wild_encounter_view, name='floor_encounter'),
+
+    # Quêtes
+    path('quests/', views.quest_log_view, name='quest_log'),
+    path('quests/widget/', views.quest_widget_view, name='quest_widget'),
+    path('quests/<str:quest_id>/', views.quest_detail_view, name='quest_detail'),
+
     # Achievements
     path('achievements/', views.achievements_list_view, name='achievements_list'),
     path('achievements/widget/', views.achievements_widget_view, name='achievements_widget'),

@@ -1,0 +1,47 @@
+{% load static %}
+{# Widget quêtes actives — inclus dans le dashboard ou la sidebar carte #}
+<div class="card shadow mb-4" id="quest-widget">
+  <div class="card-header py-2 d-flex align-items-center justify-content-between">
+    <h6 class="m-0 font-weight-bold text-warning">
+      <i class="fas fa-scroll"></i> Quêtes actives
+    </h6>
+    <a href="{% url 'quest_log' %}" class="btn btn-xs btn-outline-warning" style="font-size:.7rem;padding:2px 8px;">
+      Tout voir
+    </a>
+  </div>
+  <div class="card-body p-2">
+    {% if active_quests %}
+      {% for progress in active_quests %}
+      <div class="d-flex align-items-start mb-2 {% if not forloop.last %}border-bottom pb-2{% endif %}">
+        <span class="quest-dot mr-2 mt-1"></span>
+        <div>
+          <div class="font-weight-bold" style="font-size:.82rem;line-height:1.2;">
+            {{ progress.quest.title }}
+          </div>
+          {% if progress.quest.objective_text %}
+          <div class="text-muted" style="font-size:.75rem;">
+            <i class="fas fa-map-pin mr-1"></i>{{ progress.quest.objective_text }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="text-muted text-center small mb-0 py-2">
+        <i class="fas fa-check-circle text-success mr-1"></i>
+        Aucune quête active.
+      </p>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.quest-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f6c23e;
+  flex-shrink: 0;
+  display: inline-block;
+}
+</style>

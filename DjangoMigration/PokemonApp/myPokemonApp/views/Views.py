@@ -64,6 +64,9 @@ class DashboardView(generic.TemplateView):
         next_gym = GymLeader.objects.filter(
             badge_order__gt=badges
         ).order_by('badge_order').first()
+
+        from myPokemonApp.questEngine import get_active_quests
+        context['active_quests'] = get_active_quests(trainer)[:3]
         
         context.update({
             'trainer': trainer,
@@ -82,7 +85,6 @@ class DashboardView(generic.TemplateView):
 # ============================================================================
 # SÉLECTION DU STARTER
 # ============================================================================
-
 @login_required
 def choose_starter_view(request):
     """
@@ -143,15 +145,26 @@ def choose_starter_view(request):
         give_item_to_trainer(trainer, Item.objects.get(name='Poke Ball'), 5)
         give_item_to_trainer(trainer, Item.objects.get(name='Potion'), 3)
 
-        # Donne le Pokédex (débloque les Poke Balls à la boutique de Jadielle)
-        grant_pokedex(trainer)
-
         shiny_msg = " ✨ Et c'est un chromatique !" if is_shiny else ""
         messages.success(
             request,
             f"Vous avez choisi {starter_species.name} !{shiny_msg} Bonne aventure, {trainer.username} ! "
             f"Vous avez reçu 5 Pokéballs et 3 Potions."
         )
+
+        # ── Quêtes du prologue ────────────────────────────────────────────────
+        # 'start_journey' est la quête racine (aucun prérequis).
+        # On la complète ici pour débloquer automatiquement la chaîne suivante
+        # (get_oaks_parcel → give_parcel_to_oak → …) via _unlock_dependent_quests.
+        try:
+            from myPokemonApp.questEngine import complete_quest, get_quest_progress
+            complete_quest(trainer, 'start_journey')
+            # Force la création du QuestProgress pour la quête suivante afin
+            # qu'elle apparaisse immédiatement dans le journal.
+            get_quest_progress(trainer, 'get_oaks_parcel')
+        except Exception:
+            pass
+
         return redirect('home')
 
     return render(request, 'choose_starter.html', {

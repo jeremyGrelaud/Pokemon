@@ -785,6 +785,41 @@ def battle_trainer_complete_view(request, battle_id):
         pass
 
     # =========================================================
+    # QUÊTES — defeat_trainer / defeat_gym
+    # =========================================================
+    if player_won and opponent:
+        try:
+            from myPokemonApp.questEngine import trigger_quest_event
+
+            # Tout combat contre un dresseur
+            quest_notifs = trigger_quest_event(
+                player_trainer, 'defeat_trainer', trainer_id=opponent.id
+            )
+            for notif in quest_notifs:
+                msg = f"✅ Quête terminée : « {notif['title']} »"
+                if notif.get('reward_money'):
+                    msg += f" (+{notif['reward_money']}₽)"
+                if notif.get('reward_item'):
+                    msg += f" · Objet reçu : {notif['reward_item']}"
+                messages.success(request, msg)
+
+            # Combat arène spécifiquement
+            if badge_earned:
+                gym_notifs = trigger_quest_event(
+                    player_trainer, 'defeat_gym', gym_leader=badge_earned
+                )
+                for notif in gym_notifs:
+                    msg = f"✅ Quête terminée : « {notif['title']} »"
+                    if notif.get('reward_money'):
+                        msg += f" (+{notif['reward_money']}₽)"
+                    if notif.get('reward_item'):
+                        msg += f" · Objet reçu : {notif['reward_item']}"
+                    messages.success(request, msg)
+
+        except Exception:
+            pass
+
+    # =========================================================
     # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
     # =========================================================
     if not player_won:

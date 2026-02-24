@@ -8,6 +8,8 @@ from django.http import JsonResponse
 from django.contrib import messages
 from myPokemonApp.models import *
 from myPokemonApp.gameUtils import get_random_wild_pokemon, get_player_trainer, get_player_location, get_defeated_trainer_ids, ZONE_TRANSLATIONS
+from myPokemonApp.questEngine import trigger_quest_event, check_rival_encounter, get_active_quests
+import logging
 
 # ============================================================================
 # MAP OVERVIEW
@@ -101,6 +103,12 @@ def zone_detail_view(request, zone_id):
     # Gym Leader : défaite per-joueur via la save
     gym_leader_defeated = gym_leader and gym_leader.trainer.id in defeated_ids
 
+    # Rival présent dans cette zone ?
+    rival_encounter = check_rival_encounter(trainer, zone)
+
+    # Quêtes actives pour sidebar
+    active_quests = get_active_quests(trainer)[:3]
+
     return render(request, 'map/zone_detail.html', {
         'zone':               zone,
         'can_access':         can_access,
@@ -115,6 +123,8 @@ def zone_detail_view(request, zone_id):
         'gym_leader':         gym_leader,
         'gym_leader_defeated': gym_leader_defeated,
         'player_trainer':     trainer,
+        'rival_encounter':    rival_encounter,
+        'active_quests':      active_quests,
     })
 
 from myPokemonApp.views.AchievementViews import check_achievement
@@ -135,6 +145,43 @@ def travel_to_zone_view(request, zone_id):
             result = check_achievement(trainer, 'Explorateur')
             if result.get('newly_completed'):
                 messages.success(request, f"🏆 Explorateur débloqué ! +{result['reward_money']}₽")
+
+        # ── Déclencher quêtes visit_zone ──────────────────────────────────
+        quest_notifications = trigger_quest_event(trainer, 'visit_zone', zone=zone)
+        for notif in quest_notifications:
+            msg = f"✅ Quête terminée : « {notif['title']} »"
+            if notif.get('reward_money'):
+                msg += f" (+{notif['reward_money']}₽)"
+            if notif.get('reward_item'):
+                msg += f" · Objet reçu : {notif['reward_item']}"
+            messages.success(request, msg)
+
+        # ── Remise du colis à Bourg Palette ───────────────────────────────
+        # Si le joueur arrive à Bourg Palette en ayant la quête
+        # 'give_parcel_to_oak' active et le Colis de Chen dans son inventaire,
+        # on déclenche l'événement 'give_item' : la quête se termine et
+        # grant_pokedex() est appelé par le hook de QuestEngine.
+        if 'bourg' in zone.name.lower() or 'palette' in zone.name.lower():
+            try:
+                from myPokemonApp.models import Item, TrainerInventory
+                from myPokemonApp.questEngine import get_quest_progress, trigger_quest_event as tqe
+                parcel = Item.objects.filter(name='Colis de Chen').first()
+                if parcel:
+                    has_parcel = TrainerInventory.objects.filter(
+                        trainer=trainer, item=parcel, quantity__gt=0
+                    ).exists()
+                    if has_parcel:
+                        # Vérifier que la quête est active/available (pas déjà complétée)
+                        prog = get_quest_progress(trainer, 'give_parcel_to_oak')
+                        if prog and prog.state in ('active', 'available'):
+                            parcel_notifs = tqe(trainer, 'give_item', item=parcel)
+                            for notif in parcel_notifs:
+                                msg = f"✅ Quête terminée : « {notif['title']} »"
+                                if notif.get('reward_item'):
+                                    msg += f" · Vous recevez : {notif['reward_item']}"
+                                messages.success(request, msg)
+            except Exception as e:
+                logging.warning("Erreur trigger give_item Bourg Palette : %s", e)
 
         try:
             save = GameSave.objects.filter(trainer=trainer, is_active=True).first()

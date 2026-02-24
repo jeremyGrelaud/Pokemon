@@ -20,7 +20,16 @@ class Zone(models.Model):
         ('water', 'Mer'),
         ('building', 'Bâtiment'),
     ]
-    
+
+    HM_CHOICES = [
+        ('',         'Aucune'),
+        ('cut',      'CS01 Coupe'),
+        ('fly',      'CS02 Vol'),
+        ('surf',     'CS03 Surf'),
+        ('strength', 'CS04 Force'),
+        ('flash',    'CS05 Flash'),
+    ]
+
     name = models.CharField(max_length=100, unique=True)
     zone_type = models.CharField(max_length=20, choices=ZONE_TYPES)
     description = models.TextField(blank=True)
@@ -30,7 +39,7 @@ class Zone(models.Model):
     recommended_level_max = models.IntegerField(default=10)
     order = models.IntegerField(default=0, help_text="Ordre dans la progression")
     
-    # Accès
+    # Accès classiques
     required_badge = models.ForeignKey(
         GymLeader,
         on_delete=models.SET_NULL,
@@ -43,17 +52,34 @@ class Zone(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Item requis (ex: Bicyclette)"
+        related_name='zones_requiring_item',
+        help_text="Objet clé requis (ex: Abonnement Vélo)"
+    )
+
+    # Nouveaux accès quêtes / CS
+    required_hm = models.CharField(
+        max_length=10, choices=HM_CHOICES, blank=True, default='',
+        help_text="CS qu'un Pokémon de l'équipe doit connaître"
+    )
+    required_flags = models.JSONField(
+        default=list, blank=True,
+        help_text='Flags story requis. Ex: ["has_silph_scope"]'
+    )
+    required_quest = models.ForeignKey(
+        'Quest', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='gated_zones',
+        help_text="Quête complétée requise"
     )
     
     # Visuel
     image = models.CharField(max_length=200, blank=True)
     music = models.CharField(max_length=200, blank=True)
     
-    # Flags
+    # Flags fonctionnels
     is_safe_zone = models.BooleanField(default=False, help_text="Pas de wild battles")
     has_pokemon_center = models.BooleanField(default=False)
     has_shop = models.BooleanField(default=False)
+    has_floors = models.BooleanField(default=False, help_text="Bâtiment multi-étages")
     
     class Meta:
         ordering = ['order']
@@ -63,27 +89,29 @@ class Zone(models.Model):
         return f"{self.name} ({self.get_zone_type_display()})"
     
     def is_accessible_by(self, trainer):
-        """Vérifie si le trainer peut accéder à cette zone"""
-        
-        # Badge requis
-        if self.required_badge:
-            if not trainer.badges >= self.required_badge.badge_order:
-                return False, f"Badge {self.required_badge.badge_name} requis"
-        
-        # Item requis
-        if self.required_item:
-            has_item = trainer.inventory.filter(item=self.required_item).exists()
-            if not has_item:
-                return False, f"{self.required_item.name} requis"
-        
-        return True, "OK"
+        """
+        Vérifie si le trainer peut accéder à cette zone.
+        Délègue au QuestEngine (badge + item + CS + flags + quête).
+        """
+        from myPokemonApp.questEngine import can_access_zone
+        return can_access_zone(trainer, self)
 
 
 class ZoneConnection(models.Model):
     """
-    Connexions entre zones (pour la navigation)
+    Connexions entre zones (pour la navigation).
+    Peut exiger une CS ou un flag pour être empruntée.
     """
-    
+
+    HM_CHOICES = [
+        ('',         'Aucune'),
+        ('cut',      'CS01 Coupe'),
+        ('fly',      'CS02 Vol'),
+        ('surf',     'CS03 Surf'),
+        ('strength', 'CS04 Force'),
+        ('flash',    'CS05 Flash'),
+    ]
+
     from_zone = models.ForeignKey(
         Zone,
         on_delete=models.CASCADE,
@@ -96,6 +124,19 @@ class ZoneConnection(models.Model):
     )
     
     is_bidirectional = models.BooleanField(default=True)
+
+    # CS requise pour emprunter ce chemin
+    required_hm = models.CharField(
+        max_length=10, choices=HM_CHOICES, blank=True, default='',
+        help_text="CS requise pour traverser (ex: cut pour un arbre)"
+    )
+    # Flag story requis (ex: 'ss_ticket_obtained')
+    required_flag = models.CharField(max_length=60, blank=True, default='')
+    # Message affiché si bloqué
+    passage_message = models.CharField(
+        max_length=200, blank=True,
+        help_text="Message affiché quand le passage est bloqué"
+    )
     
     class Meta:
         unique_together = ['from_zone', 'to_zone']
@@ -103,6 +144,24 @@ class ZoneConnection(models.Model):
     def __str__(self):
         arrow = "↔" if self.is_bidirectional else "→"
         return f"{self.from_zone.name} {arrow} {self.to_zone.name}"
+
+    def is_passable_by(self, trainer) -> tuple:
+        """Retourne (bool, message)."""
+        from myPokemonApp.questEngine import trainer_has_hm, _get_save, HM_MOVE_NAMES
+
+        if self.required_hm:
+            if not trainer_has_hm(trainer, self.required_hm):
+                move_label = HM_MOVE_NAMES.get(self.required_hm, self.required_hm)
+                msg = self.passage_message or f"CS {move_label} requise pour passer."
+                return False, msg
+
+        if self.required_flag:
+            save = _get_save(trainer)
+            if not (save and save.story_flags.get(self.required_flag)):
+                msg = self.passage_message or "Ce passage est bloqué."
+                return False, msg
+
+        return True, 'OK'
 
 
 class WildPokemonSpawn(models.Model):
@@ -186,23 +245,27 @@ class PlayerLocation(models.Model):
         """Vérifie si le joueur peut voyager vers une zone"""
         
         # Vérifier connexion
-        is_connected = ZoneConnection.objects.filter(
+        connection = ZoneConnection.objects.filter(
             from_zone=self.current_zone,
             to_zone=zone
-        ).exists()
-        
-        if not is_connected:
-            # Vérifier bidirectional
-            reverse = ZoneConnection.objects.filter(
+        ).first()
+
+        if not connection:
+            # Vérifier bidirectionnel
+            connection = ZoneConnection.objects.filter(
                 from_zone=zone,
                 to_zone=self.current_zone,
                 is_bidirectional=True
-            ).exists()
-            
-            if not reverse:
+            ).first()
+            if not connection:
                 return False, "Zone non connectée"
-        
-        # Vérifier accès
+
+        # Vérifier si le passage lui-même est praticable (CS, flag)
+        passable, reason = connection.is_passable_by(self.trainer)
+        if not passable:
+            return False, reason
+
+        # Vérifier accès à la zone de destination
         return zone.is_accessible_by(self.trainer)
     
     def travel_to(self, zone):
