@@ -311,6 +311,123 @@
           </div>
           {% endif %}
 
+          <!-- Dresseurs par étage (bâtiments multi-étages) -->
+          {% if floors_data %}
+          <h4><i class="fas fa-building"></i> Étages & Dresseurs</h4>
+          {% for fd in floors_data %}
+          <div class="card mb-3 {% if not fd.accessible %}border-secondary{% endif %}">
+            <div class="card-header d-flex align-items-center justify-content-between py-2
+                        {% if fd.accessible %}bg-dark text-white{% else %}bg-secondary text-white{% endif %}">
+              <span>
+                <i class="fas fa-layer-group mr-1"></i>
+                {% if fd.floor.floor_number == 0 %}Rez-de-chaussée
+                {% elif fd.floor.floor_number > 0 %}Étage {{ fd.floor.floor_number }}
+                {% else %}Sous-sol {{ fd.floor.floor_number|stringformat:"d"|slice:"1:" }}
+                {% endif %}
+                {% if fd.floor.name %} — {{ fd.floor.name }}{% endif %}
+              </span>
+              {% if not fd.accessible %}
+              <span class="badge badge-light text-dark"><i class="fas fa-lock mr-1"></i>{{ fd.reason }}</span>
+              {% elif is_current %}
+              <a href="{% url 'floor_detail' zone.id fd.floor.floor_number %}" class="btn btn-sm btn-outline-light">
+                <i class="fas fa-arrow-right"></i> Explorer
+              </a>
+              {% endif %}
+            </div>
+            {% if fd.accessible %}
+            <div class="card-body p-2">
+              {% if fd.trainers %}
+              <div class="list-group list-group-flush">
+                {% for entry in fd.trainers %}
+                {% with npc=entry.npc is_defeated=entry.is_defeated can_rebattle=entry.can_rebattle %}
+                {% if is_defeated and not can_rebattle %}
+                <div class="list-group-item disabled py-2 px-3" style="opacity:.55;">
+                  <div class="d-flex align-items-center">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                         style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;filter:grayscale(100%);"
+                         onerror="this.style.display='none';">
+                    <div class="flex-grow-1">
+                      <strong>{{ npc.get_full_title }}</strong>
+                      <br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small>
+                    </div>
+                    <span class="badge badge-secondary"><i class="fas fa-check"></i> Vaincu</span>
+                  </div>
+                </div>
+                {% elif is_defeated and can_rebattle %}
+                <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action py-2 px-3">
+                  <div class="d-flex align-items-center">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                         style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
+                         onerror="this.style.display='none';">
+                    <div class="flex-grow-1">
+                      <strong>{{ npc.get_full_title }}</strong>
+                      <br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small>
+                    </div>
+                    <span class="badge badge-warning"><i class="fas fa-redo"></i> Revancher</span>
+                  </div>
+                </a>
+                {% else %}
+                <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action py-2 px-3">
+                  <div class="d-flex align-items-center">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                         style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
+                         onerror="this.style.display='none';">
+                    <div class="flex-grow-1">
+                      <strong>{{ npc.get_full_title }}</strong>
+                      <br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small>
+                    </div>
+                    <span class="badge badge-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
+                  </div>
+                </a>
+                {% endif %}
+                {% endwith %}
+                {% endfor %}
+              </div>
+              {% else %}
+              <p class="text-muted small mb-0 p-2"><i class="fas fa-info-circle"></i> Aucun dresseur à cet étage.</p>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% endif %}
+
+          <!-- Dresseurs non assignés à un étage (fallback migration) -->
+          {% if unassigned_trainers %}
+          <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.85rem;">
+            <i class="fas fa-exclamation-triangle"></i>
+            Ces dresseurs ne sont pas encore assignés à un étage précis.
+            Re-exécutez <code>initNPCTrainersComplete</code> pour corriger leurs locations.
+          </div>
+          <div class="list-group mb-4">
+            {% for entry in unassigned_trainers %}
+            {% with npc=entry.npc is_defeated=entry.is_defeated can_rebattle=entry.can_rebattle %}
+            {% if is_defeated and not can_rebattle %}
+            <div class="list-group-item disabled py-2 px-3" style="opacity:.55;">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                     style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;filter:grayscale(100%);"
+                     onerror="this.style.display='none';">
+                <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong></div>
+                <span class="badge badge-secondary"><i class="fas fa-check"></i> Vaincu</span>
+              </div>
+            </div>
+            {% else %}
+            <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action py-2 px-3">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                     style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
+                     onerror="this.style.display='none';">
+                <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong></div>
+                <span class="badge badge-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
+              </div>
+            </a>
+            {% endif %}
+            {% endwith %}
+            {% endfor %}
+          </div>
+          {% endif %}
+
         </div>{# /card #}
       </div>{# /card #}
     </div>{# /col principal #}
@@ -334,15 +451,24 @@
             </p>
           </div>
 
-            <!-- Bâtiment multi-étages -->
-            {% if zone.has_floors %}
+            <!-- Bâtiment multi-étages : navigation rapide par étage -->
+            {% if zone.has_floors and floors_data %}
             <div class="card-header py-2 text-center">
-              <strong><i class="fas fa-building"></i> Bâtiment</strong>
+              <strong><i class="fas fa-building"></i> Étages</strong>
             </div>
             <div class="p-2">
-              <a href="{% url 'building_view' zone.id %}" class="btn btn-dark btn-block">
-                <i class="fas fa-layer-group"></i> Explorer les étages
+              {% for fd in floors_data %}
+              <a href="{% url 'floor_detail' zone.id fd.floor.floor_number %}"
+                 class="btn btn-sm btn-block mb-1 {% if fd.accessible %}btn-dark{% else %}btn-outline-secondary disabled{% endif %}">
+                <i class="fas fa-layer-group"></i>
+                {% if fd.floor.floor_number == 0 %}Rez-de-chaussée
+                {% elif fd.floor.floor_number > 0 %}Étage {{ fd.floor.floor_number }}
+                {% else %}Sous-sol {{ fd.floor.floor_number|stringformat:"d"|slice:"1:" }}
+                {% endif %}
+                {% if fd.floor.name %}<small class="d-block text-muted" style="font-size:.7rem;">{{ fd.floor.name }}</small>{% endif %}
+                {% if not fd.accessible %}<i class="fas fa-lock ml-1"></i>{% endif %}
               </a>
+              {% endfor %}
             </div>
             {% endif %}
 

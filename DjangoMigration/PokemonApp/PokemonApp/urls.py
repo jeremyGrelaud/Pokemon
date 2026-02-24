@@ -115,8 +115,8 @@ urlpatterns = [
     path('map/travel/<int:zone_id>/', views.travel_to_zone_view, name='travel_to_zone'),
     path('map/encounter/<int:zone_id>/', views.wild_encounter_view, name='wild_encounter'),
 
-    # Bâtiments multi-étages
-    path('map/zone/<int:zone_id>/building/', views.building_view, name='building_view'),
+    # Bâtiments multi-étages (building_view redirige vers zone_detail, étages conservés)
+    path('map/zone/<int:zone_id>/building/', views.building_redirect_view, name='building_view'),
     path('map/zone/<int:zone_id>/floor/<int:floor_number>/', views.floor_detail_view, name='floor_detail'),
     path('map/zone/<int:zone_id>/floor/<int:floor_number>/encounter/', views.floor_wild_encounter_view, name='floor_encounter'),
 

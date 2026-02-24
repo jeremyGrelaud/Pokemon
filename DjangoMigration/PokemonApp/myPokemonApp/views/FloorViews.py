@@ -16,37 +16,12 @@ from myPokemonApp.questEngine import (
 
 
 @login_required
-def building_view(request, zone_id):
+def building_redirect_view(request, zone_id):
     """
-    Vue principale d'un bâtiment multi-étages.
-    Affiche la liste des étages et redirige sur l'étage sélectionné.
+    building_view est désormais intégré dans zone_detail.
+    On redirige proprement pour conserver la compatibilité des anciens liens.
     """
-    trainer         = get_player_trainer(request.user)
-    zone            = get_object_or_404(Zone, pk=zone_id, has_floors=True)
-    player_location = get_player_location(trainer)
-    is_current      = player_location.current_zone == zone
-
-    can_access, reason = zone.is_accessible_by(trainer)
-    if not can_access:
-        messages.error(request, reason)
-        return redirect('zone_detail', zone_id=zone_id)
-
-    floors = zone.floors.all().order_by('floor_number')
-    floor_data = []
-    for floor in floors:
-        accessible, floor_reason = can_access_floor(trainer, floor)
-        floor_data.append({
-            'floor':       floor,
-            'accessible':  accessible,
-            'reason':      floor_reason,
-        })
-
-    return render(request, 'map/building.html', {
-        'zone':        zone,
-        'floor_data':  floor_data,
-        'is_current':  is_current,
-        'current_zone': player_location.current_zone,
-    })
+    return redirect('zone_detail', zone_id=zone_id)
 
 
 @login_required

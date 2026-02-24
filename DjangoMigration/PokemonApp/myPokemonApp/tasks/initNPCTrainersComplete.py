@@ -665,20 +665,22 @@ def init_lavender_town():
     """Tour Pokémon - Lavanville (ajouts)"""
     logging.info("[*] Tour Pokémon (ajouts)...")
 
+    # 2F — Premiers dresseurs endeuillés
     create_npc_trainer(
         username='Channeler Margaret',
         trainer_type='trainer',
-        location='Tour Pokémon',
+        location='Tour Pokémon-2',
         team_data=[
             {'species': get_pokemon('Gastly'), 'level': 22, 'moves': get_moves(['Lick', 'Spite'])},
         ],
         intro_text="Les défunts parlent à travers moi..."
     )
 
+    # 3F — L'atmosphère se fait plus lourde
     create_npc_trainer(
         username='Channeler Tammy',
         trainer_type='trainer',
-        location='Tour Pokémon',
+        location='Tour Pokémon-3',
         team_data=[
             {'species': get_pokemon('Gastly'), 'level': 23, 'moves': get_moves(['Lick', 'Spite', 'Confuse Ray'])},
             {'species': get_pokemon('Haunter'), 'level': 25, 'moves': get_moves(['Lick', 'Hypnosis', 'Night Shade'])},
@@ -686,20 +688,22 @@ def init_lavender_town():
         intro_text="Je vois l'au-delà..."
     )
 
+    # 3F — Deuxième dresseur
     create_npc_trainer(
         username='Channeler Karina',
         trainer_type='trainer',
-        location='Tour Pokémon',
+        location='Tour Pokémon-3',
         team_data=[
             {'species': get_pokemon('Haunter'), 'level': 24, 'moves': get_moves(['Lick', 'Night Shade', 'Hypnosis'])},
         ],
         intro_text="Les esprits m'ont accordé leur pouvoir!"
     )
 
+    # 4F — Team Rocket bloque les étages supérieurs
     create_npc_trainer(
         username='Team Rocket Jesse',
         trainer_type='trainer',
-        location='Tour Pokémon',
+        location='Tour Pokémon-4',
         team_data=[
             {'species': get_pokemon('Ekans'), 'level': 23, 'moves': get_moves(['Wrap', 'Bite', 'Poison Sting'])},
             {'species': get_pokemon('Drowzee'), 'level': 23, 'moves': get_moves(['Pound', 'Hypnosis', 'Confusion'])},
@@ -707,10 +711,11 @@ def init_lavender_town():
         intro_text="Nous sommes de la Team Rocket! La Tour nous appartient!"
     )
 
+    # 4F — Deuxième Rocket
     create_npc_trainer(
         username='Team Rocket James',
         trainer_type='trainer',
-        location='Tour Pokémon',
+        location='Tour Pokémon-4',
         team_data=[
             {'species': get_pokemon('Koffing'), 'level': 23, 'moves': get_moves(['Tackle', 'Smog', 'Poison Gas'])},
             {'species': get_pokemon('Zubat'), 'level': 23, 'moves': get_moves(['Leech Life', 'Bite', 'Supersonic'])},
@@ -790,10 +795,11 @@ def init_victory_road_extra():
     """Chemin de la Victoire - Dresseurs supplémentaires"""
     logging.info("[*] Chemin de la Victoire (ajouts)...")
 
+    # 1F — Entrée
     create_npc_trainer(
         username='Cool Trainer Caroline',
         trainer_type='trainer',
-        location='Chemin de la Victoire',
+        location='Chemin de la Victoire-1',
         team_data=[
             {'species': get_pokemon('Haunter'), 'level': 43, 'moves': get_moves(['Night Shade', 'Hypnosis', 'Confuse Ray'])},
             {'species': get_pokemon('Kadabra'), 'level': 43, 'moves': get_moves(['Psybeam', 'Recover', 'Psychic'])},
@@ -801,10 +807,11 @@ def init_victory_road_extra():
         intro_text="Seuls les meilleurs atteignent le Plateau Indigo!"
     )
 
+    # 2F — Niveau intermédiaire
     create_npc_trainer(
         username='Pokemaniac Bernard',
         trainer_type='trainer',
-        location='Chemin de la Victoire',
+        location='Chemin de la Victoire-2',
         team_data=[
             {'species': get_pokemon('Slowbro'), 'level': 44, 'moves': get_moves(['Confusion', 'Psychic', 'Amnesia'])},
             {'species': get_pokemon('Kangaskhan'), 'level': 44, 'moves': get_moves(['Headbutt', 'Dizzy Punch', 'Body Slam'])},
@@ -812,10 +819,11 @@ def init_victory_road_extra():
         intro_text="J'accumule les Pokémon rares depuis des années!"
     )
 
+    # 3F — Sortie vers le Plateau
     create_npc_trainer(
         username='Black Belt Takashi',
         trainer_type='trainer',
-        location='Chemin de la Victoire',
+        location='Chemin de la Victoire-3',
         team_data=[
             {'species': get_pokemon('Primeape'), 'level': 43, 'moves': get_moves(['Karate Chop', 'Cross Chop', 'Fury Swipes'])},
             {'species': get_pokemon('Machamp'), 'level': 45, 'moves': get_moves(['Karate Chop', 'Cross Chop', 'Submission'])},
@@ -953,10 +961,11 @@ def init_seafoam_extra():
     """Îles Écume - Dresseurs supplémentaires"""
     logging.info("[*] Îles Écume (ajouts)...")
 
+    # B1F — Premier niveau souterrain
     create_npc_trainer(
         username='Swimmer Anya',
         trainer_type='trainer',
-        location='Îles Écume',
+        location='Îles Écume-1',
         team_data=[
             {'species': get_pokemon('Dewgong'), 'level': 39, 'moves': get_moves(['Headbutt', 'Aurora Beam', 'Ice Beam'])},
             {'species': get_pokemon('Cloyster'), 'level': 39, 'moves': get_moves(['Aurora Beam', 'Ice Beam', 'Spikes'])},
@@ -964,10 +973,11 @@ def init_seafoam_extra():
         intro_text="Les eaux glacées des Îles Écume me galvanisent!"
     )
 
+    # B2F — Galeries inondées
     create_npc_trainer(
         username='Juggler Nate',
         trainer_type='trainer',
-        location='Îles Écume',
+        location='Îles Écume-2',
         team_data=[
             {'species': get_pokemon('Jynx'), 'level': 40, 'moves': get_moves(['Pound', 'Lovely Kiss', 'Ice Beam', 'Psychic'])},
         ],

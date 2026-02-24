@@ -284,28 +284,39 @@ def create_gym_leader(username, gym_name, city, badge_name,
 
 
 def create_npc_trainer(username, trainer_type, location, team_data,
-                       intro_text=None):
+                       intro_text=None, npc_class='Gamin', sprite_name='',
+                       can_rebattle=False, money=None,
+                       defeat_text=None, victory_text=None):
     """
     Cree un dresseur NPC generique avec son equipe. Idempotent (get_or_create).
+    La cle d'idempotence est (username, location) — deux dresseurs au meme nom
+    dans des zones differentes (ex: plusieurs "Team Rocket Grunt") sont bien
+    des entrees distinctes en base.
     """
     from .models import Trainer
 
+    final_intro   = intro_text   or f"{username} veut combattre !"
+    final_defeat  = defeat_text  or "J'ai perdu..."
+    final_victory = victory_text or "J'ai gagne !"
+
     trainer, created = Trainer.objects.get_or_create(
         username=username,
+        location=location,
         defaults={
             'trainer_type': trainer_type,
-            'location': location,
-            'intro_text': intro_text or f"{username} veut combattre !",
-            'defeat_text': "J'ai perdu...",
-            'victory_text': "J'ai gagne !",
-            'can_rebattle': False,
-            'is_npc': True,
-            'npc_class': 'Gamin',
+            'intro_text':   final_intro,
+            'defeat_text':  final_defeat,
+            'victory_text': final_victory,
+            'can_rebattle': can_rebattle,
+            'money':        money if money is not None else 500,
+            'is_npc':       True,
+            'npc_class':    npc_class,
+            'sprite_name':  sprite_name,
         }
     )
 
     if not created:
-        logging.info(f"  [skip] NPC '{username}' existe deja")
+        logging.info(f"  [skip] NPC '{username}' @ '{location}' existe deja")
         return trainer
 
     for i, poke_data in enumerate(team_data, 1):

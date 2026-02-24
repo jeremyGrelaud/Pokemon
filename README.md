@@ -11,11 +11,13 @@ For education purpose only
 
 Recreating pokemon game in python
 
+#TODO lorsqu'on commence de zéro un objet GameSave n'estpas automatiquement créé  on pourrait le faire dans le choose starter
+
 TODO Roadmap :
 
 - Improve battle 'GUI'
-- ajouter un système de restriction sur le changement de map, certaines quêtes ou objets nécessaires, devoir forcément affronter certains dresseurs ou avoir une chance de trigger une wild battle ... ainsi que placer les combats contre le rival au moment de l'aventure de Kanto comme dans le jeu original
-- système de quêtes avec les key items sur la save comme avec la fonction grant pokedex ?
+- Améliorer les zones avec étages en répartissant correctement les dresseurs de la zone dans les étages
+- empêcher de pouvoir changer de map sans déclencher aucun combat de dresseur s'il en reste des invaincus et potentiellement rajouter une chance de déclencher une wild battle en changeant de zone comme si on marchait dans les herbes (ou proposer un nouveau système de maps)
 - After everything, implement different game mods ?
 
 TODO BugFixes :
@@ -32,5 +34,5 @@ python manage.py createsuperuser
 
 To init database in one command :
 ```
-python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase()"
+python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase(); from myPokemonApp.tasks import *; init_all();"
 ```

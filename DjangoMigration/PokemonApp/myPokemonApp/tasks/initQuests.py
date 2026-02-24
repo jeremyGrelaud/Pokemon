@@ -965,8 +965,8 @@ RIVAL_ENCOUNTERS_DATA = [
     {
         'quest_id':         'rival_pallet_town',
         'rival_trainer':    'Rival - Pallet Town',
-        'zone_name':        'Forêt de Jade',
-        'pre_battle':       "Hé toi ! Tu pensais m'éviter ? Allez, on se bat !",
+        'zone_name':        'Bourg Palette',
+        'pre_battle':       "Attends ! Vérifions nos Pokémon ! Allez, je te défie !",
         'post_battle':      "Hein ?! Incroyable... Je dois m'entraîner plus dur.",
     },
     {
