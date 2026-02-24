@@ -5,6 +5,8 @@
 - https://github.com/msikma/pokesprite/tree/master/items (for items HM, battle iitems ... sprites)
 - https://www.pokepedia.fr (for map sprites)
 
+- Johto reference for future integration ? https://gamefaqs.gamespot.com/gbc/375087-pokemon-crystal-version/faqs/75486/full-trainer-info-list
+
 # Pokemon
 For education purpose only
 

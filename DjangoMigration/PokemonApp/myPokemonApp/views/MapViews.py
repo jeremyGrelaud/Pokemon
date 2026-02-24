@@ -177,37 +177,39 @@ def travel_to_zone_view(request, zone_id):
     player_location = get_player_location(trainer)
     current_zone    = player_location.current_zone
 
-    # ── Vérification : dresseurs invaincus dans la zone actuelle ──────────
+    # ── Dresseur obligatoire non vaincu dans la zone actuelle ? ────────────
     if not current_zone.is_safe_zone:
         defeated_ids = get_defeated_trainer_ids(trainer)
 
-        # Dresseurs de la zone plate
-        undefeated_qs = Trainer.objects.filter(
-            is_npc=True, location=current_zone.name, can_rebattle=False
-        ).exclude(id__in=defeated_ids).exclude(trainer_type="rival")
+        # Chercher uniquement les dresseurs marqués is_battle_required
+        required_qs = Trainer.objects.filter(
+            is_npc=True,
+            is_battle_required=True,
+            location=current_zone.name,
+        ).exclude(id__in=defeated_ids)
 
-        # Dresseurs dans les étages du bâtiment
+        # Même logique pour les étages accessibles
         if current_zone.has_floors:
             from myPokemonApp.questEngine import can_access_floor
             for floor in current_zone.floors.all():
                 accessible, _ = can_access_floor(trainer, floor)
                 if accessible:
                     floor_key = f"{current_zone.name}-{floor.floor_number}"
-                    undefeated_qs = undefeated_qs | Trainer.objects.filter(
-                        is_npc=True, location=floor_key, can_rebattle=False
-                    ).exclude(id__in=defeated_ids).exclude(trainer_type="rival")
+                    required_qs = required_qs | Trainer.objects.filter(
+                        is_npc=True,
+                        is_battle_required=True,
+                        location=floor_key,
+                    ).exclude(id__in=defeated_ids)
 
-        blocker = undefeated_qs.first()
+        blocker = required_qs.first()
         if blocker:
-            # Auto-déclencher le combat contre ce dresseur
             messages.warning(
                 request,
-                f"⚠️ {blocker.get_full_title()} vous interpelle et vous bloque le passage !"
+                f"⚠️ {blocker.get_full_title()} vous barre le passage !"
             )
             return redirect('battle_create_trainer', trainer_id=blocker.id)
 
     success, message = player_location.travel_to(zone)
-
     if success:
         messages.success(request, message)
 

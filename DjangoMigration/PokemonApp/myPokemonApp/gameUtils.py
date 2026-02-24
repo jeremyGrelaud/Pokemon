@@ -286,7 +286,8 @@ def create_gym_leader(username, gym_name, city, badge_name,
 def create_npc_trainer(username, trainer_type, location, team_data,
                        intro_text=None, npc_class='Gamin', sprite_name='',
                        can_rebattle=False, money=None,
-                       defeat_text=None, victory_text=None):
+                       defeat_text=None, victory_text=None,
+                       is_battle_required=False):
     """
     Cree un dresseur NPC generique avec son equipe. Idempotent (get_or_create).
     La cle d'idempotence est (username, location) — deux dresseurs au meme nom
@@ -310,8 +311,9 @@ def create_npc_trainer(username, trainer_type, location, team_data,
             'can_rebattle': can_rebattle,
             'money':        money if money is not None else 500,
             'is_npc':       True,
-            'npc_class':    npc_class,
-            'sprite_name':  sprite_name,
+            'npc_class':          npc_class,
+            'sprite_name':        sprite_name,
+            'is_battle_required': is_battle_required,
         }
     )
 
