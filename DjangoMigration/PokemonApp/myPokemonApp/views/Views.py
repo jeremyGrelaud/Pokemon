@@ -152,6 +152,19 @@ def choose_starter_view(request):
             f"Vous avez reçu 5 Pokéballs et 3 Potions."
         )
 
+        # ── GameSave initial ──────────────────────────────────────────────────
+        from myPokemonApp.models import GameSave
+        GameSave.objects.get_or_create(
+            trainer=trainer,
+            slot=1,
+            defaults={
+                'save_name':           f"Aventure de {trainer.username}",
+                'current_location':    'Bourg Palette',
+                'last_pokemon_center': 'Bourg Palette',
+                'is_active':           True,
+            }
+        )
+
         # ── Quêtes du prologue ────────────────────────────────────────────────
         # 'start_journey' est la quête racine (aucun prérequis).
         # On la complète ici pour débloquer automatiquement la chaîne suivante
