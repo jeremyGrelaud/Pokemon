@@ -61,30 +61,6 @@ def init_key_items():
     print(f"  Objets clés : {created} créés, {len(KEY_ITEMS) - created} déjà présents")
 
 
-# =============================================================================
-# RIVAL (Blue)
-# =============================================================================
-
-def init_rival():
-    from myPokemonApp.models import Trainer
-    # update_or_create garantit que trainer_type='rival' est posé même si Blue
-    # existait déjà avec un autre type (ex: 'player' ou 'npc').
-    rival, created = Trainer.objects.update_or_create(
-        username='Blue',
-        defaults={
-            'trainer_type': 'rival',
-            'is_npc':       True,
-            'npc_class':    'Rival',
-            'sprite_name':  'blue-gen3.png',
-            'can_rebattle': False,
-            'intro_text':   "Trop lent ! Tu es complètement pathétique !",
-            'defeat_text':  "Hein ?! Incroyable... Je dois m'entraîner plus dur.",
-            'victory_text': "Je le savais ! Tu n'es pas à ma hauteur !",
-        }
-    )
-    print(f"  Rival 'Blue' : {'créé' if created else 'mis à jour'}")
-    return rival
-
 
 # =============================================================================
 # ZONES SUPPLÉMENTAIRES (bâtiments non créés par initKantoMaps)
@@ -150,6 +126,18 @@ ALL_QUESTS = [
         'icon':           'fa-star',
     },
     {
+        'quest_id':       'rival_pallet_town',
+        'title':          'Premier combat de rival !',
+        'description':    "Attends ! Vérifions nos Pokémon ! Allez, je te défie !",
+        'quest_type':     'rival',
+        'order':          15,
+        'trigger_type':   'defeat_trainer',
+        'trigger_trainer_username': 'Rival - Pallet Town',
+        'objective_text': 'Battre Blue',
+        'reward_flag':    'rival_pallet_town_beaten',
+        'icon':           'fa-user-ninja',
+    },
+    {
         'quest_id':       'get_oaks_parcel',
         'title':          'Le Colis du Professeur',
         'description':    "La boutique de Jadielle garde un colis destiné au Professeur Chen. Rendez-vous là-bas pour le récupérer.",
@@ -186,7 +174,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          35,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Blue',
+        'trigger_trainer_username': 'Rival - Route 22 (1)',
         'objective_text': 'Battre Blue sur la Route 22',
         'reward_flag':    'rival_route22_beaten',
         'icon':           'fa-user-ninja',
@@ -202,18 +190,6 @@ ALL_QUESTS = [
         'objective_text': 'Traverser la Forêt de Jade et atteindre Argenta',
         'reward_flag':    'reached_pewter',
         'icon':           'fa-tree',
-    },
-    {
-        'quest_id':       'rival_viridian_forest',
-        'title':          'Blue dans la Forêt !',
-        'description':    "Blue surgit en pleine Forêt de Jade pour vous barrer la route. Battez-le pour continuer.",
-        'quest_type':     'rival',
-        'order':          45,
-        'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Blue',
-        'objective_text': 'Battre Blue dans la Forêt de Jade',
-        'reward_flag':    'rival_forest_beaten',
-        'icon':           'fa-user-ninja',
     },
     {
         'quest_id':       'defeat_brock',
@@ -252,7 +228,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          65,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Blue',
+        'trigger_trainer_username': 'Rival - Cerulean City',
         'objective_text': 'Battre Blue sur le Pont Cerclef (Route 24)',
         'reward_flag':    'rival_cerulean_beaten',
         'icon':           'fa-user-ninja',
@@ -430,7 +406,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          145,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Blue',
+        'trigger_trainer_username': 'Rival - Pokemon Tower',
         'objective_text': 'Battre Blue au sommet de la Tour Pokémon',
         'reward_flag':    'rival_tower_beaten',
         'icon':           'fa-user-ninja',
@@ -545,7 +521,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          185,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Blue',
+        'trigger_trainer_username': 'Rival - Silph Co.',
         'objective_text': 'Battre Blue au 7F de Sylphe SARL',
         'reward_flag':    'rival_silph_beaten',
         'icon':           'fa-user-ninja',
@@ -657,7 +633,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          255,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Blue',
+        'trigger_trainer_username': 'Rival - Route 22 (2)',
         'objective_text': 'Battre Blue sur la Route 22 (avant les gardes de la Ligue)',
         'reward_flag':    'rival_route22_final_beaten',
         'icon':           'fa-user-ninja',
@@ -744,7 +720,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          320,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Blue',
+        'trigger_trainer_username': 'Champion Blue',
         'objective_text': 'Battre Blue, Champion de la Ligue Pokémon',
         'reward_flag':    'rival_champion_beaten',
         'reward_money':   10000,
@@ -896,12 +872,12 @@ def init_quests():
     # ── Prérequis ──────────────────────────────────────────────────────────────
     PREREQS = {
         # Ch1 prologue
+        'rival_pallet_town':      ['start_journey'],
         'get_oaks_parcel':        ['start_journey'],
         'give_parcel_to_oak':     ['get_oaks_parcel'],
         # Ch2
         'rival_route_22':         ['give_parcel_to_oak'],
         'cross_viridian_forest':  ['give_parcel_to_oak'],
-        'rival_viridian_forest':  ['cross_viridian_forest'],
         'defeat_brock':           ['cross_viridian_forest'],
         # Ch3
         'explore_mt_moon':        ['defeat_brock'],
@@ -975,69 +951,87 @@ def init_quests():
 # =============================================================================
 
 RIVAL_ENCOUNTERS_DATA = [
+    # quest_id          → identifie la quête associée
+    # rival_trainer     → username exact du Trainer dans initializeItemsAndNpcs.py
+    # zone_name         → zone où l'encounter est affiché (pour RivalEncounter.zone)
+    # floor_number      → étage (optionnel, pour les bâtiments à étages)
     {
-        'quest_id':    'rival_route_22',
-        'zone_name':   'Route 22',
-        'pre_battle':  "Hé ! Attends un peu ! Je savais que tu viendrais ici. Allez !",
-        'post_battle': "Quoi ?! Tu as gagné ?! Peu importe. La prochaine fois ce sera différent.",
+        'quest_id':         'rival_route_22',
+        'rival_trainer':    'Rival - Route 22 (1)',
+        'zone_name':        'Route 22',
+        'pre_battle':       "Hé ! Attends un peu ! Je savais que tu viendrais ici. Allez !",
+        'post_battle':      "Quoi ?! Tu as gagné ?! Peu importe. La prochaine fois ce sera différent.",
     },
     {
-        'quest_id':    'rival_viridian_forest',
-        'zone_name':   'Forêt de Jade',
-        'pre_battle':  "Hé toi ! Tu pensais m'éviter ? Allez, on se bat !",
-        'post_battle': "Hein ?! Incroyable... Je dois m'entraîner plus dur.",
+        'quest_id':         'rival_pallet_town',
+        'rival_trainer':    'Rival - Pallet Town',
+        'zone_name':        'Forêt de Jade',
+        'pre_battle':       "Hé toi ! Tu pensais m'éviter ? Allez, on se bat !",
+        'post_battle':      "Hein ?! Incroyable... Je dois m'entraîner plus dur.",
     },
     {
-        'quest_id':    'rival_cerulean',
-        'zone_name':   'Route 24',
-        'pre_battle':  "Encore toi ! Mes Pokémon ont grandi depuis la dernière fois. Prépare-toi !",
-        'post_battle': "Encore ?! Bah... La prochaine fois je te battrai facilement.",
+        'quest_id':         'rival_cerulean',
+        'rival_trainer':    'Rival - Cerulean City',
+        'zone_name':        'Route 24',
+        'pre_battle':       "Encore toi ! Mes Pokémon ont grandi depuis la dernière fois. Prépare-toi !",
+        'post_battle':      "Encore ?! Bah... La prochaine fois je te battrai facilement.",
     },
     {
-        'quest_id':    'rival_pokemon_tower',
-        'zone_name':   'Tour Pokémon',
-        'floor_number': 7,
-        'pre_battle':  "Tu es venu chercher la même chose que moi ? Montre-moi si tu le mérites !",
-        'post_battle': "J'aurais dû mieux m'entraîner avant de venir ici.",
+        'quest_id':         'rival_pokemon_tower',
+        'rival_trainer':    'Rival - Pokemon Tower',
+        'zone_name':        'Tour Pokémon',
+        'floor_number':     7,
+        'pre_battle':       "Tu es venu chercher la même chose que moi ? Montre-moi si tu le mérites !",
+        'post_battle':      "J'aurais dû mieux m'entraîner avant de venir ici.",
     },
     {
-        'quest_id':    'rival_silph_co',
-        'zone_name':   'Sylphe SARL',
-        'floor_number': 7,
-        'pre_battle':  "Tu as du culot de venir jusqu'ici. Mais tu ne passeras pas !",
-        'post_battle': "Tch... tu as encore gagné. Va, monte voir le Président.",
+        'quest_id':         'rival_silph_co',
+        'rival_trainer':    'Rival - Silph Co.',
+        'zone_name':        'Sylphe SARL',
+        'floor_number':     7,
+        'pre_battle':       "Tu as du culot de venir jusqu'ici. Mais tu ne passeras pas !",
+        'post_battle':      "Tch... tu as encore gagné. Va, monte voir le Président.",
     },
     {
-        'quest_id':    'rival_route_22_final',
-        'zone_name':   'Route 22',
-        'pre_battle':  "Tu veux affronter la Ligue ? Tu devras d'abord passer par moi.",
-        'post_battle': "Pfff... Vas-y alors. Mais ne crois pas que tu vas gagner facilement là-haut.",
+        'quest_id':         'rival_route_22_final',
+        'rival_trainer':    'Rival - Route 22 (2)',
+        'zone_name':        'Route 22',
+        'pre_battle':       "Tu veux affronter la Ligue ? Tu devras d'abord passer par moi.",
+        'post_battle':      "Pfff... Vas-y alors. Mais ne crois pas que tu vas gagner facilement là-haut.",
     },
     {
-        'quest_id':    'rival_champion',
-        'zone_name':   'Plateau Indigo',
-        'pre_battle':  "J'ai battu les 4 As en premier. Je suis le Champion ! Tu n'as aucune chance.",
-        'post_battle': "Perdu... contre toi... Je dois revoir toute ma façon de dresser. Tu mérites vraiment ce titre.",
+        'quest_id':         'rival_champion',
+        'rival_trainer':    'Champion Blue',
+        'zone_name':        'Plateau Indigo',
+        'pre_battle':       "J'ai battu les 4 As en premier. Je suis le Champion ! Tu n'as aucune chance.",
+        'post_battle':      "Perdu... contre toi... Je dois revoir toute ma façon de dresser. Tu mérites vraiment ce titre.",
     },
 ]
 
 
-def init_rival_encounters():
-    from myPokemonApp.models import Quest, Trainer, Zone, ZoneFloor, RivalEncounter
 
-    # On cherche uniquement par username pour éviter un échec si trainer_type
-    # n'a pas encore été mis à jour par init_rival().
-    rival = Trainer.objects.filter(username='Blue').first()
-    if not rival:
-        print("  ⚠ Rival 'Blue' introuvable — lancez init_rival() d'abord.")
-        return
+def init_rival_encounters():
+    """
+    Crée les RivalEncounter en liant chaque rencontre au Trainer spécifique
+    défini dans initializeItemsAndNpcs.py (un trainer distinct par combat).
+    Le champ 'rival' de RivalEncounter pointe vers ce trainer précis.
+    """
+    from myPokemonApp.models import Quest, Trainer, Zone, ZoneFloor, RivalEncounter
 
     created = updated = 0
     for enc in RIVAL_ENCOUNTERS_DATA:
         quest = Quest.objects.filter(quest_id=enc['quest_id']).first()
         zone  = Zone.objects.filter(name__icontains=enc['zone_name']).first()
+
         if not quest or not zone:
             print(f"  ⚠ Rencontre ignorée (quête/zone manquante) : {enc['quest_id']}")
+            continue
+
+        # Trainer spécifique à ce combat (username exact de initializeItemsAndNpcs)
+        rival_trainer = Trainer.objects.filter(username=enc['rival_trainer']).first()
+        if not rival_trainer:
+            print(f"  ⚠ Trainer introuvable : '{enc['rival_trainer']}' (enc: {enc['quest_id']})")
+            print(f"      → Lancez initialize_rival_battles() d'abord.")
             continue
 
         floor = None
@@ -1049,7 +1043,7 @@ def init_rival_encounters():
         _, is_new = RivalEncounter.objects.update_or_create(
             quest=quest,
             defaults={
-                'rival':           rival,
+                'rival':           rival_trainer,
                 'zone':            zone,
                 'floor':           floor,
                 'pre_battle_text': enc['pre_battle'],
@@ -1318,21 +1312,19 @@ def init_elite4():
 
 def init_all():
     print("── Initialisation du système de quêtes de Kanto ─────────────────────")
-    print("[1/8] Objets clés…")
+    print("[1/7] Objets clés…")
     init_key_items()
-    print("[2/8] Rival Blue…")
-    init_rival()
-    print("[3/8] Zones supplémentaires…")
+    print("[2/7] Zones supplémentaires…")
     init_extra_zones()
-    print("[4/8] Élite 4…")
+    print("[3/7] Élite 4…")
     init_elite4()
-    print("[5/8] Quêtes…")
+    print("[4/7] Quêtes…")
     init_quests()
-    print("[6/8] Rencontres rival…")
+    print("[5/7] Rencontres rival…")
     init_rival_encounters()
-    print("[7/8] Étages des bâtiments…")
+    print("[6/7] Étages des bâtiments…")
     init_zone_floors()
-    print("[8/8] Vérification…")
+    print("[7/7] Vérification…")
     _verify()
     print("✅ Système de quêtes Kanto initialisé.")
 

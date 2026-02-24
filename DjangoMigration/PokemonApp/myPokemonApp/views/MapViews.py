@@ -68,7 +68,7 @@ def zone_detail_view(request, zone_id):
             connections.append(conn)
 
     wild_spawns        = zone.wild_spawns.all()
-    trainers_in_zone   = Trainer.objects.filter(is_npc=True, location=zone.name)
+    trainers_in_zone   = Trainer.objects.filter(is_npc=True, location=zone.name).exclude(trainer_type="rival") # On exclut les rivaux qui sont affichés séparément 
 
     # Calcul des dresseurs vaincus en UNE seule requête DB
     # (évite le N+1 que produirait npc.is_defeated_by_player() dans le template)
