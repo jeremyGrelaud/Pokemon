@@ -41,7 +41,6 @@ from myPokemonApp.tasks.initializeDatabase import scriptToInitializeDatabase
 from myPokemonApp.tasks.initializeItemsAndNpcs import (
     initialize_items,
     initialize_gym_leaders,
-    initialize_npc_trainers,
     initialize_rival_battles,
     initialize_elite_four,
     create_champion,
@@ -127,10 +126,6 @@ def initAllDatabase(stop_on_error=True):
         # ── DRESSEURS & LEADERS ───────────────────────────────────────────────
         (6,  "Champions d'Arène",
              initialize_gym_leaders),
-
-        # NPCs de base : Bourg-Palette, Mt. Moon, Grotte Azurée, quelques routes.
-        (7,  "Dresseurs NPC de base",
-             initialize_npc_trainers),
 
         # NPCs complets : toutes les routes de Kanto, Centrale électrique,
         # Tour Pokémon, S.S. Anne, Îles Écume, Silph Co., etc. (FRLG).

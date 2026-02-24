@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """
 Script d'initialisation COMPLET des dresseurs NPC de Kanto.
-Consolide initialize_npc_trainers() (initializeItemsAndNpcs.py) ET
+Remplace initialize_npc_trainers() (initializeItemsAndNpcs.py) ET
 toutes les fonctions init_* du fichier initNPCTrainersComplete.py.
 
 Source de référence : Bulbapedia — Walkthrough FireRed / LeafGreen

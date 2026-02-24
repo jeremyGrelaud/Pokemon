@@ -14,6 +14,7 @@ For education purpose only
 Recreating pokemon game in python
 
 #TODO lorsqu'on commence de zéro un objet GameSave n'estpas automatiquement créé  on pourrait le faire dans le choose starter
+Ajouter un badge dans la vue zone detail sur les combats de dresseur obligatoire
 
 TODO Roadmap :
 
