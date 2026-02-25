@@ -41,6 +41,10 @@ class Trainer(models.Model):
     victory_text = models.TextField(blank=True, null=True)
 
     is_npc = models.BooleanField(default=False)
+    is_battle_required = models.BooleanField(
+        default=False,
+        help_text="Ce dresseur bloque le passage et doit être battu avant de quitter la zone."
+    )
     npc_class = models.CharField(max_length=50, blank=True)  # "Gamin", "Scout", etc.
     sprite_name = models.CharField(max_length=100, blank=True)
 

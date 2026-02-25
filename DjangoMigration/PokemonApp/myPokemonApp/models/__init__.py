@@ -21,3 +21,4 @@ from .CaptureSystem import *
 from .GameSave import *
 from .Zone import *
 from .Achievements import *
+from .Quest import *

@@ -11,3 +11,5 @@ from .CaptureViews import *
 from .SaveViews import*
 from .MapViews import *
 from .AchievementViews import *
+from .QuestViews import *
+from .FloorViews import *

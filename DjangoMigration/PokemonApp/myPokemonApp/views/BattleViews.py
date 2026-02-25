@@ -172,9 +172,10 @@ def battle_action_view(request, pk):
         return JsonResponse({'error': 'Not your battle'}, status=403)
 
     if not battle.is_active:
-        # confirm_evolution peut arriver après la fin du combat (animation côté client)
+        # confirm_evolution et confirm_capture peuvent arriver après la fin
+        # (animation côté client encore en cours quand le serveur clôt le combat)
         action_type = request.POST.get('action')
-        if action_type != 'confirm_evolution':
+        if action_type not in ('confirm_evolution', 'confirm_capture'):
             return JsonResponse({'error': 'Battle already ended'}, status=400)
 
     action_type   = request.POST.get('action')
@@ -275,22 +276,54 @@ def battle_action_view(request, pk):
                     response_data['log'] = ["Vous ne pouvez pas capturer le Pokemon d'un dresseur !"]
                     return JsonResponse(response_data)
 
-                # Preparer les donnees pour l'animation cote client.
-                # La vraie capture se fait via 'confirm_capture' apres l'animation.
-                hp_percent   = battle.opponent_pokemon.current_hp / battle.opponent_pokemon.max_hp
-                capture_rate = calculate_capture_rate(
-                    battle.opponent_pokemon, item, hp_percent,
-                    battle.opponent_pokemon.status_condition
+                # Phase 1 : calculer shakes + résultat (formule Gen 3) SANS toucher
+                # à la battle ni créer de CaptureAttempt.
+                # La vraie capture (avec effets DB) se fait dans confirm_capture,
+                # après l'animation côté client.
+                from myPokemonApp.gameUtils import calculate_capture_rate, calculate_shake_count
+                from myPokemonApp.models import PokeballItem
+
+                opponent   = battle.opponent_pokemon
+                hp_percent = opponent.current_hp / opponent.max_hp
+                cap_rate   = calculate_capture_rate(
+                    opponent, item, hp_percent, opponent.status_condition
                 )
+
+                # Master Ball → capture garantie, 3 shakes visuels
+                guaranteed = False
+                try:
+                    guaranteed = PokeballItem.objects.get(item=item).guaranteed_capture
+                except PokeballItem.DoesNotExist:
+                    pass
+
+                if guaranteed:
+                    shakes, success = 3, True
+                else:
+                    shakes, success = calculate_shake_count(cap_rate)
+
+                # Stocker en session : confirm_capture utilisera ce résultat
+                request.session['pending_capture'] = {
+                    'item_id': inv.pk,
+                    'success': success,
+                    'shakes':  shakes,
+                    'message': (
+                        f"{opponent.species.name} a été capturé !" if success
+                        else f"{opponent.species.name} s'est échappé après {shakes} shake(s) !"
+                    ),
+                }
+                request.session.modified = True
+
                 response_data['capture_attempt'] = {
                     'pokemon': {
-                        'species_name': battle.opponent_pokemon.species.name,
-                        'level':        battle.opponent_pokemon.level,
+                        'species_name': opponent.species.name,
+                        'level':        opponent.level,
                     },
-                    'ball_type':      item.name.lower().replace(' ', ''),
-                    'capture_rate':   capture_rate,
+                    'ball_type':       item.name.lower().replace(' ', ''),
+                    'capture_rate':    cap_rate,
+                    'shakes':          shakes,
+                    'success':         success,
                     'start_animation': True,
-                    'is_shiny': battle.opponent_pokemon.is_shiny,
+                    'is_shiny':        opponent.is_shiny,
                 }
                 return JsonResponse(response_data)
 
@@ -302,10 +335,52 @@ def battle_action_view(request, pk):
 
         # ------------------------------------------------------------------
         elif action_type == 'confirm_capture':
-            # Le client a termine l'animation, on effectue la vraie capture.
-            inv    = get_object_or_404(TrainerInventory, pk=request.POST.get('item_id'))
-            item   = inv.item
-            result = attempt_pokemon_capture(battle, ball_item=item, trainer=trainer)
+            # L'animation est terminée côté client.
+            # On récupère le résultat pré-calculé en session (pas de nouveau random).
+            pending = request.session.pop('pending_capture', None)
+
+            if pending is None:
+                # Fallback sécurisé si la session a expiré
+                inv    = get_object_or_404(TrainerInventory, pk=request.POST.get('item_id'))
+                item   = inv.item
+                result = attempt_pokemon_capture(battle, ball_item=item, trainer=trainer)
+            else:
+                inv  = get_object_or_404(TrainerInventory, pk=pending['item_id'])
+                item = inv.item
+                if pending['success']:
+                    # Déclencher la vraie capture sans re-tirer les dés
+                    from myPokemonApp.gameUtils import _capture_success
+                    from myPokemonApp.models import CaptureAttempt
+                    opponent   = battle.opponent_pokemon
+                    hp_percent = opponent.current_hp / opponent.max_hp
+                    from myPokemonApp.gameUtils import calculate_capture_rate
+                    cap_rate = calculate_capture_rate(
+                        opponent, item, hp_percent, opponent.status_condition
+                    )
+                    attempt = CaptureAttempt.objects.create(
+                        trainer=trainer,
+                        pokemon_species=opponent.species,
+                        ball_used=item,
+                        pokemon_level=opponent.level,
+                        pokemon_hp_percent=hp_percent,
+                        pokemon_status=opponent.status_condition,
+                        capture_rate=cap_rate,
+                        battle=battle,
+                        success=False,
+                        shakes=pending['shakes'],
+                    )
+                    result = _capture_success(
+                        battle, opponent, item, trainer, attempt,
+                        shakes=pending['shakes']
+                    )
+                else:
+                    result = {
+                        'success':          False,
+                        'capture_rate':     0,
+                        'shakes':           pending['shakes'],
+                        'message':          pending['message'],
+                        'captured_pokemon': None,
+                    }
 
             # Consommer la ball dans l'inventaire
             inv.quantity -= 1
@@ -314,15 +389,11 @@ def battle_action_view(request, pk):
             else:
                 inv.save()
 
-            # L'adversaire attaque si la capture echoue
+            # L'adversaire attaque si la capture échoue
+            # (_capture_success gère déjà battle.is_active + battle.winner pour le succès)
             if not result['success']:
                 opponent_action = get_opponent_ai_action(battle)
                 battle.execute_turn({'type': 'PokeBall'}, opponent_action)
-            else:
-                # Capture réussie → marquer le combat comme gagné par le joueur
-                battle.is_active = False
-                battle.winner = trainer
-                battle.save()
 
             response_data['capture_result'] = result
             response_data['battle_ended']   = result['success']
@@ -785,6 +856,41 @@ def battle_trainer_complete_view(request, battle_id):
         pass
 
     # =========================================================
+    # QUÊTES — defeat_trainer / defeat_gym
+    # =========================================================
+    if player_won and opponent:
+        try:
+            from myPokemonApp.questEngine import trigger_quest_event
+
+            # Tout combat contre un dresseur
+            quest_notifs = trigger_quest_event(
+                player_trainer, 'defeat_trainer', trainer_id=opponent.id
+            )
+            for notif in quest_notifs:
+                msg = f"✅ Quête terminée : « {notif['title']} »"
+                if notif.get('reward_money'):
+                    msg += f" (+{notif['reward_money']}₽)"
+                if notif.get('reward_item'):
+                    msg += f" · Objet reçu : {notif['reward_item']}"
+                messages.success(request, msg)
+
+            # Combat arène spécifiquement
+            if badge_earned:
+                gym_notifs = trigger_quest_event(
+                    player_trainer, 'defeat_gym', gym_leader=badge_earned
+                )
+                for notif in gym_notifs:
+                    msg = f"✅ Quête terminée : « {notif['title']} »"
+                    if notif.get('reward_money'):
+                        msg += f" (+{notif['reward_money']}₽)"
+                    if notif.get('reward_item'):
+                        msg += f" · Objet reçu : {notif['reward_item']}"
+                    messages.success(request, msg)
+
+        except Exception:
+            pass
+
+    # =========================================================
     # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
     # =========================================================
     if not player_won:
@@ -896,7 +1002,8 @@ def GetTrainerItems(request):
     inventory = TrainerInventory.objects.filter(trainer=trainer, quantity__gt=0)
 
     items_data = [
-        {'id': inv.id, 'name': inv.item.name, 'quantity': inv.quantity}
+        {'id': inv.id, 'name': inv.item.name, 'quantity': inv.quantity, 
+         'item_type': inv.item.item_type, 'description': inv.item.description}
         for inv in inventory
     ]
 

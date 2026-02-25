@@ -5,17 +5,16 @@
 - https://github.com/msikma/pokesprite/tree/master/items (for items HM, battle iitems ... sprites)
 - https://www.pokepedia.fr (for map sprites)
 
+- Johto reference for future integration ? https://gamefaqs.gamespot.com/gbc/375087-pokemon-crystal-version/faqs/75486/full-trainer-info-list
+
 # Pokemon
 For education purpose only
 
 
-Recreating pokemon game in python
-
 TODO Roadmap :
 
 - Improve battle 'GUI'
-- ajouter un système de restriction sur le changement de map, certaines quêtes ou objets nécessaires, devoir forcément affronter certains dresseurs ou avoir une chance de trigger une wild battle ... ainsi que placer les combats contre le rival au moment de l'aventure de Kanto comme dans le jeu original
-- système de quêtes avec les key items sur la save comme avec la fonction grant pokedex ?
+- Add introduction animation for tainer battles (show opponent trainer sprite comming from the right like in games)
 - After everything, implement different game mods ?
 
 TODO BugFixes :
@@ -32,5 +31,5 @@ python manage.py createsuperuser
 
 To init database in one command :
 ```
-python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase()"
+python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase(); from myPokemonApp.tasks import *; init_all();"
 ```

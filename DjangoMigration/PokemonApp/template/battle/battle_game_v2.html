@@ -696,23 +696,27 @@ function useItem(itemId) {
     csrfmiddlewaretoken: csrfToken
   })
   .done(function(data) {
-    if (data.capture_attempt.start_animation) {
-      // CAPTURE !
+    if (data.capture_attempt && data.capture_attempt.start_animation) {
+      // POKEBALL — lancer l'animation de capture
+      // Les boutons restent désactivés jusqu'à la fin de la séquence
       initiateCaptureSequence(itemId);
-    } else {
-      // Item normal (potion, antidote, etc.)
-     // useRegularItem(itemId);
+      return; // confirm_capture gérera la suite
     }
 
+    // Objet normal (potion, antidote, réveil, etc.)
+    if (data.log && data.log.length) {
+      data.log.forEach(msg => addBattleLog(msg));
+    }
     updateBattleState(data);
     updateVolatileStates(data);
     if (!data.battle_ended) {
       loadItems();
+      $('button').prop('disabled', false);
     }
   })
   .fail(function(xhr) {
     console.error('Item use failed:', xhr);
-    addBattleLog('Erreur lors de l\'utilisation de l\'objet');
+    addBattleLog("Erreur lors de l'utilisation de l'objet");
     $('button').prop('disabled', false);
   });
 }
@@ -749,7 +753,7 @@ function tryRun() {
 
 function loadItems() {
   $('#items-list').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</p>');
-  
+
   $.get('{% url "GetTrainerItems" %}', {
     trainer_id: '{{ battle.player_trainer.id }}'
   })
@@ -758,18 +762,53 @@ function loadItems() {
       $('#items-list').html('<p class="text-center text-muted">Aucun objet disponible</p>');
       return;
     }
-    
+
+    // Mapping item_type → dossier sprite
+    const itemTypeFolderMap = {
+      'potion': 'medicine',
+      'status': 'medicine',
+      'pokeball': 'ball',
+      'battle': 'battle-item',
+      'evolution': 'evo-item',
+      'held': 'hold-item',
+      'key': 'key-item',
+    };
+
+    // Fonction pour stripper le nom des Poké Balls
+    function stripPokeballName(name) {
+      return name.toLowerCase()
+        .replace(/ ball/g, '')  // Enlève " Ball"
+        .replace(/[^a-z0-9]/g, '');  // Enlève les caractères spéciaux
+    }
+
+    // Convertir le nom de l'objet en slug pour le fichier sprite
+    function itemNameToSlug(name, itemType) {
+      if (itemType === 'pokeball') {
+        return stripPokeballName(name);
+      }
+      return name.toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[éè]/g, 'e')
+        .replace(/[à]/g, 'a')
+        .replace(/[ù]/g, 'u')
+        .replace(/[^a-z0-9\-]/g, '');
+    }
+
+    const baseStaticUrl = "{% static 'img/items_sprites/' %}";
+
     let html = '<div class="items-grid">';
     data.items.forEach(item => {
-      // Tentative de chargement du sprite de l'objet
-      const itemSlug = item.name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-      const spriteUrl = "{% static 'img/items/' %}" + itemSlug + ".png";
+      const folder = itemTypeFolderMap[item.item_type] || 'medicine';
+      const slug = itemNameToSlug(item.name, item.item_type);
+      const spriteUrl = baseStaticUrl + folder + '/' + slug + '.png';
+      const fallbackUrl = baseStaticUrl + 'medicine/potion.png';
+
       html += `
-        <button class="item-btn" onclick="useItem(${item.id})">
+        <button class="item-btn" onclick="useItem(${item.id})" title="${item.description || item.name}">
           <div class="item-icon">
             <img src="${spriteUrl}" alt="${item.name}"
-                 style="width:32px;height:32px;object-fit:contain;"
-                 onerror="this.outerHTML='<i class=\\'fas fa-flask\\'></i>'">
+                 class="item-sprite"
+                 onerror="this.onerror=null; this.src='${fallbackUrl}'">
           </div>
           <div class="item-info">
             <span class="item-name">${item.name}</span>
@@ -779,7 +818,7 @@ function loadItems() {
       `;
     });
     html += '</div>';
-    
+
     $('#items-list').html(html);
   })
   .fail(function() {
@@ -1656,11 +1695,14 @@ async function initiateCaptureSequence(itemId) {
   });
   
   if (response.capture_attempt) {
-    // Lancer l'animation
+    // Lancer l'animation avec les shakes/résultat pré-calculés par le backend
+    // (formule Gen 3 officielle — pas de random côté client)
     const result = await captureSystem.attemptCapture(
       response.capture_attempt.pokemon,
       response.capture_attempt.ball_type,
-      response.capture_attempt.capture_rate
+      response.capture_attempt.capture_rate,
+      response.capture_attempt.shakes,
+      response.capture_attempt.success
     );
     
     // Confirmer la capture au serveur
@@ -1912,6 +1954,80 @@ function showCaptureSuccessModal(captureData) {
 .evo-stat-arrow  { color: #ffd700; }
 .evo-stat-after  { width: 28px; text-align: right; color: #fff; font-weight: bold; }
 .evo-stat-diff   { width: 36px; text-align: right; font-size: .8rem; }
+
+/* ══════════════════════════════════════════
+   ITEMS MENU — sprites & boutons
+   ══════════════════════════════════════════ */
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.item-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 2px solid #d0d0d0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.item-btn:hover {
+  border-color: #3498db;
+  background: #eaf4fd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+}
+
+.item-btn:active {
+  transform: translateY(0);
+}
+
+.item-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-sprite {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2c3e50;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-qty {
+  font-size: 0.75rem;
+  color: black;
+  font-weight: 500;
+}
 </style>
 
 {% endblock js %}

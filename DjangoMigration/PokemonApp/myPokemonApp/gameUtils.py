@@ -284,28 +284,41 @@ def create_gym_leader(username, gym_name, city, badge_name,
 
 
 def create_npc_trainer(username, trainer_type, location, team_data,
-                       intro_text=None):
+                       intro_text=None, npc_class='Gamin', sprite_name='',
+                       can_rebattle=False, money=None,
+                       defeat_text=None, victory_text=None,
+                       is_battle_required=False):
     """
     Cree un dresseur NPC generique avec son equipe. Idempotent (get_or_create).
+    La cle d'idempotence est (username, location) — deux dresseurs au meme nom
+    dans des zones differentes (ex: plusieurs "Team Rocket Grunt") sont bien
+    des entrees distinctes en base.
     """
     from .models import Trainer
 
+    final_intro   = intro_text   or f"{username} veut combattre !"
+    final_defeat  = defeat_text  or "J'ai perdu..."
+    final_victory = victory_text or "J'ai gagne !"
+
     trainer, created = Trainer.objects.get_or_create(
         username=username,
+        location=location,
         defaults={
             'trainer_type': trainer_type,
-            'location': location,
-            'intro_text': intro_text or f"{username} veut combattre !",
-            'defeat_text': "J'ai perdu...",
-            'victory_text': "J'ai gagne !",
-            'can_rebattle': False,
-            'is_npc': True,
-            'npc_class': 'Gamin',
+            'intro_text':   final_intro,
+            'defeat_text':  final_defeat,
+            'victory_text': final_victory,
+            'can_rebattle': can_rebattle,
+            'money':        money if money is not None else 500,
+            'is_npc':       True,
+            'npc_class':          npc_class,
+            'sprite_name':        sprite_name,
+            'is_battle_required': is_battle_required,
         }
     )
 
     if not created:
-        logging.info(f"  [skip] NPC '{username}' existe deja")
+        logging.info(f"  [skip] NPC '{username}' @ '{location}' existe deja")
         return trainer
 
     for i, poke_data in enumerate(team_data, 1):
@@ -1032,9 +1045,55 @@ def calculate_capture_rate(pokemon, ball, pokemon_hp_percent, pokemon_status=Non
     return min(1.0, ((hp_mod * base_rate * ball_mult) / 255) * status_mod)
 
 
+def calculate_shake_count(capture_rate_0_1):
+    """
+    Calcule le nombre de shakes selon la formule officielle Gen 3 (FireRed/LeafGreen).
+
+    La formule Gen 3 utilise un seul seuil de comparaison 'b' calculé depuis
+    le taux de capture, puis effectue 4 tests indépendants (random 0-65535).
+    Chaque test réussi = 1 shake supplémentaire.
+    Si les 4 tests réussissent → capture (3 shakes + succès).
+    Sinon → le Pokemon s'échappe après le nombre de shakes réussis (0-3).
+
+    Source: Bulbapedia — Catch rate mechanics Gen III
+    https://bulbapedia.bulbagarden.net/wiki/Catch_rate
+
+    Args:
+        capture_rate_0_1: float 0.0-1.0 (sortie de calculate_capture_rate)
+    Returns:
+        tuple (shakes: int 0-3, success: bool)
+    """
+    # Convertir le taux 0-1 en valeur 0-255 (format interne Gen 3)
+    modified_rate = int(capture_rate_0_1 * 255)
+    modified_rate = max(1, min(255, modified_rate))
+
+    # Seuil b : formula Gen 3
+    # b = floor(65536 / (255/modified_rate)^(3/16))
+    # Simplification : b = floor(65536 * (modified_rate/255)^(3/16))
+    import math
+    b = int(65536 * (modified_rate / 255) ** (3 / 16))
+    b = max(1, min(65535, b))
+
+    shakes = 0
+    for _ in range(4):
+        if random.randint(0, 65535) < b:
+            shakes += 1
+        else:
+            break
+
+    # 4 shakes réussis = capture, sinon échec
+    success = (shakes == 4)
+    # On affiche max 3 shakes visuellement (le 4e est le "clic" de fermeture)
+    return (min(shakes, 3), success)
+
+
 def attempt_pokemon_capture(battle, ball_item, trainer):
     """
-    Tente de capturer le Pokemon adverse dans un combat avec le systeme de shakes.
+    Tente de capturer le Pokemon adverse — formule Gen 3 (FireRed/LeafGreen).
+
+    Calcule les shakes ET le résultat EN UNE SEULE FOIS ici, pour que
+    le frontend puisse animer exactement ce qui s'est passé (pas de
+    recalcul indépendant côté JS qui désynchroniserait l'animation).
 
     Returns:
         dict: {
@@ -1063,30 +1122,28 @@ def attempt_pokemon_capture(battle, ball_item, trainer):
         shakes=0,
     )
 
-    # Master Ball -> succes garanti sans shakes
+    # Master Ball -> capture garantie, 3 shakes puis "clic"
     try:
         if PokeballItem.objects.get(item=ball_item).guaranteed_capture:
-            return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=0)
+            return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=3)
     except PokeballItem.DoesNotExist:
         pass
 
-    # Systeme de 3 shakes
-    shakes = 0
-    for _ in range(3):
-        if random.random() < capture_rate:
-            shakes += 1
-        else:
-            attempt.shakes = shakes
-            attempt.save()
-            return {
-                'success':          False,
-                'capture_rate':     capture_rate,
-                'shakes':           shakes,
-                'message':          f"{opponent.species.name} s'est echappe apres {shakes} shake(s) !",
-                'captured_pokemon': None,
-            }
+    # Formule Gen 3 : calcule shakes + résultat en une seule passe
+    shakes, success = calculate_shake_count(capture_rate)
 
-    return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=3)
+    if not success:
+        attempt.shakes = shakes
+        attempt.save()
+        return {
+            'success':          False,
+            'capture_rate':     capture_rate,
+            'shakes':           shakes,
+            'message':          f"{opponent.species.name} s'est echappe apres {shakes} shake(s) !",
+            'captured_pokemon': None,
+        }
+
+    return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=shakes)
 
 
 
@@ -1187,7 +1244,10 @@ def get_encounter_chance(encounter_type='grass'):
 # =============================================================================
 
 def give_item_to_trainer(trainer, item, quantity=1):
-    """Donne un objet a un dresseur (cree ou incremente l'entree inventaire)."""
+    """
+    Donne un objet a un dresseur (cree ou incremente l'entree inventaire).
+    Déclenche automatiquement les quêtes de type 'have_item' pour cet objet.
+    """
     from .models import TrainerInventory
 
     inv, _ = TrainerInventory.objects.get_or_create(
@@ -1195,6 +1255,14 @@ def give_item_to_trainer(trainer, item, quantity=1):
     )
     inv.quantity += quantity
     inv.save()
+
+    # Quêtes : possession d'un item
+    try:
+        from myPokemonApp.questEngine import trigger_quest_event
+        trigger_quest_event(trainer, 'have_item', item=item)
+    except Exception:
+        pass  # Ne jamais bloquer la logique métier pour une quête
+
     return inv
 
 
@@ -1421,6 +1489,11 @@ def grant_pokedex(player_trainer) -> None:
             defaults={'is_active': True}
         )
     save.set_story_flag('has_pokedex', True)
+
+    # Note : grant_pokedex() est désormais appelé par QuestEngine.complete_quest
+    # quand la quête 'give_parcel_to_oak' se termine (hook post-complétion).
+    # On ne déclenche plus de quête ici pour éviter la circularité.
+
 
 def get_or_create_player_trainer(user):
     """

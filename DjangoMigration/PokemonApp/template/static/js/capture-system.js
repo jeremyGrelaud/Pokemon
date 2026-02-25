@@ -27,15 +27,25 @@ class CaptureSystem {
   /**
    * Lance une tentative de capture avec animation
    */
-  async attemptCapture(pokemonData, ballType, captureRate) {
+  /**
+   * Lance une tentative de capture avec animation.
+   * Les shakes et le résultat viennent du backend (formule Gen 3 officielle).
+   *
+   * @param {object} pokemonData  { species_name, level, is_shiny }
+   * @param {string} ballType     classe CSS de la ball
+   * @param {number} captureRate  float 0-1 (affiché en % seulement)
+   * @param {number} numShakes    0-3 (calculé par le serveur)
+   * @param {boolean} success     résultat final (calculé par le serveur)
+   */
+  async attemptCapture(pokemonData, ballType, captureRate, numShakes, success) {
     return new Promise((resolve) => {
       this.onComplete = resolve;
       
-      // Créer l'overlay
+      // Créer l'overlay (affiche le % de chance à titre indicatif)
       this.createCaptureOverlay(pokemonData, ballType, captureRate);
       
-      // Démarrer l'animation
-      setTimeout(() => this.startCaptureAnimation(captureRate), 100);
+      // Démarrer l'animation avec les vraies valeurs du serveur
+      setTimeout(() => this.startCaptureAnimation(numShakes, success), 100);
     });
   }
 
@@ -67,8 +77,16 @@ class CaptureSystem {
     document.body.appendChild(this.overlay);
   }
 
-  async startCaptureAnimation(captureRate) {
-    const pokemon = this.overlay.querySelector('.capture-pokemon');
+  /**
+   * Lance l'animation avec les shakes et le résultat pré-calculés par le backend.
+   * Le frontend ne fait plus aucun tirage aléatoire — il rejoue fidèlement
+   * ce que le serveur a calculé (formule Gen 3 officielle).
+   *
+   * @param {number} numShakes   0-3  (nombre de shakes avant résultat)
+   * @param {boolean} success    résultat final
+   */
+  async startCaptureAnimation(numShakes, success) {
+    const pokemon  = this.overlay.querySelector('.capture-pokemon');
     const pokeball = this.overlay.querySelector('.pokeball-capture');
     
     // Phase 1: Lancer la ball
@@ -83,29 +101,16 @@ class CaptureSystem {
     pokeball.classList.remove('throwing');
     await this.wait(300);
     
-    // Phase 4: Shakes (3 fois)
-    const shakes = 3;
-    let escaped = false;
-    
-    for (let i = 0; i < shakes; i++) {
-      // Calculer la probabilité de casser à ce shake
-      const shakeChance = Math.random();
-      
-      if (shakeChance > captureRate) {
-        // Le Pokémon s'échappe !
-        escaped = true;
-        break;
-      }
-      
-      // Shake
+    // Phase 4: Animer exactement numShakes shakes (résultat du serveur)
+    for (let i = 0; i < numShakes; i++) {
       pokeball.classList.add('shaking');
       await this.wait(500);
       pokeball.classList.remove('shaking');
       await this.wait(300);
     }
     
-    // Phase 5: Succès ou échec
-    if (escaped) {
+    // Phase 5: Succès ou échec selon le résultat serveur
+    if (!success) {
       await this.showEscape(pokemon, pokeball);
       this.onComplete({ success: false });
     } else {
