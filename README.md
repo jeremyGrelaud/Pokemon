@@ -11,15 +11,10 @@
 For education purpose only
 
 
-Recreating pokemon game in python
-
-Ajouter un badge dans la vue zone detail sur les combats de dresseur obligatoire
-
 TODO Roadmap :
 
 - Improve battle 'GUI'
-- Améliorer les zones avec étages en répartissant correctement les dresseurs de la zone dans les étages
-- empêcher de pouvoir changer de map sans déclencher aucun combat de dresseur s'il en reste des invaincus et potentiellement rajouter une chance de déclencher une wild battle en changeant de zone comme si on marchait dans les herbes (ou proposer un nouveau système de maps)
+- Add introduction animation for tainer battles (show opponent trainer sprite comming from the right like in games)
 - After everything, implement different game mods ?
 
 TODO BugFixes :
