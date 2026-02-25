@@ -175,8 +175,13 @@ def choose_starter_view(request):
             # Force la création du QuestProgress pour la quête suivante afin
             # qu'elle apparaisse immédiatement dans le journal.
             get_quest_progress(trainer, 'get_oaks_parcel')
-        except Exception:
-            pass
+        except Exception as exc:   # noqa: BLE001
+            # Ne jamais bloquer le choix du starter pour une erreur de quête
+            import logging
+            logging.getLogger(__name__).warning(
+                "Erreur lors de l'initialisation des quêtes pour %s : %s",
+                trainer.username, exc,
+            )
 
         return redirect('home')
 

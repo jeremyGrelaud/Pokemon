@@ -14,6 +14,7 @@ For education purpose only
 TODO Roadmap :
 
 - Improve battle 'GUI'
+- add random nature on wild pokemons
 - Add introduction animation for tainer battles (show opponent trainer sprite comming from the right like in games)
 - After everything, implement different game mods ?
 

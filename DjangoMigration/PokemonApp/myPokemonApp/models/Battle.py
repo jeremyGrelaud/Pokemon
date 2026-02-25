@@ -319,7 +319,7 @@ class Battle(models.Model):
     def set_weather(self, weather_name):
         self.weather = weather_name
         self._bstate()['weather_turns'] = WEATHER_DURATIONS
-        self.save()
+        self.save(update_fields=['weather', 'battle_state'])
 
     def get_weather_turns(self):
         return self._bstate().get('weather_turns', 0)
@@ -396,7 +396,7 @@ class Battle(models.Model):
         if not isinstance(self.battle_log, list):
             self.battle_log = []
         self.battle_log.append({'turn': self.current_turn, 'message': message})
-        self.save()
+        self.save(update_fields=['battle_log'])
 
     # =========================================================================
     # TOUR DE COMBAT PRINCIPAL

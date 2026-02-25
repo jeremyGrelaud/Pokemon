@@ -1260,8 +1260,11 @@ def give_item_to_trainer(trainer, item, quantity=1):
     try:
         from myPokemonApp.questEngine import trigger_quest_event
         trigger_quest_event(trainer, 'have_item', item=item)
-    except Exception:
-        pass  # Ne jamais bloquer la logique métier pour une quête
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Erreur lors du déclenchement de la quête have_item pour %s : %s", item, exc
+        )  # Ne jamais bloquer la logique métier pour une quête
 
     return inv
 

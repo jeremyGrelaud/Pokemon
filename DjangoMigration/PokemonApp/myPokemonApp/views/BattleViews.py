@@ -845,15 +845,17 @@ def battle_trainer_complete_view(request, battle_id):
             battle=battle,
             money_earned=money_earned,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("Impossible de créer l'historique de combat : %s", exc)
 
     try:
         save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
         if save and player_won and opponent:
             save.add_defeated_trainer(opponent.id)
-    except Exception:
-        pass
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("Impossible de marquer le dresseur comme battu : %s", exc)
 
     # =========================================================
     # QUÊTES — defeat_trainer / defeat_gym
@@ -887,8 +889,9 @@ def battle_trainer_complete_view(request, battle_id):
                         msg += f" · Objet reçu : {notif['reward_item']}"
                     messages.success(request, msg)
 
-        except Exception:
-            pass
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Erreur lors du déclenchement des quêtes post-combat : %s", exc)
 
     # =========================================================
     # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
