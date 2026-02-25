@@ -696,23 +696,27 @@ function useItem(itemId) {
     csrfmiddlewaretoken: csrfToken
   })
   .done(function(data) {
-    if (data.capture_attempt.start_animation) {
-      // CAPTURE !
+    if (data.capture_attempt && data.capture_attempt.start_animation) {
+      // POKEBALL — lancer l'animation de capture
+      // Les boutons restent désactivés jusqu'à la fin de la séquence
       initiateCaptureSequence(itemId);
-    } else {
-      // Item normal (potion, antidote, etc.)
-     // useRegularItem(itemId);
+      return; // confirm_capture gérera la suite
     }
 
+    // Objet normal (potion, antidote, réveil, etc.)
+    if (data.log && data.log.length) {
+      data.log.forEach(msg => addBattleLog(msg));
+    }
     updateBattleState(data);
     updateVolatileStates(data);
     if (!data.battle_ended) {
       loadItems();
+      $('button').prop('disabled', false);
     }
   })
   .fail(function(xhr) {
     console.error('Item use failed:', xhr);
-    addBattleLog('Erreur lors de l\'utilisation de l\'objet');
+    addBattleLog("Erreur lors de l'utilisation de l'objet");
     $('button').prop('disabled', false);
   });
 }
