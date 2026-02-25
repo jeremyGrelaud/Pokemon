@@ -1002,7 +1002,8 @@ def GetTrainerItems(request):
     inventory = TrainerInventory.objects.filter(trainer=trainer, quantity__gt=0)
 
     items_data = [
-        {'id': inv.id, 'name': inv.item.name, 'quantity': inv.quantity}
+        {'id': inv.id, 'name': inv.item.name, 'quantity': inv.quantity, 
+         'item_type': inv.item.item_type, 'description': inv.item.description}
         for inv in inventory
     ]
 
