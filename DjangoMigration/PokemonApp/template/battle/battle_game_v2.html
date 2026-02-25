@@ -1660,11 +1660,14 @@ async function initiateCaptureSequence(itemId) {
   });
   
   if (response.capture_attempt) {
-    // Lancer l'animation
+    // Lancer l'animation avec les shakes/résultat pré-calculés par le backend
+    // (formule Gen 3 officielle — pas de random côté client)
     const result = await captureSystem.attemptCapture(
       response.capture_attempt.pokemon,
       response.capture_attempt.ball_type,
-      response.capture_attempt.capture_rate
+      response.capture_attempt.capture_rate,
+      response.capture_attempt.shakes,
+      response.capture_attempt.success
     );
     
     // Confirmer la capture au serveur

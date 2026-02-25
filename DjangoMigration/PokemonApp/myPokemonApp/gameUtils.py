@@ -1045,9 +1045,55 @@ def calculate_capture_rate(pokemon, ball, pokemon_hp_percent, pokemon_status=Non
     return min(1.0, ((hp_mod * base_rate * ball_mult) / 255) * status_mod)
 
 
+def calculate_shake_count(capture_rate_0_1):
+    """
+    Calcule le nombre de shakes selon la formule officielle Gen 3 (FireRed/LeafGreen).
+
+    La formule Gen 3 utilise un seul seuil de comparaison 'b' calculé depuis
+    le taux de capture, puis effectue 4 tests indépendants (random 0-65535).
+    Chaque test réussi = 1 shake supplémentaire.
+    Si les 4 tests réussissent → capture (3 shakes + succès).
+    Sinon → le Pokemon s'échappe après le nombre de shakes réussis (0-3).
+
+    Source: Bulbapedia — Catch rate mechanics Gen III
+    https://bulbapedia.bulbagarden.net/wiki/Catch_rate
+
+    Args:
+        capture_rate_0_1: float 0.0-1.0 (sortie de calculate_capture_rate)
+    Returns:
+        tuple (shakes: int 0-3, success: bool)
+    """
+    # Convertir le taux 0-1 en valeur 0-255 (format interne Gen 3)
+    modified_rate = int(capture_rate_0_1 * 255)
+    modified_rate = max(1, min(255, modified_rate))
+
+    # Seuil b : formula Gen 3
+    # b = floor(65536 / (255/modified_rate)^(3/16))
+    # Simplification : b = floor(65536 * (modified_rate/255)^(3/16))
+    import math
+    b = int(65536 * (modified_rate / 255) ** (3 / 16))
+    b = max(1, min(65535, b))
+
+    shakes = 0
+    for _ in range(4):
+        if random.randint(0, 65535) < b:
+            shakes += 1
+        else:
+            break
+
+    # 4 shakes réussis = capture, sinon échec
+    success = (shakes == 4)
+    # On affiche max 3 shakes visuellement (le 4e est le "clic" de fermeture)
+    return (min(shakes, 3), success)
+
+
 def attempt_pokemon_capture(battle, ball_item, trainer):
     """
-    Tente de capturer le Pokemon adverse dans un combat avec le systeme de shakes.
+    Tente de capturer le Pokemon adverse — formule Gen 3 (FireRed/LeafGreen).
+
+    Calcule les shakes ET le résultat EN UNE SEULE FOIS ici, pour que
+    le frontend puisse animer exactement ce qui s'est passé (pas de
+    recalcul indépendant côté JS qui désynchroniserait l'animation).
 
     Returns:
         dict: {
@@ -1076,30 +1122,28 @@ def attempt_pokemon_capture(battle, ball_item, trainer):
         shakes=0,
     )
 
-    # Master Ball -> succes garanti sans shakes
+    # Master Ball -> capture garantie, 3 shakes puis "clic"
     try:
         if PokeballItem.objects.get(item=ball_item).guaranteed_capture:
-            return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=0)
+            return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=3)
     except PokeballItem.DoesNotExist:
         pass
 
-    # Systeme de 3 shakes
-    shakes = 0
-    for _ in range(3):
-        if random.random() < capture_rate:
-            shakes += 1
-        else:
-            attempt.shakes = shakes
-            attempt.save()
-            return {
-                'success':          False,
-                'capture_rate':     capture_rate,
-                'shakes':           shakes,
-                'message':          f"{opponent.species.name} s'est echappe apres {shakes} shake(s) !",
-                'captured_pokemon': None,
-            }
+    # Formule Gen 3 : calcule shakes + résultat en une seule passe
+    shakes, success = calculate_shake_count(capture_rate)
 
-    return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=3)
+    if not success:
+        attempt.shakes = shakes
+        attempt.save()
+        return {
+            'success':          False,
+            'capture_rate':     capture_rate,
+            'shakes':           shakes,
+            'message':          f"{opponent.species.name} s'est echappe apres {shakes} shake(s) !",
+            'captured_pokemon': None,
+        }
+
+    return _capture_success(battle, opponent, ball_item, trainer, attempt, shakes=shakes)
 
 
 
