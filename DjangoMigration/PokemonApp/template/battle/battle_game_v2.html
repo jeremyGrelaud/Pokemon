@@ -6,6 +6,63 @@
 {% endblock title %}
 
 {% block content %}
+
+{% if battle.battle_type == 'trainer' or battle.battle_type == 'gym' %}
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║        TRAINER INTRO OVERLAY                        ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<div id="trainer-intro-overlay" class="trainer-intro-overlay">
+
+  <!-- Animated background stripes (game-style) -->
+  <div class="trainer-intro-bg">
+    <div class="trainer-intro-stripes"></div>
+  </div>
+
+  <!-- VS Flash -->
+  <div class="trainer-intro-vs-flash" id="trainer-vs-flash">VS</div>
+
+  <!-- Trainer sprite (slides in from right) -->
+  <div class="trainer-intro-sprite-wrap" id="trainer-intro-sprite-wrap">
+    <img id="trainer-intro-sprite"
+         class="trainer-intro-sprite"
+         src="{% static 'img/trainer_sprites/' %}{{ battle.opponent_trainer|trainer_sprite_path }}"
+         alt="{{ battle.opponent_trainer.get_full_title }}"
+         onerror="this.style.display='none'; document.getElementById('trainer-intro-fallback').style.display='flex'">
+    <!-- Fallback if no sprite found -->
+    <div id="trainer-intro-fallback" style="display:none;" class="trainer-intro-fallback">
+      <i class="fas fa-user-circle"></i>
+    </div>
+  </div>
+
+  <!-- Nameplate (slides up from bottom) -->
+  <div class="trainer-intro-nameplate" id="trainer-intro-nameplate">
+    {% if battle.opponent_trainer.npc_class %}
+    <span class="trainer-intro-class">{{ battle.opponent_trainer.npc_class }}</span>
+    {% endif %}
+    <span class="trainer-intro-name">{{ battle.opponent_trainer.username }}</span>
+  </div>
+
+  <!-- Dialogue box -->
+  <div class="trainer-intro-dialogue" id="trainer-intro-dialogue">
+    <div class="trainer-dialogue-box">
+      <p id="trainer-intro-text" class="trainer-dialogue-text">
+        {% if battle.opponent_trainer.intro_text %}
+          {{ battle.opponent_trainer.intro_text }}
+        {% else %}
+          {% if battle.battle_type == 'gym' %}
+            Je suis le Champion de cette Arène ! Préparez-vous au combat !
+          {% else %}
+            Dresseur veut se battre !
+          {% endif %}
+        {% endif %}
+      </p>
+      <span class="trainer-dialogue-continue">▼</span>
+    </div>
+  </div>
+
+</div>
+{% endif %}
+
 <!-- Battle Scene Container -->
 <!-- Options: grass, water, cave -->
 <div class="battle-scene" data-terrain="grass">
@@ -504,8 +561,245 @@
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/battle-animations.css' %}">
 <link rel="stylesheet" href="{% static 'css/capture-animation.css' %}">
-{% endblock css %}
 
+<style>
+/* ╔══════════════════════════════════════════════════════╗
+   ║  TRAINER INTRO ANIMATION OVERLAY                    ║
+   ╚══════════════════════════════════════════════════════╝ */
+
+.trainer-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* Animated diagonal stripes background */
+.trainer-intro-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  overflow: hidden;
+}
+
+.trainer-intro-stripes {
+  position: absolute;
+  inset: -100%;
+  width: 300%;
+  height: 300%;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 40px,
+    rgba(255, 255, 255, 0.03) 40px,
+    rgba(255, 255, 255, 0.03) 80px
+  );
+  animation: trainerStripeScroll 2s linear infinite;
+}
+
+@keyframes trainerStripeScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(113px); }
+}
+
+/* VS Flash */
+.trainer-intro-vs-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 10rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 40px #e74c3c, 0 0 80px #e74c3c;
+  letter-spacing: 8px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+  font-family: 'Arial Black', sans-serif;
+}
+
+.trainer-intro-vs-flash.flash-in {
+  animation: vsFlashAnim 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes vsFlashAnim {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  80%  { opacity: 1; transform: translate(-50%, -50%) scale(0.95); }
+  100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Trainer Sprite */
+.trainer-intro-sprite-wrap {
+  position: absolute;
+  right: 10%;
+  bottom: 18%;
+  transform: translateX(200%);
+  opacity: 0;
+  z-index: 5;
+  filter: drop-shadow(-8px 0 20px rgba(0,0,0,0.6));
+}
+
+.trainer-intro-sprite-wrap.slide-in {
+  animation: trainerSlideIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.trainer-intro-sprite-wrap.slide-out {
+  animation: trainerSlideOut 0.4s ease-in forwards;
+}
+
+@keyframes trainerSlideIn {
+  0%   { transform: translateX(200%); opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { transform: translateX(-12px); }
+  100% { transform: translateX(0px); opacity: 1; }
+}
+
+@keyframes trainerSlideOut {
+  0%   { transform: translateX(0px); opacity: 1; }
+  100% { transform: translateX(200%); opacity: 0; }
+}
+
+.trainer-intro-sprite {
+  height: 280px;
+  width: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  object-fit: contain;
+}
+
+/* Fallback icon */
+.trainer-intro-fallback {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8rem;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Nameplate */
+.trainer-intro-nameplate {
+  position: absolute;
+  left: 8%;
+  top: 30%;
+  transform: translateY(-30px);
+  opacity: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trainer-intro-nameplate.fade-in {
+  animation: trainerNameIn 0.4s ease-out forwards;
+}
+
+@keyframes trainerNameIn {
+  from { transform: translateY(-30px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+.trainer-intro-class {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #a0c4ff;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'Arial', sans-serif;
+}
+
+.trainer-intro-name {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 3px 3px 0 #0f3460, 0 0 20px rgba(100, 180, 255, 0.5);
+  letter-spacing: 1px;
+  font-family: 'Arial Black', 'Arial Bold', Gadget, sans-serif;
+  line-height: 1;
+}
+
+/* Dialogue Box */
+.trainer-intro-dialogue {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 20px 20px;
+  z-index: 7;
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.trainer-intro-dialogue.slide-up {
+  animation: dialogueSlideUp 0.35s ease-out forwards;
+}
+
+@keyframes dialogueSlideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.trainer-dialogue-box {
+  background: rgba(10, 20, 50, 0.95);
+  border: 3px solid rgba(100, 160, 255, 0.7);
+  border-radius: 12px;
+  padding: 16px 24px 14px;
+  position: relative;
+  box-shadow: 0 -4px 30px rgba(0, 80, 200, 0.3), inset 0 0 60px rgba(0, 40, 120, 0.2);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.trainer-dialogue-text {
+  font-size: 1.15rem;
+  color: #fff;
+  margin: 0;
+  line-height: 1.6;
+  font-family: 'Arial', sans-serif;
+  min-height: 1.6em;
+}
+
+.trainer-dialogue-continue {
+  position: absolute;
+  bottom: 10px;
+  right: 16px;
+  color: #a0c4ff;
+  font-size: 1.1rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.trainer-dialogue-continue.show-continue {
+  opacity: 1;
+  animation: continueBlink 0.8s ease-in-out infinite;
+}
+
+@keyframes continueBlink {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50%       { opacity: 0.3; transform: translateY(3px); }
+}
+
+/* Overlay fade out */
+.trainer-intro-overlay.hiding {
+  animation: overlayFadeOut 0.5s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes overlayFadeOut {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+</style>
+
+{% endblock css %}
 
 {% block js %}
 {{ block.super }}
@@ -534,6 +828,126 @@ let currentPlayerPokemonId = {{ battle.player_pokemon.id }};
 // Initialiser le système
 let captureSystem = null;
 
+// ============================================================================
+// TRAINER INTRO ANIMATION
+// ============================================================================
+
+{% if battle.battle_type == 'trainer' or battle.battle_type == 'gym' %}
+/**
+ * Typewriter effect for dialogue text
+ */
+function typewriterEffect(element, text, speed, onDone) {
+  element.textContent = '';
+  let i = 0;
+  const interval = setInterval(() => {
+    element.textContent += text[i];
+    i++;
+    if (i >= text.length) {
+      clearInterval(interval);
+      if (onDone) onDone();
+    }
+  }, speed);
+  return interval;
+}
+
+/**
+ * Play the trainer intro sequence, then call onComplete when done.
+ */
+function playTrainerIntro(onComplete) {
+  const overlay    = document.getElementById('trainer-intro-overlay');
+  const spriteWrap = document.getElementById('trainer-intro-sprite-wrap');
+  const nameplate  = document.getElementById('trainer-intro-nameplate');
+  const dialogue   = document.getElementById('trainer-intro-dialogue');
+  const vsFlash    = document.getElementById('trainer-vs-flash');
+  const textEl     = document.getElementById('trainer-intro-text');
+  const continueHint = overlay.querySelector('.trainer-dialogue-continue');
+
+  const fullText = textEl.textContent.trim();
+  textEl.textContent = '';
+
+  let dismissed = false;
+  let typeInterval = null;
+  let dialogueShown = false;
+
+  function dismissIntro() {
+    if (dismissed) return;
+    dismissed = true;
+
+    // Clear typewriter if still running
+    if (typeInterval) clearInterval(typeInterval);
+
+    // Slide trainer out
+    spriteWrap.classList.remove('slide-in');
+    spriteWrap.classList.add('slide-out');
+
+    // Fade overlay
+    setTimeout(() => {
+      overlay.classList.add('hiding');
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        if (onComplete) onComplete();
+      }, 500);
+    }, 300);
+  }
+
+  // Click/tap to dismiss or skip typewriter
+  overlay.addEventListener('click', function handler() {
+    if (!dialogueShown) return; // Wait until dialogue appears
+    if (typeInterval) {
+      // Skip typewriter — show full text immediately
+      clearInterval(typeInterval);
+      typeInterval = null;
+      textEl.textContent = fullText;
+      continueHint.classList.add('show-continue');
+      // Second click dismisses
+      overlay.removeEventListener('click', handler);
+      overlay.addEventListener('click', dismissIntro, { once: true });
+    } else {
+      dismissIntro();
+      overlay.removeEventListener('click', handler);
+    }
+  });
+
+  // ── Sequence timing ──────────────────────────────────────────────────────
+
+  // Step 1: VS flash (400ms)
+  setTimeout(() => {
+    vsFlash.classList.add('flash-in');
+    // Play whoosh SFX
+    try { audioManager.playSFX('ui/SFX_INTRO_WHOOSH'); } catch(e) {}
+  }, 200);
+
+  // Step 2: Trainer sprite slides in (800ms)
+  setTimeout(() => {
+    spriteWrap.classList.add('slide-in');
+    try { audioManager.playSFX('ui/SFX_INTRO_CRASH'); } catch(e) {}
+  }, 800);
+
+  // Step 3: Nameplate fades in (1100ms)
+  setTimeout(() => {
+    nameplate.classList.add('fade-in');
+  }, 1100);
+
+  // Step 4: Dialogue slides up + typewriter (1600ms)
+  setTimeout(() => {
+    dialogue.classList.add('slide-up');
+    dialogueShown = true;
+    // Small delay then start typewriter
+    setTimeout(() => {
+      typeInterval = typewriterEffect(textEl, fullText, 30, () => {
+        typeInterval = null;
+        // Show continue hint and set up auto-dismiss
+        continueHint.classList.add('show-continue');
+        // Auto dismiss after 3s if user doesn't click
+        setTimeout(() => {
+          dismissIntro();
+        }, 3000);
+      });
+    }, 200);
+  }, 1600);
+}
+{% endif %}
+
 $(document).ready(function() {
   console.log('🎮 Battle Scene V2 Loaded');
   
@@ -541,33 +955,46 @@ $(document).ready(function() {
   battleEffects = new BattleEffects(document.getElementById('attack-canvas'));
   audioManager = new AudioManager();
   captureSystem = new CaptureSystem();
-  
-  // Start BGM
-  {% if battle.battle_type == 'gym' %}
-    audioManager.playBGM('battle_gym');
-  {% elif battle.battle_type == 'trainer' %}
-    audioManager.playBGM('battle_trainer');
+
+  /**
+   * Start the actual battle after intro (or immediately for wild battles)
+   */
+  function startBattle() {
+    // Start BGM
+    {% if battle.battle_type == 'gym' %}
+      audioManager.playBGM('battle_gym');
+    {% elif battle.battle_type == 'trainer' %}
+      audioManager.playBGM('battle_trainer');
+    {% else %}
+      audioManager.playBGM('battle_wild');
+    {% endif %}
+    
+    // Entry animations
+    setTimeout(() => {
+      $('#opponent-container').addClass('slide-in-opponent');
+      $('#player-container').addClass('slide-in-player');
+    }, 100);
+    
+    // Initial log
+    addBattleLog('Le combat commence !');
+    
+    // Play Pokemon cries
+    setTimeout(() => {
+      audioManager.playCry('{{ battle.opponent_pokemon.species.id }}');
+    }, 500);
+    
+    setTimeout(() => {
+      audioManager.playCry('{{ battle.player_pokemon.species.id }}');
+    }, 1500);
+  }
+
+  {% if battle.battle_type == 'trainer' or battle.battle_type == 'gym' %}
+    // Play trainer intro, then start battle
+    playTrainerIntro(startBattle);
   {% else %}
-    audioManager.playBGM('battle_wild');
+    // Wild battle — start immediately
+    startBattle();
   {% endif %}
-  
-  // Entry animations
-  setTimeout(() => {
-    $('#opponent-container').addClass('slide-in-opponent');
-    $('#player-container').addClass('slide-in-player');
-  }, 100);
-  
-  // Initial log
-  addBattleLog('Le combat commence !');
-  
-  // Play Pokemon cries
-  setTimeout(() => {
-    audioManager.playCry('{{ battle.opponent_pokemon.species.id }}');
-  }, 500);
-  
-  setTimeout(() => {
-    audioManager.playCry('{{ battle.player_pokemon.species.id }}');
-  }, 1500);
 });
 
 // ============================================================================
