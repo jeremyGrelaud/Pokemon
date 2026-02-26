@@ -133,10 +133,7 @@ def zone_detail_view(request, zone_id):
     english_zone_name = ZONE_TRANSLATIONS.get(zone.name, zone.name).strip()
 
     gym_leader = None
-    try:
-        gym_leader = GymLeader.objects.filter(gym_city__icontains=english_zone_name).first()
-    except GymLeader.DoesNotExist:
-        pass
+    gym_leader = GymLeader.objects.filter(gym_city__icontains=english_zone_name).first()
 
     # Gym Leader : défaite per-joueur via la save
     gym_leader_defeated = gym_leader and gym_leader.trainer.id in defeated_ids
@@ -247,8 +244,8 @@ def travel_to_zone_view(request, zone_id):
                                 if notif.get('reward_item'):
                                     msg += f" · Vous recevez : {notif['reward_item']}"
                                 messages.success(request, msg)
-            except Exception as exc:
-                logging.warning("Erreur trigger give_item Bourg Palette : %s", exc)
+            except Exception as e:
+                logging.warning("Erreur trigger give_item Bourg Palette : %s", e)
 
         try:
             save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
@@ -256,7 +253,7 @@ def travel_to_zone_view(request, zone_id):
                 save.current_location = zone.name
                 save.save(update_fields=['current_location'])
         except Exception as exc:
-            logging.warning("Impossible de mettre à jour la GameSave pour %s : %s", trainer.username, exc)
+            logging.warning("Impossible de mettre à jour la position dans la save : %s", exc)
 
         # ── Wild battle aléatoire en traversant (20%) ─────────────────────
         import random

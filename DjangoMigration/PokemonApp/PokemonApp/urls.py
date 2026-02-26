@@ -46,7 +46,7 @@ urlpatterns = [
     path('battle/<int:pk>/learn-move/', views.battle_learn_move_view,   name='BattleLearnMoveView'),
 
     # Créations de combats
-    path('battle/create/',                              views.battle_create_view,         name='battle_create'),
+    path('battle/create/',                              views.battle_create_view,         name='BattleCreateView'),
     path('battle/wild/challenge/',                      views.battle_create_wild_view,    name='create_wild_battle'),
     path('battle/trainer/<int:trainer_id>/challenge/',  views.battle_create_trainer_view, name='battle_create_trainer'),
     path('battle/gym/challenge/',                       views.battle_create_gym_view,     name='create_gym_battle'),
@@ -78,7 +78,7 @@ urlpatterns = [
     # Centres Pokémon
     path('pokemon-centers/',           views.PokemonCenterListView.as_view(),   name='PokemonCenterListView'),
     path('pokemon-center/<int:pk>/',   views.PokemonCenterDetailView.as_view(), name='PokemonCenterDetailView'),
-    path('pokemon-center/history/',    views.center_history_view,               name='center_history'),
+    path('pokemon-center/history/',    views.center_history_view,               name='CenterHistoryView'),
     path('api/pokemon-center/heal/',   views.heal_team_api,                     name='heal_team'),
     path('api/pokemon-center/pc/',     views.access_pc_from_center_api,         name='access_pc'),
 
