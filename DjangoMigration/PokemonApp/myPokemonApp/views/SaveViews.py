@@ -7,8 +7,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
 import logging
-from myPokemonApp.models import *
 import json
+from myPokemonApp.models import *
+from myPokemonApp.gameUtils import get_player_trainer
 
 # ============================================================================
 # SNAPSHOT - Sauvegarder l'état complet
@@ -179,7 +180,7 @@ def restore_game_snapshot(trainer, snapshot):
 def save_select_view(request):
     """Écran de sélection de sauvegarde (3 slots)"""
     
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
     
     # Récupérer les 3 slots
     saves = []
@@ -201,7 +202,7 @@ def save_select_view(request):
 def save_create_view(request, slot):
     """Créer une nouvelle sauvegarde dans un slot"""
     
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
     existing = GameSave.objects.filter(trainer=trainer, slot=slot).first()
     
     if request.method == 'POST':
@@ -249,7 +250,7 @@ def save_load_view(request, save_id):
     IMPORTANT: Restaure TOUT l'état du jeu
     """
     
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
     save = get_object_or_404(GameSave, pk=save_id, trainer=trainer)
     
     # ===== RESTAURER SNAPSHOT =====
@@ -281,7 +282,7 @@ def save_game_view(request, save_id):
     IMPORTANT: Crée un snapshot complet
     """
     
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
     save = get_object_or_404(GameSave, pk=save_id, trainer=trainer)
     
     # Créer snapshot
@@ -319,7 +320,7 @@ def auto_save_view(request, save_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
     
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
     save = get_object_or_404(GameSave, pk=save_id, trainer=trainer)
     
     # Mettre à jour position
@@ -346,7 +347,7 @@ def auto_save_view(request, save_id):
 def save_slots_list_view(request):
     """API JSON pour le modal de sauvegarde"""
     
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
     active_save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
     
     slots = []
@@ -381,7 +382,7 @@ def save_create_quick_view(request, slot):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST required'})
     
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
     save_name = request.POST.get('save_name', f'Aventure {slot}')
     
     # Supprimer ancienne save

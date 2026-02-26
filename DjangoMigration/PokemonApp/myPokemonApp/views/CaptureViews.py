@@ -4,22 +4,23 @@ Views Django pour l'application Pokémon Gen 1
 Adapté aux nouveaux modèles
 """
 
-from ..models import *
+import json
+from datetime import datetime, timedelta
 
 from django.db.models import Count, Avg, Q
 from django.db.models.functions import TruncDate
-from datetime import datetime, timedelta
-import json
-from django.shortcuts import get_object_or_404
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+
+from ..models import *
+from myPokemonApp.gameUtils import get_player_trainer
 
 
 @login_required
 def capture_journal_view(request):
     """Vue du journal de captures"""
     
-    trainer = get_object_or_404(Trainer, username=request.user.username)
+    trainer = get_player_trainer(request.user)
     
     # Filtres
     search = request.GET.get('search', '')

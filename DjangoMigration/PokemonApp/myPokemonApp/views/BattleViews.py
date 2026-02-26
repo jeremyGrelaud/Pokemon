@@ -3,6 +3,10 @@
 Views Django pour les combats Pokemon Gen 1.
 """
 
+import logging
+import random
+import traceback
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import generic
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -11,10 +15,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 from django.contrib import messages
-from ..models import *
-# Zone/location models needed for defeat redirect
-from myPokemonApp.models import Zone, ZoneConnection, PlayerLocation
 
+from ..models import *
+
+from myPokemonApp.questEngine import trigger_quest_event
 from myPokemonApp.views.AchievementViews import (
     trigger_achievements_after_battle,
     trigger_achievements_after_gym_win,
@@ -45,6 +49,8 @@ from myPokemonApp.gameUtils import (
     heal_team,
     learn_moves_up_to_level,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -507,7 +513,6 @@ def battle_action_view(request, pk):
                 response_data['log'].append(end_message)
 
     except Exception as exc:
-        import traceback
         traceback.print_exc()
         response_data['success'] = False
         response_data['error']   = str(exc)
@@ -528,7 +533,7 @@ def battle_create_view(request):
       2. Dresseurs NPC
       3. Champions d'Arene
     """
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
 
     save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
 
@@ -558,7 +563,6 @@ def battle_create_view(request):
 
 @login_required
 def battle_create_wild_view(request):
-    import random
     """
     Cree un combat contre un Pokemon sauvage aleatoire (ou specifique en mode debug).
 
@@ -569,7 +573,7 @@ def battle_create_wild_view(request):
     if request.method != 'POST':
         return redirect('BattleCreateView')
 
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
     player_pokemon = get_first_alive_pokemon(player_trainer)
 
     if not player_pokemon:
@@ -612,7 +616,7 @@ def battle_create_wild_view(request):
 @login_required
 def battle_create_trainer_view(request, trainer_id):
     """Cree un combat contre un dresseur NPC."""
-    player_trainer   = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer   = get_player_trainer(request.user)
     opponent_trainer = get_object_or_404(Trainer, pk=trainer_id, is_npc=True)
 
     # Vérifier que le joueur est bien dans la zone du dresseur
@@ -670,7 +674,7 @@ def battle_create_gym_view(request):
     if request.method != 'POST':
         return redirect('BattleCreateView')
 
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
     gym_leader_id  = request.POST.get('gym_leader_id')
 
     try:
@@ -740,7 +744,7 @@ def battle_challenge_gym_view(request, gym_leader_id):
     Accessible via GET  /battle/gym/<id>/challenge/
     Vérifie que le joueur est bien dans la ville de l'arène.
     """
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
 
     try:
         gym_leader = GymLeader.objects.select_related('trainer').get(pk=gym_leader_id)
@@ -815,7 +819,7 @@ def battle_trainer_complete_view(request, battle_id):
     Distribue les recompenses, enregistre l'historique, declenche les achievements.
     """
     battle         = get_object_or_404(Battle, pk=battle_id)
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
 
     if battle.player_trainer != player_trainer:
         return redirect('home')
@@ -878,24 +882,20 @@ def battle_trainer_complete_view(request, battle_id):
             money_earned=money_earned,
         )
     except Exception as exc:
-        import logging
-        logging.getLogger(__name__).warning("Impossible de créer l'historique de combat : %s", exc)
+        logger.warning("Impossible de créer l'historique de combat : %s", exc)
 
     try:
         save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
         if save and player_won and opponent:
             save.add_defeated_trainer(opponent.id)
     except Exception as exc:
-        import logging
-        logging.getLogger(__name__).warning("Impossible de marquer le dresseur %s comme battu : %s", opponent, exc)
+        logger.warning("Impossible de marquer le dresseur %s comme battu : %s", opponent, exc)
 
     # =========================================================
     # QUÊTES — defeat_trainer / defeat_gym
     # =========================================================
     if player_won and opponent:
         try:
-            from myPokemonApp.questEngine import trigger_quest_event
-
             # Tout combat contre un dresseur
             quest_notifs = trigger_quest_event(
                 player_trainer, 'defeat_trainer', trainer_id=opponent.id
@@ -922,43 +922,38 @@ def battle_trainer_complete_view(request, battle_id):
                     messages.success(request, msg)
 
         except Exception as exc:
-            import logging
-            logging.getLogger(__name__).warning("Erreur déclenchement quêtes post-combat : %s", exc)
+            logger.warning("Erreur déclenchement quêtes post-combat : %s", exc)
 
     # =========================================================
-    # RÉSOLUTION DE LA ZONE COURANTE (utilisée pour les boutons de retour)
+    # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
     # =========================================================
-    # On récupère la PlayerLocation une seule fois ici pour éviter de
-    # faire plusieurs requêtes identiques plus bas.
-    try:
-        player_location = PlayerLocation.objects.get(trainer=player_trainer)
-        current_zone    = player_location.current_zone
-    except PlayerLocation.DoesNotExist:
-        player_location = None
-        current_zone    = None
-
-    # =========================================================
-    # DÉFAITE → soigner et téléporter vers le Centre Pokémon le plus proche
-    # =========================================================
-    if not player_won and player_location:
+    if not player_won:
         try:
-            # Chercher le centre le plus proche : d'abord la zone actuelle,
-            # sinon la première zone connectée avec un centre.
-            if current_zone and current_zone.has_pokemon_center:
+            # Trouver la zone avec Centre Pokémon
+            player_location = PlayerLocation.objects.get(trainer=player_trainer)
+            current_zone    = player_location.current_zone
+
+            # Chercher le centre le plus proche : d'abord la zone actuelle, sinon
+            # la première zone connectée avec un centre
+            if current_zone.has_pokemon_center:
                 center_zone = current_zone
             else:
+                # Chercher parmi les connexions directes
                 connected_ids = ZoneConnection.objects.filter(
                     from_zone=current_zone
                 ).values_list('to_zone_id', flat=True)
                 reverse_ids  = ZoneConnection.objects.filter(
                     to_zone=current_zone, is_bidirectional=True
                 ).values_list('from_zone_id', flat=True)
-                all_ids = list(connected_ids) + list(reverse_ids)
+                all_ids      = list(connected_ids) + list(reverse_ids)
 
-                center_zone = (
-                    Zone.objects.filter(id__in=all_ids, has_pokemon_center=True).first()
-                    or Zone.objects.filter(has_pokemon_center=True).first()
-                )
+                center_zone = Zone.objects.filter(
+                    id__in=all_ids, has_pokemon_center=True
+                ).first()
+
+                if not center_zone:
+                    # Fallback: premier centre disponible
+                    center_zone = Zone.objects.filter(has_pokemon_center=True).first()
 
             if center_zone:
                 player_location.current_zone = center_zone
@@ -966,24 +961,23 @@ def battle_trainer_complete_view(request, battle_id):
                     player_location.last_pokemon_center = center_zone
                 player_location.save()
 
+                # Sauvegarder la location dans la save active
                 save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
                 if save:
                     save.current_location = center_zone.name
                     save.save()
 
-                # Après défaite, le bouton "Retour" pointe vers le Centre Pokémon
-                current_zone = center_zone
-
                 messages.warning(
                     request,
                     f"Vous avez été soigné au Centre Pokémon de {center_zone.name}."
                 )
-        except Exception:
+
+        except PlayerLocation.DoesNotExist:
             pass
 
     dialogue = (
-        (opponent.defeat_text  or "Vous avez gagné...") if player_won
-        else (opponent.victory_text or "J'ai gagné !") if opponent
+        (opponent.defeat_text  or "Vous avez gagne...") if player_won
+        else (opponent.victory_text or "J'ai gagne !") if opponent
         else ""
     )
 
@@ -994,7 +988,6 @@ def battle_trainer_complete_view(request, battle_id):
         'money_earned': money_earned,
         'badge_earned': badge_earned,
         'dialogue':     dialogue,
-        'current_zone': current_zone,   # zone de retour (= Centre Pokémon si défaite)
     })
 
 
