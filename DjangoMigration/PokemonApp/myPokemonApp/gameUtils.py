@@ -106,6 +106,17 @@ def ensure_has_moves(pokemon):
 # 3. CREATION DE POKEMON
 # =============================================================================
 
+def generate_random_nature():
+    """Genere une nature aleatoire parmi les 25 natures."""
+    return random.choice([
+        'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
+        'Bold',  'Docile', 'Relaxed', 'Impish', 'Lax',
+        'Timid', 'Hasty',  'Serious', 'Jolly',  'Naive',
+        'Modest','Mild',   'Quiet',   'Bashful','Rash',
+        'Calm',  'Gentle', 'Sassy',   'Careful','Quirky',
+    ])
+
+
 def _build_ivs(iv_min=0, iv_max=31):
     """Genere un dict d'IVs aleatoires entre iv_min et iv_max."""
     iv_stats = ('iv_hp', 'iv_attack', 'iv_defense',
@@ -151,6 +162,7 @@ def create_wild_pokemon(species, level, location=None):
         caught_location=location,
         is_in_party=True,
         is_shiny=is_shiny,
+        nature=generate_random_nature(),
         **_build_ivs(0, 31)
     )
     _finalize_pokemon(pokemon, level)
@@ -175,6 +187,7 @@ def create_starter_pokemon(species, trainer, nickname=None, is_shiny=False):
         caught_location='Pallet Town',
         party_position=1,
         is_shiny=is_shiny,
+        nature=generate_random_nature(),
         **_build_ivs(10, 31)
     )
     return _finalize_pokemon(pokemon, 5)
@@ -199,6 +212,7 @@ def _create_npc_pokemon(species, trainer, level, username, party_position,
         original_trainer=username,
         is_in_party=True,
         party_position=party_position,
+        nature=generate_random_nature(),
         **_build_ivs(iv_min, iv_max)
     )
     pokemon.calculate_stats()
@@ -853,146 +867,6 @@ def opponent_switch_pokemon(battle):
 # 6. SERIALISATION JSON (pour les API views)
 # =============================================================================
 
-def serialize_pokemon(pokemon, include_moves=False):
-    """
-    Serialise un PlayablePokemon en dict JSON pret a etre envoye au client.
-
-    Args:
-        pokemon:       PlayablePokemon
-        include_moves: bool — inclure la liste des moves avec PP courants
-
-    Utilise dans build_battle_response() et GetTrainerTeam().
-    """
-    data = {
-        'id':           pokemon.id,
-        'name':         pokemon.nickname or pokemon.species.name,
-        'species_name': pokemon.species.name,
-        'level':        pokemon.level,
-        'current_hp':   pokemon.current_hp,
-        'max_hp':       pokemon.max_hp,
-        'status':       pokemon.status_condition,
-        'is_shiny':     pokemon.is_shiny,
-    }
-
-    if include_moves:
-        data['moves'] = [
-            {
-                'id':         mi.move.id,
-                'name':       mi.move.name,
-                'type':       mi.move.type.name,
-                'category':   mi.move.category,
-                'power':      mi.move.power,
-                'current_pp': mi.current_pp,
-                'max_pp':     mi.move.max_pp,
-            }
-            for mi in pokemon.pokemonmoveinstance_set.all()
-        ]
-
-    return data
-
-
-def build_battle_response(battle):
-    """
-    Construit le dict JSON complet renvoye au client apres chaque action.
-    Remplace le build_response_data() qui etait defini inline dans battle_action_view.
-
-    Contient :
-      - player_pokemon   (avec moves + champs EXP)
-      - opponent_pokemon (sans moves)
-      - champs de retrocompatibilite (player_hp, opponent_hp, ...)
-      - battle_ended: False  (le caller le passe a True si besoin)
-      - battle_state: etats volatils + stat stages pour le frontend
-    """
-    exp_for_next = battle.player_pokemon.exp_for_next_level() or 100
-    current_exp  = battle.player_pokemon.current_exp or 0
-
-    player_data = serialize_pokemon(battle.player_pokemon, include_moves=True)
-    player_data['current_exp']        = current_exp
-    player_data['exp_for_next_level'] = exp_for_next
-    player_data['exp_percent']        = int((current_exp / exp_for_next) * 100)
-
-    pp  = battle.player_pokemon
-    opp = battle.opponent_pokemon
-    bs  = battle.battle_state if isinstance(battle.battle_state, dict) else {}
-
-    def pst(pokemon):
-        return bs.get(str(pokemon.pk), {})
-
-    p_pst = pst(pp)
-    o_pst = pst(opp)
-
-    battle_state = {
-        # ── Météo ──────────────────────────────────────────────────────────
-        'weather':       bs.get('weather'),
-        'weather_turns': bs.get('weather_turns', 0),
-
-        # ── États volatils joueur ──────────────────────────────────────────
-        'player_confused':       bool(p_pst.get('confusion_turns', 0)),
-        'player_leech_seed':     bool(p_pst.get('leech_seed')),
-        'player_trapped':        bool(p_pst.get('trap_turns', 0)),
-        'player_badly_poisoned': bool(p_pst.get('toxic')),
-        'player_charging':       p_pst.get('charging_move'),
-        'player_recharge':       bool(p_pst.get('recharge')),
-        'player_protected':      bool(p_pst.get('protect')),
-        'player_focus_energy':   bool(p_pst.get('focus_energy')),
-        'player_ingrain':        bool(p_pst.get('ingrain')),
-        'player_rampaging':      bool(p_pst.get('rampage_turns', 0)),
-        'player_screens': {
-            'light_screen': bs.get('player_light_screen', 0),
-            'reflect':      bs.get('player_reflect', 0),
-        },
-
-        # ── Stat stages joueur (champs directs sur PlayablePokemon) ────────
-        'player_atk_stage':   pp.attack_stage,
-        'player_def_stage':   pp.defense_stage,
-        'player_spatk_stage': pp.special_attack_stage,
-        'player_spdef_stage': pp.special_defense_stage,
-        'player_speed_stage': pp.speed_stage,
-        'player_acc_stage':   pp.accuracy_stage,
-        'player_eva_stage':   pp.evasion_stage,
-
-        # ── États volatils adversaire ──────────────────────────────────────
-        'opponent_confused':       bool(o_pst.get('confusion_turns', 0)),
-        'opponent_leech_seed':     bool(o_pst.get('leech_seed')),
-        'opponent_trapped':        bool(o_pst.get('trap_turns', 0)),
-        'opponent_badly_poisoned': bool(o_pst.get('toxic')),
-        'opponent_charging':       o_pst.get('charging_move'),
-        'opponent_recharge':       bool(o_pst.get('recharge')),
-        'opponent_protected':      bool(o_pst.get('protect')),
-        'opponent_focus_energy':   bool(o_pst.get('focus_energy')),
-        'opponent_ingrain':        bool(o_pst.get('ingrain')),
-        'opponent_rampaging':      bool(o_pst.get('rampage_turns', 0)),
-        'opponent_screens': {
-            'light_screen': bs.get('opponent_light_screen', 0),
-            'reflect':      bs.get('opponent_reflect', 0),
-        },
-
-        # ── Stat stages adversaire (champs directs sur PlayablePokemon) ────
-        'opponent_atk_stage':   opp.attack_stage,
-        'opponent_def_stage':   opp.defense_stage,
-        'opponent_spatk_stage': opp.special_attack_stage,
-        'opponent_spdef_stage': opp.special_defense_stage,
-        'opponent_speed_stage': opp.speed_stage,
-        'opponent_acc_stage':   opp.accuracy_stage,
-        'opponent_eva_stage':   opp.evasion_stage,
-    }
-
-    return {
-        'success':          True,
-        'log':              [],
-        'player_pokemon':   player_data,
-        'opponent_pokemon': serialize_pokemon(battle.opponent_pokemon),
-        # Champs de retrocompatibilite pour le JS existant
-        'player_hp':        pp.current_hp,
-        'player_max_hp':    pp.max_hp,
-        'opponent_hp':      opp.current_hp,
-        'opponent_max_hp':  opp.max_hp,
-        'battle_ended':     False,
-        # États volatils + stat stages pour le frontend
-        'battle_state':     battle_state,
-    }
-
-
 # =============================================================================
 # 7. CAPTURE
 # =============================================================================
@@ -1260,8 +1134,8 @@ def give_item_to_trainer(trainer, item, quantity=1):
     try:
         from myPokemonApp.questEngine import trigger_quest_event
         trigger_quest_event(trainer, 'have_item', item=item)
-    except Exception:
-        pass  # Ne jamais bloquer la logique métier pour une quête
+    except Exception as exc:
+        logging.warning("Erreur déclenchement quête have_item pour %s : %s", item, exc)
 
     return inv
 
@@ -1350,15 +1224,20 @@ def heal_team(trainer):
             mi.restore_pp()
 
 
-def organize_party(trainer, pokemon_order):
+def cleanup_orphan_wild_pokemon():
     """
-    Reordonne l'equipe du dresseur.
-    pokemon_order = [pokemon_id_1, pokemon_id_2, ...]
+    Supprime les PlayablePokemon sauvages orphelins (trainer 'Wild' ou 'wild_pokemon')
+    qui ne sont plus liés à aucun combat actif.
+
+    À appeler avant de créer un nouveau combat sauvage pour éviter
+    l'accumulation de lignes inutiles en base.
     """
-    for position, pokemon_id in enumerate(pokemon_order, 1):
-        pokemon = trainer.pokemon_team.get(id=pokemon_id)
-        pokemon.party_position = position
-        pokemon.save()
+    active_wild_ids = Battle.objects.filter(
+        is_active=True
+    ).values_list('opponent_pokemon_id', flat=True)
+    PlayablePokemon.objects.filter(
+        trainer__username__in=('Wild', 'wild_pokemon')
+    ).exclude(id__in=active_wild_ids).delete()
 
 
 def deposit_pokemon(pokemon):
@@ -1379,17 +1258,6 @@ def withdraw_pokemon(pokemon, position):
     pokemon.party_position = position
     pokemon.save()
     return True, f"{pokemon} a ete ajoute a l'equipe !"
-
-
-def generate_random_nature():
-    """Genere une nature aleatoire parmi les 25 natures."""
-    return random.choice([
-        'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
-        'Bold',  'Docile', 'Relaxed', 'Impish', 'Lax',
-        'Timid', 'Hasty',  'Serious', 'Jolly',  'Naive',
-        'Modest','Mild',   'Quiet',   'Bashful','Rash',
-        'Calm',  'Gentle', 'Sassy',   'Careful','Quirky',
-    ])
 
 
 def get_nature_modifiers(nature):
@@ -1439,207 +1307,25 @@ def calculate_pokemon_stats_with_nature(pokemon):
 
 # Correspondance noms de zones français → gym_city anglais (tel qu'en base GymLeader)
 # Source unique : importé ici et utilisé dans map_view + zone_detail_view
-ZONE_TRANSLATIONS = {
-    "Argenta":       "Pewter City",
-    "Azuria":        "Cerulean City",
-    "Carmin sur Mer":"Vermilion City",
-    "Céladopole":    "Celadon City",
-    "Jadielle":      "Viridian City",
-    "Safrania":      "Saffron City",
-    "Parmanie":      "Fuchsia City",
-    "Cramois'Ile":   "Cinnabar Island",
-}
 
-def has_pokedex(player_trainer) -> bool:
-    """
-    Retourne True si le joueur a reçu son Pokédex.
-    Vérifie le story_flag 'has_pokedex' dans la GameSave active.
-
-    Usage :
-        if not has_pokedex(trainer):
-            return HttpResponseForbidden(...)
-    """
-    from .models.GameSave import GameSave
-    save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
-    return bool(save and save.story_flags.get('has_pokedex', False))
-
-
-def grant_pokedex(player_trainer) -> None:
-    """
-    Donne le Pokédex au joueur en posant le story_flag 'has_pokedex'
-    sur sa GameSave active, quel que soit son numéro de slot.
-
-    Si aucune save active n'existe encore (nouveau joueur), en crée une
-    au slot 1 comme fallback.
-
-    À appeler dès que le joueur choisit son starter (même moment que
-    dans le jeu original où le Prof. Chen remet le Pokédex).
-
-    Usage :
-        grant_pokedex(trainer)
-    """
-    from .models.GameSave import GameSave
-    # Priorité : save active existante (peu importe le slot)
-    save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
-    if save is None:
-        # Nouveau joueur sans save — fallback slot 1
-        save, _ = GameSave.objects.get_or_create(
-            trainer=player_trainer,
-            slot=1,
-            defaults={'is_active': True}
-        )
-    save.set_story_flag('has_pokedex', True)
-
-    # Note : grant_pokedex() est désormais appelé par QuestEngine.complete_quest
-    # quand la quête 'give_parcel_to_oak' se termine (hook post-complétion).
-    # On ne déclenche plus de quête ici pour éviter la circularité.
-
-
-def get_or_create_player_trainer(user):
-    """
-    Recupere ou cree le Trainer associe a un utilisateur Django.
-
-    Centralise le pattern repete dans chaque view :
-        trainer, _ = Trainer.objects.get_or_create(
-            username=request.user.username,
-            defaults={'trainer_type': 'player'}
-        )
-
-    Usage :
-        trainer = get_or_create_player_trainer(request.user)
-    """
-    trainer, _ = Trainer.objects.get_or_create(
-        username=user.username,
-        defaults={'trainer_type': 'player'}
-    )
-    return trainer
-
-
-def get_defeated_trainer_ids(player_trainer) -> set:
-    """
-    Retourne le set des IDs de Trainers NPC vaincus par ce joueur.
-
-    Recupere la save active en une seule requete DB, et retourne
-    un set Python pour des tests d'appartenance en O(1).
-
-    A utiliser dans les vues qui itèrent sur N trainers pour eviter
-    le N+1 que produirait npc.is_defeated_by_player() dans une boucle.
-
-    Usage :
-        defeated_ids = get_defeated_trainer_ids(trainer)
-        for npc in trainers:
-            is_beaten = npc.id in defeated_ids
-    """
-    from .models.GameSave import GameSave
-    save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
-    if save is None:
-        return set()
-    return set(save.defeated_trainers)
-
-
-def get_player_trainer(user):
-    """
-    Recupere le Trainer du joueur connecte (404 si inexistant).
-
-    A utiliser dans les vues ou le trainer est garanti d'exister deja
-    (apres le flow choose_starter). Pour les nouveaux joueurs, preferer
-    get_or_create_player_trainer().
-
-    Usage :
-        trainer = get_player_trainer(request.user)
-    """
-    from django.shortcuts import get_object_or_404
-    return get_object_or_404(Trainer, username=user.username)
-
-
-def get_player_location(trainer, create_if_missing=True):
-    """
-    Recupere le PlayerLocation du trainer, en creant la position initiale
-    (Bourg Palette ou premiere zone) si elle n'existe pas encore et que
-    create_if_missing=True.
-
-    Usage :
-        location = get_player_location(trainer)
-        current_zone = location.current_zone
-    """
-    from .models import PlayerLocation, Zone
-
-    try:
-        return PlayerLocation.objects.get(trainer=trainer)
-    except PlayerLocation.DoesNotExist:
-        if not create_if_missing:
-            return None
-        start_zone = (
-            Zone.objects.filter(name__icontains='Bourg Palette').first()
-            or Zone.objects.first()
-        )
-        return PlayerLocation.objects.create(trainer=trainer, current_zone=start_zone)
-
-
-def trainer_is_at_zone_with(trainer, zone_attr: str) -> bool:
-    """
-    Retourne True si le trainer se trouve dans une zone possedant l'attribut
-    boolen zone_attr (ex. 'has_shop', 'has_pokemon_center').
-
-    Si le trainer n'a pas de PlayerLocation connue, retourne True par defaut
-    pour ne pas bloquer les joueurs sans position.
-
-    Usage :
-        if not trainer_is_at_zone_with(trainer, 'has_shop'):
-            return redirect('map_view')
-    """
-    location = get_player_location(trainer, create_if_missing=False)
-    if location is None:
-        return True  # pas de position connue → on ne bloque pas
-    return bool(getattr(location.current_zone, zone_attr, False))
-
-
-def serialize_pokemon_moves(pokemon):
-    """
-    Serialise les moves actifs d'un Pokemon pour les reponses JSON (modale
-    de gestion des capacites, etc.).
-
-    Distinct de serialize_pokemon(include_moves=True) qui est oriente combat
-    et ne retourne que id/name/type/power/current_pp/max_pp.
-    Ici on ajoute category, accuracy et pp (max) pour la gestion d'equipe.
-
-    Usage :
-        moves = serialize_pokemon_moves(pokemon)
-        return JsonResponse({'moves': moves})
-    """
-    from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
-
-    return [
-        {
-            'id':         mi.move.id,
-            'name':       mi.move.name,
-            'type':       mi.move.type.name if mi.move.type else '',
-            'category':   mi.move.category,
-            'power':      mi.move.power,
-            'accuracy':   mi.move.accuracy,
-            'pp':         mi.move.pp,
-            'current_pp': mi.current_pp,
-        }
-        for mi in PokemonMoveInstance.objects.filter(
-            pokemon=pokemon
-        ).select_related('move', 'move__type')
-    ]
-
-
-def auto_reorganize_party(trainer):
-    """
-    Reassigne des positions sequentielles (1-6) aux Pokemon de l'equipe
-    active dans leur ordre courant (party_position, id).
-
-    A appeler apres un depot au PC ou un ajout depuis le PC pour garantir
-    que les positions restent continues et sans trous.
-
-    Distinct de organize_party(trainer, pokemon_order) qui reordonne selon
-    une liste d'IDs fournie par le client (drag-and-drop).
-    """
-    for position, pokemon in enumerate(
-        trainer.pokemon_team.filter(is_in_party=True).order_by('party_position', 'id'),
-        start=1
-    ):
-        pokemon.party_position = position
-        pokemon.save()
+# =============================================================================
+# RE-EXPORTS — ces fonctions ont été déplacées dans myPokemonApp/services/
+# Les conserver ici garantit la rétrocompatibilité de tous les imports existants.
+# =============================================================================
+from myPokemonApp.services.serializers import (
+    serialize_pokemon,
+    serialize_pokemon_moves,
+    build_battle_response,
+)
+from myPokemonApp.services.player_service import (
+    get_player_trainer,
+    get_or_create_player_trainer,
+    get_player_location,
+    get_defeated_trainer_ids,
+    trainer_is_at_zone_with,
+    has_pokedex,
+    grant_pokedex,
+    auto_reorganize_party,
+    organize_party,
+    ZONE_TRANSLATIONS,
+)

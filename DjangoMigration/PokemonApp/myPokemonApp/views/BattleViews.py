@@ -3,6 +3,10 @@
 Views Django pour les combats Pokemon Gen 1.
 """
 
+import logging
+import random
+import traceback
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import generic
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -11,10 +15,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 from django.contrib import messages
-from ..models import *
-# Zone/location models needed for defeat redirect
-from myPokemonApp.models import Zone, ZoneConnection, PlayerLocation
 
+from ..models import *
+
+from myPokemonApp.questEngine import trigger_quest_event
 from myPokemonApp.views.AchievementViews import (
     trigger_achievements_after_battle,
     trigger_achievements_after_gym_win,
@@ -45,6 +49,8 @@ from myPokemonApp.gameUtils import (
     heal_team,
     learn_moves_up_to_level,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -149,18 +155,292 @@ class BattleGameView(generic.DetailView):
 # API — ACTIONS DE COMBAT
 # =============================================================================
 
+
+# =============================================================================
+# HANDLERS D'ACTIONS DE COMBAT  (un handler = une action, testable isolément)
+# =============================================================================
+
+def _handle_attack(request, battle, trainer, response_data):
+    """Attaque avec un move choisi par le joueur."""
+    move         = get_object_or_404(PokemonMove, pk=request.POST.get('move_id'))
+    player_action   = {'type': 'attack', 'move': move}
+    opponent_action = get_opponent_ai_action(battle)
+
+    battle.execute_turn(player_action, opponent_action)
+
+    if battle.opponent_pokemon.current_hp == 0:
+        btype      = 'trainer' if battle.opponent_trainer else 'wild'
+        exp_amount = calculate_exp_gain(
+            battle.opponent_pokemon, btype,
+            winner_pokemon=battle.player_pokemon
+        )
+        exp_result = apply_exp_gain(battle.player_pokemon, exp_amount)
+        apply_ev_gains(battle.player_pokemon, battle.opponent_pokemon)
+
+        response_data['log'].append(f"+{exp_amount} EXP")
+        if exp_result['level_up']:
+            response_data['log'].append(f"Level {exp_result['new_level']} !")
+        for move_name in exp_result.get('learned_moves', []):
+            response_data['log'].append(
+                f"{battle.player_pokemon.species.name} apprend {move_name} !"
+            )
+
+        if exp_result.get('pending_moves'):
+            response_data['pending_moves'] = exp_result['pending_moves']
+        if exp_result.get('pending_evolution'):
+            response_data['pending_evolution'] = exp_result['pending_evolution']
+
+        if battle.opponent_trainer:
+            new_opponent = opponent_switch_pokemon(battle)
+            if new_opponent:
+                response_data['log'].append(
+                    f"Adversaire envoie {new_opponent.species.name} !"
+                )
+            else:
+                battle.is_active = False
+                battle.winner    = battle.player_trainer
+                battle.save(update_fields=['is_active', 'winner'])
+                response_data['battle_ended'] = True
+                response_data['result']       = 'victory'
+        else:
+            battle.is_active = False
+            battle.winner    = battle.player_trainer
+            battle.save(update_fields=['is_active', 'winner'])
+            response_data['battle_ended'] = True
+            response_data['result']       = 'victory'
+
+
+def _handle_flee(request, battle, trainer, response_data):
+    """Tentative de fuite."""
+    success = battle.attempt_flee()
+    response_data['fled'] = success
+    if success:
+        battle.is_active = False
+        battle.winner    = battle.player_trainer
+        battle.save(update_fields=['is_active', 'winner'])
+        response_data['log']          = ['Vous avez réussi à fuir !']
+        response_data['battle_ended'] = True
+        response_data['result']       = 'fled'
+    else:
+        response_data['log'] = ['Échec dans la fuite !']
+
+
+def _handle_switch(request, battle, trainer, response_data):
+    """Switch de Pokémon (normal ou forcé après KO)."""
+    new_pokemon   = get_object_or_404(
+        PlayablePokemon, pk=request.POST.get('pokemon_id'), trainer=trainer
+    )
+    player_action = {'type': 'switch', 'pokemon': new_pokemon}
+
+    # Switch forcé (après KO) : l'adversaire ne joue pas ce tour
+    if request.POST.get('type') == 'forcedSwitch':
+        opponent_action = {}
+    else:
+        opponent_action = get_opponent_ai_action(battle)
+
+    battle.execute_turn(player_action, opponent_action)
+
+
+def _handle_item(request, battle, trainer, response_data):
+    """
+    Utilisation d'un objet.
+    Pokeball → pré-calcul shakes + stockage session (confirm_capture finalise).
+    Autre    → soin/antidote exécuté immédiatement.
+
+    Retourne (response, early_return) où early_return=True signifie qu'on
+    doit renvoyer la réponse immédiatement sans rebuild.
+    """
+    from myPokemonApp.gameUtils import calculate_capture_rate, calculate_shake_count
+    from myPokemonApp.models import PokeballItem
+
+    inv  = get_object_or_404(TrainerInventory, pk=request.POST.get('item_id'))
+    item = inv.item
+
+    if item.item_type == 'pokeball':
+        if battle.battle_type != 'wild':
+            response_data['log'] = ["Vous ne pouvez pas capturer le Pokémon d'un dresseur !"]
+            return True  # early return
+
+        opponent   = battle.opponent_pokemon
+        hp_percent = opponent.current_hp / opponent.max_hp
+        cap_rate   = calculate_capture_rate(
+            opponent, item, hp_percent, opponent.status_condition
+        )
+
+        guaranteed = False
+        try:
+            guaranteed = PokeballItem.objects.get(item=item).guaranteed_capture
+        except PokeballItem.DoesNotExist:
+            pass
+
+        if guaranteed:
+            shakes, success = 3, True
+        else:
+            shakes, success = calculate_shake_count(cap_rate)
+
+        request.session['pending_capture'] = {
+            'item_id': inv.pk,
+            'success': success,
+            'shakes':  shakes,
+            'message': (
+                f"{opponent.species.name} a été capturé !" if success
+                else f"{opponent.species.name} s'est échappé après {shakes} shake(s) !"
+            ),
+        }
+        request.session.modified = True
+
+        response_data['capture_attempt'] = {
+            'pokemon':         {'species_name': opponent.species.name, 'level': opponent.level},
+            'ball_type':       item.name.lower().replace(' ', ''),
+            'capture_rate':    cap_rate,
+            'shakes':          shakes,
+            'success':         success,
+            'start_animation': True,
+            'is_shiny':        opponent.is_shiny,
+        }
+        return True  # early return
+
+    # Objet normal (potion, antidote, …)
+    player_action   = {'type': 'item', 'item': item, 'target': battle.player_pokemon}
+    opponent_action = get_opponent_ai_action(battle)
+    battle.execute_turn(player_action, opponent_action)
+
+    # Consommer l'objet si consommable (pokéball déjà gérée dans confirm_capture)
+    if item.is_consumable:
+        inv.quantity -= 1
+        if inv.quantity <= 0:
+            inv.delete()
+        else:
+            inv.save(update_fields=['quantity'])
+            
+    return False
+
+
+def _handle_confirm_capture(request, battle, trainer, response_data):
+    """
+    Finalise la capture après que l'animation client est terminée.
+    Utilise le résultat pré-calculé en session (pas de nouveau random).
+    Retourne True → early return.
+    """
+    from myPokemonApp.gameUtils import _capture_success, calculate_capture_rate
+    from myPokemonApp.models import CaptureAttempt
+
+    pending = request.session.pop('pending_capture', None)
+
+    if pending is None:
+        # Session expirée : fallback avec un nouveau tirage
+        inv    = get_object_or_404(TrainerInventory, pk=request.POST.get('item_id'))
+        result = attempt_pokemon_capture(battle, ball_item=inv.item, trainer=trainer)
+        inv    = get_object_or_404(TrainerInventory, pk=request.POST.get('item_id'))
+    else:
+        inv  = get_object_or_404(TrainerInventory, pk=pending['item_id'])
+        item = inv.item
+        if pending['success']:
+            opponent   = battle.opponent_pokemon
+            hp_percent = opponent.current_hp / opponent.max_hp
+            cap_rate   = calculate_capture_rate(
+                opponent, item, hp_percent, opponent.status_condition
+            )
+            attempt = CaptureAttempt.objects.create(
+                trainer=trainer,
+                pokemon_species=opponent.species,
+                ball_used=item,
+                pokemon_level=opponent.level,
+                pokemon_hp_percent=hp_percent,
+                pokemon_status=opponent.status_condition,
+                capture_rate=cap_rate,
+                battle=battle,
+                success=False,
+                shakes=pending['shakes'],
+            )
+            result = _capture_success(
+                battle, opponent, item, trainer, attempt, shakes=pending['shakes']
+            )
+        else:
+            result = {
+                'success':          False,
+                'capture_rate':     0,
+                'shakes':           pending['shakes'],
+                'message':          pending['message'],
+                'captured_pokemon': None,
+            }
+
+    # Consommer la ball
+    inv.quantity -= 1
+    if inv.quantity == 0:
+        inv.delete()
+    else:
+        inv.save(update_fields=['quantity'])
+
+    if not result['success']:
+        opponent_action = get_opponent_ai_action(battle)
+        battle.execute_turn({'type': 'PokeBall'}, opponent_action)
+
+    response_data['capture_result'] = result
+    response_data['battle_ended']   = result['success']
+    response_data['log']            = [result['message']]
+    if result['success']:
+        response_data['result'] = 'capture'
+    return True  # early return
+
+
+def _handle_confirm_evolution(request, battle, trainer, response_data):
+    """
+    Applique l'évolution après que l'animation client est terminée.
+    Retourne True → early return.
+    """
+    from myPokemonApp.models.PokemonEvolution import PokemonEvolution
+
+    evolution_id = request.POST.get('evolution_id')
+    evolution    = get_object_or_404(PokemonEvolution, pk=evolution_id)
+    pokemon      = battle.player_pokemon
+
+    if evolution.pokemon != pokemon.species:
+        return None  # will raise 400 in caller
+
+    new_species = evolution.evolves_to
+    evolve_msg  = pokemon.evolve_to(new_species)
+
+    battle.refresh_from_db()
+    resp = build_battle_response(battle)
+    resp['log']         = [evolve_msg]
+    resp['evolved']     = True
+    resp['new_species'] = new_species.name
+    resp['stats_after'] = {
+        'hp':              pokemon.max_hp,
+        'attack':          pokemon.attack,
+        'defense':         pokemon.defense,
+        'special_attack':  pokemon.special_attack,
+        'special_defense': pokemon.special_defense,
+        'speed':           pokemon.speed,
+    }
+    return resp  # caller returns JsonResponse(resp)
+
+
+# Dispatch table — mappe action_type → handler
+_ACTION_HANDLERS = {
+    'attack':           _handle_attack,
+    'flee':             _handle_flee,
+    'switch':           _handle_switch,
+    'item':             _handle_item,
+    'confirm_capture':  _handle_confirm_capture,
+    'confirm_evolution': _handle_confirm_evolution,
+}
+
+
 @login_required
 def battle_action_view(request, pk):
     """
-    API POST pour executer une action de combat.
-    Retourne du JSON pour mise a jour en temps reel par le client.
+    API POST pour exécuter une action de combat.
+    Retourne du JSON pour mise à jour en temps réel par le client.
 
-    Actions supportees :
-      attack          : attaquer avec un move
-      flee            : tenter de fuir
-      switch          : changer de Pokemon (normal ou force apres KO)
-      item            : utiliser un objet (pokeball -> pre-animation capture)
-      confirm_capture : effectuer la capture apres l'animation cote client
+    Actions supportées :
+      attack           : attaquer avec un move
+      flee             : tenter de fuir
+      switch           : changer de Pokémon (normal ou forcé après KO)
+      item             : utiliser un objet (pokeball → pré-animation capture)
+      confirm_capture  : finaliser la capture après l'animation côté client
+      confirm_evolution: appliquer l'évolution après l'animation côté client
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -171,277 +451,37 @@ def battle_action_view(request, pk):
     if battle.player_trainer != trainer:
         return JsonResponse({'error': 'Not your battle'}, status=403)
 
-    if not battle.is_active:
-        # confirm_evolution et confirm_capture peuvent arriver après la fin
-        # (animation côté client encore en cours quand le serveur clôt le combat)
-        action_type = request.POST.get('action')
-        if action_type not in ('confirm_evolution', 'confirm_capture'):
-            return JsonResponse({'error': 'Battle already ended'}, status=400)
+    action_type = request.POST.get('action')
 
-    action_type   = request.POST.get('action')
+    if not battle.is_active and action_type not in ('confirm_evolution', 'confirm_capture'):
+        return JsonResponse({'error': 'Battle already ended'}, status=400)
+
+    handler = _ACTION_HANDLERS.get(action_type)
+    if handler is None:
+        return JsonResponse({'error': f'Unknown action: {action_type}'}, status=400)
+
     response_data = build_battle_response(battle)
 
     try:
-        # ------------------------------------------------------------------
-        if action_type == 'attack':
-            move         = get_object_or_404(PokemonMove, pk=request.POST.get('move_id'))
-            player_action   = {'type': 'attack', 'move': move}
-            opponent_action = get_opponent_ai_action(battle)
+        result = handler(request, battle, trainer, response_data)
 
-            battle.execute_turn(player_action, opponent_action)
-
-            if battle.opponent_pokemon.current_hp == 0:
-                btype      = 'trainer' if battle.opponent_trainer else 'wild'
-                exp_amount = calculate_exp_gain(
-                    battle.opponent_pokemon, btype,
-                    winner_pokemon=battle.player_pokemon   # Gen 5+ : niveau du vainqueur
-                )
-                exp_result = apply_exp_gain(battle.player_pokemon, exp_amount)
-
-                # Gains d'EVs (Effort Values) — Gen 3+
-                apply_ev_gains(battle.player_pokemon, battle.opponent_pokemon)
-
-                response_data['log'].append(f"+{exp_amount} EXP")
-                if exp_result['level_up']:
-                    response_data['log'].append(f"Level {exp_result['new_level']} !")
-                for move_name in exp_result.get('learned_moves', []):
-                    response_data['log'].append(f"{battle.player_pokemon.species.name} apprend {move_name} !")
-
-                # Moves en attente d'apprentissage (pokemon a deja 4 moves)
-                if exp_result.get('pending_moves'):
-                    response_data['pending_moves'] = exp_result['pending_moves']
-
-                # Évolution en attente (prioritaire sur la fin de combat)
-                if exp_result.get('pending_evolution'):
-                    response_data['pending_evolution'] = exp_result['pending_evolution']
-
-                # Switch adversaire si dresseur avec d'autres Pokemon
-                if battle.opponent_trainer:
-                    new_opponent = opponent_switch_pokemon(battle)
-                    if new_opponent:
-                        response_data['log'].append(
-                            f"Adversaire envoie {new_opponent.species.name} !"
-                        )
-                    else:
-                        battle.is_active = False
-                        battle.winner    = battle.player_trainer
-                        battle.save()
-                        response_data['battle_ended'] = True
-                        response_data['result']       = 'victory'
-                else:
-                    battle.is_active = False
-                    battle.winner    = battle.player_trainer
-                    battle.save()
-                    response_data['battle_ended'] = True
-                    response_data['result']       = 'victory'
-
-        # ------------------------------------------------------------------
-        elif action_type == 'flee':
-            success = battle.attempt_flee()
-            response_data['fled'] = success
-            if success:
-                # Le joueur fuit = victoire morale, on marque le combat terminé
-                battle.is_active = False
-                battle.winner = battle.player_trainer
-                battle.save()
-                response_data['log']          = ['Vous avez reussi a fuir !']
-                response_data['battle_ended'] = True
-                response_data['result']       = 'fled'
-            else:
-                response_data['log'] = ['Echec dans la fuite !']
-
-        # ------------------------------------------------------------------
-        elif action_type == 'switch':
-            new_pokemon = get_object_or_404(
-                PlayablePokemon, pk=request.POST.get('pokemon_id'), trainer=trainer
-            )
-            player_action = {'type': 'switch', 'pokemon': new_pokemon}
-
-            # Switch force (apres KO) : l'adversaire ne joue pas ce tour
-            if request.POST.get('type') == 'forcedSwitch':
-                opponent_action = {}
-            else:
-                opponent_action = get_opponent_ai_action(battle)
-
-            battle.execute_turn(player_action, opponent_action)
-
-        # ------------------------------------------------------------------
-        elif action_type == 'item':
-            inv  = get_object_or_404(TrainerInventory, pk=request.POST.get('item_id'))
-            item = inv.item
-
-            if item.item_type == 'pokeball':
-                # if battle.opponent_trainer:
-                if battle.battle_type != "wild":
-                    response_data['log'] = ["Vous ne pouvez pas capturer le Pokemon d'un dresseur !"]
-                    return JsonResponse(response_data)
-
-                # Phase 1 : calculer shakes + résultat (formule Gen 3) SANS toucher
-                # à la battle ni créer de CaptureAttempt.
-                # La vraie capture (avec effets DB) se fait dans confirm_capture,
-                # après l'animation côté client.
-                from myPokemonApp.gameUtils import calculate_capture_rate, calculate_shake_count
-                from myPokemonApp.models import PokeballItem
-
-                opponent   = battle.opponent_pokemon
-                hp_percent = opponent.current_hp / opponent.max_hp
-                cap_rate   = calculate_capture_rate(
-                    opponent, item, hp_percent, opponent.status_condition
-                )
-
-                # Master Ball → capture garantie, 3 shakes visuels
-                guaranteed = False
-                try:
-                    guaranteed = PokeballItem.objects.get(item=item).guaranteed_capture
-                except PokeballItem.DoesNotExist:
-                    pass
-
-                if guaranteed:
-                    shakes, success = 3, True
-                else:
-                    shakes, success = calculate_shake_count(cap_rate)
-
-                # Stocker en session : confirm_capture utilisera ce résultat
-                request.session['pending_capture'] = {
-                    'item_id': inv.pk,
-                    'success': success,
-                    'shakes':  shakes,
-                    'message': (
-                        f"{opponent.species.name} a été capturé !" if success
-                        else f"{opponent.species.name} s'est échappé après {shakes} shake(s) !"
-                    ),
-                }
-                request.session.modified = True
-
-                response_data['capture_attempt'] = {
-                    'pokemon': {
-                        'species_name': opponent.species.name,
-                        'level':        opponent.level,
-                    },
-                    'ball_type':       item.name.lower().replace(' ', ''),
-                    'capture_rate':    cap_rate,
-                    'shakes':          shakes,
-                    'success':         success,
-                    'start_animation': True,
-                    'is_shiny':        opponent.is_shiny,
-                }
-                return JsonResponse(response_data)
-
-            else:
-                # Soin / antidote sur le Pokemon du joueur
-                player_action   = {'type': 'item', 'item': item, 'target': battle.player_pokemon}
-                opponent_action = get_opponent_ai_action(battle)
-                battle.execute_turn(player_action, opponent_action)
-
-        # ------------------------------------------------------------------
-        elif action_type == 'confirm_capture':
-            # L'animation est terminée côté client.
-            # On récupère le résultat pré-calculé en session (pas de nouveau random).
-            pending = request.session.pop('pending_capture', None)
-
-            if pending is None:
-                # Fallback sécurisé si la session a expiré
-                inv    = get_object_or_404(TrainerInventory, pk=request.POST.get('item_id'))
-                item   = inv.item
-                result = attempt_pokemon_capture(battle, ball_item=item, trainer=trainer)
-            else:
-                inv  = get_object_or_404(TrainerInventory, pk=pending['item_id'])
-                item = inv.item
-                if pending['success']:
-                    # Déclencher la vraie capture sans re-tirer les dés
-                    from myPokemonApp.gameUtils import _capture_success
-                    from myPokemonApp.models import CaptureAttempt
-                    opponent   = battle.opponent_pokemon
-                    hp_percent = opponent.current_hp / opponent.max_hp
-                    from myPokemonApp.gameUtils import calculate_capture_rate
-                    cap_rate = calculate_capture_rate(
-                        opponent, item, hp_percent, opponent.status_condition
-                    )
-                    attempt = CaptureAttempt.objects.create(
-                        trainer=trainer,
-                        pokemon_species=opponent.species,
-                        ball_used=item,
-                        pokemon_level=opponent.level,
-                        pokemon_hp_percent=hp_percent,
-                        pokemon_status=opponent.status_condition,
-                        capture_rate=cap_rate,
-                        battle=battle,
-                        success=False,
-                        shakes=pending['shakes'],
-                    )
-                    result = _capture_success(
-                        battle, opponent, item, trainer, attempt,
-                        shakes=pending['shakes']
-                    )
-                else:
-                    result = {
-                        'success':          False,
-                        'capture_rate':     0,
-                        'shakes':           pending['shakes'],
-                        'message':          pending['message'],
-                        'captured_pokemon': None,
-                    }
-
-            # Consommer la ball dans l'inventaire
-            inv.quantity -= 1
-            if inv.quantity == 0:
-                inv.delete()
-            else:
-                inv.save()
-
-            # L'adversaire attaque si la capture échoue
-            # (_capture_success gère déjà battle.is_active + battle.winner pour le succès)
-            if not result['success']:
-                opponent_action = get_opponent_ai_action(battle)
-                battle.execute_turn({'type': 'PokeBall'}, opponent_action)
-
-            response_data['capture_result'] = result
-            response_data['battle_ended']   = result['success']
-            response_data['log']            = [result['message']]
-            if result['success']:
-                response_data['result'] = 'capture'
-
-            return JsonResponse(response_data)
-
-        # ------------------------------------------------------------------
-        elif action_type == 'confirm_evolution':
-            # Le client a termine l'animation, on applique l'evolution.
-            from myPokemonApp.models.PokemonEvolution import PokemonEvolution
-            from myPokemonApp.models import Pokemon as PokemonSpecies
-
-            evolution_id = request.POST.get('evolution_id')
-            evolution    = get_object_or_404(PokemonEvolution, pk=evolution_id)
-            pokemon      = battle.player_pokemon
-
-            # Sécurité : vérifier que l'évolution concerne bien ce pokémon
-            if evolution.pokemon != pokemon.species:
+        # ── Cas spéciaux : early return ou réponse pré-construite ───────────
+        if action_type == 'confirm_evolution':
+            if result is None:
                 return JsonResponse({'error': 'Evolution invalide'}, status=400)
+            if isinstance(result, dict):
+                return JsonResponse(result)
 
-            old_name    = pokemon.species.name
-            new_species = evolution.evolves_to
-            evolve_msg  = pokemon.evolve_to(new_species)
-
-            battle.refresh_from_db()
-            response_data = build_battle_response(battle)
-            response_data['log']         = [evolve_msg]
-            response_data['evolved']     = True
-            response_data['new_species'] = new_species.name
-            # Stats après évolution pour les afficher dans le modal
-            response_data['stats_after'] = {
-                'hp':              pokemon.max_hp,
-                'attack':          pokemon.attack,
-                'defense':         pokemon.defense,
-                'special_attack':  pokemon.special_attack,
-                'special_defense': pokemon.special_defense,
-                'speed':           pokemon.speed,
-            }
+        if action_type in ('confirm_capture', 'item') and result is True:
             return JsonResponse(response_data)
+
+        # ── Rebuild de la réponse après exécution du tour ───────────────────
         battle.refresh_from_db()
-        ended_before       = response_data.get('battle_ended', False)
-        result_before      = response_data.get('result')
-        extra_logs         = response_data.get('log', [])
-        pending_evolution  = response_data.get('pending_evolution')   # ← sauvegarder
-        pending_moves      = response_data.get('pending_moves')       # ← sauvegarder
+        ended_before      = response_data.get('battle_ended', False)
+        result_before     = response_data.get('result')
+        extra_logs        = list(response_data.get('log', []))
+        pending_evolution = response_data.get('pending_evolution')
+        pending_moves     = response_data.get('pending_moves')
 
         response_data = build_battle_response(battle)
 
@@ -449,23 +489,21 @@ def battle_action_view(request, pk):
             response_data['battle_ended'] = True
         if result_before:
             response_data['result'] = result_before
-        if pending_evolution:                                          # ← réinjecter
+        if pending_evolution:
             response_data['pending_evolution'] = pending_evolution
-        if pending_moves:                                              # ← réinjecter
+        if pending_moves:
             response_data['pending_moves'] = pending_moves
 
-        # Logs recents depuis le journal de combat
+        # Logs récents depuis le journal de combat
         if battle.battle_log:
             battle_log_messages = [entry['message'] for entry in battle.battle_log[-5:]]
-            # Fusionner : d'abord les messages du journal, puis les extras (EXP/level-up)
-            # qui ne sont pas déjà dans le journal
-            seen = set(battle_log_messages)
+            seen   = set(battle_log_messages)
             merged = battle_log_messages + [m for m in extra_logs if m not in seen]
             response_data['log'] = merged
         elif extra_logs:
             response_data['log'] = extra_logs
 
-        # Verification finale de fin de combat (seulement si pas deja termine)
+        # Vérification finale de fin de combat
         if not response_data.get('battle_ended'):
             is_ended, winner, end_message = check_battle_end(battle)
             if is_ended:
@@ -474,12 +512,11 @@ def battle_action_view(request, pk):
                 response_data['result']       = 'victory' if winner == battle.player_trainer else 'defeat'
                 response_data['log'].append(end_message)
 
-    except Exception as e:
-        import traceback
+    except Exception as exc:
         traceback.print_exc()
         response_data['success'] = False
-        response_data['error']   = str(e)
-        response_data['log']     = [f'Erreur : {str(e)}']
+        response_data['error']   = str(exc)
+        response_data['log']     = [f'Erreur : {exc}']
 
     return JsonResponse(response_data)
 
@@ -496,7 +533,7 @@ def battle_create_view(request):
       2. Dresseurs NPC
       3. Champions d'Arene
     """
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
 
     save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
 
@@ -526,7 +563,6 @@ def battle_create_view(request):
 
 @login_required
 def battle_create_wild_view(request):
-    import random
     """
     Cree un combat contre un Pokemon sauvage aleatoire (ou specifique en mode debug).
 
@@ -537,7 +573,7 @@ def battle_create_wild_view(request):
     if request.method != 'POST':
         return redirect('BattleCreateView')
 
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
     player_pokemon = get_first_alive_pokemon(player_trainer)
 
     if not player_pokemon:
@@ -580,7 +616,7 @@ def battle_create_wild_view(request):
 @login_required
 def battle_create_trainer_view(request, trainer_id):
     """Cree un combat contre un dresseur NPC."""
-    player_trainer   = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer   = get_player_trainer(request.user)
     opponent_trainer = get_object_or_404(Trainer, pk=trainer_id, is_npc=True)
 
     # Vérifier que le joueur est bien dans la zone du dresseur
@@ -638,7 +674,7 @@ def battle_create_gym_view(request):
     if request.method != 'POST':
         return redirect('BattleCreateView')
 
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
     gym_leader_id  = request.POST.get('gym_leader_id')
 
     try:
@@ -708,7 +744,7 @@ def battle_challenge_gym_view(request, gym_leader_id):
     Accessible via GET  /battle/gym/<id>/challenge/
     Vérifie que le joueur est bien dans la ville de l'arène.
     """
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
 
     try:
         gym_leader = GymLeader.objects.select_related('trainer').get(pk=gym_leader_id)
@@ -783,7 +819,7 @@ def battle_trainer_complete_view(request, battle_id):
     Distribue les recompenses, enregistre l'historique, declenche les achievements.
     """
     battle         = get_object_or_404(Battle, pk=battle_id)
-    player_trainer = get_object_or_404(Trainer, username=request.user.username)
+    player_trainer = get_player_trainer(request.user)
 
     if battle.player_trainer != player_trainer:
         return redirect('home')
@@ -845,23 +881,21 @@ def battle_trainer_complete_view(request, battle_id):
             battle=battle,
             money_earned=money_earned,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Impossible de créer l'historique de combat : %s", exc)
 
     try:
         save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
         if save and player_won and opponent:
             save.add_defeated_trainer(opponent.id)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Impossible de marquer le dresseur %s comme battu : %s", opponent, exc)
 
     # =========================================================
     # QUÊTES — defeat_trainer / defeat_gym
     # =========================================================
     if player_won and opponent:
         try:
-            from myPokemonApp.questEngine import trigger_quest_event
-
             # Tout combat contre un dresseur
             quest_notifs = trigger_quest_event(
                 player_trainer, 'defeat_trainer', trainer_id=opponent.id
@@ -887,8 +921,8 @@ def battle_trainer_complete_view(request, battle_id):
                         msg += f" · Objet reçu : {notif['reward_item']}"
                     messages.success(request, msg)
 
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Erreur déclenchement quêtes post-combat : %s", exc)
 
     # =========================================================
     # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
@@ -999,7 +1033,12 @@ def GetTrainerTeam(request):
 def GetTrainerItems(request):
     """Retourne les objets du dresseur avec leurs quantites."""
     trainer  = get_object_or_404(Trainer, pk=request.GET.get('trainer_id'))
-    inventory = TrainerInventory.objects.filter(trainer=trainer, quantity__gt=0)
+    BATTLE_USABLE_TYPES = ('potion', 'pokeball', 'status', 'battle')
+    inventory = TrainerInventory.objects.filter(
+        trainer=trainer,
+        quantity__gt=0,
+        item__item_type__in=BATTLE_USABLE_TYPES,
+    ).select_related('item') #avoid showing quest or key items
 
     items_data = [
         {'id': inv.id, 'name': inv.item.name, 'quantity': inv.quantity, 

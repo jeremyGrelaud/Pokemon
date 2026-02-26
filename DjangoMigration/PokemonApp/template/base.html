@@ -150,8 +150,8 @@
         </li>
 
         <!-- Centre Pokémon -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'CaptureJournalView' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'CaptureJournalView' %}">
+        <li class="nav-item {% if request.resolver_match.url_name == 'capture_journal' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'capture_journal' %}">
             <i class="fas fa-book"></i>
             <span>Journal de captures</span>
           </a>

@@ -9,6 +9,31 @@ from .Item import Item
 from .PokemonMove import PokemonMove
 import random
 
+
+# Constante module-level
+NATURE_MODIFIERS = {
+    'Lonely':  ('attack',         'defense'),
+    'Brave':   ('attack',         'speed'),
+    'Adamant': ('attack',         'special_attack'),
+    'Naughty': ('attack',         'special_defense'),
+    'Bold':    ('defense',        'attack'),
+    'Relaxed': ('defense',        'speed'),
+    'Impish':  ('defense',        'special_attack'),
+    'Lax':     ('defense',        'special_defense'),
+    'Timid':   ('speed',          'attack'),
+    'Hasty':   ('speed',          'defense'),
+    'Jolly':   ('speed',          'special_attack'),
+    'Naive':   ('speed',          'special_defense'),
+    'Modest':  ('special_attack', 'attack'),
+    'Mild':    ('special_attack', 'defense'),
+    'Quiet':   ('special_attack', 'speed'),
+    'Rash':    ('special_attack', 'special_defense'),
+    'Calm':    ('special_defense', 'attack'),
+    'Gentle':  ('special_defense', 'defense'),
+    'Sassy':   ('special_defense', 'speed'),
+    'Careful': ('special_defense', 'special_attack'),
+}
+
 class PlayablePokemon(models.Model):
     """Pokémon possédé par un dresseur"""
     
@@ -172,36 +197,6 @@ class PlayablePokemon(models.Model):
             ((2 * self.species.base_hp + self.iv_hp + self.ev_hp // 4) * L) // 100
             + L + 10
         )
-
-        # Table des natures : (stat boostée, stat réduite) → multiplicateurs
-        # Nature neutre (Hardy, Docile, Serious, Bashful, Quirky) : 1.0 partout
-        NATURE_MODIFIERS = {
-            # Attaque +
-            'Lonely':  ('attack', 'defense'),
-            'Brave':   ('attack', 'speed'),
-            'Adamant': ('attack', 'special_attack'),
-            'Naughty': ('attack', 'special_defense'),
-            # Défense +
-            'Bold':    ('defense', 'attack'),
-            'Relaxed': ('defense', 'speed'),
-            'Impish':  ('defense', 'special_attack'),
-            'Lax':     ('defense', 'special_defense'),
-            # Vitesse +
-            'Timid':   ('speed', 'attack'),
-            'Hasty':   ('speed', 'defense'),
-            'Jolly':   ('speed', 'special_attack'),
-            'Naive':   ('speed', 'special_defense'),
-            # Att. Spé +
-            'Modest':  ('special_attack', 'attack'),
-            'Mild':    ('special_attack', 'defense'),
-            'Quiet':   ('special_attack', 'speed'),
-            'Rash':    ('special_attack', 'special_defense'),
-            # Déf. Spé +
-            'Calm':    ('special_defense', 'attack'),
-            'Gentle':  ('special_defense', 'defense'),
-            'Sassy':   ('special_defense', 'speed'),
-            'Careful': ('special_defense', 'special_attack'),
-        }
 
         boosted_stat, reduced_stat = NATURE_MODIFIERS.get(self.nature, (None, None))
 

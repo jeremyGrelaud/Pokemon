@@ -5,7 +5,7 @@ Vues pour les bâtiments multi-étages (Tour Pokémon, Sylphe SARL, etc.)
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from myPokemonApp.models import Zone, ZoneFloor, Battle, WildPokemonSpawn
+from myPokemonApp.models import Zone, ZoneFloor, Battle, WildPokemonSpawn, Trainer
 from myPokemonApp.gameUtils import (
     get_player_trainer, get_player_location, get_defeated_trainer_ids,
     get_random_wild_pokemon, create_wild_pokemon, get_first_alive_pokemon,
@@ -45,7 +45,6 @@ def floor_detail_view(request, zone_id, floor_number):
     # Dresseurs sur cet étage
     # Convention : Trainer.location = "<zone_name>-<floor_number>"
     floor_location_key = f"{zone.name}-{floor_number}"
-    from myPokemonApp.models import Trainer
     trainers_on_floor = Trainer.objects.filter(
         is_npc=True, location=floor_location_key
     )
