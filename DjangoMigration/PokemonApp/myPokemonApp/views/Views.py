@@ -4,13 +4,20 @@ Views Django pour l'application Pokémon Gen 1
 Adapté aux nouveaux modèles
 """
 
+import logging
+import random
+
 from django.views import generic
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from myPokemonApp.gameUtils import get_or_create_player_trainer, create_starter_pokemon, give_item_to_trainer, grant_pokedex
+from myPokemonApp.models import GameSave
+from myPokemonApp.questEngine import get_active_quests, complete_quest, get_quest_progress
 from ..models import *
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # CLASSE DE BASE
@@ -65,7 +72,6 @@ class DashboardView(generic.TemplateView):
             badge_order__gt=badges
         ).order_by('badge_order').first()
 
-        from myPokemonApp.questEngine import get_active_quests
         context['active_quests'] = get_active_quests(trainer)[:3]
         
         context.update({
@@ -94,8 +100,6 @@ def choose_starter_view(request):
     Le tirage shiny est effectué à l'affichage (GET) et mémorisé en session,
     de sorte que le joueur voit déjà les sprites chromatiques avant de choisir.
     """
-    import random
-
     trainer = get_or_create_player_trainer(request.user)
 
     # Si le joueur a déjà un Pokémon, rediriger vers le dashboard
@@ -153,7 +157,6 @@ def choose_starter_view(request):
         )
 
         # ── GameSave initial ──────────────────────────────────────────────────
-        from myPokemonApp.models import GameSave
         GameSave.objects.get_or_create(
             trainer=trainer,
             slot=1,
@@ -170,15 +173,13 @@ def choose_starter_view(request):
         # On la complète ici pour débloquer automatiquement la chaîne suivante
         # (get_oaks_parcel → give_parcel_to_oak → …) via _unlock_dependent_quests.
         try:
-            from myPokemonApp.questEngine import complete_quest, get_quest_progress
             complete_quest(trainer, 'start_journey')
             # Force la création du QuestProgress pour la quête suivante afin
             # qu'elle apparaisse immédiatement dans le journal.
             get_quest_progress(trainer, 'get_oaks_parcel')
         except Exception as exc:   # noqa: BLE001
             # Ne jamais bloquer le choix du starter pour une erreur de quête
-            import logging
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "Erreur lors de l'initialisation des quêtes pour %s : %s",
                 trainer.username, exc,
             )

@@ -106,6 +106,17 @@ def ensure_has_moves(pokemon):
 # 3. CREATION DE POKEMON
 # =============================================================================
 
+def generate_random_nature():
+    """Genere une nature aleatoire parmi les 25 natures."""
+    return random.choice([
+        'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
+        'Bold',  'Docile', 'Relaxed', 'Impish', 'Lax',
+        'Timid', 'Hasty',  'Serious', 'Jolly',  'Naive',
+        'Modest','Mild',   'Quiet',   'Bashful','Rash',
+        'Calm',  'Gentle', 'Sassy',   'Careful','Quirky',
+    ])
+
+
 def _build_ivs(iv_min=0, iv_max=31):
     """Genere un dict d'IVs aleatoires entre iv_min et iv_max."""
     iv_stats = ('iv_hp', 'iv_attack', 'iv_defense',
@@ -151,6 +162,7 @@ def create_wild_pokemon(species, level, location=None):
         caught_location=location,
         is_in_party=True,
         is_shiny=is_shiny,
+        nature=generate_random_nature(),
         **_build_ivs(0, 31)
     )
     _finalize_pokemon(pokemon, level)
@@ -175,6 +187,7 @@ def create_starter_pokemon(species, trainer, nickname=None, is_shiny=False):
         caught_location='Pallet Town',
         party_position=1,
         is_shiny=is_shiny,
+        nature=generate_random_nature(),
         **_build_ivs(10, 31)
     )
     return _finalize_pokemon(pokemon, 5)
@@ -199,6 +212,7 @@ def _create_npc_pokemon(species, trainer, level, username, party_position,
         original_trainer=username,
         is_in_party=True,
         party_position=party_position,
+        nature=generate_random_nature(),
         **_build_ivs(iv_min, iv_max)
     )
     pokemon.calculate_stats()
@@ -1210,6 +1224,22 @@ def heal_team(trainer):
             mi.restore_pp()
 
 
+def cleanup_orphan_wild_pokemon():
+    """
+    Supprime les PlayablePokemon sauvages orphelins (trainer 'Wild' ou 'wild_pokemon')
+    qui ne sont plus liés à aucun combat actif.
+
+    À appeler avant de créer un nouveau combat sauvage pour éviter
+    l'accumulation de lignes inutiles en base.
+    """
+    active_wild_ids = Battle.objects.filter(
+        is_active=True
+    ).values_list('opponent_pokemon_id', flat=True)
+    PlayablePokemon.objects.filter(
+        trainer__username__in=('Wild', 'wild_pokemon')
+    ).exclude(id__in=active_wild_ids).delete()
+
+
 def deposit_pokemon(pokemon):
     """Depose un Pokemon dans le PC (retire de l'equipe active)."""
     pokemon.is_in_party    = False
@@ -1228,17 +1258,6 @@ def withdraw_pokemon(pokemon, position):
     pokemon.party_position = position
     pokemon.save()
     return True, f"{pokemon} a ete ajoute a l'equipe !"
-
-
-def generate_random_nature():
-    """Genere une nature aleatoire parmi les 25 natures."""
-    return random.choice([
-        'Hardy', 'Lonely', 'Brave', 'Adamant', 'Naughty',
-        'Bold',  'Docile', 'Relaxed', 'Impish', 'Lax',
-        'Timid', 'Hasty',  'Serious', 'Jolly',  'Naive',
-        'Modest','Mild',   'Quiet',   'Bashful','Rash',
-        'Calm',  'Gentle', 'Sassy',   'Careful','Quirky',
-    ])
 
 
 def get_nature_modifiers(nature):
