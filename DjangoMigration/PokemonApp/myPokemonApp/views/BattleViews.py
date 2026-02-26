@@ -926,35 +926,39 @@ def battle_trainer_complete_view(request, battle_id):
             logging.getLogger(__name__).warning("Erreur déclenchement quêtes post-combat : %s", exc)
 
     # =========================================================
-    # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
+    # RÉSOLUTION DE LA ZONE COURANTE (utilisée pour les boutons de retour)
     # =========================================================
-    if not player_won:
-        try:
-            # Trouver la zone avec Centre Pokémon
-            player_location = PlayerLocation.objects.get(trainer=player_trainer)
-            current_zone    = player_location.current_zone
+    # On récupère la PlayerLocation une seule fois ici pour éviter de
+    # faire plusieurs requêtes identiques plus bas.
+    try:
+        player_location = PlayerLocation.objects.get(trainer=player_trainer)
+        current_zone    = player_location.current_zone
+    except PlayerLocation.DoesNotExist:
+        player_location = None
+        current_zone    = None
 
-            # Chercher le centre le plus proche : d'abord la zone actuelle, sinon
-            # la première zone connectée avec un centre
-            if current_zone.has_pokemon_center:
+    # =========================================================
+    # DÉFAITE → soigner et téléporter vers le Centre Pokémon le plus proche
+    # =========================================================
+    if not player_won and player_location:
+        try:
+            # Chercher le centre le plus proche : d'abord la zone actuelle,
+            # sinon la première zone connectée avec un centre.
+            if current_zone and current_zone.has_pokemon_center:
                 center_zone = current_zone
             else:
-                # Chercher parmi les connexions directes
                 connected_ids = ZoneConnection.objects.filter(
                     from_zone=current_zone
                 ).values_list('to_zone_id', flat=True)
                 reverse_ids  = ZoneConnection.objects.filter(
                     to_zone=current_zone, is_bidirectional=True
                 ).values_list('from_zone_id', flat=True)
-                all_ids      = list(connected_ids) + list(reverse_ids)
+                all_ids = list(connected_ids) + list(reverse_ids)
 
-                center_zone = Zone.objects.filter(
-                    id__in=all_ids, has_pokemon_center=True
-                ).first()
-
-                if not center_zone:
-                    # Fallback: premier centre disponible
-                    center_zone = Zone.objects.filter(has_pokemon_center=True).first()
+                center_zone = (
+                    Zone.objects.filter(id__in=all_ids, has_pokemon_center=True).first()
+                    or Zone.objects.filter(has_pokemon_center=True).first()
+                )
 
             if center_zone:
                 player_location.current_zone = center_zone
@@ -962,23 +966,24 @@ def battle_trainer_complete_view(request, battle_id):
                     player_location.last_pokemon_center = center_zone
                 player_location.save()
 
-                # Sauvegarder la location dans la save active
                 save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
                 if save:
                     save.current_location = center_zone.name
                     save.save()
 
+                # Après défaite, le bouton "Retour" pointe vers le Centre Pokémon
+                current_zone = center_zone
+
                 messages.warning(
                     request,
                     f"Vous avez été soigné au Centre Pokémon de {center_zone.name}."
                 )
-
-        except PlayerLocation.DoesNotExist:
+        except Exception:
             pass
 
     dialogue = (
-        (opponent.defeat_text  or "Vous avez gagne...") if player_won
-        else (opponent.victory_text or "J'ai gagne !") if opponent
+        (opponent.defeat_text  or "Vous avez gagné...") if player_won
+        else (opponent.victory_text or "J'ai gagné !") if opponent
         else ""
     )
 
@@ -989,6 +994,7 @@ def battle_trainer_complete_view(request, battle_id):
         'money_earned': money_earned,
         'badge_earned': badge_earned,
         'dialogue':     dialogue,
+        'current_zone': current_zone,   # zone de retour (= Centre Pokémon si défaite)
     })
 
 

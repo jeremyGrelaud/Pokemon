@@ -48,8 +48,9 @@
             <a href="{% url 'BattleCreateView' %}" class="btn btn-primary">
               <i class="fas fa-redo"></i> Nouveau Combat
             </a>
-            <a href="{% url 'home' %}" class="btn btn-secondary">
-              <i class="fas fa-home"></i> Retour
+            <a href="{% if current_zone %}{% url 'zone_detail' current_zone.id %}{% else %}{% url 'home' %}{% endif %}" class="btn btn-secondary">
+              <i class="fas fa-map-marker-alt"></i>
+              {% if current_zone %}Retour à {{ current_zone.name }}{% else %}Accueil{% endif %}
             </a>
           </div>
         </div>
@@ -82,11 +83,12 @@
           </div>
           
           <div class="mt-4">
-            <a href="{% url 'PokemonCenterListView' %}" class="btn btn-warning">
-              <i class="fas fa-hospital"></i> Centre Pokémon
+            <a href="{% if current_zone %}{% url 'zone_detail' current_zone.id %}{% else %}{% url 'PokemonCenterListView' %}{% endif %}" class="btn btn-warning">
+              <i class="fas fa-hospital"></i>
+              {% if current_zone %}Aller au Centre Pokémon de {{ current_zone.name }}{% else %}Centre Pokémon{% endif %}
             </a>
             <a href="{% url 'home' %}" class="btn btn-secondary">
-              <i class="fas fa-home"></i> Retour
+              <i class="fas fa-home"></i> Accueil
             </a>
           </div>
         </div>
