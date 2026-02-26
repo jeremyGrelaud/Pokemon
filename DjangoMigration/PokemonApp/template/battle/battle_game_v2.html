@@ -25,7 +25,7 @@
   <div class="trainer-intro-sprite-wrap" id="trainer-intro-sprite-wrap">
     <img id="trainer-intro-sprite"
          class="trainer-intro-sprite"
-         src="{% static 'img/trainer_sprites/' %}{{ battle.opponent_trainer.sprite_name }}.png"
+         src="{% static 'img/trainer_sprites/' %}{{ battle.opponent_trainer|trainer_sprite_path }}"
          alt="{{ battle.opponent_trainer.get_full_title }}"
          onerror="this.style.display='none'; document.getElementById('trainer-intro-fallback').style.display='flex'">
     <!-- Fallback if no sprite found -->

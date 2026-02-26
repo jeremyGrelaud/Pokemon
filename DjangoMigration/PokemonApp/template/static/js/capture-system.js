@@ -104,6 +104,12 @@ class CaptureSystem {
     // Phase 4: Animer exactement numShakes shakes (résultat du serveur)
     for (let i = 0; i < numShakes; i++) {
       pokeball.classList.add('shaking');
+      // Play a shake/wobble sound at the start of each shake
+      try {
+        if (typeof audioManager !== 'undefined' && audioManager) {
+          audioManager.playSFX('ui/SFX_TINK');
+        }
+      } catch(e) {}
       await this.wait(500);
       pokeball.classList.remove('shaking');
       await this.wait(300);
@@ -112,9 +118,11 @@ class CaptureSystem {
     // Phase 5: Succès ou échec selon le résultat serveur
     if (!success) {
       await this.showEscape(pokemon, pokeball);
+      audioManager.playSFX('capture/failed');
       this.onComplete({ success: false });
     } else {
       await this.showSuccess(pokeball);
+      audioManager.playSFX('capture/success');
       this.onComplete({ success: true });
     }
   }

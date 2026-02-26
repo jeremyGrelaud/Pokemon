@@ -517,19 +517,28 @@ function updateBattleState(data) {
   if (data.player_pokemon) {
     updatePokemonDisplay('player', data.player_pokemon);
   }
-  
-  if (data.opponent_pokemon) {
-    updatePokemonDisplay('opponent', data.opponent_pokemon);
-  }
-  
-  // Update HP
+
+  // Update HP first so faint animation triggers before switching opponent sprite
   if (data.player_hp !== undefined) {
     updateHP('player', data.player_hp, data.player_max_hp);
   }
-  
+
   if (data.opponent_hp !== undefined) {
     updateHP('opponent', data.opponent_hp, data.opponent_max_hp);
   }
+
+  // If opponent just fainted and a new opponent pokemon is incoming,
+  // delay the sprite swap so the death animation can play fully
+  if (data.opponent_pokemon) {
+    console.log(data.opponent_pokemon);
+    const opponentJustFainted = data.opponent_hp === 0;
+    if (opponentJustFainted) {
+      setTimeout(() => updatePokemonDisplay('opponent', data.opponent_pokemon), 1500);
+    } else {
+      updatePokemonDisplay('opponent', data.opponent_pokemon);
+    }
+  }
+
   
   // Add logs
   if (data.log && data.log.length > 0) {
@@ -701,7 +710,37 @@ function updateMovesMenu(moves) {
 
 // Mettre à jour EXP bar
 function updateExpBar(expPercent) {
-  $('.exp-bar-fill').css('width', expPercent + '%');
+  const bar = $('.exp-bar-fill');
+  const currentWidth = parseFloat(bar.css('width')) || 0;
+  const parentWidth = bar.parent().width() || 1;
+  const currentPercent = (currentWidth / parentWidth) * 100;
+
+  // Only animate and play sound if XP actually increased
+  if (expPercent > currentPercent + 0.5) {
+    // Play EXP gain sound
+    try { audioManager.playSFX('ui/exp_gain'); } catch(e) {}
+
+    // Restart shimmer + tip glow animations cleanly
+    bar.removeClass('exp-animating exp-pulse');
+    bar[0].offsetWidth; // force reflow
+    bar.addClass('exp-animating');
+
+    // Animate bar width
+    bar.css('transition', 'width 1s ease-out');
+    bar.css('width', expPercent + '%');
+
+    // After fill completes: swap shimmer for end pulse
+    setTimeout(() => {
+      bar.removeClass('exp-animating');
+      bar.addClass('exp-pulse');
+      setTimeout(() => bar.removeClass('exp-pulse'), 500);
+    }, 1050);
+
+    // Clean up transition override
+    setTimeout(() => bar.css('transition', ''), 1200);
+  } else {
+    bar.css('width', expPercent + '%');
+  }
 }
 
 
