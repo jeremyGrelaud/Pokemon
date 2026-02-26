@@ -11,6 +11,7 @@ const csrfToken  = BATTLE_CONFIG.csrfToken;
 
 // ID du Pokémon actuellement en combat — mis à jour à chaque switch
 let currentPlayerPokemonId = BATTLE_CONFIG.playerPokemonId;
+let currentOpponentPokemonId = BATTLE_CONFIG.opponentPokemonId;
 
 // ============================================================================
 // INITIALIZATION
@@ -527,13 +528,23 @@ function updateBattleState(data) {
     updateHP('opponent', data.opponent_hp, data.opponent_max_hp);
   }
 
-  // If opponent just fainted and a new opponent pokemon is incoming,
-  // delay the sprite swap so the death animation can play fully
+  // Opponent pokemon display:
+  // If the incoming pokemon has a different ID than the current one, the previous
+  // pokemon just fainted — trigger death animation on old sprite first, then swap.
   if (data.opponent_pokemon) {
-    console.log(data.opponent_pokemon);
-    const opponentJustFainted = data.opponent_hp === 0;
-    if (opponentJustFainted) {
-      setTimeout(() => updatePokemonDisplay('opponent', data.opponent_pokemon), 1500);
+    const isNewOpponent = data.opponent_pokemon.id !== currentOpponentPokemonId;
+    if (isNewOpponent) {
+      const oldSprite = $('#opponent-sprite');
+      oldSprite.addClass('fainted');
+      try { audioManager.playSFX('battle/faint'); } catch(e) {}
+
+      setTimeout(() => {
+        oldSprite.removeClass('fainted');
+        updatePokemonDisplay('opponent', data.opponent_pokemon);
+        // Slide-in entrance for the new pokemon
+        oldSprite.addClass('slide-in-opponent');
+        setTimeout(() => oldSprite.removeClass('slide-in-opponent'), 600);
+      }, 1400);
     } else {
       updatePokemonDisplay('opponent', data.opponent_pokemon);
     }
@@ -588,6 +599,9 @@ function updatePokemonDisplay(side, pokemonData) {
   // Mettre à jour l'ID du Pokémon actif si c'est le joueur
   if (side === 'player' && pokemonData.id) {
     currentPlayerPokemonId = pokemonData.id;
+  }
+  if (side === 'opponent' && pokemonData.id) {
+    currentOpponentPokemonId = pokemonData.id;
   }
   
   // IMPORTANT: Retirer la classe fainted si présente (fix du bug de sprite invisible)

@@ -577,8 +577,9 @@ window.BATTLE_CONFIG = {
   battleId:         {{ battle.id }},
   battleType:       '{{ battle.battle_type }}',
   csrfToken:        '{{ csrf_token }}',
-  playerPokemonId:  {{ battle.player_pokemon.id }},
-  playerTrainerId:  '{{ battle.player_trainer.id }}',
+  playerPokemonId:   {{ battle.player_pokemon.id }},
+  playerTrainerId:   '{{ battle.player_trainer.id }}',
+  opponentPokemonId: {{ battle.opponent_pokemon.id }},
   opponentSpeciesId: '{{ battle.opponent_pokemon.species.id }}',
   playerSpeciesId:   '{{ battle.player_pokemon.species.id }}',
 
