@@ -512,20 +512,26 @@ function loadTeam() {
 
 function updateBattleState(data) {
   console.log('Updating battle state:', data);
-  
-  // Vérifier si le switch a changé le Pokémon
+
+  // --- Turn info: was each side actually hit this turn? ---
+  // player_first=true + second_skipped=true → opponent KO'd first → player NOT hit
+  // player_first=false + second_skipped=true → player KO'd first → opponent NOT hit
+  const ti = data.turn_info || { player_first: true, second_skipped: false };
+  const playerWasHit   = !(ti.player_first  && ti.second_skipped);
+  const opponentWasHit = !(!ti.player_first && ti.second_skipped);
+
   // Update Pokemon data
   if (data.player_pokemon) {
     updatePokemonDisplay('player', data.player_pokemon);
   }
 
-  // Update HP first so faint animation triggers before switching opponent sprite
+  // Update HP with correct damage-animation flag
   if (data.player_hp !== undefined) {
-    updateHP('player', data.player_hp, data.player_max_hp);
+    updateHP('player', data.player_hp, data.player_max_hp, false, playerWasHit);
   }
 
   if (data.opponent_hp !== undefined) {
-    updateHP('opponent', data.opponent_hp, data.opponent_max_hp);
+    updateHP('opponent', data.opponent_hp, data.opponent_max_hp, false, opponentWasHit);
   }
 
   // Opponent pokemon display:
@@ -642,7 +648,7 @@ function updatePokemonDisplay(side, pokemonData) {
 }
 
 
-function updateHP(side, current, max, skipDamageAnimation = false) {
+function updateHP(side, current, max, skipDamageAnimation = false, wasHitThisTurn = true) {
   const percent = Math.floor((current / max) * 100);
   const bar = $(`#${side}-hp-bar`);
   
@@ -665,9 +671,9 @@ function updateHP(side, current, max, skipDamageAnimation = false) {
     $('#player-hp-max').text(max);
   }
   
-  // Damage animation (sauf si skip - pour éviter animation lors du switch)
+  // Damage animation: only if not skipped AND the side was actually hit this turn
   const sprite = $(`#${side}-sprite`);
-  if (!skipDamageAnimation && current < max) {
+  if (!skipDamageAnimation && wasHitThisTurn && current < max) {
     sprite.addClass('taking-damage');
     setTimeout(() => sprite.removeClass('taking-damage'), 600);
   }

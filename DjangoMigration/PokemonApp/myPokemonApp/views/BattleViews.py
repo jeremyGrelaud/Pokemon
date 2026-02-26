@@ -97,9 +97,26 @@ class BattleDetailView(generic.DetailView):
         if battle.battle_type == 'wild' or not battle.opponent_trainer:
             opponent_team = [battle.opponent_pokemon] if battle.opponent_pokemon else []
         else:
-            opponent_team = list(battle.opponent_trainer.pokemon_team.filter(
-                is_in_party=True
-            ).select_related('species', 'species__primary_type', 'species__secondary_type'))
+            # Utiliser les IDs trackés dans battle_state pour afficher uniquement
+            # les Pokémon réellement envoyés dans ce combat
+            bs = battle.battle_state if isinstance(battle.battle_state, dict) else {}
+            opponent_used_ids = bs.get('opponent_used_ids', [])
+            player_used_ids   = bs.get('player_used_ids', [])
+
+            if opponent_used_ids:
+                opponent_team = list(battle.opponent_trainer.pokemon_team.filter(
+                    id__in=opponent_used_ids
+                ).select_related('species', 'species__primary_type', 'species__secondary_type'))
+            else:
+                # Fallback legacy: équipe actuelle
+                opponent_team = list(battle.opponent_trainer.pokemon_team.filter(
+                    is_in_party=True
+                ).select_related('species', 'species__primary_type', 'species__secondary_type'))
+
+            if player_used_ids:
+                player_team = list(battle.player_trainer.pokemon_team.filter(
+                    id__in=player_used_ids
+                ).select_related('species', 'species__primary_type', 'species__secondary_type'))
 
         # Argent gagné depuis l'historique
         money_earned = 0
@@ -231,6 +248,15 @@ def _handle_switch(request, battle, trainer, response_data):
         PlayablePokemon, pk=request.POST.get('pokemon_id'), trainer=trainer
     )
     player_action = {'type': 'switch', 'pokemon': new_pokemon}
+
+    # Track player used pokemon IDs
+    bs = battle.battle_state if isinstance(battle.battle_state, dict) else {}
+    used = bs.get('player_used_ids', [])
+    if new_pokemon.id not in used:
+        used.append(new_pokemon.id)
+    bs['player_used_ids'] = used
+    battle.battle_state = bs
+    battle.save(update_fields=['battle_state'])
 
     # Switch forcé (après KO) : l'adversaire ne joue pas ce tour
     if request.POST.get('type') == 'forcedSwitch':

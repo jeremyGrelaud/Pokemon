@@ -494,17 +494,22 @@ class Battle(models.Model):
         if player_priority > opponent_priority:
             first  = (self.player_pokemon, player_action, self.opponent_pokemon)
             second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
+            player_first = True
         elif opponent_priority > player_priority:
             first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
             second = (self.player_pokemon, player_action, self.opponent_pokemon)
+            player_first = False
         elif player_speed > opponent_speed:
             first  = (self.player_pokemon, player_action, self.opponent_pokemon)
             second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
+            player_first = True
         elif opponent_speed > player_speed:
             first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
             second = (self.player_pokemon, player_action, self.opponent_pokemon)
+            player_first = False
         else:
-            if random.choice([True, False]):
+            player_first = random.choice([True, False])
+            if player_first:
                 first  = (self.player_pokemon, player_action, self.opponent_pokemon)
                 second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
             else:
@@ -521,6 +526,13 @@ class Battle(models.Model):
                 attacker.save()
                 self.add_to_log(f"{defender} emporte {attacker} avec lui !")
             self.add_to_log(f"{defender} est K.O.!")
+            # Store turn info: second attacker was skipped (defender KO'd first)
+            bs = self._bstate()
+            bs['last_turn_info'] = {
+                'player_first':    player_first,
+                'second_skipped':  True,   # second attacker never attacked
+            }
+            self._save_state()
             self.current_turn += 1
             self.save()
             return
@@ -534,6 +546,14 @@ class Battle(models.Model):
                 attacker.save()
                 self.add_to_log(f"{defender} emporte {attacker} avec lui !")
             self.add_to_log(f"{defender} est K.O.!")
+
+        # Store turn info: both attackers acted
+        bs = self._bstate()
+        bs['last_turn_info'] = {
+            'player_first':   player_first,
+            'second_skipped': False,
+        }
+        self._save_state()
 
         # ── Effets de fin de tour ─────────────────────────────────────────────
         self._apply_end_of_turn_effects()

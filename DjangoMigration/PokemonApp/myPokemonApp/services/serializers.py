@@ -173,4 +173,10 @@ def build_battle_response(battle):
         'battle_ended':     False,
         # États volatils + stat stages pour le frontend
         'battle_state':     battle_state,
+        # Ordre du tour : le frontend l'utilise pour savoir si le second attaquant
+        # a réellement agi (skip si K.O. avant son tour)
+        'turn_info':        bs.get('last_turn_info', {
+            'player_first':   True,
+            'second_skipped': False,
+        }),
     }
