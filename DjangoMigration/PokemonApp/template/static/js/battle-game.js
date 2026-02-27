@@ -11,6 +11,7 @@ const csrfToken  = BATTLE_CONFIG.csrfToken;
 
 // ID du Pokémon actuellement en combat — mis à jour à chaque switch
 let currentPlayerPokemonId = BATTLE_CONFIG.playerPokemonId;
+let currentOpponentPokemonId = BATTLE_CONFIG.opponentPokemonId;
 
 // ============================================================================
 // INITIALIZATION
@@ -224,59 +225,121 @@ function showTeam() {
 function useMove(moveId) {
   $('button').prop('disabled', true);
   audioManager.playSFX('ui/confirm');
-  
-  // Get move data
-  const moveBtn = $(event.target).closest('.move-btn');
-  const moveName = moveBtn.find('.move-name').text();
-  const moveType = moveBtn.attr('class').match(/move-type-(\w+)/)[1];
-  
-  addBattleLog(`${$('#player-name').text()} utilise ${moveName} !`);
-  
-  // Animate attack
-  const playerPos = getElementCenter($('#player-sprite'));
-  const opponentPos = getElementCenter($('#opponent-sprite'));
-  
-  // Play attack animation
-  $('#player-sprite').addClass('attacking');
-  setTimeout(() => $('#player-sprite').removeClass('attacking'), 600);
-  
-  // Determine attack category from move power
-  const movePower = moveBtn.find('.move-power').text();
-  const isPhysical = movePower.includes('PWR');
-  
-  const cleanedMoveName = moveName.replace(/\s+/g, '').toLowerCase(); //lower + removed whitespaces
 
-  if (isPhysical) {
-    setTimeout(() => {
-      battleEffects.physicalAttack(playerPos, opponentPos, 'slash');
-      // audioManager.playSFX('attacks/slash');
-      audioManager.playSFX(`attacks/${cleanedMoveName}`);
-    }, 300);
-  } else {
-    setTimeout(() => {
-      battleEffects.specialAttack(playerPos, opponentPos, moveType);
-      // audioManager.playSFX('attacks/special');
-      audioManager.playSFX(`attacks/${cleanedMoveName}`);
-    }, 300);
-  }
-  
-  // Send to server
-  setTimeout(() => {
-    $.post(BATTLE_CONFIG.urls.action, {
-      action: 'attack',
-      move_id: moveId,
-      csrfmiddlewaretoken: csrfToken
-    })
-    .done(function(data) {
-      updateBattleState(data);
+  // Send to server immediately — no pre-emptive animations
+  $.post(BATTLE_CONFIG.urls.action, {
+    action: 'attack',
+    move_id: moveId,
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    // Play the correct attack sequence based on turn_info from server
+    playTurnAnimations(data, () => {
+      updateBattleState(data, true);  // HP déjà mis à jour à l'impact
       updateVolatileStates(data);
-    })
-    .fail(function(xhr) {
-      console.error('Attack failed:', xhr);
-      addBattleLog('Erreur lors de l\'attaque');
-      $('button').prop('disabled', false);
     });
-  }, 1500);
+  })
+  .fail(function(xhr) {
+    console.error('Attack failed:', xhr);
+    addBattleLog('Erreur lors de l\'attaque');
+    $('button').prop('disabled', false);
+  });
+}
+
+/**
+ * Joue la séquence d'animations d'attaque dans l'ordre exact du tour,
+ * puis appelle onDone() pour mettre à jour l'état du combat.
+ *
+ * Séquences possibles (basées sur turn_info) :
+ *   player_first=true,  second_skipped=false → player attaque, puis ennemi attaque
+ *   player_first=true,  second_skipped=true  → player attaque seulement (ennemi KO)
+ *   player_first=false, second_skipped=false → ennemi attaque, puis player attaque
+ *   player_first=false, second_skipped=true  → ennemi attaque seulement (player KO avant)
+ */
+function playTurnAnimations(data, onDone) {
+  const ti = data.turn_info || { player_first: true, second_skipped: false, player_move: {}, opponent_move: {} };
+
+  const playerMove   = ti.player_move   || {};
+  const opponentMove = ti.opponent_move || {};
+
+  const playerAttacked   = !(ti.player_first  === false && ti.second_skipped);
+  const opponentAttacked = !(ti.player_first  === true  && ti.second_skipped);
+
+  const ATTACK_DELAY  = 300;   // ms avant d'afficher l'effet
+  const IMPACT_OFFSET = 350;   // ms après ATTACK_DELAY : moment où la HP bar change
+  const ATTACK_DUR    = 700;   // durée approximative de l'effet
+  const BETWEEN_GAP   = 400;   // pause entre les deux attaques
+
+  let seq = [];
+
+  if (ti.player_first) {
+    if (playerAttacked)   seq.push({ attacker: 'player',   move: playerMove });
+    if (opponentAttacked) seq.push({ attacker: 'opponent', move: opponentMove });
+  } else {
+    if (opponentAttacked) seq.push({ attacker: 'opponent', move: opponentMove });
+    if (playerAttacked)   seq.push({ attacker: 'player',   move: playerMove });
+  }
+
+  // Aucune attaque (ex: item/switch tour) → on va directement au onDone
+  if (seq.length === 0) {
+    onDone();
+    return;
+  }
+
+  function playStep(index) {
+    if (index >= seq.length) {
+      onDone();
+      return;
+    }
+
+    const { attacker, move } = seq[index];
+    const isPlayer = attacker === 'player';
+
+    // Le défenseur est le camp opposé à l'attaquant
+    const defenderSide  = isPlayer ? 'opponent' : 'player';
+    const defenderHp    = isPlayer ? data.opponent_hp     : data.player_hp;
+    const defenderMaxHp = isPlayer ? data.opponent_max_hp : data.player_max_hp;
+
+    const spriteId = isPlayer ? '#player-sprite' : '#opponent-sprite';
+
+    const playerPos   = getElementCenter($('#player-sprite'));
+    const opponentPos = getElementCenter($('#opponent-sprite'));
+    const fromPos     = isPlayer ? playerPos   : opponentPos;
+    const toPos       = isPlayer ? opponentPos : playerPos;
+
+    const moveName     = move.name     || '';
+    const moveType     = move.type     || 'normal';
+    const moveCategory = move.category || 'special';
+    const cleanName    = moveName.replace(/\s+/g, '').toLowerCase();
+
+    // Log
+    const attackerName = isPlayer ? $('#player-name').text() : $('#opponent-name').text();
+    if (moveName) addBattleLog(`${attackerName} utilise ${moveName} !`);
+
+    // Sprite bounce de l'attaquant
+    $(spriteId).addClass('attacking');
+    setTimeout(() => $(spriteId).removeClass('attacking'), 600);
+
+    // Effet + son au moment du lancer
+    setTimeout(() => {
+      if (moveCategory === 'physical') {
+        battleEffects.physicalAttack(fromPos, toPos, 'slash');
+      } else {
+        battleEffects.specialAttack(fromPos, toPos, moveType);
+      }
+      try { audioManager.playSFX(`attacks/${cleanName}`); } catch(e) {}
+    }, ATTACK_DELAY);
+
+    // Mise à jour HP bar du défenseur à l'impact
+    setTimeout(() => {
+      updateHP(defenderSide, defenderHp, defenderMaxHp, false, true);
+    }, ATTACK_DELAY + IMPACT_OFFSET);
+
+    // Étape suivante
+    setTimeout(() => playStep(index + 1), ATTACK_DELAY + ATTACK_DUR + BETWEEN_GAP);
+  }
+
+  playStep(0);
 }
 
 
@@ -509,27 +572,50 @@ function loadTeam() {
 // BATTLE STATE UPDATE
 // ============================================================================
 
-function updateBattleState(data) {
+function updateBattleState(data, skipHpUpdates = false) {
   console.log('Updating battle state:', data);
-  
-  // Vérifier si le switch a changé le Pokémon
+
   // Update Pokemon data
   if (data.player_pokemon) {
     updatePokemonDisplay('player', data.player_pokemon);
   }
-  
+
+  // HP bars : mis à jour dans playTurnAnimations à l'impact, sauf pour les
+  // actions sans animation (switch, item) où skipHpUpdates=false.
+  if (!skipHpUpdates) {
+    const ti = data.turn_info || { player_first: true, second_skipped: false };
+    const playerWasHit   = !(ti.player_first  && ti.second_skipped);
+    const opponentWasHit = !(!ti.player_first && ti.second_skipped);
+    if (data.player_hp !== undefined) {
+      updateHP('player', data.player_hp, data.player_max_hp, false, playerWasHit);
+    }
+    if (data.opponent_hp !== undefined) {
+      updateHP('opponent', data.opponent_hp, data.opponent_max_hp, false, opponentWasHit);
+    }
+  }
+
+  // Opponent pokemon display:
+  // If the incoming pokemon has a different ID than the current one, the previous
+  // pokemon just fainted — trigger death animation on old sprite first, then swap.
   if (data.opponent_pokemon) {
-    updatePokemonDisplay('opponent', data.opponent_pokemon);
+    const isNewOpponent = data.opponent_pokemon.id !== currentOpponentPokemonId;
+    if (isNewOpponent) {
+      const oldSprite = $('#opponent-sprite');
+      oldSprite.addClass('fainted');
+      try { audioManager.playSFX('battle/faint'); } catch(e) {}
+
+      setTimeout(() => {
+        oldSprite.removeClass('fainted');
+        updatePokemonDisplay('opponent', data.opponent_pokemon);
+        // Slide-in entrance for the new pokemon
+        oldSprite.addClass('slide-in-opponent');
+        setTimeout(() => oldSprite.removeClass('slide-in-opponent'), 600);
+      }, 1400);
+    } else {
+      updatePokemonDisplay('opponent', data.opponent_pokemon);
+    }
   }
-  
-  // Update HP
-  if (data.player_hp !== undefined) {
-    updateHP('player', data.player_hp, data.player_max_hp);
-  }
-  
-  if (data.opponent_hp !== undefined) {
-    updateHP('opponent', data.opponent_hp, data.opponent_max_hp);
-  }
+
   
   // Add logs
   if (data.log && data.log.length > 0) {
@@ -580,6 +666,9 @@ function updatePokemonDisplay(side, pokemonData) {
   if (side === 'player' && pokemonData.id) {
     currentPlayerPokemonId = pokemonData.id;
   }
+  if (side === 'opponent' && pokemonData.id) {
+    currentOpponentPokemonId = pokemonData.id;
+  }
   
   // IMPORTANT: Retirer la classe fainted si présente (fix du bug de sprite invisible)
   sprite.removeClass('fainted fade-out taking-damage');
@@ -600,6 +689,15 @@ function updatePokemonDisplay(side, pokemonData) {
       $(this).attr('src', BATTLE_CONFIG.static.pokeball);
     });
   
+  // Détecter level-up (player uniquement) avant de mettre à jour le texte
+  if (side === 'player' && pokemonData.level) {
+    const oldLevel = parseInt(level.data('level')) || 0;
+    if (oldLevel > 0 && pokemonData.level > oldLevel) {
+      triggerLevelUpAnimation(pokemonData.level);
+    }
+    level.data('level', pokemonData.level);
+  }
+
   // Update name and level
   name.text(pokemonData.name);
   level.text('Niv.' + pokemonData.level);
@@ -616,10 +714,75 @@ function updatePokemonDisplay(side, pokemonData) {
   if (side === 'player' && pokemonData.exp_percent !== undefined) {
     updateExpBar(pokemonData.exp_percent);
   }
+
+  // Update status badge
+  updateStatusBadge(side, pokemonData.status);
+}
+
+function updateStatusBadge(side, status) {
+  const container = $(`#${side}-status`);
+  const statusLabels = {
+    'paralysis': 'PARA',
+    'poison':    'PSN',
+    'burn':      'BRL',
+    'freeze':    'GEL',
+    'sleep':     'SOM',
+  };
+  if (status && statusLabels[status]) {
+    const label = statusLabels[status];
+    // Ne re-rendre que si différent de l'état actuel affiché
+    if (container.find(`.status-badge`).length === 0 ||
+        !container.find(`.status-badge`).hasClass(`status-${status}`)) {
+      container.html(
+        `<span class="status-badge status-${status}">${label}</span>`
+      );
+    }
+  } else {
+    container.empty();
+  }
 }
 
 
-function updateHP(side, current, max, skipDamageAnimation = false) {
+/**
+ * Animation level-up sur la player-bar :
+ *  - bordure dorée pulsante sur la box
+ *  - badge "NIV. UP! X" qui pop au-dessus
+ *  - chiffre du niveau qui pulse en doré
+ */
+function triggerLevelUpAnimation(newLevel) {
+  try { audioManager.playSFX('ui/SFX_LEVEL_UP'); } catch(e) {}
+
+  const playerBar = $('.player-bar');
+  const levelEl   = $('#player-level');
+
+  // S'assurer que la box est en position relative pour le badge absolu
+  playerBar.css('position', 'relative');
+
+  // 1. Flash doré sur la box
+  playerBar.removeClass('level-up-flash');
+  playerBar[0].offsetWidth; // force reflow
+  playerBar.addClass('level-up-flash');
+  setTimeout(() => playerBar.removeClass('level-up-flash'), 1500);
+
+  // 2. Badge "NIV. UP! X" qui pop
+  const badge = $(`<div class="level-up-badge">NIV. UP ! ${newLevel}</div>`);
+  playerBar.append(badge);
+  badge[0].offsetWidth;
+  badge.addClass('badge-pop');
+  setTimeout(() => badge.remove(), 2100);
+
+  // 3. Chiffre du niveau pulse en doré (après la mise à jour du texte donc léger délai)
+  setTimeout(() => {
+    levelEl.removeClass('level-pop');
+    levelEl[0].offsetWidth;
+    levelEl.addClass('level-pop');
+    setTimeout(() => levelEl.removeClass('level-pop'), 1300);
+  }, 50);
+}
+
+
+
+function updateHP(side, current, max, skipDamageAnimation = false, wasHitThisTurn = true) {
   const percent = Math.floor((current / max) * 100);
   const bar = $(`#${side}-hp-bar`);
   
@@ -642,9 +805,9 @@ function updateHP(side, current, max, skipDamageAnimation = false) {
     $('#player-hp-max').text(max);
   }
   
-  // Damage animation (sauf si skip - pour éviter animation lors du switch)
+  // Damage animation: only if not skipped AND the side was actually hit this turn
   const sprite = $(`#${side}-sprite`);
-  if (!skipDamageAnimation && current < max) {
+  if (!skipDamageAnimation && wasHitThisTurn && current < max) {
     sprite.addClass('taking-damage');
     setTimeout(() => sprite.removeClass('taking-damage'), 600);
   }
@@ -701,7 +864,63 @@ function updateMovesMenu(moves) {
 
 // Mettre à jour EXP bar
 function updateExpBar(expPercent) {
-  $('.exp-bar-fill').css('width', expPercent + '%');
+  const bar = $('.exp-bar-fill');
+
+  // Récupère le pourcentage actuel depuis le style (ou data-percent)
+  const currentPercent = parseFloat(bar.data('exp-percent') ?? bar.css('width')) || 0;
+
+  // Détecter si l'XP a réellement augmenté :
+  // - cas normal : expPercent > currentPercent
+  // - cas level-up : expPercent < currentPercent (barre repart de 0)
+  const leveledUp = expPercent < currentPercent - 5;  // seuil de 5% pour éviter les faux positifs
+  const gained    = expPercent > currentPercent + 0.5;
+
+  if (gained || leveledUp) {
+    try { audioManager.playSFX('ui/exp_gain'); } catch(e) {}
+
+    if (leveledUp) {
+      // Level-up : compléter la barre jusqu'à 100% puis repartir de 0
+      bar.css('transition', 'width 0.4s ease-out');
+      bar.css('width', '100%');
+      setTimeout(() => {
+        bar.css('transition', 'none');
+        bar.css('width', '0%');
+        bar.data('exp-percent', 0);
+        // Puis animer jusqu'au nouveau pourcentage
+        setTimeout(() => {
+          bar.removeClass('exp-animating exp-pulse');
+          bar[0].offsetWidth;
+          bar.addClass('exp-animating');
+          bar.css('transition', 'width 1s ease-out');
+          bar.css('width', expPercent + '%');
+          bar.data('exp-percent', expPercent);
+          setTimeout(() => {
+            bar.removeClass('exp-animating');
+            bar.addClass('exp-pulse');
+            setTimeout(() => bar.removeClass('exp-pulse'), 500);
+          }, 1050);
+          setTimeout(() => bar.css('transition', ''), 1200);
+        }, 50);
+      }, 450);
+    } else {
+      // Gain normal
+      bar.removeClass('exp-animating exp-pulse');
+      bar[0].offsetWidth;
+      bar.addClass('exp-animating');
+      bar.css('transition', 'width 1s ease-out');
+      bar.css('width', expPercent + '%');
+      bar.data('exp-percent', expPercent);
+      setTimeout(() => {
+        bar.removeClass('exp-animating');
+        bar.addClass('exp-pulse');
+        setTimeout(() => bar.removeClass('exp-pulse'), 500);
+      }, 1050);
+      setTimeout(() => bar.css('transition', ''), 1200);
+    }
+  } else {
+    bar.css('width', expPercent + '%');
+    bar.data('exp-percent', expPercent);
+  }
 }
 
 

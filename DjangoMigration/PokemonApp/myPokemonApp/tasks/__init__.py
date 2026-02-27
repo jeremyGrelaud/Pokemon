@@ -13,3 +13,4 @@ from  .initPokeballItem import scriptToInitNewPokeBalls
 from .initKantoMaps import init_kanto_map
 from .initAchievments import init_achievements
 from .initQuests import init_all
+from .initZoneMusic import init_zone_music

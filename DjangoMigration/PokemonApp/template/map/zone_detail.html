@@ -544,6 +544,23 @@
   </div>{# /row #}
 </div>{# /container-fluid #}
 
+{% if zone.music %}
+<!-- ── Zone BGM Player ───────────────────────────────────────────────────── -->
+<div id="zone-bgm-player" class="zone-bgm-widget" title="Musique de zone">
+  <button id="bgm-toggle" class="bgm-btn" aria-label="Lecture / Pause">
+    <i class="fas fa-music" id="bgm-icon"></i>
+  </button>
+  <div class="bgm-info">
+    <span id="bgm-zone-name" class="bgm-zone-name">{{ zone.name }}</span>
+    <div class="bgm-progress-wrap">
+      <div id="bgm-progress-bar" class="bgm-progress-bar"></div>
+    </div>
+  </div>
+  <input id="bgm-volume" type="range" min="0" max="100" value="30"
+         class="bgm-volume" title="Volume" aria-label="Volume">
+</div>
+{% endif %}
+
 <style>
 /* Minimap sticky */
 .zone-minimap-panel {
@@ -561,5 +578,190 @@
     margin-bottom: 1.5rem;
   }
 }
+
+/* ── BGM Player ── */
+.zone-bgm-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 20, 40, 0.92);
+  border: 1px solid rgba(100, 160, 255, 0.35);
+  border-radius: 40px;
+  padding: 8px 16px 8px 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45), 0 0 0 1px rgba(100,160,255,0.1);
+  backdrop-filter: blur(8px);
+  transition: opacity 0.3s;
+}
+.zone-bgm-widget:hover { opacity: 1 !important; }
+.zone-bgm-widget.bgm-idle { opacity: 0.55; }
+
+.bgm-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #3a7bd5, #1e4fa3);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s, background 0.2s;
+  box-shadow: 0 2px 8px rgba(52,123,213,0.5);
+}
+.bgm-btn:hover  { transform: scale(1.1); background: linear-gradient(135deg, #4a8be5, #2e5fb3); }
+.bgm-btn:active { transform: scale(0.95); }
+.bgm-btn.paused { background: linear-gradient(135deg, #555, #333); }
+
+.bgm-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 110px;
+  max-width: 180px;
+}
+.bgm-zone-name {
+  color: #a0c4ff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bgm-progress-wrap {
+  height: 3px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bgm-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #3a7bd5, #7ec8e3);
+  border-radius: 2px;
+  transition: width 0.5s linear;
+}
+
+.bgm-volume {
+  -webkit-appearance: none;
+  width: 72px; height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bgm-volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #7ec8e3;
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(126,200,227,0.7);
+}
+.bgm-volume::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #7ec8e3;
+  cursor: pointer;
+}
+
+@media (max-width: 576px) {
+  .zone-bgm-widget { bottom: 12px; right: 12px; padding: 6px 12px 6px 6px; }
+  .bgm-info { display: none; }
+  .bgm-volume { width: 52px; }
+}
 </style>
+
 {% endblock %}
+
+{% block js %}
+{{ block.super }}
+{% if zone.music %}
+<script>
+(function() {
+  const TRACK    = '{% static "sounds/bgm/kanto/" %}{{ zone.music }}.mp3';
+  const STORAGE_KEY_VOL = 'zoneBgmVolume';
+
+  const widget   = document.getElementById('zone-bgm-player');
+  const toggleBtn= document.getElementById('bgm-toggle');
+  const icon     = document.getElementById('bgm-icon');
+  const progress = document.getElementById('bgm-progress-bar');
+  const volumeEl = document.getElementById('bgm-volume');
+
+  let audio   = null;
+  let playing = false;
+
+  // Restore saved volume
+  const savedVol = parseFloat(localStorage.getItem(STORAGE_KEY_VOL) ?? '30');
+  volumeEl.value = savedVol;
+
+  function buildAudio() {
+    if (audio) { audio.pause(); }
+    audio = new Audio(TRACK);
+    audio.loop   = true;
+    audio.volume = volumeEl.value / 100;
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) {
+        progress.style.width = (audio.currentTime / audio.duration * 100) + '%';
+      }
+    });
+    audio.addEventListener('error', () => {
+      console.warn('[ZoneBGM] Fichier introuvable :', TRACK);
+      widget.style.display = 'none';
+    });
+  }
+
+  function play() {
+    if (!audio) buildAudio();
+    audio.play().then(() => {
+      playing = true;
+      icon.className = 'fas fa-pause';
+      toggleBtn.classList.remove('paused');
+      widget.classList.remove('bgm-idle');
+    }).catch(err => {
+      // Autoplay bloqué — on reste en pause, l'utilisateur clique pour lancer
+      console.info('[ZoneBGM] Autoplay bloqué, clic requis :', err.message);
+    });
+  }
+
+  function pause() {
+    if (audio) audio.pause();
+    playing = false;
+    icon.className = 'fas fa-music';
+    toggleBtn.classList.add('paused');
+    widget.classList.add('bgm-idle');
+  }
+
+  // Toggle play/pause
+  toggleBtn.addEventListener('click', () => {
+    playing ? pause() : play();
+  });
+
+  // Volume slider
+  volumeEl.addEventListener('input', () => {
+    const vol = volumeEl.value / 100;
+    if (audio) audio.volume = vol;
+    localStorage.setItem(STORAGE_KEY_VOL, volumeEl.value);
+  });
+
+  // Autoplay tentative au chargement
+  buildAudio();
+  widget.classList.add('bgm-idle');
+  play();
+
+  // Pause si l'utilisateur quitte la page (navigation vers combat, etc.)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && audio) audio.volume = Math.min(audio.volume, 0.1);
+    else if (!document.hidden && audio && playing) audio.volume = volumeEl.value / 100;
+  });
+})();
+</script>
+{% endif %}
+{% endblock js %}

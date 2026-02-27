@@ -116,8 +116,13 @@ def floor_wild_encounter_view(request, zone_id, floor_number):
     if not player_pokemon:
         messages.error(request, "Vous n'avez pas de Pokémon en état de combattre !")
         return redirect('PokemonCenterListView')
-
+    
     wild_pokemon = create_wild_pokemon(wild_species, level, location=zone.name)
+
+    # Réinitialiser les stages des deux Pokémon avant le combat
+    player_pokemon.reset_combat_stats()
+    wild_pokemon.reset_combat_stats()
+    
     battle = Battle.objects.create(
         player_trainer=trainer,
         opponent_trainer=None,

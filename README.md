@@ -4,8 +4,12 @@
 - https://bulbapedia.bulbagarden.net (for pokeball sprites and refrences to exp, catch, dmg formulas)
 - https://github.com/msikma/pokesprite/tree/master/items (for items HM, battle iitems ... sprites)
 - https://www.pokepedia.fr (for map sprites)
+- https://downloads.khinsider.com/game-soundtracks/album/pokemon-firered-leafgreen-enhanced-soundtrack (for soundtracks)  --> ajout des OST des différentes zones du jeux sur zone detail
 
 - Johto reference for future integration ? https://gamefaqs.gamespot.com/gbc/375087-pokemon-crystal-version/faqs/75486/full-trainer-info-list
+
+
+
 
 # Pokemon
 For education purpose only
@@ -14,9 +18,12 @@ For education purpose only
 TODO Roadmap :
 
 - Improve battle 'GUI'
-- add random nature on wild pokemons
-- Add introduction animation for tainer battles (show opponent trainer sprite comming from the right like in games)
 - After everything, implement different game mods ?
+
+- dans la vue de recap de combat côté trainer les pokemon affichés sont ceux actuellement dans l'équipe et pas ceux réellement utilisés dans le combat
+
+- pas d'affichage dans le battle log lorsqu'un ennemi rate une attaque, + pas d'affichage du badge/tag de l'état paralysie mais les messages s'affichent bien dans le battle log
+
 
 TODO BugFixes :
 
@@ -32,5 +39,5 @@ python manage.py createsuperuser
 
 To init database in one command :
 ```
-python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase(); from myPokemonApp.tasks import *; init_all();"
+python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase(); from myPokemonApp.tasks import *; init_all(); init_zone_music();"
 ```

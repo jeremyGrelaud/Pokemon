@@ -494,22 +494,41 @@ class Battle(models.Model):
         if player_priority > opponent_priority:
             first  = (self.player_pokemon, player_action, self.opponent_pokemon)
             second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
+            player_first = True
         elif opponent_priority > player_priority:
             first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
             second = (self.player_pokemon, player_action, self.opponent_pokemon)
+            player_first = False
         elif player_speed > opponent_speed:
             first  = (self.player_pokemon, player_action, self.opponent_pokemon)
             second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
+            player_first = True
         elif opponent_speed > player_speed:
             first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
             second = (self.player_pokemon, player_action, self.opponent_pokemon)
+            player_first = False
         else:
-            if random.choice([True, False]):
+            player_first = random.choice([True, False])
+            if player_first:
                 first  = (self.player_pokemon, player_action, self.opponent_pokemon)
                 second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
             else:
                 first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
                 second = (self.player_pokemon, player_action, self.opponent_pokemon)
+
+        # Helper pour extraire infos du move depuis une action
+        def _move_info(action):
+            move = action.get('move')
+            if move:
+                return {
+                    'name':     move.name,
+                    'type':     move.type.name if move.type else '',
+                    'category': move.category or '',
+                }
+            return {'name': '', 'type': '', 'category': ''}
+
+        player_move_info   = _move_info(player_action)
+        opponent_move_info = _move_info(opponent_action)
 
         # Premier attaquant
         attacker, action, defender = first
@@ -521,6 +540,15 @@ class Battle(models.Model):
                 attacker.save()
                 self.add_to_log(f"{defender} emporte {attacker} avec lui !")
             self.add_to_log(f"{defender} est K.O.!")
+            # Store turn info: second attacker was skipped (defender KO'd first)
+            bs = self._bstate()
+            bs['last_turn_info'] = {
+                'player_first':    player_first,
+                'second_skipped':  True,
+                'player_move':     player_move_info,
+                'opponent_move':   opponent_move_info,
+            }
+            self._save_state()
             self.current_turn += 1
             self.save()
             return
@@ -534,6 +562,16 @@ class Battle(models.Model):
                 attacker.save()
                 self.add_to_log(f"{defender} emporte {attacker} avec lui !")
             self.add_to_log(f"{defender} est K.O.!")
+
+        # Store turn info: both attackers acted
+        bs = self._bstate()
+        bs['last_turn_info'] = {
+            'player_first':   player_first,
+            'second_skipped': False,
+            'player_move':    player_move_info,
+            'opponent_move':  opponent_move_info,
+        }
+        self._save_state()
 
         # ── Effets de fin de tour ─────────────────────────────────────────────
         self._apply_end_of_turn_effects()
@@ -717,19 +755,19 @@ class Battle(models.Model):
         # ── Vérifier la précision (sauf never_miss) ───────────────────────────
         if move.effect != 'never_miss' and move.name != 'Struggle':
             accuracy = move.accuracy if move.accuracy else 100
-            if accuracy < 100:
-                acc_mod  = attacker.get_stat_multiplier(attacker.accuracy_stage)
-                eva_mod  = attacker.get_stat_multiplier(-defender.evasion_stage)
-                hit_pct  = accuracy * acc_mod * eva_mod
-                if random.randint(1, 100) > hit_pct:
-                    self.add_to_log(f"L'attaque a raté !")
-                    # Crash (High Jump Kick…)
-                    if move.effect in ('crash', 'high_jump_kick'):
-                        dmg = max(1, attacker.max_hp // 2)
-                        attacker.current_hp = max(0, attacker.current_hp - dmg)
-                        attacker.save()
-                        self.add_to_log(f"{attacker} s'est blessé en tombant ! (-{dmg} PV)")
-                    return
+            # Toujours appliquer les stages de précision/esquive, même si accuracy=100
+            acc_mod  = attacker.get_stat_multiplier(attacker.accuracy_stage)
+            eva_mod  = attacker.get_stat_multiplier(-defender.evasion_stage)
+            hit_pct  = accuracy * acc_mod * eva_mod
+            if random.randint(1, 100) > hit_pct:
+                self.add_to_log(f"L'attaque a raté !")
+                # Crash (High Jump Kick…)
+                if move.effect in ('crash', 'high_jump_kick'):
+                    dmg = max(1, attacker.max_hp // 2)
+                    attacker.current_hp = max(0, attacker.current_hp - dmg)
+                    attacker.save()
+                    self.add_to_log(f"{attacker} s'est blessé en tombant ! (-{dmg} PV)")
+                return
 
         # ── Appliquer l'effet du move ─────────────────────────────────────────
         self._apply_move_effect(attacker, defender, move, move_instance)

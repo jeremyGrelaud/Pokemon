@@ -220,6 +220,44 @@ class PlayablePokemon(models.Model):
             # Plancher à 1
             setattr(self, stat_name, max(1, value))
 
+    def exp_at_level(self, n):
+        """
+        Retourne l'XP totale cumulée requise pour ATTEINDRE le niveau n.
+        Même formules que exp_for_next_level mais paramétrées sur n.
+        """
+        if n <= 1:
+            return 0
+        if n > 100:
+            n = 100
+
+        rate = getattr(self.species, 'growth_rate', 'medium_fast')
+
+        if rate == 'fast':
+            return int(4 * n ** 3 / 5)
+        elif rate == 'medium_slow':
+            val = int(6 * n ** 3 / 5) - 15 * n ** 2 + 100 * n - 140
+            return max(0, val)
+        elif rate == 'slow':
+            return int(5 * n ** 3 / 4)
+        elif rate == 'erratic':
+            if n <= 50:
+                return int(n ** 3 * (100 - n) / 50)
+            elif n <= 68:
+                return int(n ** 3 * (150 - n) / 100)
+            elif n <= 98:
+                return int(n ** 3 * ((1911 - 10 * n) // 3) / 500)
+            else:
+                return int(n ** 3 * (160 - n) / 100)
+        elif rate == 'fluctuating':
+            if n <= 15:
+                return int(n ** 3 * ((n + 1) // 3 + 24) / 50)
+            elif n <= 36:
+                return int(n ** 3 * (n + 14) / 50)
+            else:
+                return int(n ** 3 * ((n // 2) + 32) / 50)
+        else:  # medium_fast
+            return n ** 3
+
     def exp_for_next_level(self):
         """
         Retourne l'XP totale cumulée nécessaire pour atteindre le niveau suivant.

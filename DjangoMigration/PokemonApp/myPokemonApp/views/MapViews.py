@@ -270,6 +270,11 @@ def travel_to_zone_view(request, zone_id):
                 if wild_species and player_pokemon:
                     cleanup_orphan_wild_pokemon()
                     wild_pokemon = create_wild_pokemon(wild_species, level, location=zone.name)
+
+                    # Réinitialiser les stages des deux Pokémon avant le combat
+                    player_pokemon.reset_combat_stats()
+                    wild_pokemon.reset_combat_stats()
+
                     battle = Battle.objects.create(
                         player_trainer=trainer,
                         opponent_trainer=None,
@@ -321,6 +326,10 @@ def wild_encounter_view(request, zone_id):
     cleanup_orphan_wild_pokemon()
     wild_pokemon = create_wild_pokemon(wild_species, level, location=zone.name)
 
+    # Réinitialiser les stages des deux Pokémon avant le combat
+    player_pokemon.reset_combat_stats()
+    wild_pokemon.reset_combat_stats()
+    
     battle = Battle.objects.create(
         player_trainer=trainer,
         opponent_trainer=None,

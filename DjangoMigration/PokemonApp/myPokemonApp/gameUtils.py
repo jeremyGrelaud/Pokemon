@@ -394,6 +394,10 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
     else:
         return None, "Pas d'adversaire defini !"
 
+    # Réinitialiser les stages des deux Pokémon avant le combat
+    player_pokemon.reset_combat_stats()
+    opponent_pokemon.reset_combat_stats()
+
     battle = Battle.objects.create(
         battle_type=battle_type,
         player_trainer=player_trainer,
@@ -401,6 +405,10 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
         player_pokemon=player_pokemon,
         opponent_pokemon=opponent_pokemon,
         is_active=True,
+        battle_state={
+            'player_used_ids':   [player_pokemon.id],
+            'opponent_used_ids': [opponent_pokemon.id],
+        },
     )
 
     msg = (
@@ -859,6 +867,15 @@ def opponent_switch_pokemon(battle):
 
     new_pokemon = bench.first()
     battle.opponent_pokemon = new_pokemon
+
+    # Track all opponent pokemon that have entered the battle
+    bs = battle.battle_state if isinstance(battle.battle_state, dict) else {}
+    used = bs.get('opponent_used_ids', [])
+    if new_pokemon.id not in used:
+        used.append(new_pokemon.id)
+    bs['opponent_used_ids'] = used
+    battle.battle_state = bs
+
     battle.save()
     return new_pokemon
 
