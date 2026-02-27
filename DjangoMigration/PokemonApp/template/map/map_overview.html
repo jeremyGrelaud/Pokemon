@@ -5,152 +5,718 @@
 {% block title %}<title>Carte de Kanto</title>{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <h1 class="mb-4">
-    <i class="fas fa-map"></i> Carte de Kanto
-  </h1>
+<div class="kanto-map-page">
 
-  <!-- Position actuelle -->
-  <div class="alert alert-info d-flex align-items-center gap-2">
-    <img src="{% static 'img/mapSprites/Kanto/' %}{{ current_zone.name|zone_image_path }}"
-         alt="{{ current_zone.name }}"
-         style="width:48px;height:36px;object-fit:cover;border-radius:4px;"
-         onerror="this.style.display='none';">
-    <span>
-      <i class="fas fa-map-marker-alt"></i>
-      <strong>Position actuelle :</strong> {{ current_zone.name }}
-    </span>
-  </div>
-
-  <!-- Bouton de retour vers position actuelle -->
-  <div class="mb-3 d-flex align-items-center gap-2">
-    <button class="btn btn-sm btn-success" onclick="scrollToCurrentZone()">
-      <i class="fas fa-crosshairs"></i> Ma position
-    </button>
-    <small class="text-muted">{{ zones|length }} zone{% if zones|length > 1 %}s{% endif %} disponible{% if zones|length > 1 %}s{% endif %}</small>
-  </div>
-
-  <!-- Liste des zones (scrollable) -->
-  <div id="zones-container" style="max-height:72vh; overflow-y:auto; padding-right:4px;">
-  <div class="row">
-    {% for zone_data in zones %}
-    <div class="col-md-4 mb-4">
-      <div class="card zone-card h-100 {% if zone_data.zone == current_zone %}current-zone{% endif %} {% if not zone_data.accessible %}locked-zone{% endif %}" {% if zone_data.zone == current_zone %}id="current-zone-card"{% endif %}>
-
-        <!-- Image de la zone -->
-        <img src="{% static 'img/mapSprites/Kanto/' %}{{ zone_data.zone.name|zone_image_path }}"
-             alt="{{ zone_data.zone.name }}"
-             class="card-img-top"
-             style="height:120px; object-fit:cover;"
-             onerror="this.style.display='none';">
-
-        <div class="card-header d-flex align-items-center justify-content-between py-2">
-          <h5 class="mb-0 text-truncate">
-            {% if zone_data.zone == current_zone %}
-              <i class="fas fa-map-marker-alt text-success"></i>
-            {% elif zone_data.visited %}
-              <i class="fas fa-check text-primary"></i>
-            {% else %}
-              <i class="fas fa-map-pin"></i>
-            {% endif %}
-            {{ zone_data.zone.name }}
-          </h5>
-          <small class="text-muted ml-2 text-nowrap">{{ zone_data.zone.get_zone_type_display }}</small>
-        </div>
-
-        <div class="card-body">
-          <p class="text-muted small mb-2">{{ zone_data.zone.description|truncatewords:15 }}</p>
-
-          <div class="mb-3">
-            <span class="badge badge-secondary">
-              <i class="fas fa-signal"></i> Niv. {{ zone_data.zone.recommended_level_min }}-{{ zone_data.zone.recommended_level_max }}
-            </span>
-            {% if zone_data.zone.has_pokemon_center %}
-            <span class="badge badge-danger">
-              <i class="fas fa-hospital"></i> Centre
-            </span>
-            {% endif %}
-            {% if zone_data.zone.has_shop %}
-            <span class="badge badge-warning">
-              <i class="fas fa-shopping-cart"></i> Boutique
-            </span>
-            {% endif %}
-            {% if zone_data.has_gym %}
-            <span class="badge badge-primary">
-              <i class="fas fa-trophy"></i> Arène
-            </span>
-            {% endif %}
-          </div>
-
-          {% if zone_data.accessible %}
-          <a href="{% url 'zone_detail' zone_data.zone.id %}" class="btn btn-primary btn-sm btn-block">
-            <i class="fas fa-eye"></i> Explorer
-          </a>
-          {% else %}
-          <button class="btn btn-secondary btn-sm btn-block" disabled>
-            <i class="fas fa-lock"></i> {{ zone_data.reason }}
-          </button>
-          {% endif %}
-        </div>
-      </div>
+  <!-- ── En-tête ──────────────────────────────────────────────────────────── -->
+  <div class="map-header d-flex align-items-center justify-content-between mb-2">
+    <div>
+      <h1 class="map-title mb-0"><i class="fas fa-map"></i> Carte de Kanto</h1>
+      <small class="text-muted">
+        {{ zones|length }} zones &nbsp;·&nbsp;
+        <i class="fas fa-map-marker-alt text-success"></i>
+        <strong class="text-light">{{ current_zone.name }}</strong>
+      </small>
     </div>
-    {% endfor %}
-  </div>{# /row #}
-  </div>{# /zones-container #}
-</div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button class="btn btn-sm btn-outline-success" onclick="MapUI.focusCurrent()">
+        <i class="fas fa-crosshairs"></i> Ma position
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="MapUI.resetView()">
+        <i class="fas fa-compress-arrows-alt"></i> Vue globale
+      </button>
+    </div>
+  </div>
 
-<style>
-/* Scrollbar discrète */
-#zones-container::-webkit-scrollbar { width: 6px; }
-#zones-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
-#zones-container::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 3px; }
-#zones-container::-webkit-scrollbar-thumb:hover { background: #6c757d; }
+  <!-- ── Légende ──────────────────────────────────────────────────────────── -->
+  <div class="map-legend mb-2">
+    <span class="leg"><span class="dot" style="background:#4caf50;box-shadow:0 0 0 2px rgba(76,175,80,.4)"></span>Position</span>
+    <span class="leg"><span class="dot" style="background:#42a5f5"></span>Visitée</span>
+    <span class="leg"><span class="dot" style="background:#90a4ae"></span>Inexplorée</span>
+    <span class="leg"><span class="dot" style="background:#546e7a;opacity:.45"></span>Verrouillée</span>
+    <span class="leg"><span class="dot star-dot">★</span>Arène</span>
+    <span class="leg"><span class="dot" style="background:#ef5350;border-radius:2px"></span>Centre Pkm</span>
+    <span class="leg"><span class="dot" style="background:#ab47bc;border-radius:2px"></span>Boutique</span>
+    <span class="leg text-muted" style="margin-left:4px;"><i class="fas fa-mouse fa-xs mr-1"></i>Scroll = zoom · Glisser = naviguer</span>
+  </div>
 
-.zone-card {
-  transition: all 0.3s ease;
-  border: 2px solid #ddd;
-}
-.zone-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-}
-.current-zone {
-  border-color: #28a745;
-  box-shadow: 0 0 0 3px rgba(40,167,69,0.25);
-}
-.current-zone .card-img-top {
-  border-top: 3px solid #28a745;
-}
-.locked-zone {
-  opacity: 0.6;
-}
-.locked-zone .card-img-top {
-  filter: grayscale(80%);
-}
-</style>
+  <!-- ── Corps ────────────────────────────────────────────────────────────── -->
+  <div class="map-body">
+
+    <!-- Canvas SVG avec image Kanto en fond -->
+    <div class="map-canvas-wrap">
+      <svg id="kantoSvg" viewBox="0 0 1000 707" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- Glow vert pour position courante -->
+          <filter id="glow-cur" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <!-- Dessature + transparence pour zones locked -->
+          <filter id="f-lock">
+            <feColorMatrix type="saturate" values="0.1"/>
+            <feComponentTransfer><feFuncA type="linear" slope="0.38"/></feComponentTransfer>
+          </filter>
+          <!-- Ombre douce pour labels -->
+          <filter id="f-txt" x="-5%" y="-10%" width="110%" height="130%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="rgba(0,0,0,0.9)"/>
+          </filter>
+        </defs>
+
+        <!-- ════ IMAGE KANTO ════ -->
+        <image href="{% static 'img/mapSprites/Kanto/Full_Kanto_Map.png' %}"
+               x="0" y="0" width="1000" height="707"
+               preserveAspectRatio="xMidYMid slice"/>
+
+        <!-- Voile très léger pour faire ressortir les overlays -->
+        <rect width="1000" height="707" fill="rgba(0,0,0,0.12)"/>
+
+        <!-- Couches (ordre : connexions < nœuds < labels) -->
+        <g id="g-conn"></g>
+        <g id="g-nodes"></g>
+        <g id="g-labels"></g>
+
+        <!-- Rose des vents (coin haut-droit, hors zone dense) -->
+        <g transform="translate(960,42)">
+          <circle r="28" fill="rgba(5,15,25,0.78)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+          <text y="-16" text-anchor="middle" fill="#eceff1" font-size="9.5" font-family="'Courier New',monospace" font-weight="700">N</text>
+          <text y="20"  text-anchor="middle" fill="#eceff1" font-size="9.5" font-family="'Courier New',monospace" font-weight="700">S</text>
+          <text x="-17" y="4"  text-anchor="middle" fill="#eceff1" font-size="9.5" font-family="'Courier New',monospace" font-weight="700">O</text>
+          <text x="17"  y="4"  text-anchor="middle" fill="#eceff1" font-size="9.5" font-family="'Courier New',monospace" font-weight="700">E</text>
+          <line x1="0" y1="-11" x2="0" y2="11" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+          <line x1="-11" y1="0" x2="11" y2="0" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+          <polygon points="0,-11 -3.5,-3 0,-6.5 3.5,-3" fill="#ef5350"/>
+          <polygon points="0,11  -3.5,3  0,6.5  3.5,3"  fill="rgba(255,255,255,0.35)"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- ── Panneau détail ─────────────────────────────────────────────────── -->
+    <div class="map-panel">
+      <div id="panel-empty" class="panel-empty">
+        <img src="{% static 'img/pokeball.png' %}" style="width:36px;opacity:.2;margin-bottom:10px">
+        <p class="text-muted small mb-0">Cliquez sur une<br>zone pour explorer</p>
+      </div>
+      <div id="panel-detail" class="d-none panel-scroll"></div>
+    </div>
+
+  </div><!-- /map-body -->
+</div><!-- /kanto-map-page -->
 
 <script>
-function scrollToCurrentZone() {
-  const card = document.getElementById('current-zone-card');
-  const container = document.getElementById('zones-container');
-  if (!card || !container) return;
+const KD = {  // KantoData
+  curId:   {{ current_zone.id|default:"null" }},
+  curName: "{{ current_zone.name|default:''|escapejs }}",
+  static:  "{% static '' %}",
+  urlZone: "{% url 'zone_detail'    0 %}".replace('/0/','/'),
+  urlGo:   "{% url 'travel_to_zone' 0 %}".replace('/0/','/'),
+  // IDs des zones directement connectées (adjacentes) à la zone courante
+  adj: new Set([{% for cid in connected_zone_ids %}{{ cid }},{% endfor %}]),
+  zones: [
+    {% for zd in zones %}{
+      id:    {{ zd.zone.id }},
+      name:  "{{ zd.zone.name|escapejs }}",
+      type:  "{{ zd.zone.zone_type }}",
+      ok:    {{ zd.accessible|yesno:"true,false" }},
+      seen:  {{ zd.visited|yesno:"true,false" }},
+      gym:   {{ zd.has_gym|yesno:"true,false" }},
+      ctr:   {{ zd.zone.has_pokemon_center|yesno:"true,false" }},
+      shop:  {{ zd.zone.has_shop|yesno:"true,false" }},
+      safe:  {{ zd.zone.is_safe_zone|yesno:"true,false" }},
+      lmin:  {{ zd.zone.recommended_level_min }},
+      lmax:  {{ zd.zone.recommended_level_max }},
+      why:   "{{ zd.reason|default:''|escapejs }}",
+      desc:  "{{ zd.zone.description|truncatewords:18|escapejs }}",
+      img:   "{{ zd.zone.name|zone_image_path }}",
+    },{% endfor %}
+  ],
+};
+</script>
 
-  // Offset du card dans le container
-  const cardTop    = card.getBoundingClientRect().top;
-  const contTop    = container.getBoundingClientRect().top;
-  const scrollTo   = container.scrollTop + (cardTop - contTop) - 20;
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  POSITIONS CALÉES SUR LA CARTE KANTO OFFICIELLE (viewBox 1000×707)
+// ══════════════════════════════════════════════════════════════════════════════
+const POS_OLD = {
+  // Villes
+  "Plateau Indigo":        { x:  55, y:  39 },
+  "Argenta":               { x: 117, y: 163 },
+  "Jadielle":              { x: 117, y: 276 },
+  "Bourg Palette":         { x: 117, y: 378 },
+  "Azuria":                { x: 348, y: 120 },
+  "Safrania":              { x: 435, y: 246 },
+  "Céladopole":            { x: 315, y: 255 },
+  "Carmin sur Mer":        { x: 507, y: 304 },
+  "Lavanville":            { x: 592, y: 189 },
+  "Parmanie":              { x: 362, y: 373 },
+  "Cramois'Île":           { x: 162, y: 481 },
+  // Routes axe gauche
+  "Route 22":              { x:  58, y: 276 },
+  "Route 23":              { x:  58, y: 212 },
+  "Chemin de la Victoire": { x:  58, y: 141 },
+  "Route 1":               { x: 117, y: 329 },
+  "Route 2":               { x: 117, y: 223 },
+  "Forêt de Jade":         { x: 152, y: 191 },
+  "Route 3":               { x: 205, y: 163 },
+  "Mont Sélénite":         { x: 268, y: 131 },
+  "Route 4":               { x: 318, y: 120 },
+  // Nord Azuria
+  "Route 24":              { x: 348, y:  69 },
+  "Route 25":              { x: 455, y:  51 },
+  "Grottes Inconnues":     { x: 418, y: 110 },
+  // Est
+  "Route 9":               { x: 478, y: 145 },
+  "Tunnel Roche":          { x: 535, y: 163 },
+  "Route 10":              { x: 565, y: 184 },
+  "Centrale":              { x: 512, y: 168 },
+  "Tour Pokémon":          { x: 672, y: 187 },
+  // Centre
+  "Route 5":               { x: 393, y: 182 },
+  "Route 6":               { x: 470, y: 276 },
+  "Route 7":               { x: 375, y: 251 },
+  "Route 8":               { x: 515, y: 216 },
+  "Route 11":              { x: 604, y: 269 },
+  "Route 12":              { x: 632, y: 317 },
+  "Route 13":              { x: 592, y: 362 },
+  "Route 14":              { x: 525, y: 375 },
+  "Route 15":              { x: 444, y: 375 },
+  // Ouest
+  "Route 16":              { x: 245, y: 265 },
+  "Route 17":              { x: 245, y: 322 },
+  "Route 18":              { x: 245, y: 373 },
+  "Zone Safari":           { x: 295, y: 410 },
+  // Maritime
+  "Route 19":              { x: 295, y: 445 },
+  "Îles Écume":            { x: 215, y: 474 },
+  "Route 20":              { x: 162, y: 495 },
+  "Route 21":              { x: 117, y: 431 },
+};
 
-  container.scrollTo({ top: scrollTo, behavior: 'smooth' });
 
-  // Petit flash pour attirer l'œil
-  card.style.transition = 'box-shadow 0.3s';
-  card.style.boxShadow  = '0 0 0 5px rgba(40,167,69,0.6)';
-  setTimeout(() => { card.style.boxShadow = ''; }, 1200);
+const POS = {
+  // Villes
+  "Plateau Indigo":        { x: 128, y:  36 },
+  "Argenta":               { x: 249, y: 146 },
+  "Jadielle":              { x: 241, y: 326 },
+  "Bourg Palette":         { x: 236, y: 464 },
+  "Azuria":                { x: 648, y: 130 },
+  "Safrania":              { x: 650, y: 253 },
+  "Céladopole":            { x: 476, y: 243 },
+  "Carmin sur Mer":        { x: 646, y: 396 },
+  "Lavanville":            { x: 884, y: 259 },
+  "Parmanie":              { x: 504, y: 537 },
+  "Cramois'Île":           { x: 233, y: 650 },
+
+  // Routes axe gauche
+  "Route 22":              { x: 150, y: 326 },
+  "Route 23":              { x: 123, y: 278 },
+  "Chemin de la Victoire": { x: 124, y: 170 },
+  "Route 1":               { x: 243, y: 404 },
+  "Route 2":               { x: 250, y: 278 },
+  "Forêt de Jade":         { x: 234, y: 222 },
+  "Route 3":               { x: 350, y: 145 },
+  "Mont Sélénite":         { x: 431, y: 132 },
+  "Route 4":               { x: 521, y: 130 },
+
+  // Nord Azuria
+  "Route 24":              { x: 651, y:  45 },
+  "Route 25":              { x: 757, y:  43 },
+  "Grottes Inconnues":     { x: 604, y:  96 },
+
+  // Est
+  "Route 9":               { x: 772, y: 118 },
+  "Tunnel Roche":          { x: 884, y: 117 },
+  "Route 10":              { x: 893, y: 194 },
+  "Centrale":              { x: 869, y: 165 },
+  "Tour Pokémon":          { x: 910, y: 236 },
+
+  // Centre
+  "Route 5":               { x: 647, y: 181 },
+  "Route 6":               { x: 649, y: 327 },
+  "Route 7":               { x: 562, y: 250 },
+  "Route 8":               { x: 778, y: 253 },
+  "Route 11":              { x: 800, y: 387 },
+  "Route 12":              { x: 898, y: 391 },
+  "Route 13":              { x: 805, y: 491 },
+  "Route 14":              { x: 730, y: 517 },
+  "Route 15":              { x: 643, y: 542 },
+
+  // Ouest
+  "Route 16":              { x: 361, y: 243 },
+  "Route 17":              { x: 355, y: 383 },
+  "Route 18":              { x: 356, y: 534 },
+  "Zone Safari":           { x: 500, y: 439 },
+  "Cave Taupiqeur":        { x: 732, y: 369 },
+
+  // Maritime
+  "Route 19":              { x: 491, y: 653 },
+  "Îles Écume":            { x: 387, y: 660 },
+  "Route 20":              { x: 309, y: 661 },
+  "Route 21":              { x: 234, y: 558 },
+};
+
+const EDGES = [
+  ["Bourg Palette","Route 1"],["Route 1","Jadielle"],
+  ["Jadielle","Route 2"],["Route 2","Forêt de Jade"],["Forêt de Jade","Argenta"],
+  ["Argenta","Route 3"],["Route 3","Mont Sélénite"],
+  ["Mont Sélénite","Route 4"],["Route 4","Azuria"],
+  ["Azuria","Route 24"],["Route 24","Route 25"],
+  ["Azuria","Grottes Inconnues"],
+  ["Azuria","Route 9"],["Route 9","Tunnel Roche"],
+  ["Tunnel Roche","Route 10"],["Route 10","Lavanville"],
+  ["Route 10","Centrale"],["Route 9","Centrale"],
+  ["Lavanville","Tour Pokémon"],
+  ["Azuria","Route 5"],["Route 5","Safrania"],
+  ["Safrania","Route 6"],["Route 6","Carmin sur Mer"],
+  ["Carmin sur Mer","Route 11"],["Route 11","Route 12"],
+  ["Route 12","Lavanville"],["Route 12","Route 13"],
+  ["Route 13","Route 14"],["Route 14","Route 15"],["Route 15","Parmanie"],
+  ["Safrania","Route 7"],["Route 7","Céladopole"],
+  ["Safrania","Route 8"],["Route 8","Lavanville"],
+  ["Céladopole","Route 16"],["Route 16","Route 17"],
+  ["Route 17","Route 18"],["Route 18","Parmanie"],
+  ["Parmanie","Zone Safari"],
+  ["Parmanie","Route 19"],["Route 19","Îles Écume"],
+  ["Îles Écume","Route 20"],["Route 20","Cramois'Île"],
+  ["Cramois'Île","Route 21"],["Route 21","Bourg Palette"],
+  ["Jadielle","Route 22"],
+  ["Route 23","Chemin de la Victoire"],["Chemin de la Victoire","Plateau Indigo"],
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+const MapUI = (() => {
+  const svg    = document.getElementById('kantoSvg');
+  const gConn  = document.getElementById('g-conn');
+  const gNodes = document.getElementById('g-nodes');
+  const gLab   = document.getElementById('g-labels');
+  const pEmpty  = document.getElementById('panel-empty');
+  const pDetail = document.getElementById('panel-detail');
+
+  const byName = {};
+  KD.zones.forEach(z => byName[z.name] = z);
+
+  // Couleur selon état
+  const C = {
+    current:  '#4caf50',
+    visited:  '#42a5f5',
+    unknown:  '#90a4ae',
+    locked:   '#546e7a',
+  };
+  function color(z) {
+    if (z.id === KD.curId) return C.current;
+    if (!z.ok)  return C.locked;
+    if (z.seen) return C.visited;
+    return C.unknown;
+  }
+  function radius(z) {
+    return { city:12, cave:9, forest:9, building:8 }[z.type] || 6;
+  }
+
+  // ── Connexions ────────────────────────────────────────────────────────────
+  function buildConnections() {
+    EDGES.forEach(([a, b]) => {
+      const pa = POS[a], pb = POS[b]; if (!pa||!pb) return;
+      const za = byName[a], zb = byName[b];
+      const active = za && zb && za.ok && zb.ok;
+      const l = ns('line');
+      attrs(l, {
+        x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y,
+        stroke: active ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.07)',
+        'stroke-width': active ? '2.2' : '1.2',
+        'stroke-dasharray': active ? '' : '5 4',
+        'stroke-linecap': 'round',
+      });
+      gConn.appendChild(l);
+    });
+  }
+
+  // ── Nœuds ─────────────────────────────────────────────────────────────────
+  function buildNodes() {
+    KD.zones.forEach(z => {
+      const p = POS[z.name]; if (!p) return;
+      const r = radius(z), col = color(z), isCur = z.id === KD.curId;
+
+      const g = ns('g');
+      g.setAttribute('class','zn');
+      g.dataset.id   = z.id;
+      g.dataset.name = z.name;
+      g.style.cursor = 'pointer';
+      if (!z.ok) g.setAttribute('filter','url(#f-lock)');
+
+      // Pulse halo position courante
+      if (isCur) {
+        const h = ns('circle');
+        attrs(h, { cx: p.x, cy: p.y, r: r+9, fill:'rgba(76,175,80,0.2)', class:'pulse' });
+        g.appendChild(h);
+      }
+
+      // Ombre portée
+      const sh = ns('circle');
+      attrs(sh, { cx: p.x+1, cy: p.y+1, r, fill:'rgba(0,0,0,0.6)' });
+      g.appendChild(sh);
+
+      // Cercle principal
+      const c = ns('circle');
+      attrs(c, {
+        cx: p.x, cy: p.y, r, fill: col,
+        stroke: isCur ? '#fff' : 'rgba(255,255,255,0.55)',
+        'stroke-width': isCur ? '2.5' : '1.5',
+      });
+      if (isCur) c.setAttribute('filter','url(#glow-cur)');
+      g.appendChild(c);
+
+      // POI
+      let ox = p.x + r + 1;
+      if (z.gym)  { g.appendChild(mkText(ox, p.y - r + 6, '★', '#ffd600', 9)); ox += 9; }
+      if (z.ctr)  { g.appendChild(mkRect(ox, p.y - r - 4, '#ef5350'));          ox += 7; }
+      if (z.shop) { g.appendChild(mkRect(ox, p.y - r - 4, '#ab47bc')); }
+
+      // Label (villes, grottes, forêts, bâtiments, position courante)
+      if (['city','cave','forest','building'].includes(z.type) || isCur) {
+        const lbl = z.name.length > 14 ? z.name.slice(0,13)+'…' : z.name;
+        const tw  = lbl.length * 5.3;
+        const bg  = ns('rect');
+        attrs(bg, {
+          x: p.x - tw/2 - 2, y: p.y + r + 3,
+          width: tw + 4, height: 13,
+          fill:'rgba(0,0,0,0.68)', rx: 2,
+        });
+        gLab.appendChild(bg);
+        const t = ns('text');
+        attrs(t, {
+          x: p.x, y: p.y + r + 13,
+          'text-anchor':'middle',
+          fill: isCur ? '#c8e6c9' : z.seen ? '#90caf9' : '#e0e0e0',
+          'font-size': 9,
+          'font-weight': isCur ? 700 : 500,
+          'font-family':"'Courier New',monospace",
+        });
+        t.textContent = lbl;
+        gLab.appendChild(t);
+      }
+
+      // Interactions
+      g.addEventListener('click', () => openPanel(z));
+
+      // Double-clic → voyager directement (zones accessibles et adjacentes)
+      g.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        if (z.id === KD.curId) {
+          window.location.href = `${KD.urlZone}${z.id}/`;
+        } else if (z.ok && KD.adj.has(z.id)) {
+          window.location.href = `${KD.urlGo}${z.id}/`;
+        } else if (z.ok) {
+          openPanel(z); // accessible mais non adjacent : ouvre le panel
+        }
+      });
+
+      g.addEventListener('mouseenter', () => { c.setAttribute('r', r+2.5); });
+      g.addEventListener('mouseleave', () => { c.setAttribute('r', r); });
+      // Curseur et tooltip selon accessibilité
+      if (z.ok && KD.adj.has(z.id) && z.id !== KD.curId) {
+        g.style.cursor = 'pointer';
+        const title = ns('title');
+        title.textContent = `Double-clic pour voyager vers ${z.name}`;
+        g.appendChild(title);
+      } else if (z.ok) {
+        g.style.cursor = 'pointer';
+        const title = ns('title');
+        title.textContent = z.id === KD.curId ? z.name : `${z.name} — cliquer pour détails`;
+        g.appendChild(title);
+      }
+
+      gNodes.appendChild(g);
+    });
+  }
+
+  // ── Panneau latéral ───────────────────────────────────────────────────────
+  function openPanel(z) {
+    pEmpty.classList.add('d-none');
+    pDetail.classList.remove('d-none');
+
+    const isCur = z.id === KD.curId;
+    const isAdj = KD.adj.has(z.id);   // Zone directement adjacente ?
+
+    // Badge état
+    const badge = isCur
+      ? `<span class="badge badge-success"><i class="fas fa-map-marker-alt mr-1"></i>Vous êtes ici</span>`
+      : z.seen
+        ? `<span class="badge badge-primary"><i class="fas fa-check mr-1"></i>Visitée</span>`
+        : `<span class="badge badge-secondary">Inexplorée</span>`;
+
+    // POI
+    let poi = '';
+    if (z.gym)  poi += `<span class="badge badge-warning mr-1"><i class="fas fa-trophy mr-1"></i>Arène</span>`;
+    if (z.ctr)  poi += `<span class="badge badge-danger mr-1"><i class="fas fa-hospital mr-1"></i>Centre</span>`;
+    if (z.shop) poi += `<span class="badge mr-1" style="background:#ab47bc;color:#fff"><i class="fas fa-shopping-bag mr-1"></i>Boutique</span>`;
+    if (!z.safe) poi += `<span class="badge badge-secondary"><i class="fas fa-leaf mr-1"></i>Sauvages</span>`;
+
+    // Direction
+    const dirHtml = buildDir(z);
+
+    // ── Boutons ──────────────────────────────────────────────────────────────
+    let btns = '';
+    if (isCur) {
+      btns = `<a href="${KD.urlZone}${z.id}/" class="btn btn-success btn-sm btn-block mt-3">
+        <i class="fas fa-map-marker-alt mr-1"></i>Voir ma zone
+      </a>`;
+    } else if (z.ok) {
+      btns = `<a href="${KD.urlZone}${z.id}/" class="btn btn-outline-info btn-sm btn-block mt-3">
+        <i class="fas fa-eye mr-1"></i>Voir la zone
+      </a>`;
+      if (isAdj) {
+        // Zone adjacente → bouton Voyager
+        btns += `<a href="${KD.urlGo}${z.id}/" class="btn btn-primary btn-sm btn-block mt-1">
+          <i class="fas fa-walking mr-1"></i>Voyager ici
+          <span class="ml-1" style="opacity:.65;font-size:.7rem">(ou double-clic)</span>
+        </a>`;
+      } else {
+        // Non adjacent : info discrète, pas de bouton travel
+        btns += `<p class="travel-note mt-2">
+          <i class="fas fa-route mr-1"></i>Non accessible directement depuis votre position
+        </p>`;
+      }
+    } else {
+      btns = `<button class="btn btn-secondary btn-sm btn-block mt-3" disabled>
+        <i class="fas fa-lock mr-1"></i>${z.why || 'Inaccessible'}
+      </button>`;
+    }
+
+    const typeIcon = {city:'city',cave:'mountain',forest:'tree',water:'water',building:'landmark',route:'road'};
+    pDetail.innerHTML = `
+      <div class="p-img-wrap">
+        <img src="${KD.static}img/mapSprites/Kanto/${z.img}" alt="${z.name}" class="p-img"
+             onerror="this.style.display='none'">
+        <div class="p-img-over">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <div class="font-weight-bold" style="font-size:.92rem;line-height:1.2">${z.name}</div>
+              <small class="text-white-50"><i class="fas fa-${typeIcon[z.type]||'map-pin'} mr-1"></i>${typeLabel(z.type)}</small>
+            </div>
+            <span class="badge badge-dark ml-1" style="white-space:nowrap">Niv.${z.lmin}–${z.lmax}</span>
+          </div>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="mb-2">${badge}</div>
+        <p class="text-muted small mb-2">${z.desc}</p>
+        ${poi ? `<div class="mb-2">${poi}</div>` : ''}
+        ${dirHtml}
+        ${btns}
+      </div>`;
+  }
+
+  // ── Boussole direction ────────────────────────────────────────────────────
+  function buildDir(z) {
+    const src = POS[KD.curName], dst = POS[z.name];
+    if (!src || !dst || z.id === KD.curId) return '';
+    const dx = dst.x - src.x, dy = dst.y - src.y;
+    const a  = Math.atan2(dy, dx) * 180 / Math.PI;
+    let dir = 'Ouest';
+    if      (a > -22.5  && a <=  22.5)  dir = 'Est';
+    else if (a >  22.5  && a <=  67.5)  dir = 'Sud-Est';
+    else if (a >  67.5  && a <= 112.5)  dir = 'Sud';
+    else if (a > 112.5  && a <= 157.5)  dir = 'Sud-Ouest';
+    else if (a > -157.5 && a <= -112.5) dir = 'Nord-Ouest';
+    else if (a > -112.5 && a <=  -67.5) dir = 'Nord';
+    else if (a >  -67.5 && a <=  -22.5) dir = 'Nord-Est';
+
+    return `<div class="dir-badge mb-2">
+      <svg width="18" height="18" viewBox="-9 -9 18 18" style="flex-shrink:0">
+        <circle r="8" fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+        <polygon points="0,-6 -2.5,0 0,-3 2.5,0" fill="#ef5350" transform="rotate(${a+90})"/>
+        <polygon points="0,6 -2.5,0 0,3 2.5,0"   fill="rgba(255,255,255,0.28)" transform="rotate(${a+90})"/>
+      </svg>
+      <span><strong>${dir}</strong> de votre position</span>
+    </div>`;
+  }
+
+  function typeLabel(t) {
+    return {city:'Ville',route:'Route',cave:'Grotte',forest:'Forêt',water:'Mer',building:'Bâtiment'}[t]||t;
+  }
+
+  // ── Helpers SVG ───────────────────────────────────────────────────────────
+  function ns(tag)       { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+  function attrs(el, kv) { Object.entries(kv).forEach(([k,v]) => el.setAttribute(k, v)); }
+  function mkText(x, y, txt, fill, size) {
+    const e = ns('text'); attrs(e,{x,y,'font-size':size,fill}); e.textContent=txt; return e;
+  }
+  function mkRect(x, y, fill) {
+    const e = ns('rect'); attrs(e,{x,y,width:6,height:6,fill,rx:1}); return e;
+  }
+
+  // ── Pan & Zoom ────────────────────────────────────────────────────────────
+  let vb = {x:0, y:0, w:1000, h:707};
+  const RATIO = 707/1000, MIN_W = 160, MAX_W = 1000;
+
+  function setVB() {
+    svg.setAttribute('viewBox',`${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`);
+  }
+  function clamp() {
+    vb.x = Math.max(0, Math.min(1000-vb.w, vb.x));
+    vb.y = Math.max(0, Math.min(707 -vb.h, vb.y));
+  }
+
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const sc = e.deltaY > 0 ? 1.1 : 0.91;
+    const nw = Math.max(MIN_W, Math.min(MAX_W, vb.w*sc));
+    if (nw === vb.w) return;
+    const rect = svg.getBoundingClientRect();
+    const mx = (e.clientX-rect.left)/rect.width  * vb.w + vb.x;
+    const my = (e.clientY-rect.top) /rect.height * vb.h + vb.y;
+    vb.w = nw; vb.h = nw*RATIO;
+    vb.x = mx - (e.clientX-rect.left)/rect.width  * vb.w;
+    vb.y = my - (e.clientY-rect.top) /rect.height * vb.h;
+    clamp(); setVB();
+  }, {passive:false});
+
+  let drag=null, hasDragged=false;
+  svg.addEventListener('mousedown', e => {
+    if (e.target.closest('.zn')) return;
+    svg.style.cursor='grabbing';
+    hasDragged = false;
+    drag={sx:e.clientX, sy:e.clientY, vx:vb.x, vy:vb.y};
+  });
+  window.addEventListener('mousemove', e => {
+    if (!drag) return;
+    const dx = Math.abs(e.clientX - drag.sx), dy = Math.abs(e.clientY - drag.sy);
+    if (dx > 4 || dy > 4) hasDragged = true;
+    const r = svg.getBoundingClientRect();
+    vb.x = drag.vx - (e.clientX-drag.sx)*vb.w/r.width;
+    vb.y = drag.vy - (e.clientY-drag.sy)*vb.h/r.height;
+    clamp(); setVB();
+  });
+  window.addEventListener('mouseup', ()=>{ drag=null; svg.style.cursor='grab'; });
+
+  let t0=null;
+  svg.addEventListener('touchstart', e=>{
+    if(e.touches.length===1) t0={x:e.touches[0].clientX,y:e.touches[0].clientY,vx:vb.x,vy:vb.y};
+  },{passive:true});
+  svg.addEventListener('touchmove', e=>{
+    if(!t0||e.touches.length!==1) return;
+    const r=svg.getBoundingClientRect();
+    vb.x=t0.vx-(e.touches[0].clientX-t0.x)*vb.w/r.width;
+    vb.y=t0.vy-(e.touches[0].clientY-t0.y)*vb.h/r.height;
+    clamp(); setVB();
+  },{passive:true});
+
+  function focusCurrent() {
+    const p = POS[KD.curName]; if (!p) return resetView();
+    vb.w=360; vb.h=vb.w*RATIO;
+    vb.x = Math.max(0, Math.min(1000-vb.w, p.x-vb.w/2));
+    vb.y = Math.max(0, Math.min(707 -vb.h, p.y-vb.h/2));
+    setVB();
+    const z = KD.zones.find(z=>z.id===KD.curId); if(z) openPanel(z);
+  }
+  function resetView() { vb={x:0,y:0,w:1000,h:707}; setVB(); }
+
+  function init() {
+    buildConnections();
+    buildNodes();
+    setTimeout(focusCurrent, 120);
+  }
+  return { init, focusCurrent, resetView };
+})();
+
+document.addEventListener('DOMContentLoaded', MapUI.init);
+</script>
+
+<style>
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.kanto-map-page {
+  display: flex; flex-direction: column;
+  height: calc(100vh - 122px); min-height: 520px;
+}
+.map-title {
+  font-family: 'Courier New', monospace;
+  font-size: 1.3rem; letter-spacing: .04em;
+}
+.map-legend {
+  display: flex; flex-wrap: wrap; gap: 6px 14px;
+  font-size: .72rem; color: #adb5bd; align-items: center;
+}
+.leg  { display:flex; align-items:center; gap:5px; }
+.dot  { display:inline-block; width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.star-dot { font-size:11px; line-height:1; color:#ffd600; width:auto; height:auto;
+            background:none; border-radius:0; }
+.map-body { flex:1; display:flex; gap:10px; min-height:0; }
+
+/* ── Canvas ──────────────────────────────────────────────────────────────── */
+.map-canvas-wrap {
+  flex: 1; border-radius: 10px; overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.4);
+  cursor: grab; min-height: 0;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06);
+  background-color: #0f1b29;
+}
+.map-canvas-wrap:active { cursor: grabbing; }
+#kantoSvg { width:100%; height:100%; display:block; user-select:none; }
+
+/* Pulse halo */
+@keyframes pulse {
+  0%,100% { opacity:.55; }
+  50%      { opacity:.1;  }
+}
+.pulse { animation: pulse 2.5s ease-in-out infinite; }
+
+/* Hover nœud */
+.zn:hover { filter: brightness(1.15); }
+
+/* ── Panneau ─────────────────────────────────────────────────────────────── */
+.map-panel {
+  width: 252px; flex-shrink: 0;
+  background: #0f1b29;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.panel-empty {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:24px; text-align:center;
+}
+.panel-scroll {
+  flex:1; overflow-y:auto;
+  display:flex; flex-direction:column;
+}
+.panel-scroll::-webkit-scrollbar { width:3px; }
+.panel-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:2px; }
+
+.p-img-wrap {
+  position:relative; height:96px;
+  background:#08121e; flex-shrink:0; overflow:hidden;
+}
+.p-img { width:100%; height:100%; object-fit:cover; opacity:.6; transition:opacity .25s; }
+.p-img-wrap:hover .p-img { opacity:.82; }
+.p-img-over {
+  position:absolute; bottom:0; left:0; right:0;
+  padding:7px 10px;
+  background: linear-gradient(transparent, rgba(0,0,0,.85));
+  color:#fff;
+}
+.p-body { padding:10px 12px; flex:1; font-size:.82rem; }
+
+.dir-badge {
+  display:flex; align-items:center; gap:7px;
+  padding:5px 9px; margin-bottom:8px;
+  background:rgba(255,255,255,.04);
+  border-radius:6px; border-left:3px solid #ef5350;
+  font-size:.74rem; color:#b0bec5;
+}
+.travel-note {
+  font-size:.73rem; color:#78909c;
+  padding:5px 8px; margin-top:6px;
+  background:rgba(255,255,255,.03);
+  border-radius:4px; border-left:3px solid #37474f;
 }
 
-// Auto-scroll au chargement
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(scrollToCurrentZone, 300);
-});
-</script>
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width:768px) {
+  .map-body        { flex-direction:column; }
+  .map-canvas-wrap { height:50vw; min-height:280px; }
+  .map-panel       { width:100%; max-height:36vh; }
+  .kanto-map-page  { height:auto; }
+}
+</style>
 {% endblock %}
