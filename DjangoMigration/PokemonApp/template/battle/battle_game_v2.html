@@ -209,8 +209,7 @@
             <!-- EXP Bar (Player only) -->
             <div class="exp-section">
               <div class="exp-bar">
-                {% widthratio battle.player_pokemon.current_exp battle.player_pokemon.exp_for_next_level 100 as exp_percent %}
-                <div class="exp-bar-fill" style="width: {{ exp_percent|default:0 }}%"></div>
+                <div class="exp-bar-fill" style="width: {{ initial_exp_percent|default:0 }}%" data-exp-percent="{{ initial_exp_percent|default:0 }}"></div>
               </div>
             </div>
 

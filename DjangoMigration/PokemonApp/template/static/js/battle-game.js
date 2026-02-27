@@ -791,35 +791,61 @@ function updateMovesMenu(moves) {
 // Mettre à jour EXP bar
 function updateExpBar(expPercent) {
   const bar = $('.exp-bar-fill');
-  const currentWidth = parseFloat(bar.css('width')) || 0;
-  const parentWidth = bar.parent().width() || 1;
-  const currentPercent = (currentWidth / parentWidth) * 100;
 
-  // Only animate and play sound if XP actually increased
-  if (expPercent > currentPercent + 0.5) {
-    // Play EXP gain sound
+  // Récupère le pourcentage actuel depuis le style (ou data-percent)
+  const currentPercent = parseFloat(bar.data('exp-percent') ?? bar.css('width')) || 0;
+
+  // Détecter si l'XP a réellement augmenté :
+  // - cas normal : expPercent > currentPercent
+  // - cas level-up : expPercent < currentPercent (barre repart de 0)
+  const leveledUp = expPercent < currentPercent - 5;  // seuil de 5% pour éviter les faux positifs
+  const gained    = expPercent > currentPercent + 0.5;
+
+  if (gained || leveledUp) {
     try { audioManager.playSFX('ui/exp_gain'); } catch(e) {}
 
-    // Restart shimmer + tip glow animations cleanly
-    bar.removeClass('exp-animating exp-pulse');
-    bar[0].offsetWidth; // force reflow
-    bar.addClass('exp-animating');
-
-    // Animate bar width
-    bar.css('transition', 'width 1s ease-out');
-    bar.css('width', expPercent + '%');
-
-    // After fill completes: swap shimmer for end pulse
-    setTimeout(() => {
-      bar.removeClass('exp-animating');
-      bar.addClass('exp-pulse');
-      setTimeout(() => bar.removeClass('exp-pulse'), 500);
-    }, 1050);
-
-    // Clean up transition override
-    setTimeout(() => bar.css('transition', ''), 1200);
+    if (leveledUp) {
+      // Level-up : compléter la barre jusqu'à 100% puis repartir de 0
+      bar.css('transition', 'width 0.4s ease-out');
+      bar.css('width', '100%');
+      setTimeout(() => {
+        bar.css('transition', 'none');
+        bar.css('width', '0%');
+        bar.data('exp-percent', 0);
+        // Puis animer jusqu'au nouveau pourcentage
+        setTimeout(() => {
+          bar.removeClass('exp-animating exp-pulse');
+          bar[0].offsetWidth;
+          bar.addClass('exp-animating');
+          bar.css('transition', 'width 1s ease-out');
+          bar.css('width', expPercent + '%');
+          bar.data('exp-percent', expPercent);
+          setTimeout(() => {
+            bar.removeClass('exp-animating');
+            bar.addClass('exp-pulse');
+            setTimeout(() => bar.removeClass('exp-pulse'), 500);
+          }, 1050);
+          setTimeout(() => bar.css('transition', ''), 1200);
+        }, 50);
+      }, 450);
+    } else {
+      // Gain normal
+      bar.removeClass('exp-animating exp-pulse');
+      bar[0].offsetWidth;
+      bar.addClass('exp-animating');
+      bar.css('transition', 'width 1s ease-out');
+      bar.css('width', expPercent + '%');
+      bar.data('exp-percent', expPercent);
+      setTimeout(() => {
+        bar.removeClass('exp-animating');
+        bar.addClass('exp-pulse');
+        setTimeout(() => bar.removeClass('exp-pulse'), 500);
+      }, 1050);
+      setTimeout(() => bar.css('transition', ''), 1200);
+    }
   } else {
     bar.css('width', expPercent + '%');
+    bar.data('exp-percent', expPercent);
   }
 }
 

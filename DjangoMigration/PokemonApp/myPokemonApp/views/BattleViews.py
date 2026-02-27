@@ -165,6 +165,17 @@ class BattleGameView(generic.DetailView):
         except PlayerLocation.DoesNotExist:
             context['current_zone'] = None
 
+        # Pourcentage EXP correct (relatif au niveau actuel, pas cumulatif)
+        pp = battle.player_pokemon
+        if pp:
+            exp_at_current = pp.exp_at_level(pp.level)
+            exp_at_next    = pp.exp_for_next_level()
+            exp_in_level   = max(0, (pp.current_exp or 0) - exp_at_current)
+            exp_needed     = max(1, exp_at_next - exp_at_current)
+            context['initial_exp_percent'] = int(min(100, (exp_in_level / exp_needed) * 100))
+        else:
+            context['initial_exp_percent'] = 0
+
         return context
 
 

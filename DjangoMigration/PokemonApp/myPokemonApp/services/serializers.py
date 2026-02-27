@@ -86,15 +86,23 @@ def build_battle_response(battle):
       - battle_ended: False  (le caller le passe à True si besoin)
       - battle_state: états volatils + stat stages pour le frontend
     """
-    exp_for_next = battle.player_pokemon.exp_for_next_level() or 100
-    current_exp  = battle.player_pokemon.current_exp or 0
+    pp = battle.player_pokemon
 
-    player_data = serialize_pokemon(battle.player_pokemon, include_moves=True)
-    player_data['current_exp']        = current_exp
-    player_data['exp_for_next_level'] = exp_for_next
-    player_data['exp_percent']        = int((current_exp / exp_for_next) * 100)
+    # XP cumulée requise pour le niveau actuel et le suivant
+    exp_at_current = pp.exp_at_level(pp.level)
+    exp_at_next    = pp.exp_for_next_level()   # = exp_at_level(level + 1)
+    current_exp    = pp.current_exp or 0
 
-    pp  = battle.player_pokemon
+    # XP relative dans le niveau courant (0 → exp_needed_this_level)
+    exp_in_level = max(0, current_exp - exp_at_current)
+    exp_needed   = max(1, exp_at_next - exp_at_current)
+    exp_percent  = int(min(100, (exp_in_level / exp_needed) * 100))
+
+    player_data = serialize_pokemon(pp, include_moves=True)
+    player_data['current_exp']        = exp_in_level   # XP dans le niveau actuel
+    player_data['exp_for_next_level'] = exp_needed     # XP requise pour passer au suivant
+    player_data['exp_percent']        = exp_percent
+
     opp = battle.opponent_pokemon
     bs  = battle.battle_state if isinstance(battle.battle_state, dict) else {}
 
