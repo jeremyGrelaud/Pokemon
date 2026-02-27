@@ -691,10 +691,11 @@ function updatePokemonDisplay(side, pokemonData) {
   
   // Détecter level-up (player uniquement) avant de mettre à jour le texte
   if (side === 'player' && pokemonData.level) {
-    const oldLevel = parseInt(level.text().replace('Niv.', '')) || 0;
+    const oldLevel = parseInt(level.data('level')) || 0;
     if (oldLevel > 0 && pokemonData.level > oldLevel) {
       triggerLevelUpAnimation(pokemonData.level);
     }
+    level.data('level', pokemonData.level);
   }
 
   // Update name and level
@@ -712,6 +713,32 @@ function updatePokemonDisplay(side, pokemonData) {
   // Update exp bar
   if (side === 'player' && pokemonData.exp_percent !== undefined) {
     updateExpBar(pokemonData.exp_percent);
+  }
+
+  // Update status badge
+  updateStatusBadge(side, pokemonData.status);
+}
+
+function updateStatusBadge(side, status) {
+  const container = $(`#${side}-status`);
+  const statusLabels = {
+    'paralysis': 'PARA',
+    'poison':    'PSN',
+    'burn':      'BRL',
+    'freeze':    'GEL',
+    'sleep':     'SOM',
+  };
+  if (status && statusLabels[status]) {
+    const label = statusLabels[status];
+    // Ne re-rendre que si différent de l'état actuel affiché
+    if (container.find(`.status-badge`).length === 0 ||
+        !container.find(`.status-badge`).hasClass(`status-${status}`)) {
+      container.html(
+        `<span class="status-badge status-${status}">${label}</span>`
+      );
+    }
+  } else {
+    container.empty();
   }
 }
 

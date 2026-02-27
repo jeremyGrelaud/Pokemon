@@ -183,7 +183,7 @@
                 {% if battle.player_pokemon.is_shiny %}<span class="shiny-indicator" title="Chromatique !">✨</span>{% endif %}
               </span>
               <span class="pokemon-gender">♂</span>
-              <span class="pokemon-level" id="player-level">Niv.{{ battle.player_pokemon.level }}</span>
+              <span class="pokemon-level" id="player-level" data-level="{{ battle.player_pokemon.level }}">Niv.{{ battle.player_pokemon.level }}</span>
             </div>
             
             <!-- HP Bar -->

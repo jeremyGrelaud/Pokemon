@@ -513,6 +513,8 @@ def battle_action_view(request, pk):
             return JsonResponse(response_data)
 
         # ── Rebuild de la réponse après exécution du tour ───────────────────
+        # Capturer le numéro de tour AVANT refresh pour filtrer les bons logs
+        turn_before = battle.current_turn
         battle.refresh_from_db()
         ended_before      = response_data.get('battle_ended', False)
         result_before     = response_data.get('result')
@@ -531,11 +533,18 @@ def battle_action_view(request, pk):
         if pending_moves:
             response_data['pending_moves'] = pending_moves
 
-        # Logs récents depuis le journal de combat
+        # Logs du tour actuel uniquement (filtrés par turn_before et turn_before+1
+        # car current_turn est incrémenté en fin de execute_turn)
         if battle.battle_log:
-            battle_log_messages = [entry['message'] for entry in battle.battle_log[-5:]]
-            seen   = set(battle_log_messages)
-            merged = battle_log_messages + [m for m in extra_logs if m not in seen]
+            turn_logs = [
+                entry['message'] for entry in battle.battle_log
+                if entry.get('turn') in (turn_before, turn_before + 1)
+            ]
+            # Fallback : si aucun log trouvé par turn, prendre les 5 derniers
+            if not turn_logs:
+                turn_logs = [entry['message'] for entry in battle.battle_log[-5:]]
+            seen   = set(turn_logs)
+            merged = turn_logs + [m for m in extra_logs if m not in seen]
             response_data['log'] = merged
         elif extra_logs:
             response_data['log'] = extra_logs
@@ -633,6 +642,10 @@ def battle_create_wild_view(request):
     # Creer le Pokemon sauvage (stats + moves + fallback Tackle) via gameUtils
     wild_pokemon = create_wild_pokemon(wild_species, level)
 
+    # Réinitialiser les stages des deux Pokémon avant le combat
+    player_pokemon.reset_combat_stats()
+    wild_pokemon.reset_combat_stats()
+
     battle = Battle.objects.create(
         player_trainer=player_trainer,
         opponent_trainer=None,
@@ -687,6 +700,10 @@ def battle_create_trainer_view(request, trainer_id):
     if not opponent_pokemon:
         messages.error(request, "Ce dresseur n'a pas d'equipe configuree !")
         return redirect('BattleCreateView')
+    
+    # Réinitialiser les stages des deux Pokémon avant le combat
+    player_pokemon.reset_combat_stats()
+    opponent_pokemon.reset_combat_stats()
 
     battle = Battle.objects.create(
         player_trainer=player_trainer,
@@ -740,6 +757,10 @@ def battle_create_gym_view(request):
     if not opponent_pokemon:
         messages.error(request, "Le Champion n'a pas d'equipe configuree !")
         return redirect('BattleCreateView')
+
+    # Réinitialiser les stages des deux Pokémon avant le combat
+    player_pokemon.reset_combat_stats()
+    opponent_pokemon.reset_combat_stats()
 
     battle = Battle.objects.create(
         player_trainer=player_trainer,
@@ -828,6 +849,10 @@ def battle_challenge_gym_view(request, gym_leader_id):
         messages.error(request, "Le Champion n'a pas d'équipe configurée !")
         return redirect('GymLeaderDetailView', pk=gym_leader.id)
 
+    # Réinitialiser les stages des deux Pokémon avant le combat
+    player_pokemon.reset_combat_stats()
+    opponent_pokemon.reset_combat_stats()
+    
     battle = Battle.objects.create(
         player_trainer=player_trainer,
         opponent_trainer=opponent_trainer,

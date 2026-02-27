@@ -755,19 +755,19 @@ class Battle(models.Model):
         # ── Vérifier la précision (sauf never_miss) ───────────────────────────
         if move.effect != 'never_miss' and move.name != 'Struggle':
             accuracy = move.accuracy if move.accuracy else 100
-            if accuracy < 100:
-                acc_mod  = attacker.get_stat_multiplier(attacker.accuracy_stage)
-                eva_mod  = attacker.get_stat_multiplier(-defender.evasion_stage)
-                hit_pct  = accuracy * acc_mod * eva_mod
-                if random.randint(1, 100) > hit_pct:
-                    self.add_to_log(f"L'attaque a raté !")
-                    # Crash (High Jump Kick…)
-                    if move.effect in ('crash', 'high_jump_kick'):
-                        dmg = max(1, attacker.max_hp // 2)
-                        attacker.current_hp = max(0, attacker.current_hp - dmg)
-                        attacker.save()
-                        self.add_to_log(f"{attacker} s'est blessé en tombant ! (-{dmg} PV)")
-                    return
+            # Toujours appliquer les stages de précision/esquive, même si accuracy=100
+            acc_mod  = attacker.get_stat_multiplier(attacker.accuracy_stage)
+            eva_mod  = attacker.get_stat_multiplier(-defender.evasion_stage)
+            hit_pct  = accuracy * acc_mod * eva_mod
+            if random.randint(1, 100) > hit_pct:
+                self.add_to_log(f"L'attaque a raté !")
+                # Crash (High Jump Kick…)
+                if move.effect in ('crash', 'high_jump_kick'):
+                    dmg = max(1, attacker.max_hp // 2)
+                    attacker.current_hp = max(0, attacker.current_hp - dmg)
+                    attacker.save()
+                    self.add_to_log(f"{attacker} s'est blessé en tombant ! (-{dmg} PV)")
+                return
 
         # ── Appliquer l'effet du move ─────────────────────────────────────────
         self._apply_move_effect(attacker, defender, move, move_instance)

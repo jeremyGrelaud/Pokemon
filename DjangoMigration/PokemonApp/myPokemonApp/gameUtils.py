@@ -394,6 +394,10 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
     else:
         return None, "Pas d'adversaire defini !"
 
+    # Réinitialiser les stages des deux Pokémon avant le combat
+    player_pokemon.reset_combat_stats()
+    opponent_pokemon.reset_combat_stats()
+
     battle = Battle.objects.create(
         battle_type=battle_type,
         player_trainer=player_trainer,
