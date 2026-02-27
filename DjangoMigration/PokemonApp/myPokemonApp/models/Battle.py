@@ -516,6 +516,20 @@ class Battle(models.Model):
                 first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
                 second = (self.player_pokemon, player_action, self.opponent_pokemon)
 
+        # Helper pour extraire infos du move depuis une action
+        def _move_info(action):
+            move = action.get('move')
+            if move:
+                return {
+                    'name':     move.name,
+                    'type':     move.type.name if move.type else '',
+                    'category': move.category or '',
+                }
+            return {'name': '', 'type': '', 'category': ''}
+
+        player_move_info   = _move_info(player_action)
+        opponent_move_info = _move_info(opponent_action)
+
         # Premier attaquant
         attacker, action, defender = first
         self.execute_action(attacker, defender, action)
@@ -530,7 +544,9 @@ class Battle(models.Model):
             bs = self._bstate()
             bs['last_turn_info'] = {
                 'player_first':    player_first,
-                'second_skipped':  True,   # second attacker never attacked
+                'second_skipped':  True,
+                'player_move':     player_move_info,
+                'opponent_move':   opponent_move_info,
             }
             self._save_state()
             self.current_turn += 1
@@ -552,6 +568,8 @@ class Battle(models.Model):
         bs['last_turn_info'] = {
             'player_first':   player_first,
             'second_skipped': False,
+            'player_move':    player_move_info,
+            'opponent_move':  opponent_move_info,
         }
         self._save_state()
 

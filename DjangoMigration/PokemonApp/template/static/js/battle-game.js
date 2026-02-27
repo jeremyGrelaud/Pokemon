@@ -225,59 +225,111 @@ function showTeam() {
 function useMove(moveId) {
   $('button').prop('disabled', true);
   audioManager.playSFX('ui/confirm');
-  
-  // Get move data
-  const moveBtn = $(event.target).closest('.move-btn');
-  const moveName = moveBtn.find('.move-name').text();
-  const moveType = moveBtn.attr('class').match(/move-type-(\w+)/)[1];
-  
-  addBattleLog(`${$('#player-name').text()} utilise ${moveName} !`);
-  
-  // Animate attack
-  const playerPos = getElementCenter($('#player-sprite'));
-  const opponentPos = getElementCenter($('#opponent-sprite'));
-  
-  // Play attack animation
-  $('#player-sprite').addClass('attacking');
-  setTimeout(() => $('#player-sprite').removeClass('attacking'), 600);
-  
-  // Determine attack category from move power
-  const movePower = moveBtn.find('.move-power').text();
-  const isPhysical = movePower.includes('PWR');
-  
-  const cleanedMoveName = moveName.replace(/\s+/g, '').toLowerCase(); //lower + removed whitespaces
 
-  if (isPhysical) {
-    setTimeout(() => {
-      battleEffects.physicalAttack(playerPos, opponentPos, 'slash');
-      // audioManager.playSFX('attacks/slash');
-      audioManager.playSFX(`attacks/${cleanedMoveName}`);
-    }, 300);
-  } else {
-    setTimeout(() => {
-      battleEffects.specialAttack(playerPos, opponentPos, moveType);
-      // audioManager.playSFX('attacks/special');
-      audioManager.playSFX(`attacks/${cleanedMoveName}`);
-    }, 300);
-  }
-  
-  // Send to server
-  setTimeout(() => {
-    $.post(BATTLE_CONFIG.urls.action, {
-      action: 'attack',
-      move_id: moveId,
-      csrfmiddlewaretoken: csrfToken
-    })
-    .done(function(data) {
+  // Send to server immediately — no pre-emptive animations
+  $.post(BATTLE_CONFIG.urls.action, {
+    action: 'attack',
+    move_id: moveId,
+    csrfmiddlewaretoken: csrfToken
+  })
+  .done(function(data) {
+    // Play the correct attack sequence based on turn_info from server
+    playTurnAnimations(data, () => {
       updateBattleState(data);
       updateVolatileStates(data);
-    })
-    .fail(function(xhr) {
-      console.error('Attack failed:', xhr);
-      addBattleLog('Erreur lors de l\'attaque');
-      $('button').prop('disabled', false);
     });
-  }, 1500);
+  })
+  .fail(function(xhr) {
+    console.error('Attack failed:', xhr);
+    addBattleLog('Erreur lors de l\'attaque');
+    $('button').prop('disabled', false);
+  });
+}
+
+/**
+ * Joue la séquence d'animations d'attaque dans l'ordre exact du tour,
+ * puis appelle onDone() pour mettre à jour l'état du combat.
+ *
+ * Séquences possibles (basées sur turn_info) :
+ *   player_first=true,  second_skipped=false → player attaque, puis ennemi attaque
+ *   player_first=true,  second_skipped=true  → player attaque seulement (ennemi KO)
+ *   player_first=false, second_skipped=false → ennemi attaque, puis player attaque
+ *   player_first=false, second_skipped=true  → ennemi attaque seulement (player KO avant)
+ */
+function playTurnAnimations(data, onDone) {
+  const ti = data.turn_info || { player_first: true, second_skipped: false, player_move: {}, opponent_move: {} };
+
+  const playerMove   = ti.player_move   || {};
+  const opponentMove = ti.opponent_move || {};
+
+  const playerAttacked   = !(ti.player_first  === false && ti.second_skipped);
+  const opponentAttacked = !(ti.player_first  === true  && ti.second_skipped);
+
+  const ATTACK_DELAY  = 300;   // ms avant d'afficher l'effet
+  const ATTACK_DUR    = 700;   // durée approximative de l'effet
+  const BETWEEN_GAP   = 400;   // pause entre les deux attaques
+
+  let seq = [];  // [{attacker: 'player'|'opponent', move: {...}}, ...]
+
+  if (ti.player_first) {
+    if (playerAttacked)   seq.push({ attacker: 'player',   move: playerMove });
+    if (opponentAttacked) seq.push({ attacker: 'opponent', move: opponentMove });
+  } else {
+    if (opponentAttacked) seq.push({ attacker: 'opponent', move: opponentMove });
+    if (playerAttacked)   seq.push({ attacker: 'player',   move: playerMove });
+  }
+
+  // Aucune attaque (ex: item/switch tour) → on va directement au onDone
+  if (seq.length === 0) {
+    onDone();
+    return;
+  }
+
+  function playStep(index) {
+    if (index >= seq.length) {
+      onDone();
+      return;
+    }
+
+    const { attacker, move } = seq[index];
+    const isPlayer   = attacker === 'player';
+    const spriteId   = isPlayer ? '#player-sprite'   : '#opponent-sprite';
+    const fromSprite = isPlayer ? '#player-sprite'   : '#opponent-sprite';
+    const toSprite   = isPlayer ? '#opponent-sprite' : '#player-sprite';
+
+    const playerPos   = getElementCenter($('#player-sprite'));
+    const opponentPos = getElementCenter($('#opponent-sprite'));
+    const fromPos     = isPlayer ? playerPos   : opponentPos;
+    const toPos       = isPlayer ? opponentPos : playerPos;
+
+    const moveName    = move.name    || '';
+    const moveType    = move.type    || 'normal';
+    const moveCategory= move.category|| 'special';
+    const cleanName   = moveName.replace(/\s+/g, '').toLowerCase();
+
+    // Log
+    const attackerName = isPlayer ? $('#player-name').text() : $('#opponent-name').text();
+    if (moveName) addBattleLog(`${attackerName} utilise ${moveName} !`);
+
+    // Sprite bounce
+    $(spriteId).addClass('attacking');
+    setTimeout(() => $(spriteId).removeClass('attacking'), 600);
+
+    // Effect + sound
+    setTimeout(() => {
+      if (moveCategory === 'physical') {
+        battleEffects.physicalAttack(fromPos, toPos, 'slash');
+      } else {
+        battleEffects.specialAttack(fromPos, toPos, moveType);
+      }
+      try { audioManager.playSFX(`attacks/${cleanName}`); } catch(e) {}
+    }, ATTACK_DELAY);
+
+    // Next step
+    setTimeout(() => playStep(index + 1), ATTACK_DELAY + ATTACK_DUR + BETWEEN_GAP);
+  }
+
+  playStep(0);
 }
 
 
