@@ -235,7 +235,7 @@ function useMove(moveId) {
   .done(function(data) {
     // Play the correct attack sequence based on turn_info from server
     playTurnAnimations(data, () => {
-      updateBattleState(data);
+      updateBattleState(data, true);  // HP déjà mis à jour à l'impact
       updateVolatileStates(data);
     });
   })
@@ -266,10 +266,11 @@ function playTurnAnimations(data, onDone) {
   const opponentAttacked = !(ti.player_first  === true  && ti.second_skipped);
 
   const ATTACK_DELAY  = 300;   // ms avant d'afficher l'effet
+  const IMPACT_OFFSET = 350;   // ms après ATTACK_DELAY : moment où la HP bar change
   const ATTACK_DUR    = 700;   // durée approximative de l'effet
   const BETWEEN_GAP   = 400;   // pause entre les deux attaques
 
-  let seq = [];  // [{attacker: 'player'|'opponent', move: {...}}, ...]
+  let seq = [];
 
   if (ti.player_first) {
     if (playerAttacked)   seq.push({ attacker: 'player',   move: playerMove });
@@ -292,30 +293,34 @@ function playTurnAnimations(data, onDone) {
     }
 
     const { attacker, move } = seq[index];
-    const isPlayer   = attacker === 'player';
-    const spriteId   = isPlayer ? '#player-sprite'   : '#opponent-sprite';
-    const fromSprite = isPlayer ? '#player-sprite'   : '#opponent-sprite';
-    const toSprite   = isPlayer ? '#opponent-sprite' : '#player-sprite';
+    const isPlayer = attacker === 'player';
+
+    // Le défenseur est le camp opposé à l'attaquant
+    const defenderSide  = isPlayer ? 'opponent' : 'player';
+    const defenderHp    = isPlayer ? data.opponent_hp     : data.player_hp;
+    const defenderMaxHp = isPlayer ? data.opponent_max_hp : data.player_max_hp;
+
+    const spriteId = isPlayer ? '#player-sprite' : '#opponent-sprite';
 
     const playerPos   = getElementCenter($('#player-sprite'));
     const opponentPos = getElementCenter($('#opponent-sprite'));
     const fromPos     = isPlayer ? playerPos   : opponentPos;
     const toPos       = isPlayer ? opponentPos : playerPos;
 
-    const moveName    = move.name    || '';
-    const moveType    = move.type    || 'normal';
-    const moveCategory= move.category|| 'special';
-    const cleanName   = moveName.replace(/\s+/g, '').toLowerCase();
+    const moveName     = move.name     || '';
+    const moveType     = move.type     || 'normal';
+    const moveCategory = move.category || 'special';
+    const cleanName    = moveName.replace(/\s+/g, '').toLowerCase();
 
     // Log
     const attackerName = isPlayer ? $('#player-name').text() : $('#opponent-name').text();
     if (moveName) addBattleLog(`${attackerName} utilise ${moveName} !`);
 
-    // Sprite bounce
+    // Sprite bounce de l'attaquant
     $(spriteId).addClass('attacking');
     setTimeout(() => $(spriteId).removeClass('attacking'), 600);
 
-    // Effect + sound
+    // Effet + son au moment du lancer
     setTimeout(() => {
       if (moveCategory === 'physical') {
         battleEffects.physicalAttack(fromPos, toPos, 'slash');
@@ -325,7 +330,12 @@ function playTurnAnimations(data, onDone) {
       try { audioManager.playSFX(`attacks/${cleanName}`); } catch(e) {}
     }, ATTACK_DELAY);
 
-    // Next step
+    // Mise à jour HP bar du défenseur à l'impact
+    setTimeout(() => {
+      updateHP(defenderSide, defenderHp, defenderMaxHp, false, true);
+    }, ATTACK_DELAY + IMPACT_OFFSET);
+
+    // Étape suivante
     setTimeout(() => playStep(index + 1), ATTACK_DELAY + ATTACK_DUR + BETWEEN_GAP);
   }
 
@@ -562,28 +572,26 @@ function loadTeam() {
 // BATTLE STATE UPDATE
 // ============================================================================
 
-function updateBattleState(data) {
+function updateBattleState(data, skipHpUpdates = false) {
   console.log('Updating battle state:', data);
-
-  // --- Turn info: was each side actually hit this turn? ---
-  // player_first=true + second_skipped=true → opponent KO'd first → player NOT hit
-  // player_first=false + second_skipped=true → player KO'd first → opponent NOT hit
-  const ti = data.turn_info || { player_first: true, second_skipped: false };
-  const playerWasHit   = !(ti.player_first  && ti.second_skipped);
-  const opponentWasHit = !(!ti.player_first && ti.second_skipped);
 
   // Update Pokemon data
   if (data.player_pokemon) {
     updatePokemonDisplay('player', data.player_pokemon);
   }
 
-  // Update HP with correct damage-animation flag
-  if (data.player_hp !== undefined) {
-    updateHP('player', data.player_hp, data.player_max_hp, false, playerWasHit);
-  }
-
-  if (data.opponent_hp !== undefined) {
-    updateHP('opponent', data.opponent_hp, data.opponent_max_hp, false, opponentWasHit);
+  // HP bars : mis à jour dans playTurnAnimations à l'impact, sauf pour les
+  // actions sans animation (switch, item) où skipHpUpdates=false.
+  if (!skipHpUpdates) {
+    const ti = data.turn_info || { player_first: true, second_skipped: false };
+    const playerWasHit   = !(ti.player_first  && ti.second_skipped);
+    const opponentWasHit = !(!ti.player_first && ti.second_skipped);
+    if (data.player_hp !== undefined) {
+      updateHP('player', data.player_hp, data.player_max_hp, false, playerWasHit);
+    }
+    if (data.opponent_hp !== undefined) {
+      updateHP('opponent', data.opponent_hp, data.opponent_max_hp, false, opponentWasHit);
+    }
   }
 
   // Opponent pokemon display:
