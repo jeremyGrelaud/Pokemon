@@ -1306,12 +1306,13 @@ function triggerEvolution(evoData, battleEndData = null) {
   const fromName = evoData.from_name;
   const toName   = evoData.to_name;
 
+  let spriteBefore, spriteAfter;
   if (evoData.is_shiny){
-    const spriteBefore = SPRITE_BASE_BACK_SHINY   + lowerForSprite(fromName) + '.png';
-    const spriteAfter  = SPRITE_BASE_SHINY + lowerForSprite(toName)   + '.png';
+    spriteBefore = SPRITE_BASE_BACK_SHINY   + lowerForSprite(fromName) + '.png';
+    spriteAfter  = SPRITE_BASE_SHINY + lowerForSprite(toName)   + '.png';
   } else {
-    const spriteBefore = SPRITE_BASE_BACK   + lowerForSprite(fromName) + '.png';
-    const spriteAfter  = SPRITE_BASE_NORMAL + lowerForSprite(toName)   + '.png';
+    spriteBefore = SPRITE_BASE_BACK   + lowerForSprite(fromName) + '.png';
+    spriteAfter  = SPRITE_BASE_NORMAL + lowerForSprite(toName)   + '.png';
   }
 
   document.getElementById('evo-sprite-before').src = spriteBefore;
