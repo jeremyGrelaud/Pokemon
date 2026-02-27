@@ -575,6 +575,7 @@
 window.BATTLE_CONFIG = {
   battleId:         {{ battle.id }},
   battleType:       '{{ battle.battle_type }}',
+  isRival:          {{ is_rival|yesno:"true,false" }},
   csrfToken:        '{{ csrf_token }}',
   playerPokemonId:   {{ battle.player_pokemon.id }},
   playerTrainerId:   '{{ battle.player_trainer.id }}',
@@ -602,6 +603,8 @@ window.BATTLE_CONFIG = {
     evoSound:       '{% static "sounds/pokemon-evolution-sound-effect.mp3" %}',
   },
 };
+// Activer la garde anti-quitter pendant le combat
+window.__battleInProgress = true;
 </script>
 <script src="{% static 'js/battle-game.js' %}"></script>
 {% endblock js %}

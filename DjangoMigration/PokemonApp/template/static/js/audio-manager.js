@@ -56,11 +56,25 @@ class AudioManager {
             console.log(`🎵 Playing BGM: ${track}`);
           })
           .catch(error => {
-            console.warn(`❌ BGM playback failed: ${error.message}`);
-            // Browser might block autoplay
-            this.showAudioPrompt();
+            console.warn(`❌ BGM playback failed for "${track}": ${error.message}`);
+            // Fallback : si battle_rival manque, utiliser battle_trainer
+            if (track === 'battle_rival') {
+              console.info('🎵 Fallback: battle_rival → battle_trainer');
+              this.playBGM('battle_trainer');
+            } else {
+              this.showAudioPrompt();
+            }
           });
       }
+
+      // Fallback réseau (fichier 404)
+      this.bgm.addEventListener('error', () => {
+        if (track === 'battle_rival') {
+          console.info('🎵 Fallback 404: battle_rival → battle_trainer');
+          this.playBGM('battle_trainer');
+        }
+      }, { once: true });
+
     } catch (error) {
       console.error('BGM Error:', error);
     }

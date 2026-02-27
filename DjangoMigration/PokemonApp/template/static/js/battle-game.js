@@ -151,9 +151,13 @@ $(document).ready(function() {
    * Start the actual battle after intro (or immediately for wild battles)
    */
   function startBattle() {
-    // Start BGM
+    // Start BGM — ordre de priorité : gym > rival > trainer > wild
     if (BATTLE_CONFIG.battleType === 'gym') {
       audioManager.playBGM('battle_gym');
+    } else if (BATTLE_CONFIG.battleType === 'elite_four') {
+      audioManager.playBGM('battle_gym');   // fallback sur gym si pas de piste dédiée
+    } else if (BATTLE_CONFIG.isRival) {
+      audioManager.playBGM('battle_rival');
     } else if (BATTLE_CONFIG.battleType === 'trainer') {
       audioManager.playBGM('battle_trainer');
     } else {
@@ -928,6 +932,9 @@ function updateExpBar(expPercent) {
 function handleBattleEnd(data) {
   console.log('🏁 Battle ended:', data);
   
+  // ── Désactiver IMMÉDIATEMENT la garde beforeunload ────────────────────────
+  window.__battleInProgress = false;
+
   // Arrêter la musique
   if (audioManager) {
     audioManager.stopBGM();

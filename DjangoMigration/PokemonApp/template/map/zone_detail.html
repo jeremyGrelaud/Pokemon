@@ -74,14 +74,21 @@
             <!-- Centre Pokémon -->
             {% if zone.has_pokemon_center %}
             <div class="col-md-6 col-lg-3 mb-3">
-              <div class="card bg-danger text-white h-100">
+              <div class="card text-white h-100"
+                   style="background-color: {% if team_needs_healing %}#c0392b{% else %}#e74c3c{% endif %};
+                          {% if team_needs_healing %}box-shadow: 0 0 0 3px #f39c12, 0 4px 16px rgba(231,76,60,.5);{% endif %}">
                 <div class="card-body text-center d-flex flex-column justify-content-between">
                   <div>
                     <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}"
                         alt="Centre Pokémon"
-                        style="width:64px;height:64px;object-fit:contain;"
+                        style="width:64px;height:64px;object-fit:contain;{% if team_needs_healing %}filter:drop-shadow(0 0 8px #f39c12);{% endif %}"
                         onerror="this.style.display='none';">
                     <h5 class="mt-2"><i class="fas fa-hospital"></i> Centre Pokémon</h5>
+                    {% if team_needs_healing %}
+                    <p class="small mb-1 text-white font-weight-bold">
+                      <i class="fas fa-exclamation-triangle"></i> Équipe affaiblie !
+                    </p>
+                    {% endif %}
                     {% if pokemon_center %}
                     <p class="small mb-3 text-white-50">{{ pokemon_center.nurse_name }}</p>
                     {% else %}
@@ -89,8 +96,9 @@
                     {% endif %}
                   </div>
                   {% if pokemon_center %}
-                  <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}" class="btn btn-light text-white-50 btn-sm">
-                    <i class="fas fa-heartbeat"></i> Entrer au centre
+                  <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}"
+                     class="btn btn-sm {% if team_needs_healing %}btn-warning font-weight-bold{% else %}btn-light text-white-50{% endif %}">
+                    <i class="fas fa-heartbeat"></i> {% if team_needs_healing %}Soigner l'équipe !{% else %}Entrer au centre{% endif %}
                   </a>
                   {% else %}
                   <a href="{% url 'PokemonCenterListView' %}" class="btn btn-light text-white-50 btn-sm">

@@ -165,6 +165,12 @@ class BattleGameView(generic.DetailView):
         except PlayerLocation.DoesNotExist:
             context['current_zone'] = None
 
+        # Rival : trainer_type == 'rival' → musique spéciale
+        context['is_rival'] = (
+            battle.opponent_trainer is not None
+            and battle.opponent_trainer.trainer_type == 'rival'
+        )
+
         # Pourcentage EXP correct (relatif au niveau actuel, pas cumulatif)
         pp = battle.player_pokemon
         if pp:

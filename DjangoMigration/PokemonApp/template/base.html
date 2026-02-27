@@ -17,6 +17,12 @@
     <!-- Custom styles -->
     <link href="{% static 'css/sb-admin-2.css'%}" rel="stylesheet" />
     <link href="{% static 'css/pokemon-types.css'%}" rel="stylesheet" />
+    <style>
+    @keyframes sidebar-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .55; }
+    }
+    </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
@@ -24,11 +30,13 @@
     <!-- Auto-save -->
     {% if has_active_save %}
       <script>
-      // ID du slot actif — mis à jour dynamiquement après chaque sauvegarde manuelle
       let activeSaveId = {{ active_save.id }};
 
       function autoSave() {
         if (!activeSaveId) return;
+        // Ne pas auto-sauvegarder pendant un combat actif (évite corruption)
+        if (window.__battleInProgress) return;
+
         fetch(`/saves/${activeSaveId}/save/`, {
           method: 'GET',
           headers: { 'X-CSRFToken': '{{ csrf_token }}' }
@@ -36,10 +44,14 @@
         .then(r => r.json())
         .then(data => {
           if (data.success && data.save_id) {
-            activeSaveId = data.save_id; // rester synchronisé
+            activeSaveId = data.save_id;
+            // Toast discret de confirmation
+            if (typeof showToast === 'function') {
+              showToast('💾 Partie sauvegardée automatiquement', 'info', 2500);
+            }
           }
         })
-        .catch(() => {}); // silencieux
+        .catch(() => {});
       }
 
       setInterval(autoSave, 5 * 60 * 1000);
@@ -164,6 +176,51 @@
             <span>Liste des sauvegardes</span>
           </a>
         </li>
+
+        <!-- ── Widget Zone + HP équipe ───────────────────────────────────── -->
+        {% if current_zone %}
+        <hr class="sidebar-divider mt-3 mb-0" />
+        <div class="px-3 py-2" style="font-size:.72rem;">
+
+          <!-- Zone actuelle -->
+          <a href="{% url 'zone_detail' current_zone.id %}"
+             class="d-flex align-items-center gap-2 text-white-50 text-decoration-none mb-2"
+             style="gap:6px; transition:color .15s;"
+             onmouseover="this.style.color='#fff'" onmouseout="this.style.color=''">
+            <i class="fas fa-map-marker-alt fa-fw text-danger"></i>
+            <span class="font-weight-bold text-white" style="font-size:.78rem;">{{ current_zone.name }}</span>
+          </a>
+
+          <!-- Mini barres HP équipe -->
+          {% if sidebar_team %}
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            {% for p in sidebar_team %}
+            <div title="{{ p.name }}{% if p.status %} — {{ p.status }}{% endif %}"
+                 style="display:flex; align-items:center; gap:6px;">
+              <span style="width:62px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                           color:{% if p.needs %}#f39c12{% else %}#adb5bd{% endif %}; font-size:.68rem;">
+                {{ p.name }}
+              </span>
+              <div style="flex:1; height:5px; background:rgba(255,255,255,.15); border-radius:3px; overflow:hidden;">
+                <div style="height:100%; width:{{ p.hp_pct }}%; border-radius:3px; transition:width .4s;
+                  background:{% if p.hp_pct > 50 %}#27ae60{% elif p.hp_pct > 20 %}#f39c12{% else %}#e74c3c{% endif %};"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          {% if team_needs_healing %}
+          <a href="{% url 'PokemonCenterListView' %}"
+             class="d-block mt-2 text-warning text-decoration-none"
+             style="font-size:.68rem; animation: sidebar-pulse 2s infinite;">
+            <i class="fas fa-hospital fa-fw"></i> Centre Pokémon
+          </a>
+          {% endif %}
+          {% endif %}
+
+        </div>
+        {% endif %}
+        <!-- ─────────────────────────────────────────────────────────────── -->
 
         <div class="text-center d-none d-md-inline mt-4">
           <button class="rounded-circle border-0" id="sidebarToggle"></button>
@@ -446,6 +503,20 @@
     <!-- Toast Notification System -->
     <link rel="stylesheet" href="{% static 'css/toast-notifications.css' %}">
     <script src="{% static 'js/toast-notifications.js' %}"></script>
+
+    <!-- UX globals : beforeunload combat + sidebar animation -->
+    <script>
+    // ── Garde anti-quitter pendant un combat ──────────────────────────────────
+    // battle_game_v2.html positionne window.__battleInProgress = true.
+    // handleBattleEnd() dans battle-game.js le remet à false dès la fin du combat.
+    window.__battleInProgress = false;
+
+    window.addEventListener('beforeunload', function (e) {
+      if (!window.__battleInProgress) return;
+      e.preventDefault();
+      e.returnValue = 'Un combat est en cours. Quitter maintenant peut corrompre votre progression.';
+    });
+    </script>
 
     {% endblock js %}
   </body>
