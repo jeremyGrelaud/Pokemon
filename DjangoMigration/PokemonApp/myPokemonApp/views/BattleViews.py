@@ -1043,13 +1043,21 @@ def battle_trainer_complete_view(request, battle_id):
         else ""
     )
 
+    # Récupérer la zone courante du joueur pour les liens de navigation
+    try:
+        player_location = PlayerLocation.objects.get(trainer=player_trainer)
+        current_zone = player_location.current_zone
+    except PlayerLocation.DoesNotExist:
+        current_zone = None
+
     return render(request, 'battle/battle_trainer_complete.html', {
-        'battle':       battle,
-        'opponent':     opponent,
-        'player_won':   player_won,
-        'money_earned': money_earned,
-        'badge_earned': badge_earned,
-        'dialogue':     dialogue,
+        'battle':        battle,
+        'opponent':      opponent,
+        'player_won':    player_won,
+        'money_earned':  money_earned,
+        'badge_earned':  badge_earned,
+        'dialogue':      dialogue,
+        'current_zone':  current_zone,
     })
 
 
