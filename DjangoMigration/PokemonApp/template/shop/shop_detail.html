@@ -37,7 +37,7 @@
           </div>
           <div class="col-md-4 text-center">
             <div class="p-3 bg-white bg-opacity-25 rounded text-dark">
-              <h2 class="mb-2">
+              <h2 class="mb-2 money-display">
                 <i class="fas fa-coins text-warning"></i> {{ trainer.money }}₽
               </h2>
               <p class="mb-0 small">Votre argent</p>
@@ -290,15 +290,19 @@ function buyItem(shopInventoryId, itemName, unitPrice) {
   .then(data => {
     if (data.success) {
       showToast(data.message, 'success');
-      
-      // Update money display
-      $('.money-display').text(data.new_balance + '₽');
-      
-      // Reset quantity
+
+      // Update money display (inline, no reload)
+      const newMoney = data.new_balance.toLocaleString('fr-FR') + '₽';
+      $('.money-display').each(function() {
+        $(this).html('<i class="fas fa-coins text-warning"></i> ' + newMoney + ' <small class="d-block" style="font-size:.6em;">Votre argent</small>');
+      });
+
+      // Reset quantity & re-enable button
       quantityInput.val(1);
-      
-      // Reload page after 1 second
-      setTimeout(() => location.reload(), 1500);
+      // Update total price display
+      const totalEl = $(`.total-price[data-shop-inventory-id="${shopInventoryId}"]`);
+      totalEl.text(unitPrice + '₽');
+      btn.prop('disabled', false).html('<i class="fas fa-shopping-cart"></i> Acheter');
     } else {
       showToast(data.error, 'error');
       btn.prop('disabled', false).html('<i class="fas fa-shopping-cart"></i> Acheter');
@@ -344,12 +348,25 @@ $(document).on('click', '.btn-sell', function() {
   .then(data => {
     if (data.success) {
       showToast(data.message, 'success');
-      
-      // Update money display
-      $('.money-display').text(data.new_balance + '₽');
-      
-      // Reload page
-      setTimeout(() => location.reload(), 1500);
+
+      // Update money (inline, no reload)
+      const newMoney = data.new_balance.toLocaleString('fr-FR') + '₽';
+      $('.money-display').each(function() {
+        $(this).html('<i class="fas fa-coins text-warning"></i> ' + newMoney + ' <small class="d-block" style="font-size:.6em;">Votre argent</small>');
+      });
+
+      // Update or remove item card
+      const card = btn.closest('.col-lg-3, .col-md-4, .col-sm-6');
+      const qtyBadge = card.find('.badge-info');
+      const currentQty = parseInt(quantityInput.val()) || 1;
+      const newQty = parseInt(qtyBadge.text().replace('x','')) - currentQty;
+      if (newQty <= 0) {
+        card.fadeOut(400, function() { $(this).remove(); });
+      } else {
+        qtyBadge.text('x' + newQty);
+        quantityInput.attr('max', newQty).val(1);
+        btn.prop('disabled', false).html('<i class="fas fa-hand-holding-usd"></i> Vendre');
+      }
     } else {
       showToast(data.error, 'error');
       btn.prop('disabled', false).html('<i class="fas fa-hand-holding-usd"></i> Vendre');

@@ -625,4 +625,164 @@ window.BATTLE_CONFIG = {
 window.__battleInProgress = true;
 </script>
 <script src="{% static 'js/battle-game.js' %}"></script>
+
+<style>
+/* ── Keyboard shortcuts hint ──────────────────────────────────────────── */
+#kbd-hint {
+  position: fixed;
+  bottom: 70px;
+  right: 12px;
+  background: rgba(0,0,0,.72);
+  color: rgba(255,255,255,.9);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: .72rem;
+  line-height: 1.7;
+  z-index: 900;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,.1);
+  transition: opacity .6s ease;
+  max-width: 220px;
+}
+#kbd-hint kbd {
+  display: inline-block;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 3px;
+  padding: 0 5px;
+  font-size: .7rem;
+  font-family: monospace;
+  margin: 0 1px;
+}
+#kbd-hint .hint-row { display: flex; align-items: center; gap: 6px; }
+#kbd-hint .hint-action { color: rgba(255,255,255,.55); font-size: .68rem; }
+</style>
+
+<div id="kbd-hint">
+  <div style="font-weight:600; margin-bottom:4px; opacity:.6; font-size:.65rem; letter-spacing:.05em;">⌨️ RACCOURCIS</div>
+  <div class="hint-row"><kbd>Z</kbd> <span class="hint-action">Attaquer</span></div>
+  <div class="hint-row"><kbd>&</kbd><kbd>é</kbd><kbd>"</kbd><kbd>'</kbd> <span class="hint-action">ou</span> <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></div>
+  <div class="hint-row" style="padding-left:4px; font-size:.65rem; color:rgba(255,255,255,.45);">→ Capacité 1–4</div>
+  <div class="hint-row"><kbd>X</kbd> <span class="hint-action">Retour menu</span></div>
+  <div class="hint-row"><kbd>Q</kbd> <span class="hint-action">Objets</span></div>
+  <div class="hint-row"><kbd>E</kbd> <span class="hint-action">Équipe</span></div>
+  <div class="hint-row"><kbd>R</kbd> <span class="hint-action">Fuir</span></div>
+</div>
+
+<script>
+// ── Raccourcis clavier (AZERTY + QWERTY) ──────────────────────────────────
+// Menu principal :
+//   Z / Entrée     → Attaquer
+//   Q              → Objets
+//   E              → Équipe
+//   R              → Fuir
+// Menu capacités (quand ouvert) :
+//   & / 1          → Capacité 1
+//   é / 2          → Capacité 2
+//   " / 3          → Capacité 3
+//   ' / 4          → Capacité 4
+//   X / Échap      → Retour menu principal
+// Tous menus :
+//   X / Échap      → Retour menu principal
+(function () {
+  // AZERTY row-1 → capacités 1-4
+  const MOVE_KEYS = {
+    '&': 0, '1': 0,
+    'é': 1, '2': 1, 'É': 1,
+    '"': 2, '3': 2,
+    "'": 3, '4': 3,
+  };
+
+  function activeMenu() {
+    const ids = ['main-menu', 'moves-menu', 'items-menu', 'team-menu'];
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== 'none') return id;
+    }
+    return null;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (document.querySelector('.modal.show')) return;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+    if (window.__animationLock) return;
+
+    const menu = activeMenu();
+    const key  = e.key;
+
+    // ── Menu principal ───────────────────────────────────────────────────
+    if (menu === 'main-menu') {
+      if (key === 'z' || key === 'Z' || key === 'Enter') {
+        e.preventDefault(); document.querySelector('.action-fight')?.click();
+      } else if (key === 'r' || key === 'R') {
+        e.preventDefault(); document.querySelector('.action-run')?.click();
+      } else if (key === 'q' || key === 'Q') {
+        e.preventDefault(); document.querySelector('.action-bag')?.click();
+      } else if (key === 'e' || key === 'E') {
+        e.preventDefault(); document.querySelector('.action-pokemon')?.click();
+      }
+    }
+
+    // ── Menu capacités ───────────────────────────────────────────────────
+    if (menu === 'moves-menu') {
+      if (key === 'x' || key === 'X' || key === 'Escape') {
+        e.preventDefault();
+        if (typeof showMainMenu === 'function') showMainMenu();
+      }
+      if (key in MOVE_KEYS) {
+        e.preventDefault();
+        const idx  = MOVE_KEYS[key];
+        const btns = document.querySelectorAll('.moves-grid .move-btn');
+        if (btns[idx] && !btns[idx].disabled) btns[idx].click();
+      }
+    }
+
+    // ── Autres menus : Échap pour retour ─────────────────────────────────
+    if (menu === 'items-menu' || menu === 'team-menu') {
+      if (key === 'x' || key === 'X' || key === 'Escape') {
+        e.preventDefault();
+        if (typeof showMainMenu === 'function') showMainMenu();
+      }
+    }
+
+    // ── Si aucun menu ouvert + touche numéro : ouvre menu + sélectionne ──
+    if (!menu && key in MOVE_KEYS) {
+      const fightBtn = document.querySelector('.action-fight');
+      if (fightBtn) {
+        e.preventDefault();
+        fightBtn.click();
+        // Wait one tick for moves-menu to show then click the move
+        setTimeout(() => {
+          const idx  = MOVE_KEYS[key];
+          const btns = document.querySelectorAll('.moves-grid .move-btn');
+          if (btns[idx] && !btns[idx].disabled) btns[idx].click();
+        }, 50);
+      }
+    }
+  });
+
+  // ── Auto-masquage du hint après 12s, réapparition au hover ──────────────
+  const hint = document.getElementById('kbd-hint');
+  if (hint) {
+    let hideTimer = setTimeout(() => hint.style.opacity = '0', 12000);
+    hint.addEventListener('mouseenter', () => {
+      clearTimeout(hideTimer);
+      hint.style.opacity = '1';
+    });
+    hint.addEventListener('mouseleave', () => {
+      hideTimer = setTimeout(() => hint.style.opacity = '0', 3000);
+    });
+    // Show hint briefly when moves menu opens
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.action-fight')) {
+        hint.style.opacity = '1';
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => hint.style.opacity = '0', 5000);
+      }
+    });
+  }
+})();
+</script>
+
 {% endblock js %}

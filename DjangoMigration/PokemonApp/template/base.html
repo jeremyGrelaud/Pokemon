@@ -535,5 +535,128 @@
     </script>
 
     {% endblock js %}
-  </body>
+  
+<style>
+/* ══ Mobile bottom nav ══════════════════════════════════════════════════════ */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #fff;
+  border-top: 1px solid #e3e6f0;
+  display: flex;
+  align-items: stretch;
+  z-index: 1060;
+  box-shadow: 0 -2px 10px rgba(0,0,0,.08);
+}
+.mobile-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: .6rem;
+  color: #858796;
+  text-decoration: none !important;
+  gap: 2px;
+  transition: color .15s, background .15s;
+  border-top: 3px solid transparent;
+}
+.mobile-nav-item i { font-size: 1.1rem; }
+.mobile-nav-item.active {
+  color: #e74a3b;
+  border-top-color: #e74a3b;
+}
+.mobile-nav-item:hover { color: #5a5c69; }
+.mobile-nav-battle {
+  color: #dc3545 !important;
+  animation: sidebar-pulse 1.2s infinite;
+}
+.mobile-nav-heal {
+  color: #f6c23e !important;
+  animation: sidebar-pulse 2s infinite;
+}
+/* Push page content above bottom nav on mobile */
+@media (max-width: 767.98px) {
+  #content-wrapper { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  .sticky-footer { margin-bottom: 56px; }
+}
+
+/* ══ Shiny shimmer on sprites ════════════════════════════════════════════ */
+@keyframes shiny-shimmer {
+  0%   { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
+  30%  { filter: brightness(1.25) drop-shadow(0 0 6px  #ffd700); }
+  60%  { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
+  100% { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
+}
+.shiny-sprite {
+  animation: shiny-shimmer 3s ease-in-out infinite;
+}
+</style>
+
+<script>
+// Relocate mobile-bottom-nav to <body> to escape overflow:hidden containers
+(function() {
+  function relocateNav() {
+    var nav = document.getElementById('mobile-bottom-nav');
+    if (nav && nav.parentElement !== document.body) {
+      document.body.appendChild(nav);
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', relocateNav);
+  } else {
+    relocateNav();
+  }
+})();
+
+// Auto-tag shiny sprites with CSS shimmer class
+(function() {
+  function tagShiny() {
+    document.querySelectorAll('img').forEach(img => {
+      if ((img.src.includes('/shiny/') || img.src.includes('/back-shiny/')) && !img.classList.contains('shiny-sprite')) {
+        img.classList.add('shiny-sprite');
+      }
+    });
+  }
+  // Run on load and after any dynamic content changes
+  document.addEventListener('DOMContentLoaded', tagShiny);
+  // Re-run periodically for dynamically loaded content (battle switches etc.)
+  setInterval(tagShiny, 2000);
+})();
+</script>
+
+<!-- ══ MOBILE BOTTOM NAV (d-md-none) ══════════════════════════════════════ -->
+<nav class="d-md-none mobile-bottom-nav" id="mobile-bottom-nav">
+  <a href="{% url 'home' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+    <i class="fas fa-tachometer-alt"></i>
+    <span>Dashboard</span>
+  </a>
+  <a href="{% url 'MyTeamView' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
+    <i class="fas fa-users"></i>
+    <span>Équipe</span>
+  </a>
+  <a href="{% url 'map_view' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
+    <i class="fas fa-map-location-dot"></i>
+    <span>Carte</span>
+  </a>
+  {% if active_battle %}
+  <a href="{% url 'BattleDetailView' active_battle.id %}" class="mobile-nav-item mobile-nav-battle">
+    <i class="fas fa-fist-raised"></i>
+    <span>Combat ⚔️</span>
+  </a>
+  {% else %}
+  <a href="{% url 'ShopListView' %}" class="mobile-nav-item {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}">
+    <i class="fas fa-shopping-cart"></i>
+    <span>Boutiques</span>
+  </a>
+  {% endif %}
+  <a href="{% url 'PokemonCenterListView' %}" class="mobile-nav-item {% if 'PokemonCenter' in request.resolver_match.url_name %}active{% endif %} {% if team_needs_healing %}mobile-nav-heal{% endif %}">
+    <i class="fas fa-hospital"></i>
+    <span>Centre{% if team_needs_healing %} !{% endif %}</span>
+  </a>
+</nav>
+
+</body>
 </html>

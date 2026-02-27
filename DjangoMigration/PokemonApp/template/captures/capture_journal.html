@@ -59,36 +59,39 @@
     </div>
   </div>
 
-  <!-- Filtres -->
+  <!-- Filtres live -->
   <div class="card mb-4">
     <div class="card-body">
-      <form method="get" class="row">
-        <div class="col-md-3">
-          <input type="text" name="search" class="form-control" 
-                 placeholder="Rechercher..." value="{{ request.GET.search }}">
+      <div class="row">
+        <div class="col-md-5 mb-2">
+          <div class="input-group">
+            <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-search"></i></span></div>
+            <input type="text" id="live-search" class="form-control" placeholder="Rechercher un Pokémon..." autocomplete="off">
+          </div>
         </div>
-        <div class="col-md-3">
-          <select name="ball" class="form-control">
-            <option value="">Toutes les balls</option>
-            <option value="pokeball">Poké Ball</option>
-            <option value="superball">Super Ball</option>
-            <option value="hyperball">Hyper Ball</option>
+        <div class="col-md-3 mb-2">
+          <select id="filter-badge" class="form-control">
+            <option value="">Toutes les badges</option>
+            <option value="premier">⭐ Premier capturé</option>
+            <option value="critique">⚡ Capture critique</option>
+            <option value="shiny">💎 Shiny</option>
           </select>
         </div>
-        <div class="col-md-3">
-          <select name="period" class="form-control">
-            <option value="">Toute période</option>
-            <option value="today">Aujourd'hui</option>
-            <option value="week">Cette semaine</option>
-            <option value="month">Ce mois</option>
+        <div class="col-md-2 mb-2">
+          <select id="filter-sort" class="form-control">
+            <option value="date-desc">Plus récent</option>
+            <option value="date-asc">Plus ancien</option>
+            <option value="level-desc">Niveau ↓</option>
+            <option value="level-asc">Niveau ↑</option>
           </select>
         </div>
-        <div class="col-md-3">
-          <button type="submit" class="btn btn-primary w-100">
-            <i class="fas fa-filter"></i> Filtrer
+        <div class="col-md-2 mb-2">
+          <button id="clear-filters" class="btn btn-light w-100">
+            <i class="fas fa-times"></i> Réinitialiser
           </button>
         </div>
-      </form>
+      </div>
+      <div class="mt-1"><small class="text-muted" id="filter-count-label"></small></div>
     </div>
   </div>
 
@@ -212,5 +215,83 @@ new Chart(ctx, {
     }
   }
 });
+
+// ── Tag rows with data attributes for filtering ───────────────────────────
+(function() {
+  const rows = document.querySelectorAll('tbody tr');
+  rows.forEach((row, i) => {
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 4) return;
+    const name  = cells[0] ? cells[0].textContent.trim().toLowerCase() : '';
+    const level = cells[1] ? parseInt(cells[1].textContent.replace(/\D/g,'')) || 0 : 0;
+    const ts    = row.dataset.ts || (rows.length - i); // fallback order
+    let badges  = '';
+    if (cells[0] && cells[0].textContent.includes('Premier'))  badges += 'premier ';
+    if (cells[0] && cells[0].textContent.includes('Critique')) badges += 'critique ';
+    if (cells[5] && cells[5].querySelector('.fa-gem'))         badges += 'shiny ';
+    row.dataset.name   = name;
+    row.dataset.level  = level;
+    row.dataset.ts     = ts;
+    row.dataset.badges = badges;
+  });
+})();
+
+// ── Live search & filter ───────────────────────────────────────────────────
+(function() {
+  const tbody       = document.querySelector('tbody');
+  if (!tbody) return;
+  const rows        = Array.from(tbody.querySelectorAll('tr[data-name]'));
+  const searchInput = document.getElementById('live-search');
+  const badgeSel    = document.getElementById('filter-badge');
+  const sortSel     = document.getElementById('filter-sort');
+  const clearBtn    = document.getElementById('clear-filters');
+  const countLabel  = document.getElementById('filter-count-label');
+
+  function applyFilters() {
+    const q     = searchInput.value.toLowerCase().trim();
+    const badge = badgeSel.value;
+    let visible = [];
+
+    rows.forEach(row => {
+      const name     = (row.dataset.name || '').toLowerCase();
+      const badges   = (row.dataset.badges || '');
+      const matchQ   = !q || name.includes(q);
+      const matchB   = !badge || badges.includes(badge);
+      const show     = matchQ && matchB;
+      row.style.display = show ? '' : 'none';
+      if (show) visible.push(row);
+    });
+
+    // Sort
+    const sort = sortSel.value;
+    if (sort !== 'date-desc') {
+      visible.sort((a, b) => {
+        if (sort === 'date-asc')   return a.dataset.ts - b.dataset.ts;
+        if (sort === 'level-desc') return b.dataset.level - a.dataset.level;
+        if (sort === 'level-asc')  return a.dataset.level - b.dataset.level;
+        return 0;
+      });
+      visible.forEach(r => tbody.appendChild(r));
+    }
+
+    const total = rows.length;
+    countLabel.textContent = visible.length < total
+      ? `${visible.length} / ${total} captures`
+      : `${total} captures`;
+  }
+
+  searchInput.addEventListener('input', applyFilters);
+  badgeSel.addEventListener('change', applyFilters);
+  sortSel.addEventListener('change', applyFilters);
+  clearBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    badgeSel.value    = '';
+    sortSel.value     = 'date-desc';
+    applyFilters();
+  });
+
+  applyFilters(); // init count
+})();
+
 </script>
 {% endblock %}

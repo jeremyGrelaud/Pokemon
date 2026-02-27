@@ -741,3 +741,16 @@ def zone_minimap_path(zone_name):
         return None
     safe_name = str(zone_name).replace(' ', '_')
     return f'mapGifs/Localisation_{safe_name}.gif'
+
+@register.filter(name='dict_get')
+def dict_get(d, key):
+    """
+    Retourne d[key] ou d[str(key)] depuis un dict.
+    Usage : {{ my_dict|dict_get:object.id }}
+    """
+    if not isinstance(d, dict):
+        return None
+    # Try int key then string key
+    if key in d:
+        return d[key]
+    return d.get(str(key))

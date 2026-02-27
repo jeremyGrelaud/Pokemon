@@ -15,34 +15,113 @@
   </a>
 </div>
 
-{% if battles %}
-
 <!-- Stats rapides -->
 <div class="row mb-4">
-  {% with total=page_obj.paginator.count %}
-  <div class="col-6 col-md-3 mb-3">
+  <div class="col-6 col-md-3 mb-2">
     <div class="card border-left-primary shadow h-100 py-2">
       <div class="card-body py-2">
         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total</div>
-        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total }}</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stat_total }}</div>
       </div>
     </div>
   </div>
-  {% endwith %}
+  <div class="col-6 col-md-3 mb-2">
+    <a href="?result=win&type={{ type_filter }}" class="text-decoration-none">
+    <div class="card border-left-success shadow h-100 py-2 {% if result_filter == 'win' %}bg-success-light{% endif %}">
+      <div class="card-body py-2">
+        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Victoires</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stat_win }}</div>
+      </div>
+    </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3 mb-2">
+    <a href="?result=loss&type={{ type_filter }}" class="text-decoration-none">
+    <div class="card border-left-danger shadow h-100 py-2">
+      <div class="card-body py-2">
+        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Défaites</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stat_loss }}</div>
+      </div>
+    </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3 mb-2">
+    <a href="?result=active&type={{ type_filter }}" class="text-decoration-none">
+    <div class="card border-left-warning shadow h-100 py-2">
+      <div class="card-body py-2">
+        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">En cours</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stat_active }}</div>
+      </div>
+    </div>
+    </a>
+  </div>
 </div>
 
-<!-- Table des combats -->
-<div class="card shadow mb-4">
-  <div class="card-header py-3">
-    <h6 class="m-0 font-weight-bold text-primary">Combats récents</h6>
+<!-- Filtres (GET params → compatible pagination) -->
+<div class="card shadow mb-0" style="border-radius:.35rem .35rem 0 0; border-bottom:0;">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex flex-wrap align-items-center" style="gap:6px;">
+
+      <!-- Filtre résultat -->
+      <div class="btn-group btn-group-sm" role="group">
+        <a href="?result=all&type={{ type_filter }}"
+           class="btn {% if result_filter == 'all' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+          Tous
+        </a>
+        <a href="?result=win&type={{ type_filter }}"
+           class="btn {% if result_filter == 'win' %}btn-success{% else %}btn-outline-success{% endif %}">
+          <i class="fas fa-trophy"></i> Victoires
+        </a>
+        <a href="?result=loss&type={{ type_filter }}"
+           class="btn {% if result_filter == 'loss' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+          <i class="fas fa-times"></i> Défaites
+        </a>
+        <a href="?result=active&type={{ type_filter }}"
+           class="btn {% if result_filter == 'active' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+          <i class="fas fa-hourglass-half"></i> En cours
+        </a>
+      </div>
+
+      <!-- Filtre type -->
+      <div class="btn-group btn-group-sm" role="group">
+        <a href="?result={{ result_filter }}&type=all"
+           class="btn {% if type_filter == 'all' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+          Tout type
+        </a>
+        <a href="?result={{ result_filter }}&type=wild"
+           class="btn {% if type_filter == 'wild' %}btn-success{% else %}btn-outline-success{% endif %}">
+          <i class="fas fa-leaf"></i> Sauvage
+        </a>
+        <a href="?result={{ result_filter }}&type=trainer"
+           class="btn {% if type_filter == 'trainer' %}btn-info{% else %}btn-outline-info{% endif %}">
+          <i class="fas fa-user"></i> Dresseur
+        </a>
+        <a href="?result={{ result_filter }}&type=gym"
+           class="btn {% if type_filter == 'gym' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+          <i class="fas fa-medal"></i> Arène
+        </a>
+      </div>
+
+      <!-- Reset si filtres actifs -->
+      {% if result_filter != 'all' or type_filter != 'all' %}
+      <a href="{% url 'BattleListView' %}" class="btn btn-sm btn-light ml-1" title="Réinitialiser">
+        <i class="fas fa-times"></i> Réinitialiser
+      </a>
+      {% endif %}
+
+      <span class="ml-auto text-muted small">
+        {{ page_obj.paginator.count }} combat{{ page_obj.paginator.count|pluralize }}
+      </span>
+    </div>
   </div>
+</div>
+
+{% if battles %}
+<!-- Liste -->
+<div class="card shadow mb-4" style="border-radius:0 0 .35rem .35rem;">
   <div class="card-body p-0">
     <div class="list-group list-group-flush">
       {% for battle in battles %}
-
-      {% with is_player=battle.player_trainer.username|stringformat:"s" viewer_name=request.user.username %}
-      {% with player_won=battle.winner.id|stringformat:"s"|same_as:battle.player_trainer.id|stringformat:"s" %}
-
       <a href="{% url 'BattleDetailView' battle.id %}"
          class="list-group-item list-group-item-action px-4 py-3
                 {% if battle.winner == battle.player_trainer %}list-group-item-success
@@ -57,7 +136,7 @@
 
         <div class="row align-items-center no-gutters">
 
-          <!-- Résultat + Type -->
+          <!-- Résultat -->
           <div class="col-auto mr-3 text-center" style="min-width:64px;">
             {% if battle.winner == battle.player_trainer %}
               <i class="fas fa-trophy fa-2x text-warning"></i>
@@ -74,10 +153,9 @@
             {% endif %}
           </div>
 
-          <!-- Infos combat -->
+          <!-- Infos -->
           <div class="col">
             <div class="d-flex align-items-center mb-1 flex-wrap">
-              <!-- Type badge -->
               {% if battle.battle_type == 'wild' %}
                 <span class="badge badge-success mr-2"><i class="fas fa-leaf"></i> Sauvage</span>
               {% elif battle.battle_type == 'trainer' %}
@@ -88,25 +166,17 @@
                 <span class="badge badge-secondary mr-2">{{ battle.get_battle_type_display }}</span>
               {% endif %}
 
-              <!-- Adversaire -->
               <span class="font-weight-bold text-gray-800 mr-2">
-                {% if battle.opponent_trainer %}
-                  {{ battle.opponent_trainer.get_full_title }}
-                {% else %}
-                  Pokémon Sauvage
-                {% endif %}
+                {% if battle.opponent_trainer %}{{ battle.opponent_trainer.get_full_title }}
+                {% else %}Pokémon Sauvage{% endif %}
               </span>
-
               <small class="text-muted ml-auto">{{ battle.created_at|date:"d/m/Y H:i" }}</small>
             </div>
 
-            <!-- Pokémon du joueur + adversaire -->
             <div class="d-flex align-items-center flex-wrap">
-              <!-- Pokémon principal du joueur -->
               {% if battle.player_pokemon %}
               <div class="d-flex align-items-center mr-3">
                 <img src="{% static 'img/sprites_gen5/' %}{% if battle.player_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
-                     alt="{{ battle.player_pokemon.species.name }}"
                      style="width:40px;height:40px;object-fit:contain;"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">
                 <small class="ml-1 text-muted">
@@ -118,12 +188,10 @@
 
               <span class="text-muted mr-3"><i class="fas fa-arrow-right"></i></span>
 
-              <!-- Équipe adversaire (sprites miniatures) -->
               {% if battle.battle_type == 'wild' %}
                 {% if battle.opponent_pokemon %}
                 <div class="d-flex align-items-center">
                   <img src="{% static 'img/sprites_gen5/' %}{% if battle.opponent_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
-                       alt="{{ battle.opponent_pokemon.species.name }}"
                        style="width:40px;height:40px;object-fit:contain;"
                        onerror="this.src='{% static 'img/pokeball.png' %}'">
                   <small class="ml-1 text-muted">
@@ -136,12 +204,10 @@
                 {% if battle.opponent_trainer %}
                   {% for poke in battle.opponent_trainer.pokemon_team.all %}
                   <img src="{% static 'img/sprites_gen5/' %}{% if poke.is_shiny %}shiny{% else %}normal{% endif %}/{{ poke.species.name|lowerPokemonFileNames }}.png"
-                       alt="{{ poke.species.name }}"
                        title="{{ poke.nickname|default:poke.species.name }} Niv.{{ poke.level }}"
                        style="width:36px;height:36px;object-fit:contain;"
                        onerror="this.src='{% static 'img/pokeball.png' %}'">
-                  {% empty %}
-                  <small class="text-muted">—</small>
+                  {% empty %}<small class="text-muted">—</small>
                   {% endfor %}
                 {% endif %}
               {% endif %}
@@ -153,11 +219,8 @@
             <small class="text-muted d-block">{{ battle.current_turn }} tours</small>
             <i class="fas fa-chevron-right text-muted"></i>
           </div>
-
         </div>
       </a>
-
-      {% endwith %}{% endwith %}
       {% endfor %}
     </div>
   </div>
@@ -165,39 +228,54 @@
   <!-- Pagination -->
   {% if is_paginated %}
   <div class="card-footer">
-    <nav>
+    <nav aria-label="Pagination combats">
       <ul class="pagination justify-content-center mb-0">
         {% if page_obj.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+          <a class="page-link" href="?result={{ result_filter }}&type={{ type_filter }}&page={{ page_obj.previous_page_number }}">
             <i class="fas fa-chevron-left"></i>
           </a>
         </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link"><i class="fas fa-chevron-left"></i></span></li>
         {% endif %}
-        <li class="page-item disabled">
-          <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-        </li>
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if page_obj.number == num %}
+          <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+          <li class="page-item">
+            <a class="page-link" href="?result={{ result_filter }}&type={{ type_filter }}&page={{ num }}">{{ num }}</a>
+          </li>
+          {% endif %}
+        {% endfor %}
+
         {% if page_obj.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+          <a class="page-link" href="?result={{ result_filter }}&type={{ type_filter }}&page={{ page_obj.next_page_number }}">
             <i class="fas fa-chevron-right"></i>
           </a>
         </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link"><i class="fas fa-chevron-right"></i></span></li>
         {% endif %}
       </ul>
     </nav>
+    <div class="text-center text-muted small mt-1">
+      Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+      &nbsp;·&nbsp; {{ page_obj.paginator.count }} combat{{ page_obj.paginator.count|pluralize }} au total
+    </div>
   </div>
   {% endif %}
-
 </div>
 
 {% else %}
-<div class="card shadow mb-4">
+<div class="card shadow mb-4" style="border-radius:0 0 .35rem .35rem;">
   <div class="card-body text-center py-5">
-    <i class="fas fa-fist-raised fa-3x text-gray-400 mb-3"></i>
-    <p class="text-muted">Aucun combat pour le moment.</p>
-    <a href="{% url 'BattleCreateView' %}" class="btn btn-primary">
-      <i class="fas fa-plus"></i> Commencer un combat
+    <i class="fas fa-filter fa-2x text-muted mb-3"></i>
+    <p class="text-muted">Aucun combat ne correspond à ces filtres.</p>
+    <a href="{% url 'BattleListView' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-times"></i> Réinitialiser les filtres
     </a>
   </div>
 </div>
