@@ -21,7 +21,9 @@ TODO Roadmap :
 - After everything, implement different game mods ?
 
 - dans la vue de recap de combat côté trainer les pokemon affichés sont ceux actuellement dans l'équipe et pas ceux réellement utilisés dans le combat
-- respecter l'ordre d'attaque sur les animations car actuellement si un pokemon joue en second et se fait one shot par l'attaque adverse on voit quand même son animation d'attaque
+
+- pas d'affichage dans le battle log lorsqu'un ennemi rate une attaque, + pas d'affichage du badge/tag de l'état paralysie mais les messages s'affichent bien dans le battle log
+
 
 TODO BugFixes :
 
