@@ -152,17 +152,19 @@ $(document).ready(function() {
    */
   function startBattle() {
     // Start BGM — ordre de priorité : gym > rival > trainer > wild
-    if (BATTLE_CONFIG.battleType === 'gym') {
-      audioManager.playBGM('battle_gym');
-    } else if (BATTLE_CONFIG.battleType === 'elite_four') {
-      audioManager.playBGM('battle_gym');   // fallback sur gym si pas de piste dédiée
+    let track;
+    if (BATTLE_CONFIG.battleType === 'gym' || BATTLE_CONFIG.battleType === 'elite_four') {
+      track = 'battle_gym';
     } else if (BATTLE_CONFIG.isRival) {
-      audioManager.playBGM('battle_rival');
+      track = 'battle_rival';
     } else if (BATTLE_CONFIG.battleType === 'trainer') {
-      audioManager.playBGM('battle_trainer');
+      track = 'battle_trainer';
     } else {
-      audioManager.playBGM('battle_wild');
+      track = 'battle_wild';
     }
+    // Initialiser le widget avant de lancer la BGM
+    audioManager.initBattleWidget(track);
+    audioManager.playBGM(track);
     
     // Entry animations
     setTimeout(() => {

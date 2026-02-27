@@ -17,6 +17,7 @@
     <!-- Custom styles -->
     <link href="{% static 'css/sb-admin-2.css'%}" rel="stylesheet" />
     <link href="{% static 'css/pokemon-types.css'%}" rel="stylesheet" />
+    <link href="{% static 'css/bgm.css'%}" rel="stylesheet" />
     <style>
     @keyframes sidebar-pulse {
       0%, 100% { opacity: 1; }
@@ -136,6 +137,14 @@
         </li>
 
         <!-- Combats -->
+        {% if active_battle %}
+        <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link d-flex align-items-center justify-content-between" href="{% url 'BattleDetailView' active_battle.id %}">
+            <span><i class="fas fa-fist-raised fa-fw"></i> <span>Combat en cours</span></span>
+            <span class="badge badge-danger" style="animation:sidebar-pulse 1.2s infinite;font-size:.65rem;">⚔️ Live</span>
+          </a>
+        </li>
+        {% endif %}
         {% if user.is_superuser %}
         <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
           <a class="nav-link" href="{% url 'BattleListView' %}">
@@ -254,7 +263,14 @@
                 <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{user.username}}</span>
+                  {% if lead_pokemon_sprite %}
+                  <img class="img-profile rounded-circle"
+                       src="{% static lead_pokemon_sprite %}"
+                       style="background:#f8f9fc;object-fit:contain;"
+                       onerror="this.src='{% static 'img/pokeball.png' %}'" />
+                  {% else %}
                   <img class="img-profile rounded-circle" src="{% static 'img/pokeball.png'%}" />
+                  {% endif %}
                 </a>
                 <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
                   {% if user.is_authenticated %}

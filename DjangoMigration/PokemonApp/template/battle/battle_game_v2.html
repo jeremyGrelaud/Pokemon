@@ -553,6 +553,24 @@
   <source src="{% static 'sounds/bgm/battle_wild.mp3' %}" type="audio/mpeg">
 </audio>
 
+
+
+<!-- ── ── Battle BGM Player ───────────────────────────────────────────────────── -->
+<div id="battle-bgm-player" class="zone-bgm-widget" title="Musique de combat">
+  <button id="bgm-toggle" class="bgm-btn" aria-label="Lecture / Pause">
+    <i class="fas fa-music" id="bgm-icon"></i>
+  </button>
+  <div class="bgm-info">
+    <span id="bgm-zone-name" class="bgm-zone-name">Combat</span>
+    <div class="bgm-progress-wrap">
+      <div id="bgm-progress-bar" class="bgm-progress-bar"></div>
+    </div>
+  </div>
+  <input id="bgm-volume" type="range" min="0" max="100" value="30"
+         class="bgm-volume" title="Volume" aria-label="Volume">
+</div>
+
+
 {% endblock content %}
 
 
