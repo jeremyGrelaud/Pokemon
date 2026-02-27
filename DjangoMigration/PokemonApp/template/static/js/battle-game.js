@@ -689,6 +689,14 @@ function updatePokemonDisplay(side, pokemonData) {
       $(this).attr('src', BATTLE_CONFIG.static.pokeball);
     });
   
+  // Détecter level-up (player uniquement) avant de mettre à jour le texte
+  if (side === 'player' && pokemonData.level) {
+    const oldLevel = parseInt(level.text().replace('Niv.', '')) || 0;
+    if (oldLevel > 0 && pokemonData.level > oldLevel) {
+      triggerLevelUpAnimation(pokemonData.level);
+    }
+  }
+
   // Update name and level
   name.text(pokemonData.name);
   level.text('Niv.' + pokemonData.level);
@@ -706,6 +714,45 @@ function updatePokemonDisplay(side, pokemonData) {
     updateExpBar(pokemonData.exp_percent);
   }
 }
+
+
+/**
+ * Animation level-up sur la player-bar :
+ *  - bordure dorée pulsante sur la box
+ *  - badge "NIV. UP! X" qui pop au-dessus
+ *  - chiffre du niveau qui pulse en doré
+ */
+function triggerLevelUpAnimation(newLevel) {
+  try { audioManager.playSFX('ui/SFX_LEVEL_UP'); } catch(e) {}
+
+  const playerBar = $('.player-bar');
+  const levelEl   = $('#player-level');
+
+  // S'assurer que la box est en position relative pour le badge absolu
+  playerBar.css('position', 'relative');
+
+  // 1. Flash doré sur la box
+  playerBar.removeClass('level-up-flash');
+  playerBar[0].offsetWidth; // force reflow
+  playerBar.addClass('level-up-flash');
+  setTimeout(() => playerBar.removeClass('level-up-flash'), 1500);
+
+  // 2. Badge "NIV. UP! X" qui pop
+  const badge = $(`<div class="level-up-badge">NIV. UP ! ${newLevel}</div>`);
+  playerBar.append(badge);
+  badge[0].offsetWidth;
+  badge.addClass('badge-pop');
+  setTimeout(() => badge.remove(), 2100);
+
+  // 3. Chiffre du niveau pulse en doré (après la mise à jour du texte donc léger délai)
+  setTimeout(() => {
+    levelEl.removeClass('level-pop');
+    levelEl[0].offsetWidth;
+    levelEl.addClass('level-pop');
+    setTimeout(() => levelEl.removeClass('level-pop'), 1300);
+  }, 50);
+}
+
 
 
 function updateHP(side, current, max, skipDamageAnimation = false, wasHitThisTurn = true) {

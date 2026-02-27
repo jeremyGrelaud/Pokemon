@@ -595,6 +595,71 @@ Pokemon Platforms
   animation: expPulse 0.45s ease-out forwards;
 }
 
+/* ══════════════════════════════════════════════════════
+   LEVEL UP — animation sur la player-bar
+   ══════════════════════════════════════════════════════ */
+
+/* 1. Bordure dorée + glow pulsant sur la box entière */
+@keyframes levelUpBorderPulse {
+  0%   { border-color: #333;    box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+  15%  { border-color: #ffd700; box-shadow: 0 0 0 4px rgba(255,215,0,0.5), 0 0 24px 8px rgba(255,215,0,0.35); }
+  50%  { border-color: #ffec6e; box-shadow: 0 0 0 6px rgba(255,215,0,0.3), 0 0 40px 12px rgba(255,215,0,0.2); }
+  85%  { border-color: #ffd700; box-shadow: 0 0 0 4px rgba(255,215,0,0.5), 0 0 24px 8px rgba(255,215,0,0.35); }
+  100% { border-color: #333;    box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+}
+
+.player-bar.level-up-flash {
+  animation: levelUpBorderPulse 1.4s ease-in-out forwards;
+}
+
+/* 2. Badge "NIV. UP!" qui pop depuis la box */
+.level-up-badge {
+  position: absolute;
+  top: -18px;
+  right: 10px;
+  background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(240,147,43,0.6);
+  transform: scale(0) translateY(6px);
+  opacity: 0;
+  z-index: 20;
+}
+
+.level-up-badge.badge-pop {
+  animation: levelUpBadgePop 2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes levelUpBadgePop {
+  0%   { transform: scale(0)    translateY(6px);  opacity: 0; }
+  18%  { transform: scale(1.18) translateY(-2px); opacity: 1; }
+  30%  { transform: scale(0.95) translateY(0);    opacity: 1; }
+  40%  { transform: scale(1)    translateY(0);    opacity: 1; }
+  75%  { transform: scale(1)    translateY(0);    opacity: 1; }
+  100% { transform: scale(0.8)  translateY(-8px); opacity: 0; }
+}
+
+/* 3. Niveau qui pulse en doré */
+@keyframes levelNumPop {
+  0%   { transform: scale(1);    background: #34495e; color: #fff; }
+  20%  { transform: scale(1.35); background: #ffd700; color: #1a1a1a;
+         box-shadow: 0 0 10px 3px rgba(255,215,0,0.7); }
+  55%  { transform: scale(1.18); background: #ffd700; color: #1a1a1a; }
+  100% { transform: scale(1);    background: #34495e; color: #fff;
+         box-shadow: none; }
+}
+
+.pokemon-level.level-pop {
+  animation: levelNumPop 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 /* Status Badges */
 .status-container {
   min-height: 20px;
