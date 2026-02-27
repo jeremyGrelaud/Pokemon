@@ -27,24 +27,29 @@
     </div>
   </div>
 
-  <!-- ── Légende ──────────────────────────────────────────────────────────── -->
-  <div class="map-legend mb-2">
-    <span class="leg"><span class="dot" style="background:#4caf50;box-shadow:0 0 0 2px rgba(76,175,80,.4)"></span>Position</span>
-    <span class="leg"><span class="dot" style="background:#42a5f5"></span>Visitée</span>
-    <span class="leg"><span class="dot" style="background:#90a4ae"></span>Inexplorée</span>
-    <span class="leg"><span class="dot" style="background:#546e7a;opacity:.45"></span>Verrouillée</span>
-    <span class="leg"><span class="dot star-dot">★</span>Arène</span>
-    <span class="leg"><span class="dot" style="background:#ef5350;border-radius:2px"></span>Centre Pkm</span>
-    <span class="leg"><span class="dot" style="background:#ab47bc;border-radius:2px"></span>Boutique</span>
-    <span class="leg text-muted" style="margin-left:4px;"><i class="fas fa-mouse fa-xs mr-1"></i>Scroll = zoom · Glisser = naviguer</span>
-  </div>
+
 
   <!-- ── Corps ────────────────────────────────────────────────────────────── -->
   <div class="map-body">
 
     <!-- Canvas SVG avec image Kanto en fond -->
     <div class="map-canvas-wrap">
-      <svg id="kantoSvg" viewBox="0 0 1000 707" xmlns="http://www.w3.org/2000/svg">
+      <!-- Légende flottante sur la carte -->
+      <div class="map-legend-overlay">
+        <div class="leg"><span class="dot" style="background:#4caf50;box-shadow:0 0 4px rgba(76,175,80,.8)"></span>Position</div>
+        <div class="leg"><span class="dot" style="background:#42a5f5"></span>Visitée</div>
+        <div class="leg"><span class="dot" style="background:#90a4ae"></span>Inexplorée</div>
+        <div class="leg"><span class="dot" style="background:#546e7a;opacity:.55"></span>Verrouillée</div>
+        <div class="leg-sep"></div>
+        <div class="leg"><span class="poi-star">★</span>Arène</div>
+        <div class="leg"><span class="poi-sq" style="background:#ef5350"></span>Centre Pkm</div>
+        <div class="leg"><span class="poi-sq" style="background:#ab47bc"></span>Boutique</div>
+        <div class="leg-sep"></div>
+        <div class="leg leg-hint"><i class="fas fa-scroll fa-xs"></i>&nbsp;Scroll = zoom</div>
+        <div class="leg leg-hint"><i class="fas fa-hand-paper fa-xs"></i>&nbsp;Glisser = nav</div>
+        <div class="leg leg-hint"><i class="fas fa-mouse fa-xs"></i>&nbsp;2× clic = voyager</div>
+      </div>
+      <svg id="kantoSvg" viewBox="70 10 900 660" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <!-- Glow vert pour position courante -->
           <filter id="glow-cur" x="-60%" y="-60%" width="220%" height="220%">
@@ -365,10 +370,10 @@ const MapUI = (() => {
       g.appendChild(c);
 
       // POI
-      let ox = p.x + r + 1;
-      if (z.gym)  { g.appendChild(mkText(ox, p.y - r + 6, '★', '#ffd600', 9)); ox += 9; }
-      if (z.ctr)  { g.appendChild(mkRect(ox, p.y - r - 4, '#ef5350'));          ox += 7; }
-      if (z.shop) { g.appendChild(mkRect(ox, p.y - r - 4, '#ab47bc')); }
+      let ox = p.x + r + 5;
+      if (z.gym)  { g.appendChild(mkText(ox, p.y - r + 6, '★', '#ffd600', 10)); ox += 10; }
+      if (z.ctr)  { g.appendChild(mkPoiCenter(ox + 5.5, p.y - r));              ox += 14; }
+      if (z.shop) { g.appendChild(mkPoiShop(ox + 5.5,   p.y - r)); }
 
       // Label (villes, grottes, forêts, bâtiments, position courante)
       if (['city','cave','forest','building'].includes(z.type) || isCur) {
@@ -543,10 +548,35 @@ const MapUI = (() => {
   function mkRect(x, y, fill) {
     const e = ns('rect'); attrs(e,{x,y,width:6,height:6,fill,rx:1}); return e;
   }
+  // POI enrichis : cercle fond + symbole
+  function mkPoiCenter(cx, cy) {
+    const g = ns('g');
+    // Fond
+    const bg = ns('circle');
+    attrs(bg, { cx, cy, r: 5.5, fill:'#c62828', stroke:'#fff', 'stroke-width':'1' });
+    g.appendChild(bg);
+    // Croix
+    const h = ns('line'); attrs(h, {x1:cx-2.5,y1:cy,x2:cx+2.5,y2:cy,stroke:'#fff','stroke-width':'1.5','stroke-linecap':'round'});
+    const v = ns('line'); attrs(v, {x1:cx,y1:cy-2.5,x2:cx,y2:cy+2.5,stroke:'#fff','stroke-width':'1.5','stroke-linecap':'round'});
+    g.appendChild(h); g.appendChild(v);
+    return g;
+  }
+  function mkPoiShop(cx, cy) {
+    const g = ns('g');
+    const bg = ns('circle');
+    attrs(bg, { cx, cy, r: 5.5, fill:'#7b1fa2', stroke:'#fff', 'stroke-width':'1' });
+    g.appendChild(bg);
+    // $ sign simplifié : losange
+    const d = ns('polygon');
+    attrs(d, { points:`${cx},${cy-3} ${cx+2.5},${cy} ${cx},${cy+3} ${cx-2.5},${cy}`, fill:'#fff' });
+    g.appendChild(d);
+    return g;
+  }
 
   // ── Pan & Zoom ────────────────────────────────────────────────────────────
-  let vb = {x:0, y:0, w:1000, h:707};
-  const RATIO = 707/1000, MIN_W = 160, MAX_W = 1000;
+  let vb = {x:70, y:10, w:900, h:660};
+  const RATIO = 660/900, MIN_W = 160, MAX_W = 1000;
+  const VB0 = {x:70, y:10, w:900, h:660}; // vue initiale rognée
 
   function setVB() {
     svg.setAttribute('viewBox',`${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`);
@@ -608,7 +638,7 @@ const MapUI = (() => {
     setVB();
     const z = KD.zones.find(z=>z.id===KD.curId); if(z) openPanel(z);
   }
-  function resetView() { vb={x:0,y:0,w:1000,h:707}; setVB(); }
+  function resetView() { vb={...VB0}; setVB(); }
 
   function init() {
     buildConnections();
@@ -631,26 +661,52 @@ document.addEventListener('DOMContentLoaded', MapUI.init);
   font-family: 'Courier New', monospace;
   font-size: 1.3rem; letter-spacing: .04em;
 }
-.map-legend {
-  display: flex; flex-wrap: wrap; gap: 6px 14px;
-  font-size: .72rem; color: #adb5bd; align-items: center;
-}
-.leg  { display:flex; align-items:center; gap:5px; }
-.dot  { display:inline-block; width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-.star-dot { font-size:11px; line-height:1; color:#ffd600; width:auto; height:auto;
-            background:none; border-radius:0; }
 .map-body { flex:1; display:flex; gap:10px; min-height:0; }
 
 /* ── Canvas ──────────────────────────────────────────────────────────────── */
 .map-canvas-wrap {
   flex: 1; border-radius: 10px; overflow: hidden;
   border: 1px solid rgba(0,0,0,0.4);
-  cursor: grab; min-height: 0;
+  cursor: grab; min-height: 0; position: relative;
   box-shadow: 0 4px 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06);
   background-color: #0f1b29;
 }
 .map-canvas-wrap:active { cursor: grabbing; }
 #kantoSvg { width:100%; height:100%; display:block; user-select:none; }
+
+/* ── Légende overlay ─────────────────────────────────────────────────────── */
+.map-legend-overlay {
+  position: absolute; bottom: 12px; left: 12px; z-index: 10;
+  background: rgba(5, 12, 22, 0.82);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: .7rem; color: #cfd8dc;
+  pointer-events: none;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+}
+.map-legend-overlay .leg {
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.map-legend-overlay .leg-hint {
+  color: #78909c; font-size: .65rem;
+}
+.map-legend-overlay .leg-sep {
+  height: 1px; background: rgba(255,255,255,0.08); margin: 1px 0;
+}
+.map-legend-overlay .dot {
+  display:inline-block; width:9px; height:9px; border-radius:50%; flex-shrink:0;
+}
+.map-legend-overlay .poi-star {
+  font-size:11px; color:#ffd600; line-height:1; width:9px; text-align:center;
+}
+.map-legend-overlay .poi-sq {
+  display:inline-block; width:11px; height:11px; border-radius:50%;
+  flex-shrink:0; border: 1px solid rgba(255,255,255,0.4);
+}
 
 /* Pulse halo */
 @keyframes pulse {
@@ -660,11 +716,11 @@ document.addEventListener('DOMContentLoaded', MapUI.init);
 .pulse { animation: pulse 2.5s ease-in-out infinite; }
 
 /* Hover nœud */
-.zn:hover { filter: brightness(1.15); }
+.zn:hover { filter: brightness(1.2); }
 
 /* ── Panneau ─────────────────────────────────────────────────────────────── */
 .map-panel {
-  width: 252px; flex-shrink: 0;
+  width: 380px; flex-shrink: 0;
   background: #0f1b29;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.07);
@@ -684,7 +740,7 @@ document.addEventListener('DOMContentLoaded', MapUI.init);
 .panel-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:2px; }
 
 .p-img-wrap {
-  position:relative; height:96px;
+  position:relative; height:120px;
   background:#08121e; flex-shrink:0; overflow:hidden;
 }
 .p-img { width:100%; height:100%; object-fit:cover; opacity:.6; transition:opacity .25s; }
@@ -717,6 +773,7 @@ document.addEventListener('DOMContentLoaded', MapUI.init);
   .map-canvas-wrap { height:50vw; min-height:280px; }
   .map-panel       { width:100%; max-height:36vh; }
   .kanto-map-page  { height:auto; }
+  .map-legend-overlay { font-size:.62rem; padding: 6px 8px; }
 }
 </style>
 {% endblock %}
