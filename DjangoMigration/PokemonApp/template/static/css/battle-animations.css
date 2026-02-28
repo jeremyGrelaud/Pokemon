@@ -791,10 +791,11 @@
   background: #1a1a2e;
   color: #e8e8e8;
   padding: 10px 20px;
-  max-height: 80px;
+  max-height: 120px;  /* 4 lignes visibles (~28px × 4 + padding) */
   overflow-y: auto;
   font-family: 'Courier New', monospace;
   font-size: 13px;
+  line-height: 1.6;
   border-bottom: 3px solid #333;
   border-left: 4px solid #e74c3c;
   /* scrollbar custom */
@@ -1143,14 +1144,49 @@
    RESPONSIVE
    ============================================================================ */
 
-/* ─── Responsive action panel (hors scène, pas scalé) ─────────────── */
-@media (max-width: 600px) {
-  .battle-log-compact { font-size: 11px; max-height: 60px; padding: 6px 12px; }
-  .action-panel { min-height: 130px; }
-  .menu-container { padding: 10px; }
-  .action-btn { padding: 12px; font-size: 13px; gap: 4px; }
-  .action-btn i { font-size: 20px; }
-  .move-btn { padding: 10px; }
-  .move-name { font-size: 13px; }
-  .moves-grid { gap: 8px; }
+/* ══════════════════════════════════════════════════════════════════════
+   RESPONSIVE PANEL D'ACTION (hors scène, classes body injectées par JS)
+   battle-lg : ≥ 1280px   — pleine taille
+   battle-md : 768–1279px — compact
+   battle-sm : < 768px    — mini
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ─── battle-md ─────────────────────────────────────────────────────── */
+body.battle-md .battle-log-compact {
+  font-size: 12px;
+  max-height: 108px;
+  padding: 8px 16px;
 }
+body.battle-md .menu-container { padding: 12px 16px; }
+body.battle-md .action-btn { padding: 16px; font-size: 15px; }
+body.battle-md .action-btn i { font-size: 24px; }
+body.battle-md .move-btn { padding: 12px; }
+body.battle-md .move-name { font-size: 14px; }
+body.battle-md .menu-grid { gap: 10px; }
+body.battle-md .moves-grid { gap: 8px; }
+
+/* ─── battle-sm ─────────────────────────────────────────────────────── */
+body.battle-sm .battle-log-compact {
+  font-size: 11px;
+  max-height: 88px;
+  padding: 6px 12px;
+  border-left-width: 3px;
+}
+body.battle-sm .menu-container { padding: 8px 10px; }
+body.battle-sm .menu-header h4 { font-size: 0.9rem; }
+body.battle-sm .action-btn {
+  padding: 10px 8px;
+  font-size: 12px;
+  gap: 4px;
+  border-width: 2px;
+  border-radius: 8px;
+}
+body.battle-sm .action-btn i { font-size: 18px; }
+body.battle-sm .move-btn { padding: 8px 10px; }
+body.battle-sm .move-name { font-size: 12px; }
+body.battle-sm .move-pp { font-size: 10px; }
+body.battle-sm .move-type-badge { font-size: 9px; padding: 2px 6px; }
+body.battle-sm .menu-grid { gap: 6px; }
+body.battle-sm .moves-grid { gap: 6px; }
+body.battle-sm .team-switch-grid { grid-template-columns: 1fr; gap: 6px; }
+body.battle-sm .btn-back { padding: 5px 10px; font-size: 12px; }

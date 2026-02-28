@@ -780,8 +780,11 @@ window.__battleInProgress = true;
 {% endblock js %}
 <script>
 /* ════════════════════════════════════════════════════════════════════
-   BATTLE SCENE SCALER — canvas interne fixe 960×540, scale uniforme
-   Letterbox noir automatique. Zoom navigateur = transparent.
+   BATTLE SCENE SCALER
+   - Canvas fixe 1280×540px, scaled uniformément
+   - Sous 1280px : scale < 1, letterbox noire
+   - Classes CSS ajoutées selon la largeur réelle pour adapter
+     le panel d'action hors-scène (log + menus)
    ════════════════════════════════════════════════════════════════════ */
 (function () {
   const SCENE_W = 1280;
@@ -792,23 +795,26 @@ window.__battleInProgress = true;
     const scene   = wrapper ? wrapper.querySelector('.battle-scene') : null;
     if (!wrapper || !scene) return;
 
-    const availW = wrapper.clientWidth;
-    const scale  = availW / SCENE_W;
+    const availW  = wrapper.clientWidth;
+    const scale   = availW / SCENE_W;
     const scaledH = Math.round(SCENE_H * scale);
 
     scene.style.transform = `scale(${scale})`;
     wrapper.style.height  = scaledH + 'px';
+
+    // Classes responsive sur le body selon largeur réelle disponible
+    const body = document.body;
+    body.classList.toggle('battle-sm',  availW < 768);
+    body.classList.toggle('battle-md',  availW >= 768 && availW < 1280);
+    body.classList.toggle('battle-lg',  availW >= 1280);
   }
 
-  // Init
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', scaleBattle);
   } else {
     scaleBattle();
   }
-  // Zoom / resize
   window.addEventListener('resize', scaleBattle);
-  // Fallback pour les changements de layout tardifs
   setTimeout(scaleBattle, 200);
 })();
 </script>
