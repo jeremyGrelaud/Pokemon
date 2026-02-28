@@ -804,6 +804,42 @@ ALL_QUESTS = [
         'reward_flag':    'visited_route21',
         'icon':           'fa-water',
     },
+    {
+        'quest_id':       'explore_diglett_cave',
+        'title':          'Cave Taupiqueur',
+        'description':    "La Cave Taupiqueur relie Carmin sur Mer à la Route 2. Ce tunnel obscur est le territoire exclusif des Taupiqueur — et des redoutables Triopikeur. CS01 Coupe requise pour entrer.",
+        'quest_type':     'side',
+        'order':          445,
+        'trigger_type':   'visit_zone',
+        'trigger_zone_name': 'Cave Taupiqueur',
+        'objective_text': 'Traverser la Cave Taupiqueur (CS01 Coupe requise)',
+        'reward_flag':    'visited_diglett_cave',
+        'icon':           'fa-digging',
+    },
+    {
+        'quest_id':       'visit_cinnabar_lab',
+        'title':          "Île Nuptiale",
+        'description':    "L'Île Nuptiale, accessible depuis la Route 24 à la nage, est un lieu paisible où les habitants viennent se détendre. Un mystérieux personnage y offre parfois des Pokémon rares.",
+        'quest_type':     'side',
+        'order':          447,
+        'trigger_type':   'visit_zone',
+        'trigger_zone_name': 'Île Nuptiale',
+        'objective_text': "Atteindre l'Île Nuptiale (CS03 Surf requise)",
+        'reward_flag':    'visited_nuptiale',
+        'icon':           'fa-island-tropical',
+    },
+    {
+        'quest_id':       'unlock_route_23',
+        'title':          'Destination : Plateau Indigo',
+        'description':    "Vous possédez les 8 badges de Kanto ! Les gardes de la Ligue sur la Route 22 vous laissent maintenant passer vers la Route 23 et le Chemin de la Victoire.",
+        'quest_type':     'main',
+        'order':          253,
+        'trigger_type':   'story_flag',
+        'trigger_flag':   'all_badges_obtained',
+        'objective_text': 'Présenter vos 8 badges aux gardes de la Route 22',
+        'reward_flag':    'route23_unlocked',
+        'icon':           'fa-passport',
+    },
 ]
 
 
@@ -933,6 +969,9 @@ def init_quests():
         'visit_dr_boulmich':      ['defeat_misty'],
         'visit_cerulean_cave':    ['become_champion'],
         'visit_route_21':         ['reach_cinnabar'],
+        'explore_diglett_cave':   ['defeat_lt_surge'],   # CS Coupe disponible après Surge
+        'visit_cinnabar_lab':     ['defeat_misty'],      # Surf requis, accessible après Badge Âme
+        'unlock_route_23':        ['defeat_giovanni'],   # Disponible après le 8e badge
     }
 
     for quest_id, prereq_ids in PREREQS.items():
@@ -1190,6 +1229,26 @@ FLOORS_DATA = {
          'safe': False, 'flag': '', 'label': ''},
         {'n': -4, 'name': 'B4F',
          'desc': "Salle au trésor. La Lunette Silph est conservée ici sous haute surveillance.",
+         'safe': False, 'flag': '', 'label': ''},
+    ],
+
+    # ── MONT SÉLÉNITE (3 étages souterrains) ─────────────────────────────────
+    'Mont Sélénite': [
+        {'n': 1, 'name': '1F',
+         'desc': "Entrée du Mont Sélénite. Des membres de la Team Rocket cherchent des Pierres Lune. Zubat et Géodude rôdent dans l'obscurité.",
+         'safe': False, 'flag': '', 'label': ''},
+        {'n': 2, 'name': 'B1F',
+         'desc': "Premier sous-sol. Des fossiles de Pokémon anciens jonchent le sol. La Team Rocket y creuse frénétiquement.",
+         'safe': False, 'flag': '', 'label': ''},
+        {'n': 3, 'name': 'B2F',
+         'desc': "Galeries profondes. Un scientifique Rocket garde jalousement les Pierres Lune restantes. Sortie vers la Route 4.",
+         'safe': False, 'flag': '', 'label': ''},
+    ],
+
+    # ── CAVE TAUPIQUEUR (tunnel unique) ───────────────────────────────────────
+    'Cave Taupiqueur': [
+        {'n': 1, 'name': 'Tunnel',
+         'desc': "L'unique tunnel de la Cave Taupiqueur. Un grondement sourd indique la présence de nombreux Taupiqueur et Triopikeur sous vos pieds. La sortie débouche sur la Route 2 au nord.",
          'safe': False, 'flag': '', 'label': ''},
     ],
 }

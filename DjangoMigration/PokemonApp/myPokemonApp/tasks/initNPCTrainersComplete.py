@@ -10,18 +10,30 @@ https://bulbapedia.bulbagarden.net/wiki/Walkthrough:Pokémon_FireRed_and_LeafGre
 Règle is_battle_required=True — STRICTEMENT inévitables dans FireRed/LeafGreen :
   ■ Route 24 (Pont Cerclef) : 5 dresseurs du pont + 1 Grunt Rocket final
       → couloir linéaire, impossible de passer sans se battre (Bulbapedia Part 5)
-  ■ Mont Sélénite B2F : Super Nerd Miguel
+  ■ Mont Sélénite B2F (étage 3) : Team Rocket Grunt (Mont Sélénite)
+      → couloir B2F unique (Bulbapedia Part 4)
+  ■ Mont Sélénite B2F (étage 3) : Super Nerd Miguel
       → les fossiles BLOQUENT physiquement le chemin (Bulbapedia Part 4)
-  ■ Mont Sélénite B2F : Team Rocket Grunt (couloir B2F, chemin unique)
   ■ Tour Pokémon 4F : Jesse & James
       → script déclenché, bloquent l'escalier vers le sommet
-  ■ QG Rocket Céladopole : Executive Archer
+  ■ QG Rocket Céladopole B3F (étage 3) : Executive Archer
       → boss de zone, script obligatoire
-  ■ Sylphe SARL Safrania : Giovanni Shadow
+  ■ Sylphe SARL 11F (étage 11) : Giovanni Shadow
       → script scénaristique, impossible de contourner
 
 Tout autre dresseur (routes ouvertes, grottes à plusieurs chemins,
 bâtiments à layout libre) est OPTIONNEL.
+
+Zones à étages couvertes :
+  Mont Sélénite       : 1F (étage 1), B1F (étage 2), B2F (étage 3)
+  SS Anne             : Pont (étage 1), 1F (étage 2), 2F (étage 3)
+  Tour Pokémon        : 2F → 6F (étages 2 à 6) — 7F sans dresseur combattant
+  QG Rocket           : B1F → B4F (étages 1 à 4)
+  Sylphe SARL         : 1F, 2F, 3F, 5F, 7F, 11F
+  Manoir Pokémon      : 1F, 2F, 3F, B1F (étages 1 à 4)
+  Cave Taupiqueur     : Tunnel (étage 1)
+  Îles Écume          : B1F → B4F (étages 1 à 4)
+  Chemin de la Victoire: 1F → 3F (étages 1 à 3)
 """
 
 from myPokemonApp.models import Pokemon, PokemonMove, Trainer
@@ -264,31 +276,22 @@ def init_route_3():
 # ==============================================================================
 
 def init_mont_selenite():
-    logging.info("[*] Mont Sélénite...")
+    logging.info("[*] Mont Sélénite (1F / B1F / B2F)...")
 
+    # ── 1F — Entrée ──────────────────────────────────────────────────────────
     create_npc_trainer(
         username='Lass Iris',
         trainer_type='trainer',
-        location='Mont Sélénite',
+        location='Mont Sélénite-1',
         team_data=[
             {'species': get_pokemon('Clefairy'), 'level': 14, 'moves': get_moves(['Pound', 'Growl'])},
         ],
         intro_text="Les Pokémon fée sont magnifiques!"
     )
     create_npc_trainer(
-        username='Super Nerd Jovan',
-        trainer_type='trainer',
-        location='Mont Sélénite',
-        team_data=[
-            {'species': get_pokemon('Magnemite'), 'level': 11, 'moves': get_moves(['Tackle', 'Sonic Boom'])},
-            {'species': get_pokemon('Voltorb'), 'level': 11, 'moves': get_moves(['Tackle', 'Screech'])},
-        ],
-        intro_text="La science est la clé!"
-    )
-    create_npc_trainer(
         username='Hiker Marcos',
         trainer_type='trainer',
-        location='Mont Sélénite',
+        location='Mont Sélénite-1',
         team_data=[
             {'species': get_pokemon('Geodude'), 'level': 10, 'moves': get_moves(['Tackle', 'Defense Curl'])},
             {'species': get_pokemon('Geodude'), 'level': 10, 'moves': get_moves(['Tackle', 'Defense Curl'])},
@@ -296,35 +299,22 @@ def init_mont_selenite():
         ],
         intro_text="Les rochers sont solides!"
     )
-    # B2F — Grunt dans le couloir obligatoire (Bulbapedia Part 4)
     create_npc_trainer(
-        username='Team Rocket Grunt',
+        username='Super Nerd Jovan',
         trainer_type='trainer',
-        location='Mont Sélénite',
-        is_battle_required=True,
+        location='Mont Sélénite-1',
         team_data=[
-            {'species': get_pokemon('Rattata'), 'level': 11, 'moves': get_moves(['Tackle', 'Tail Whip'])},
-            {'species': get_pokemon('Zubat'), 'level': 11, 'moves': get_moves(['Leech Life', 'Supersonic'])},
+            {'species': get_pokemon('Magnemite'), 'level': 11, 'moves': get_moves(['Tackle', 'Sonic Boom'])},
+            {'species': get_pokemon('Voltorb'), 'level': 11, 'moves': get_moves(['Tackle', 'Screech'])},
         ],
-        intro_text="Prépare-toi, gamin!"
+        intro_text="La science est la clé!"
     )
-    # B2F — Super Nerd Miguel : les fossiles bloquent le chemin (obligatoire)
-    create_npc_trainer(
-        username='Super Nerd Miguel',
-        trainer_type='trainer',
-        location='Mont Sélénite',
-        is_battle_required=True,
-        team_data=[
-            {'species': get_pokemon('Grimer'), 'level': 12, 'moves': get_moves(['Pound', 'Disable'])},
-            {'species': get_pokemon('Voltorb'), 'level': 12, 'moves': get_moves(['Tackle', 'Screech'])},
-            {'species': get_pokemon('Koffing'), 'level': 12, 'moves': get_moves(['Tackle', 'Smog'])},
-        ],
-        intro_text="Ces fossiles sont à moi ! Tu ne les auras pas !"
-    )
+
+    # ── B1F — Premier sous-sol (fossiles, premiers Rockets) ──────────────────
     create_npc_trainer(
         username='Hiker Eric',
         trainer_type='trainer',
-        location='Mont Sélénite',
+        location='Mont Sélénite-2',
         team_data=[
             {'species': get_pokemon('Geodude'), 'level': 11, 'moves': get_moves(['Tackle', 'Defense Curl'])},
             {'species': get_pokemon('Graveler'), 'level': 11, 'moves': get_moves(['Tackle', 'Defense Curl', 'Rock Throw'])},
@@ -334,7 +324,7 @@ def init_mont_selenite():
     create_npc_trainer(
         username='Team Rocket Cassidy',
         trainer_type='trainer',
-        location='Mont Sélénite',
+        location='Mont Sélénite-2',
         team_data=[
             {'species': get_pokemon('Rattata'), 'level': 12, 'moves': get_moves(['Tackle', 'Hyper Fang'])},
             {'species': get_pokemon('Ekans'), 'level': 12, 'moves': get_moves(['Wrap', 'Leer', 'Bite'])},
@@ -344,17 +334,44 @@ def init_mont_selenite():
     create_npc_trainer(
         username='Super Nerd Clifford',
         trainer_type='trainer',
-        location='Mont Sélénite',
+        location='Mont Sélénite-2',
         team_data=[
             {'species': get_pokemon('Clefairy'), 'level': 13, 'moves': get_moves(['Pound', 'Growl', 'Sing'])},
             {'species': get_pokemon('Clefairy'), 'level': 13, 'moves': get_moves(['Pound', 'Growl', 'Sing'])},
         ],
         intro_text="Les Mélofée du Mont Lune m'ont choisi!"
     )
+
+    # ── B2F — Galeries profondes (sortie Route 4) — Grunt + Miguel OBLIGATOIRES
+    # Grunt dans le couloir unique (Bulbapedia Part 4)
+    create_npc_trainer(
+        username='Team Rocket Grunt (Mont Sélénite)',
+        trainer_type='trainer',
+        location='Mont Sélénite-3',
+        is_battle_required=True,
+        team_data=[
+            {'species': get_pokemon('Rattata'), 'level': 11, 'moves': get_moves(['Tackle', 'Tail Whip'])},
+            {'species': get_pokemon('Zubat'), 'level': 11, 'moves': get_moves(['Leech Life', 'Supersonic'])},
+        ],
+        intro_text="Prépare-toi, gamin!"
+    )
+    # Super Nerd Miguel — les fossiles bloquent physiquement le chemin (OBLIGATOIRE)
+    create_npc_trainer(
+        username='Super Nerd Miguel',
+        trainer_type='trainer',
+        location='Mont Sélénite-3',
+        is_battle_required=True,
+        team_data=[
+            {'species': get_pokemon('Grimer'), 'level': 12, 'moves': get_moves(['Pound', 'Disable'])},
+            {'species': get_pokemon('Voltorb'), 'level': 12, 'moves': get_moves(['Tackle', 'Screech'])},
+            {'species': get_pokemon('Koffing'), 'level': 12, 'moves': get_moves(['Tackle', 'Smog'])},
+        ],
+        intro_text="Ces fossiles sont à moi ! Tu ne les auras pas !"
+    )
     create_npc_trainer(
         username='Team Rocket Butch',
         trainer_type='trainer',
-        location='Mont Sélénite',
+        location='Mont Sélénite-3',
         team_data=[
             {'species': get_pokemon('Zubat'), 'level': 13, 'moves': get_moves(['Leech Life', 'Supersonic', 'Bite'])},
             {'species': get_pokemon('Sandshrew'), 'level': 13, 'moves': get_moves(['Scratch', 'Defense Curl', 'Sand Attack'])},
@@ -545,12 +562,13 @@ def init_route_25():
 # ==============================================================================
 
 def init_ss_anne():
-    logging.info("[*] S.S. Anne / Carmin sur Mer...")
+    logging.info("[*] S.S. Anne...")
 
+    # ── Pont extérieur (étage 1) ──────────────────────────────────────────────
     create_npc_trainer(
         username='Sailor Edmond',
         trainer_type='trainer',
-        location='Carmin sur Mer',
+        location='SS Anne-1',
         team_data=[
             {'species': get_pokemon('Machop'), 'level': 18, 'moves': get_moves(['Low Kick', 'Leer', 'Karate Chop'])},
             {'species': get_pokemon('Shellder'), 'level': 18, 'moves': get_moves(['Tackle', 'Withdraw'])},
@@ -560,17 +578,19 @@ def init_ss_anne():
     create_npc_trainer(
         username='Gentleman Thomas',
         trainer_type='trainer',
-        location='Carmin sur Mer',
+        location='SS Anne-1',
         team_data=[
             {'species': get_pokemon('Growlithe'), 'level': 18, 'moves': get_moves(['Bite', 'Roar', 'Ember'])},
             {'species': get_pokemon('Ponyta'), 'level': 18, 'moves': get_moves(['Tackle', 'Growl', 'Ember'])},
         ],
         intro_text="Un combat de gentlemen?"
     )
+
+    # ── 1F — Salon principal (étage 2) ────────────────────────────────────────
     create_npc_trainer(
         username='Lass Ann',
         trainer_type='trainer',
-        location='Carmin sur Mer',
+        location='SS Anne-2',
         team_data=[
             {'species': get_pokemon('Pidgey'), 'level': 18, 'moves': get_moves(['Gust', 'Sand Attack'])},
             {'species': get_pokemon('Nidoran♀'), 'level': 18, 'moves': get_moves(['Scratch', 'Poison Sting'])},
@@ -580,17 +600,19 @@ def init_ss_anne():
     create_npc_trainer(
         username='Sailor Eddy',
         trainer_type='trainer',
-        location='Carmin sur Mer',
+        location='SS Anne-2',
         team_data=[
             {'species': get_pokemon('Tentacool'), 'level': 19, 'moves': get_moves(['Acid', 'Constrict'])},
             {'species': get_pokemon('Machop'), 'level': 19, 'moves': get_moves(['Low Kick', 'Karate Chop', 'Leer'])},
         ],
         intro_text="Les marins sont les meilleurs combattants!"
     )
+
+    # ── 2F — Cabines de luxe (étage 3) ───────────────────────────────────────
     create_npc_trainer(
         username='Gentleman Brooks',
         trainer_type='trainer',
-        location='Carmin sur Mer',
+        location='SS Anne-3',
         team_data=[
             {'species': get_pokemon('Nidoran♂'), 'level': 18, 'moves': get_moves(['Leer', 'Tackle', 'Poison Sting'])},
             {'species': get_pokemon('Nidoran♀'), 'level': 18, 'moves': get_moves(['Scratch', 'Tail Whip', 'Poison Sting'])},
@@ -600,7 +622,7 @@ def init_ss_anne():
     create_npc_trainer(
         username='Super Nerd Felix',
         trainer_type='trainer',
-        location='Carmin sur Mer',
+        location='SS Anne-3',
         team_data=[
             {'species': get_pokemon('Magnemite'), 'level': 20, 'moves': get_moves(['Thunder Shock', 'Sonic Boom'])},
             {'species': get_pokemon('Magnemite'), 'level': 20, 'moves': get_moves(['Thunder Shock', 'Sonic Boom'])},
@@ -984,12 +1006,13 @@ def init_route_8():
 # ==============================================================================
 
 def init_celadon_city():
-    logging.info("[*] Céladopole (QG Rocket)...")
+    logging.info("[*] QG Team Rocket (Céladopole)...")
 
+    # ── B1F ──────────────────────────────────────────────────────────────────
     create_npc_trainer(
         username='Team Rocket Grunt A',
         trainer_type='trainer',
-        location='Céladopole',
+        location='Quartier Général Rocket-1',
         team_data=[
             {'species': get_pokemon('Raticate'), 'level': 25, 'moves': get_moves(['Hyper Fang', 'Quick Attack'])},
             {'species': get_pokemon('Zubat'), 'level': 25, 'moves': get_moves(['Bite', 'Leech Life', 'Supersonic'])},
@@ -999,18 +1022,52 @@ def init_celadon_city():
     create_npc_trainer(
         username='Team Rocket Grunt B',
         trainer_type='trainer',
-        location='Céladopole',
+        location='Quartier Général Rocket-1',
         team_data=[
             {'species': get_pokemon('Grimer'), 'level': 26, 'moves': get_moves(['Pound', 'Disable', 'Sludge'])},
             {'species': get_pokemon('Koffing'), 'level': 26, 'moves': get_moves(['Smog', 'Tackle', 'Poison Gas'])},
         ],
         intro_text="Tu fouines dans nos affaires?!"
     )
+
+    # ── B2F ──────────────────────────────────────────────────────────────────
+    create_npc_trainer(
+        username='Team Rocket Grunt C',
+        trainer_type='trainer',
+        location='Quartier Général Rocket-2',
+        team_data=[
+            {'species': get_pokemon('Ekans'), 'level': 26, 'moves': get_moves(['Wrap', 'Bite', 'Screech'])},
+            {'species': get_pokemon('Sandshrew'), 'level': 26, 'moves': get_moves(['Scratch', 'Sand Attack', 'Slash'])},
+        ],
+        intro_text="Ces couloirs sont à nous!"
+    )
+    create_npc_trainer(
+        username='Team Rocket Grunt D',
+        trainer_type='trainer',
+        location='Quartier Général Rocket-2',
+        team_data=[
+            {'species': get_pokemon('Drowzee'), 'level': 27, 'moves': get_moves(['Pound', 'Hypnosis', 'Confusion'])},
+            {'species': get_pokemon('Machop'), 'level': 27, 'moves': get_moves(['Low Kick', 'Leer', 'Karate Chop'])},
+        ],
+        intro_text="Tu ne passeras pas plus loin!"
+    )
+
+    # ── B3F — Boss obligatoire (Archer) ──────────────────────────────────────
+    create_npc_trainer(
+        username='Team Rocket Grunt E',
+        trainer_type='trainer',
+        location='Quartier Général Rocket-3',
+        team_data=[
+            {'species': get_pokemon('Arbok'), 'level': 27, 'moves': get_moves(['Wrap', 'Bite', 'Glare'])},
+            {'species': get_pokemon('Weezing'), 'level': 27, 'moves': get_moves(['Smog', 'Sludge', 'Smokescreen'])},
+        ],
+        intro_text="C'est notre quartier général, intrus!"
+    )
     # Archer — boss scénaristique OBLIGATOIRE
     create_npc_trainer(
         username='Team Rocket Executive Archer',
         trainer_type='trainer',
-        location='Céladopole',
+        location='Quartier Général Rocket-3',
         is_battle_required=True,
         team_data=[
             {'species': get_pokemon('Arbok'), 'level': 28, 'moves': get_moves(['Wrap', 'Bite', 'Screech'])},
@@ -1020,6 +1077,18 @@ def init_celadon_city():
         intro_text="Tu ne peux pas arrêter la Team Rocket!"
     )
 
+    # ── B4F — Salle au trésor (Lunette Silph) ────────────────────────────────
+    create_npc_trainer(
+        username='Team Rocket Grunt F',
+        trainer_type='trainer',
+        location='Quartier Général Rocket-4',
+        team_data=[
+            {'species': get_pokemon('Rattata'), 'level': 28, 'moves': get_moves(['Hyper Fang', 'Quick Attack', 'Bite'])},
+            {'species': get_pokemon('Raticate'), 'level': 28, 'moves': get_moves(['Hyper Fang', 'Quick Attack', 'Super Fang'])},
+        ],
+        intro_text="La Lunette Silph est notre trésor — tu ne l'auras pas!"
+    )
+
 
 # ==============================================================================
 # TOUR POKÉMON — LAVANVILLE
@@ -1027,9 +1096,9 @@ def init_celadon_city():
 # ==============================================================================
 
 def init_lavender_town():
-    logging.info("[*] Tour Pokémon...")
+    logging.info("[*] Tour Pokémon (2F → 7F)...")
 
-    # 2F
+    # ── 2F ───────────────────────────────────────────────────────────────────
     create_npc_trainer(
         username='Channeler Margaret',
         trainer_type='trainer',
@@ -1039,7 +1108,8 @@ def init_lavender_town():
         ],
         intro_text="Les défunts parlent à travers moi..."
     )
-    # 3F
+
+    # ── 3F ───────────────────────────────────────────────────────────────────
     create_npc_trainer(
         username='Channeler Tammy',
         trainer_type='trainer',
@@ -1078,7 +1148,8 @@ def init_lavender_town():
         ],
         intro_text="Je vois les âmes des Pokémon..."
     )
-    # 4F — Jesse & James bloquent l'escalier (OBLIGATOIRES)
+
+    # ── 4F — Jesse & James bloquent l'escalier (OBLIGATOIRES) ────────────────
     create_npc_trainer(
         username='Team Rocket Jesse',
         trainer_type='trainer',
@@ -1102,6 +1173,63 @@ def init_lavender_town():
         intro_text="Prepare for trouble... et maintenant du combat!"
     )
 
+    # ── 5F ───────────────────────────────────────────────────────────────────
+    create_npc_trainer(
+        username='Channeler Laurel',
+        trainer_type='trainer',
+        location='Tour Pokémon-5',
+        team_data=[
+            {'species': get_pokemon('Haunter'), 'level': 26, 'moves': get_moves(['Night Shade', 'Hypnosis', 'Confuse Ray'])},
+        ],
+        intro_text="Les esprits ici sont plus anciens et plus sombres..."
+    )
+    create_npc_trainer(
+        username='Channeler Jody',
+        trainer_type='trainer',
+        location='Tour Pokémon-5',
+        team_data=[
+            {'species': get_pokemon('Gastly'), 'level': 24, 'moves': get_moves(['Lick', 'Spite', 'Mean Look'])},
+            {'species': get_pokemon('Gastly'), 'level': 24, 'moves': get_moves(['Lick', 'Confuse Ray', 'Mean Look'])},
+        ],
+        intro_text="Mes Fantominus garderont ces couloirs éternellement!"
+    )
+    create_npc_trainer(
+        username='Team Rocket Grunt (Tour)',
+        trainer_type='trainer',
+        location='Tour Pokémon-5',
+        team_data=[
+            {'species': get_pokemon('Zubat'), 'level': 25, 'moves': get_moves(['Bite', 'Leech Life', 'Supersonic'])},
+            {'species': get_pokemon('Cubone'), 'level': 25, 'moves': get_moves(['Bone Club', 'Headbutt', 'Leer'])},
+        ],
+        intro_text="Les ossements ici valent de l'or pour la Team Rocket!"
+    )
+
+    # ── 6F ───────────────────────────────────────────────────────────────────
+    create_npc_trainer(
+        username='Channeler Astrid',
+        trainer_type='trainer',
+        location='Tour Pokémon-6',
+        team_data=[
+            {'species': get_pokemon('Haunter'), 'level': 27, 'moves': get_moves(['Night Shade', 'Hypnosis', 'Lick'])},
+            {'species': get_pokemon('Haunter'), 'level': 27, 'moves': get_moves(['Confuse Ray', 'Night Shade', 'Spite'])},
+        ],
+        intro_text="Deux Ectoplasma pour punir les vivants!"
+    )
+    create_npc_trainer(
+        username='Team Rocket Grunt (Tour 6F)',
+        trainer_type='trainer',
+        location='Tour Pokémon-6',
+        team_data=[
+            {'species': get_pokemon('Raticate'), 'level': 26, 'moves': get_moves(['Hyper Fang', 'Quick Attack', 'Bite'])},
+            {'species': get_pokemon('Arbok'), 'level': 26, 'moves': get_moves(['Wrap', 'Bite', 'Screech'])},
+        ],
+        intro_text="Tu ne monteras pas plus haut!"
+    )
+
+    # ── 7F — Sommet (spectre de Marowak + M. Fuji) ───────────────────────────
+    # Aucun dresseur combattant au 7F : Marowak est un Pokémon sauvage
+    # spécial (impossible à capturer), M. Fuji est un PNJ non-combattant.
+
 
 # ==============================================================================
 # SAFRANIA — SYLPHE SARL
@@ -1109,12 +1237,13 @@ def init_lavender_town():
 # ==============================================================================
 
 def init_saffron_city():
-    logging.info("[*] Safrania (Sylphe SARL)...")
+    logging.info("[*] Sylphe SARL (Safrania)...")
 
+    # ── 1F — Hall d'accueil ───────────────────────────────────────────────────
     create_npc_trainer(
         username='Team Rocket Grunt A',
         trainer_type='trainer',
-        location='Safrania',
+        location='Sylphe SARL-1',
         team_data=[
             {'species': get_pokemon('Cubone'), 'level': 29, 'moves': get_moves(['Bone Club', 'Headbutt', 'Leer'])},
             {'species': get_pokemon('Drowzee'), 'level': 29, 'moves': get_moves(['Pound', 'Hypnosis', 'Confusion'])},
@@ -1124,17 +1253,19 @@ def init_saffron_city():
     create_npc_trainer(
         username='Team Rocket Grunt B',
         trainer_type='trainer',
-        location='Safrania',
+        location='Sylphe SARL-1',
         team_data=[
             {'species': get_pokemon('Rattata'), 'level': 27, 'moves': get_moves(['Hyper Fang', 'Quick Attack'])},
             {'species': get_pokemon('Zubat'), 'level': 27, 'moves': get_moves(['Bite', 'Leech Life', 'Supersonic'])},
         ],
         intro_text="La Sylphe Co. va alimenter notre empire!"
     )
+
+    # ── 2F / 3F — Labos et couloirs ───────────────────────────────────────────
     create_npc_trainer(
         username='Scientist Jose',
         trainer_type='trainer',
-        location='Safrania',
+        location='Sylphe SARL-2',
         team_data=[
             {'species': get_pokemon('Electrode'), 'level': 29, 'moves': get_moves(['Sonic Boom', 'Self-Destruct'])},
             {'species': get_pokemon('Weezing'), 'level': 29, 'moves': get_moves(['Tackle', 'Smog', 'Sludge'])},
@@ -1142,27 +1273,75 @@ def init_saffron_city():
         intro_text="La science au service de Silph!"
     )
     create_npc_trainer(
+        username='Team Rocket Grunt C',
+        trainer_type='trainer',
+        location='Sylphe SARL-2',
+        team_data=[
+            {'species': get_pokemon('Grimer'), 'level': 28, 'moves': get_moves(['Pound', 'Disable', 'Sludge'])},
+            {'species': get_pokemon('Koffing'), 'level': 28, 'moves': get_moves(['Smog', 'Poison Gas', 'Sludge'])},
+        ],
+        intro_text="Ce couloir est sous notre contrôle!"
+    )
+    create_npc_trainer(
         username='Scientist Franklin',
         trainer_type='trainer',
-        location='Safrania',
+        location='Sylphe SARL-3',
         team_data=[
             {'species': get_pokemon('Magnemite'), 'level': 29, 'moves': get_moves(['Thunder Shock', 'Sonic Boom', 'Thunder Wave'])},
             {'species': get_pokemon('Electrode'), 'level': 29, 'moves': get_moves(['Tackle', 'Screech', 'Self-Destruct'])},
         ],
         intro_text="La science au service du mal... pourquoi pas?"
     )
+    create_npc_trainer(
+        username='Team Rocket Grunt D',
+        trainer_type='trainer',
+        location='Sylphe SARL-3',
+        team_data=[
+            {'species': get_pokemon('Arbok'), 'level': 30, 'moves': get_moves(['Wrap', 'Bite', 'Glare'])},
+            {'species': get_pokemon('Hypno'), 'level': 30, 'moves': get_moves(['Pound', 'Hypnosis', 'Confusion'])},
+        ],
+        intro_text="Le Laissez-Passer ne vous donnera pas accès à tout!"
+    )
+
+    # ── 5F — Scientifique prisonnier (donne le Laissez-Passer) ───────────────
+    create_npc_trainer(
+        username='Team Rocket Grunt E',
+        trainer_type='trainer',
+        location='Sylphe SARL-5',
+        team_data=[
+            {'species': get_pokemon('Rattata'), 'level': 30, 'moves': get_moves(['Hyper Fang', 'Quick Attack', 'Bite'])},
+            {'species': get_pokemon('Ekans'), 'level': 30, 'moves': get_moves(['Wrap', 'Glare', 'Bite'])},
+        ],
+        intro_text="Ce scientifique est notre otage, dégages!"
+    )
+
+    # ── 7F — Blue (rival) + accès bureau du Président ────────────────────────
+    create_npc_trainer(
+        username='Rival - Silph Co.',
+        trainer_type='trainer',
+        location='Sylphe SARL-7',
+        team_data=[
+            {'species': get_pokemon('Pidgeot'),   'level': 37, 'moves': get_moves(['Wing Attack', 'Quick Attack', 'Sand Attack'])},
+            {'species': get_pokemon('Gyarados'),  'level': 38, 'moves': get_moves(['Bite', 'Dragon Rage', 'Hydro Pump'])},
+            {'species': get_pokemon('Growlithe'), 'level': 35, 'moves': get_moves(['Bite', 'Ember', 'Roar'])},
+            {'species': get_pokemon('Alakazam'),  'level': 38, 'moves': get_moves(['Psybeam', 'Recover', 'Psychic'])},
+        ],
+        intro_text="Je t'attendais ici! Tu es vraiment tenace..."
+    )
+
+    # ── 11F — Giovanni (OBLIGATOIRE — script de libération de Sylphe SARL) ───
     # Giovanni Shadow — script scénaristique OBLIGATOIRE
     create_npc_trainer(
         username='Team Rocket Giovanni Shadow',
         trainer_type='trainer',
-        location='Safrania',
+        location='Sylphe SARL-11',
         is_battle_required=True,
         team_data=[
-            {'species': get_pokemon('Nidorino'), 'level': 35, 'moves': get_moves(['Horn Attack', 'Double Kick', 'Poison Sting'])},
+            {'species': get_pokemon('Nidorino'),  'level': 35, 'moves': get_moves(['Horn Attack', 'Double Kick', 'Poison Sting'])},
             {'species': get_pokemon('Kangaskhan'), 'level': 35, 'moves': get_moves(['Headbutt', 'Dizzy Punch', 'Tail Whip'])},
-            {'species': get_pokemon('Rhyhorn'), 'level': 37, 'moves': get_moves(['Horn Attack', 'Stomp', 'Tail Whip'])},
+            {'species': get_pokemon('Rhyhorn'),   'level': 37, 'moves': get_moves(['Horn Attack', 'Stomp', 'Tail Whip'])},
         ],
-        intro_text="Giovanni - intermédiaire: Silph Co. sera à moi... enfin à la Team Rocket!"
+        intro_text="Giovanni - Sylphe SARL: Cette entreprise sera à nous... enfin à la Team Rocket!"
     )
 
 
@@ -1643,13 +1822,146 @@ def init_safari_zone():
     )
 
 
+
+# ==============================================================================
+# MANOIR POKÉMON — CRAMOIS'ÎLE
+# Dresseurs répartis sur 1F, 2F, 3F, B1F (Clé Secrète)
+# ==============================================================================
+
+def init_manoir_pokemon():
+    logging.info("[*] Manoir Pokémon (1F / 2F / 3F / B1F)...")
+
+    # ── 1F — Hall en ruines ───────────────────────────────────────────────────
+    create_npc_trainer(
+        username='Burglar Simon',
+        trainer_type='trainer',
+        location='Manoir Pokémon-1',
+        team_data=[
+            {'species': get_pokemon('Growlithe'), 'level': 40, 'moves': get_moves(['Bite', 'Ember', 'Flamethrower'])},
+            {'species': get_pokemon('Ponyta'),    'level': 40, 'moves': get_moves(['Ember', 'Fire Spin', 'Stomp'])},
+        ],
+        intro_text="Ce manoir recèle des trésors... et je les veux!"
+    )
+    create_npc_trainer(
+        username='Juggler Horton',
+        trainer_type='trainer',
+        location='Manoir Pokémon-1',
+        team_data=[
+            {'species': get_pokemon('Koffing'), 'level': 39, 'moves': get_moves(['Smog', 'Sludge', 'Explosion'])},
+            {'species': get_pokemon('Koffing'), 'level': 39, 'moves': get_moves(['Smog', 'Sludge', 'Explosion'])},
+            {'species': get_pokemon('Weezing'), 'level': 41, 'moves': get_moves(['Smog', 'Sludge', 'Explosion'])},
+        ],
+        intro_text="Les ruines du manoir sont mon terrain de jeu!"
+    )
+
+    # ── 2F — Bibliothèque (journaux sur Mew) ─────────────────────────────────
+    create_npc_trainer(
+        username='Scientist Beau',
+        trainer_type='trainer',
+        location='Manoir Pokémon-2',
+        team_data=[
+            {'species': get_pokemon('Magmar'),   'level': 42, 'moves': get_moves(['Ember', 'Fire Punch', 'Smog'])},
+            {'species': get_pokemon('Electrode'), 'level': 40, 'moves': get_moves(['Tackle', 'Screech', 'Self-Destruct'])},
+        ],
+        intro_text="Les journaux de recherche sur Mew sont fascinants!"
+    )
+    create_npc_trainer(
+        username='Burglar Lewis',
+        trainer_type='trainer',
+        location='Manoir Pokémon-2',
+        team_data=[
+            {'species': get_pokemon('Growlithe'), 'level': 41, 'moves': get_moves(['Bite', 'Ember', 'Flamethrower'])},
+            {'species': get_pokemon('Magmar'),    'level': 43, 'moves': get_moves(['Fire Punch', 'Confuse Ray', 'Flamethrower'])},
+        ],
+        intro_text="Les vieux grimoires ici valent une fortune!"
+    )
+
+    # ── 3F — Couloirs sombres ─────────────────────────────────────────────────
+    create_npc_trainer(
+        username='Scientist Foster',
+        trainer_type='trainer',
+        location='Manoir Pokémon-3',
+        team_data=[
+            {'species': get_pokemon('Grimer'), 'level': 41, 'moves': get_moves(['Pound', 'Sludge', 'Minimize'])},
+            {'species': get_pokemon('Muk'),    'level': 43, 'moves': get_moves(['Pound', 'Sludge', 'Disable'])},
+        ],
+        intro_text="Mes Pokémon Poison s'épanouissent dans ces couloirs putrides!"
+    )
+    create_npc_trainer(
+        username='Burglar Ramon',
+        trainer_type='trainer',
+        location='Manoir Pokémon-3',
+        team_data=[
+            {'species': get_pokemon('Koffing'), 'level': 40, 'moves': get_moves(['Smog', 'Sludge', 'Smokescreen'])},
+            {'species': get_pokemon('Ponyta'),  'level': 40, 'moves': get_moves(['Ember', 'Fire Spin', 'Stomp'])},
+            {'species': get_pokemon('Magmar'),  'level': 42, 'moves': get_moves(['Ember', 'Fire Punch', 'Confuse Ray'])},
+        ],
+        intro_text="Personne ne ressort de ce couloir!"
+    )
+
+    # ── B1F — Sous-sol (Clé Secrète) ─────────────────────────────────────────
+    create_npc_trainer(
+        username='Scientist Jordan',
+        trainer_type='trainer',
+        location='Manoir Pokémon-4',
+        team_data=[
+            {'species': get_pokemon('Ditto'),  'level': 43, 'moves': get_moves(['Transform'])},
+            {'species': get_pokemon('Ditto'),  'level': 43, 'moves': get_moves(['Transform'])},
+        ],
+        intro_text="Mes Metamorphe peuvent imiter n'importe quel Pokémon... y compris les tiens!"
+    )
+    create_npc_trainer(
+        username='Burglar Arnie',
+        trainer_type='trainer',
+        location='Manoir Pokémon-4',
+        team_data=[
+            {'species': get_pokemon('Magmar'), 'level': 44, 'moves': get_moves(['Fire Punch', 'Flamethrower', 'Confuse Ray', 'Smokescreen'])},
+            {'species': get_pokemon('Muk'),    'level': 42, 'moves': get_moves(['Sludge', 'Pound', 'Disable'])},
+        ],
+        intro_text="La Clé Secrète est quelque part ici — et tu ne la trouveras pas!"
+    )
+
+
+# ==============================================================================
+# CAVE TAUPIQUEUR
+# Tunnel unique entre Carmin sur Mer et Route 2 (CS01 Coupe requise)
+# Aucun combat obligatoire (galerie ouverte à sens unique)
+# ==============================================================================
+
+def init_cave_taupiqueur():
+    logging.info("[*] Cave Taupiqueur...")
+
+    create_npc_trainer(
+        username='Hiker Alan',
+        trainer_type='trainer',
+        location='Cave Taupiqueur-1',
+        team_data=[
+            {'species': get_pokemon('Diglett'), 'level': 19, 'moves': get_moves(['Scratch', 'Growl', 'Dig'])},
+            {'species': get_pokemon('Diglett'), 'level': 19, 'moves': get_moves(['Scratch', 'Growl', 'Dig'])},
+            {'species': get_pokemon('Dugtrio'), 'level': 22, 'moves': get_moves(['Scratch', 'Growl', 'Dig', 'Slash'])},
+        ],
+        intro_text="Ce tunnel appartient aux Taupiqueur et à moi!"
+    )
+    create_npc_trainer(
+        username='Rocker Lenny',
+        trainer_type='trainer',
+        location='Cave Taupiqueur-1',
+        team_data=[
+            {'species': get_pokemon('Diglett'), 'level': 18, 'moves': get_moves(['Scratch', 'Sand Attack', 'Dig'])},
+            {'species': get_pokemon('Geodude'), 'level': 18, 'moves': get_moves(['Tackle', 'Defense Curl', 'Rock Throw'])},
+        ],
+        intro_text="Rock and roll sous la terre!"
+    )
+
+
 # ==============================================================================
 # ÎLES ÉCUME
 # ==============================================================================
 
 def init_seafoam():
-    logging.info("[*] Îles Écume...")
+    logging.info("[*] Îles Écume (B1F → B4F)...")
 
+    # ── B1F ──────────────────────────────────────────────────────────────────
     create_npc_trainer(
         username='Swimmer Bryce',
         trainer_type='trainer',
@@ -1670,6 +1982,8 @@ def init_seafoam():
         ],
         intro_text="Les eaux glacées des Îles Écume me galvanisent!"
     )
+
+    # ── B2F ──────────────────────────────────────────────────────────────────
     create_npc_trainer(
         username='Juggler Nate',
         trainer_type='trainer',
@@ -1678,6 +1992,50 @@ def init_seafoam():
             {'species': get_pokemon('Jynx'), 'level': 40, 'moves': get_moves(['Pound', 'Lovely Kiss', 'Ice Beam', 'Psychic'])},
         ],
         intro_text="La glace et le mystère... c'est mon style!"
+    )
+    create_npc_trainer(
+        username='Swimmer Darrin',
+        trainer_type='trainer',
+        location='Îles Écume-2',
+        team_data=[
+            {'species': get_pokemon('Staryu'),  'level': 39, 'moves': get_moves(['Water Gun', 'Rapid Spin', 'Ice Beam'])},
+            {'species': get_pokemon('Golduck'), 'level': 39, 'moves': get_moves(['Scratch', 'Confusion', 'Hydro Pump'])},
+        ],
+        intro_text="Les courants souterrains sont dévastateurs!"
+    )
+
+    # ── B3F ──────────────────────────────────────────────────────────────────
+    create_npc_trainer(
+        username='Swimmer Melissa',
+        trainer_type='trainer',
+        location='Îles Écume-3',
+        team_data=[
+            {'species': get_pokemon('Dewgong'),  'level': 41, 'moves': get_moves(['Headbutt', 'Aurora Beam', 'Ice Beam', 'Rest'])},
+            {'species': get_pokemon('Lapras'),   'level': 40, 'moves': get_moves(['Body Slam', 'Ice Beam', 'Confuse Ray'])},
+        ],
+        intro_text="Artikodin rôde quelque part dans ces grottes!"
+    )
+    create_npc_trainer(
+        username='Juggler Linn',
+        trainer_type='trainer',
+        location='Îles Écume-3',
+        team_data=[
+            {'species': get_pokemon('Jynx'),  'level': 41, 'moves': get_moves(['Ice Punch', 'Lovely Kiss', 'Psychic'])},
+            {'species': get_pokemon('Jynx'),  'level': 41, 'moves': get_moves(['Ice Punch', 'Lovely Kiss', 'Psychic'])},
+        ],
+        intro_text="Mes Lippoutou dansent sur la glace... puis attaquent!"
+    )
+
+    # ── B4F — Chambre d'Artikodin ─────────────────────────────────────────────
+    create_npc_trainer(
+        username='Swimmer Gerald',
+        trainer_type='trainer',
+        location='Îles Écume-4',
+        team_data=[
+            {'species': get_pokemon('Cloyster'),  'level': 43, 'moves': get_moves(['Ice Beam', 'Aurora Beam', 'Spikes'])},
+            {'species': get_pokemon('Tentacruel'),'level': 43, 'moves': get_moves(['Acid', 'Hydro Pump', 'Barrier'])},
+        ],
+        intro_text="Seuls les plus endurcis atteignent ces profondeurs!"
     )
 
 
@@ -1808,6 +2166,8 @@ def run_complete_npc_initialization():
         init_route_23()
         init_power_plant()
         init_safari_zone()
+        init_manoir_pokemon()
+        init_cave_taupiqueur()
         init_seafoam()
         init_victory_road()
 

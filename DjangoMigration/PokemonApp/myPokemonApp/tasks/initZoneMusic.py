@@ -78,6 +78,8 @@ ZONE_MUSIC = {
     'Centrale':            'team_rocket_hideout',       # 43  (ambiance industrielle similaire)
     'Grottes Inconnues':   'the_caves_of_mt_moon',      # 32
     'Chemin de la Victoire': 'the_caves_of_mt_moon',    # 32
+    'Cave Taupiqueur':       'the_caves_of_mt_moon',    # 32 (grotte, même ambiance)
+    'Île Nuptiale':          'route_1',                 # ambiance douce Route 1
 
     # ── Surf ─────────────────────────────────────────────────────────────────
     # Pas de zone "Surf" distincte dans le modèle, mais on peut ajouter ici

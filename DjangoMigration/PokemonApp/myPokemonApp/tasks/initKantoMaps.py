@@ -87,7 +87,7 @@ def init_kanto_map():
 
         # ── ZONES SPÉCIALES ───────────────────────────────────────────────────
         ('Forêt de Jade',       'forest',   'Forêt dense infestée de Pokémon Insecte.',                  6,  3,  6,  False, False, False),
-        ('Mont Sélénite',       'cave',     'Grotte rocheuse entre Argenta et Azuria.',                   9,  8, 12,  False, False, False),
+        ('Mont Sélénite',       'cave',     'Grotte rocheuse entre Argenta et Azuria. Plusieurs étages à explorer.', 9, 8, 12, False, False, False),
         ('Tunnel Roche',        'cave',     'Grotte sombre entre la Route 9 et Route 10.',               13, 15, 20,  False, False, False),
         ('Tour Pokémon',        'building', 'Tour hantée de Lavanville, repère de Spectreux.',           19, 15, 22,  False, False, False),
         ('Zone Safari',         'route',    'Parc Safari de Parmanie — Pokémon rares à attraper.',        28, 22, 30,  True,  False, False),
@@ -97,6 +97,10 @@ def init_kanto_map():
         ('Chemin de la Victoire','cave',    'Dernière épreuve avant la Ligue Pokémon.',                  37, 40, 50,  False, False, False),
         ("Route 19",            'water',    'Route maritime entre Parmanie et les Îles Écume.',           33, 25, 35,  False, False, False),
         ("Route 20",            'water',    'Route maritime entre les Îles Écume et Cramois\'Île.',      34, 25, 35,  False, False, False),
+
+        # ── ZONES MANQUANTES ──────────────────────────────────────────────────
+        ('Cave Taupiqueur',     'cave',     'Tunnel obscur reliant Carmin sur Mer à la Route 2 sud. Infesté de Taupiqueur et Triopikeur.', 16, 15, 22, False, False, False),
+        ('Île Nuptiale',        'route',    'Petite île au nord d\'Azuria — lieu romantique où vivait le Dr Boulmich avant de partir vers la Route 25.', 15, 13, 16, True, False, False),
     ]
 
     created_zones = {}
@@ -178,6 +182,7 @@ def init_kanto_map():
         ('Route 21',       'Bourg Palette'),
         # Ligue
         ('Jadielle',       'Route 22'),
+        # Route 22 → Route 23 : connexion gérée séparément (condition 8 badges)
         ('Route 23',       'Chemin de la Victoire'),
         ('Chemin de la Victoire', 'Plateau Indigo'),
         # Grottes Inconnues (Azuria)
@@ -185,6 +190,16 @@ def init_kanto_map():
         # Tunnel Roche
         ('Route 9',        'Tunnel Roche'),
         ('Tunnel Roche',   'Route 10'),
+        # Cave Taupiqueur : relie Carmin sur Mer (Route 11) à Route 2 sud
+        ('Carmin sur Mer', 'Cave Taupiqueur'),
+        ('Cave Taupiqueur', 'Route 2'),
+        # Île Nuptiale : accessible depuis Route 24 (surf)
+        ('Route 24',       'Île Nuptiale'),
+        # Bâtiments principaux (créés par initQuests.init_extra_zones)
+        ("Carmin sur Mer", 'SS Anne'),
+        ("Céladopole",     'Quartier Général Rocket'),
+        ("Safrania",       'Sylphe SARL'),
+        ("Cramois'Île",    'Manoir Pokémon'),
     ]
 
     for from_name, to_name in connections:
@@ -197,6 +212,70 @@ def init_kanto_map():
             )
         else:
             logging.warning(f"[!] Connexion impossible : {from_name} ↔ {to_name}")
+
+    # ── Connexion spéciale Route 22 → Route 23 : 8 badges requis ──────────────
+    logging.info("  🔒 Connexion Route 22 → Route 23 (8 badges requis)...")
+    r22 = created_zones.get('Route 22')
+    r23 = created_zones.get('Route 23')
+    if r22 and r23:
+        conn, created = ZoneConnection.objects.get_or_create(
+            from_zone=r22,
+            to_zone=r23,
+            defaults={
+                'is_bidirectional': False,
+                'required_flag': 'all_badges_obtained',
+                'passage_message': "Les gardes de la Ligue Pokémon bloquent le passage. Il vous faut les 8 badges de Kanto pour continuer vers le Plateau Indigo.",
+            }
+        )
+        if not created:
+            # Mettre à jour si déjà existant sans condition
+            conn.required_flag = 'all_badges_obtained'
+            conn.is_bidirectional = False
+            conn.passage_message = "Les gardes de la Ligue Pokémon bloquent le passage. Il vous faut les 8 badges de Kanto pour continuer vers le Plateau Indigo."
+            conn.save()
+        logging.info(f"  {'✅' if created else '⭕'} Route 22 → Route 23 (flag: all_badges_obtained)")
+
+    # ── Connexion Cave Taupiqueur : CS01 Coupe requise ─────────────────────────
+    cave_t = created_zones.get('Cave Taupiqueur')
+    carmin = created_zones.get('Carmin sur Mer')
+    if cave_t and carmin:
+        conn, _ = ZoneConnection.objects.get_or_create(
+            from_zone=carmin, to_zone=cave_t,
+            defaults={
+                'is_bidirectional': True,
+                'required_hm': 'cut',
+                'passage_message': "Un arbuste épais bloque l'entrée de la Cave Taupiqueur. CS01 Coupe est requise.",
+            }
+        )
+
+    # ── Connexions bâtiments (depuis initQuests.init_extra_zones) ──────────────
+    # Ces zones n'existant pas lors de la 1ère passe, on les crée ici en get_or_create
+    logging.info("  🏢 Connexions bâtiments ville...")
+    building_links = [
+        ("Carmin sur Mer",  'SS Anne',                  '',         'ss_ticket_obtained',
+         "Vous avez besoin du Ticket SS pour monter à bord de la SS Anne."),
+        ("Céladopole",      'Quartier Général Rocket',  '',         '',
+         ''),
+        ("Safrania",        'Sylphe SARL',              '',         'reached_saffron',
+         "Vous devez d'abord atteindre Safrania."),
+        ("Cramois'Île",     'Manoir Pokémon',           '',         '',
+         ''),
+    ]
+    for city_name, bldg_name, req_hm, req_flag, msg in building_links:
+        from myPokemonApp.models import Zone as ZoneModel
+        city_z = ZoneModel.objects.filter(name=city_name).first()
+        bldg_z = ZoneModel.objects.filter(name=bldg_name).first()
+        if city_z and bldg_z:
+            conn, created_c = ZoneConnection.objects.get_or_create(
+                from_zone=city_z, to_zone=bldg_z,
+                defaults={
+                    'is_bidirectional': True,
+                    'required_hm': req_hm,
+                    'required_flag': req_flag,
+                    'passage_message': msg,
+                }
+            )
+            logging.info(f"  {'✅' if created_c else '⭕'} {city_name} ↔ {bldg_name}")
 
     # =========================================================================
     # 3. SPAWN RATES (données canoniques Gen 1)
@@ -493,5 +572,11 @@ def init_kanto_map():
         ('Hypno',     5.0, 45, 50),
     ], enc='cave')
     # Mewtwo est un combat unique, pas un spawn aléatoire → pas de WildPokemonSpawn
+
+    # ── Cave Taupiqueur ───────────────────────────────────────────────────────
+    add('Cave Taupiqueur', [
+        ('Diglett',   95.0, 15, 22),
+        ('Dugtrio',    5.0, 29, 31),
+    ], enc='cave')
 
     logging.info("\n✅ Carte Kanto initialisée !")

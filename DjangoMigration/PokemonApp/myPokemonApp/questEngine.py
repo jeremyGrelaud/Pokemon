@@ -220,6 +220,14 @@ def _post_complete_hooks(trainer, quest_id: str, result: dict):
         except Exception as e:
             logger.warning("Hook give_parcel_to_oak error: %s", e)
 
+    if quest_id == 'defeat_giovanni':
+        # Giovanni battu = 8e badge obtenu → débloquer la Route 23
+        try:
+            set_story_flag_and_trigger(trainer, 'all_badges_obtained')
+            logger.info("Hook defeat_giovanni: flag all_badges_obtained posé pour %s", trainer.username)
+        except Exception as e:
+            logger.warning("Hook defeat_giovanni error: %s", e)
+
 
 
 def _unlock_dependent_quests(trainer, completed_quest):

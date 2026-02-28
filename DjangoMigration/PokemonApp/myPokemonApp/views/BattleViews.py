@@ -1076,6 +1076,18 @@ def battle_trainer_complete_view(request, battle_id):
                     )
                     for notif in gym_notifications:
                         messages.success(request, f"{notif['title']} : {notif['message']}")
+
+                    # ── 8e badge : débloquer la Route 23 ──────────────────────
+                    if player_trainer.badges >= 8:
+                        try:
+                            from myPokemonApp.questEngine import set_story_flag_and_trigger
+                            set_story_flag_and_trigger(player_trainer, 'all_badges_obtained')
+                            messages.info(
+                                request,
+                                "🎖️ Vous possédez les 8 badges de Kanto ! Les gardes de la Ligue vous ouvrent désormais la Route 23."
+                            )
+                        except Exception as e:
+                            logger.warning("Erreur flag all_badges_obtained: %s", e)
             except GymLeader.DoesNotExist:
                 pass  # Pas un Champion d'Arène
 
