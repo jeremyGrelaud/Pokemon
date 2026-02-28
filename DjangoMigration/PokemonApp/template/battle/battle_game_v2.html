@@ -70,7 +70,7 @@
 <div class="battle-scene" data-terrain="{{ battle_terrain|default:'grass' }}">
   
   <!-- Background Layer -->
-  <div class="battle-background">
+  <div class="battle-background" style="background-image: url('{{ battle_bg_png }}'); background-color: {{ battle_bg_fallback }};">
     <div class="weather-effect" id="weather-container"></div>
     <div class="particles-background" id="particles-bg"></div>
   </div>
@@ -137,7 +137,6 @@
 
       <!-- Sprite Adversaire (droite) -->
       <div class="battle-side opponent-side">
-          <div class="pokemon-platform opponent-platform"></div>
           <div class="pokemon-container opponent-container" id="opponent-container">
             <div class="pokemon-shadow"></div>
             <img class="pokemon-sprite opponent-sprite"
@@ -153,7 +152,6 @@
     <div class="player-row">
       <!-- Sprite Joueur (gauche) -->
       <div class="battle-side player-side">
-          <div class="pokemon-platform player-platform"></div>
           <div class="pokemon-container player-container" id="player-container">
             <div class="pokemon-shadow player-pokemon-shadow"></div>
             <img class="pokemon-sprite player-sprite"
@@ -777,44 +775,59 @@ window.__battleInProgress = true;
 })();
 </script>
 
-{% endblock js %}
 <script>
-/* ════════════════════════════════════════════════════════════════════
-   BATTLE SCENE SCALER
-   - Canvas fixe 1280×540px, scaled uniformément
-   - Sous 1280px : scale < 1, letterbox noire
-   - Classes CSS ajoutées selon la largeur réelle pour adapter
-     le panel d'action hors-scène (log + menus)
-   ════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════
+   WEATHER VIDEO LOADER — Pokemon Showdown assets
+   Appelle window.updateBattleWeather('rain'|'sun'|'sandstorm'|'hail')
+   depuis le JS de combat pour changer la météo dynamiquement.
+   ════════════════════════════════════════════════════════════════ */
 (function () {
-  const SCENE_W = 1280;
-  const SCENE_H = 540;
+  const BASE = '/static/img/battle_backgrounds/weather/';
+  const WEATHER_MAP = {
+    'sun':        { file: 'weather-gen6-sunnyday',  cls: 'weather-sunny' },
+    'sun_harsh':  { file: 'weather-gen6-sunnyday',  cls: 'weather-sunny' },
+    'rain':       { file: 'weather-gen6-raindance', cls: '' },
+    'rain_heavy': { file: 'weather-gen6-raindance', cls: '' },
+    'sandstorm':  { file: 'weather-gen6-sandstorm', cls: '' },
+    'hail':       { file: 'weather-gen6-hail',      cls: '' },
+    'snow':       { file: 'weather-gen6-hail',      cls: '' },
+  };
 
-  function scaleBattle() {
-    const wrapper = document.getElementById('battle-wrapper');
-    const scene   = wrapper ? wrapper.querySelector('.battle-scene') : null;
-    if (!wrapper || !scene) return;
+  function loadWeatherVideo(weatherName) {
+    const container = document.getElementById('weather-container');
+    if (!container) return;
+    const entry = WEATHER_MAP[weatherName];
+    if (!entry) { container.innerHTML = ''; return; }
 
-    const availW  = wrapper.clientWidth;
-    const scale   = availW / SCENE_W;
-    const scaledH = Math.round(SCENE_H * scale);
+    const video = document.createElement('video');
+    video.className  = 'weather-video ' + entry.cls;
+    video.autoplay   = true;
+    video.loop       = true;
+    video.muted      = true;
+    video.playsInline = true;
 
-    scene.style.transform = `scale(${scale})`;
-    wrapper.style.height  = scaledH + 'px';
+    ['.webm', '.mp4'].forEach(ext => {
+      const s = document.createElement('source');
+      s.src  = BASE + entry.file + ext;
+      s.type = ext === '.webm' ? 'video/webm' : 'video/mp4';
+      video.appendChild(s);
+    });
 
-    // Classes responsive sur le body selon largeur réelle disponible
-    const body = document.body;
-    body.classList.toggle('battle-sm',  availW < 768);
-    body.classList.toggle('battle-md',  availW >= 768 && availW < 1280);
-    body.classList.toggle('battle-lg',  availW >= 1280);
+    container.innerHTML = '';
+    container.appendChild(video);
+    video.play().catch(() => {});
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', scaleBattle);
-  } else {
-    scaleBattle();
-  }
-  window.addEventListener('resize', scaleBattle);
-  setTimeout(scaleBattle, 200);
+  // Expose globalement pour le JS de combat
+  window.updateBattleWeather = loadWeatherVideo;
+
+  // Auto-init si data-weather présent sur la scène
+  document.addEventListener('DOMContentLoaded', function() {
+    const scene = document.querySelector('.battle-scene');
+    const w = scene && scene.dataset.weather;
+    if (w) loadWeatherVideo(w);
+  });
 })();
 </script>
+
+{% endblock js %}

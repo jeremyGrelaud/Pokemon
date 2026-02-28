@@ -200,17 +200,63 @@ class BattleGameView(generic.DetailView):
             current_zone = None
             context['current_zone'] = None
 
-        # Terrain de combat selon le type de zone
-        ZONE_TYPE_TO_TERRAIN = {
-            'route':    'grass',
-            'city':     'city',
-            'cave':     'cave',
-            'forest':   'forest',
-            'water':    'water',
-            'building': 'building',
-        }
+        # Terrain + background selon le type de zone
+        # Fichiers disponibles dans template/static/img/battle_backgrounds/ :
+        # bg-beach.png, bg-beachshore.png, bg-city.png, bg-dampcave.png,
+        # bg-deepsea.png, bg-desert.png, bg-earthycave.png, bg-forest.png,
+        # bg-icecave.png, bg-meadow.png, bg-mountain.png, bg-river.png,
+        # bg-route.png, bg-space.jpg, bg-thunderplains.png, bg-volcanocave.png
+
         zone_type = getattr(current_zone, 'zone_type', 'route') if current_zone else 'route'
-        context['battle_terrain'] = ZONE_TYPE_TO_TERRAIN.get(zone_type, 'grass')
+        zone_name = (getattr(current_zone, 'name', '') or '').lower()
+
+        # Mapping zone_type → (data-terrain CSS, fichier bg, couleur fallback)
+        # Pour 'cave' et 'water', on affine selon le nom de la zone
+        def _pick_bg(ztype, zname):
+            if ztype == 'route':
+                if any(k in zname for k in ('desert', 'sable', 'sahara')):
+                    return ('desert',        'bg-desert',        '#c9a227')
+                if any(k in zname for k in ('montagne', 'mountain', 'pic', 'summit')):
+                    return ('mountain',      'bg-mountain',      '#797d7f')
+                if any(k in zname for k in ('thunder', 'foudre', 'orage', 'electr')):
+                    return ('thunderplains', 'bg-thunderplains', '#2c3e50')
+                return ('route',             'bg-route',         '#5cb85c')
+
+            if ztype == 'city':
+                return ('city',              'bg-city',          '#8fa8c8')
+
+            if ztype == 'cave':
+                if any(k in zname for k in ('glace', 'ice', 'gel', 'frost')):
+                    return ('icecave',        'bg-icecave',       '#aed6f1')
+                if any(k in zname for k in ('volcan', 'volcano', 'feu', 'fire', 'magma', 'lava')):
+                    return ('volcanocave',    'bg-volcanocave',   '#7b241c')
+                if any(k in zname for k in ('terre', 'earth', 'sable', 'sandy')):
+                    return ('earthycave',     'bg-earthycave',    '#3d2b1f')
+                return ('cave',               'bg-dampcave',      '#1a1a1a')
+
+            if ztype == 'forest':
+                return ('forest',            'bg-forest',        '#1b4332')
+
+            if ztype == 'water':
+                if any(k in zname for k in ('mer', 'sea', 'ocean', 'deep', 'abyssal', 'fond')):
+                    return ('sea',            'bg-deepsea',       '#1a3a5c')
+                if any(k in zname for k in ('plage', 'beach', 'rivage', 'shore')):
+                    return ('beach',          'bg-beachshore',    '#70a8d8')
+                return ('water',              'bg-river',         '#1a6699')
+
+            if ztype == 'building':
+                return ('city',              'bg-city',          '#2a2a2a')
+
+            return ('route',                 'bg-meadow',        '#5cb85c')  # fallback
+
+        terrain, bg_key, bg_fallback = _pick_bg(zone_type, zone_name)
+
+        # Extension : .jpg uniquement pour bg-space, sinon .png
+        bg_ext = '.jpg' if bg_key == 'bg-space' else '.png'
+
+        context['battle_terrain']     = terrain
+        context['battle_bg_png']      = f'/static/img/battle_backgrounds/{bg_key}{bg_ext}'
+        context['battle_bg_fallback'] = bg_fallback
 
         # Rival : trainer_type == 'rival' → musique spéciale
         context['is_rival'] = (
