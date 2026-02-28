@@ -65,23 +65,23 @@
 
 <!-- Battle Scene Container -->
 <!-- Options: grass, water, cave -->
-<div class="battle-scene" data-terrain="grass">
+<!-- ══ BATTLE WRAPPER (letterbox) ══════════════════════════════ -->
+<div class="battle-wrapper" id="battle-wrapper">
+<div class="battle-scene" data-terrain="{{ battle_terrain|default:'grass' }}">
   
   <!-- Background Layer -->
-  <div class="battle-background">
+  <div class="battle-background" style="background-image: url('{{ battle_bg_png }}'); background-color: {{ battle_bg_fallback }};">
     <div class="weather-effect" id="weather-container"></div>
     <div class="particles-background" id="particles-bg"></div>
   </div>
 
 
-  <!-- Zone de combat (sprites et plateformes) -->
+  <!-- Zone de combat — layout 100% absolu, zoom-stable -->
   <div class="battlefield">
-    
-    <!-- LIGNE 1: ADVERSAIRE (Info gauche + Sprite droite) -->
-    <div class="row align-items-center opponent-row">
-      <!-- Colonne Info Adversaire (gauche) -->
-      <div class="col-6 d-flex justify-content-start">
-        <div class="info-bar opponent-bar">
+
+    <!-- ADVERSAIRE : info haut-gauche, sprite haut-droite -->
+    <div class="opponent-row">
+      <div class="info-bar opponent-bar">
           <div class="info-content">
             <div class="name-level-row">
               <span class="pokemon-name" id="opponent-name">
@@ -133,12 +133,10 @@
               {% endif %}
             </div>
           </div>
-        </div>
       </div>
 
-      <!-- Colonne Sprite Adversaire (droite) -->
-      <div class="col-6 d-flex justify-content-end">
-        <div class="battle-side opponent-side">
+      <!-- Sprite Adversaire (droite) -->
+      <div class="battle-side opponent-side">
           <div class="pokemon-platform opponent-platform"></div>
           <div class="pokemon-container opponent-container" id="opponent-container">
             <div class="pokemon-shadow"></div>
@@ -148,30 +146,26 @@
                 alt="{{ battle.opponent_pokemon.species.name }}"
                 onerror="this.src='{% static 'img/pokeball.png' %}'">
           </div>
-        </div>
       </div>
     </div>
 
-    <!-- LIGNE 2: JOUEUR (Sprite gauche + Info droite) -->
-    <div class="row align-items-center player-row">
-      <!-- Colonne Sprite Joueur (gauche) -->
-      <div class="col-6 d-flex justify-content-start">
-        <div class="battle-side player-side">
+    <!-- JOUEUR : sprite bas-gauche, info bas-droite -->
+    <div class="player-row">
+      <!-- Sprite Joueur (gauche) -->
+      <div class="battle-side player-side">
           <div class="pokemon-platform player-platform"></div>
           <div class="pokemon-container player-container" id="player-container">
-            <div class="pokemon-shadow"></div>
+            <div class="pokemon-shadow player-pokemon-shadow"></div>
             <img class="pokemon-sprite player-sprite"
                 id="player-sprite"
                 src="{% static 'img/sprites_gen5/' %}{% if battle.player_pokemon.is_shiny %}back-shiny{% else %}back{% endif %}/{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
                 alt="{{ battle.player_pokemon.species.name }}"
                 onerror="this.src='{% static 'img/pokeball.png' %}'">
           </div>
-        </div>
       </div>
 
-      <!-- Colonne Info Joueur (droite) -->
-      <div class="col-6 d-flex justify-content-end">
-        <div class="info-bar player-bar">
+      <!-- Info Joueur (droite) -->
+      <div class="info-bar player-bar">
           <div class="info-content">
             <div class="name-level-row">
               <span class="pokemon-name" id="player-name">
@@ -232,7 +226,6 @@
 
 
           </div>
-        </div>
       </div>
     </div>
 
@@ -242,17 +235,12 @@
     </div>
   </div>
 
+</div><!-- /battle-scene -->
+</div><!-- /battle-wrapper -->
 
-
-  <!-- UI Layer -->
+<!-- ══ ACTION PANEL (hors scène, non scalé) ═══════════════════════ -->
+<!-- UI Layer (log déplacé hors scène) -->
   <div class="battle-ui">
-    
-    <!-- Battle Log (Compact) -->
-    <div class="battle-log-compact" id="battle-log-compact">
-      <div class="log-messages" id="log-messages"></div>
-    </div>
-
-    <!-- Action Menu -->
     <div class="action-panel" id="action-panel">
       
       <!-- Main Menu -->
@@ -345,6 +333,10 @@
     </div>
   </div>
 
+
+<!-- ══ BATTLE LOG — en dehors de la scène, toujours visible ══════════════ -->
+<div class="battle-log-compact" id="battle-log-compact">
+  <div class="log-messages" id="log-messages"></div>
 </div>
 
 <!-- Modal de Switch Forcé (quand Pokemon KO) -->
@@ -548,10 +540,46 @@
   </div>
 </div>
 
-<!-- Audio Elements (preload) -->
-<audio id="bgm-battle" loop preload="auto">
+<!-- Audio Elements (preload)
+     muted + autoplay = TOUJOURS autorisé par les navigateurs.
+     AudioManager récupère cet élément et le désilence au premier clic. -->
+{% if battle.battle_type == 'gym' %}
+  {% with track="battle_gym" %}
+<audio id="bgm-battle" loop preload="auto" muted autoplay>
+  <source src="{% static 'sounds/bgm/' %}{{ track }}.mp3" type="audio/mpeg">
+</audio>
+  {% endwith %}
+{% elif is_rival %}
+<audio id="bgm-battle" loop preload="auto" muted autoplay>
+  <source src="{% static 'sounds/bgm/battle_rival.mp3' %}" type="audio/mpeg">
+</audio>
+{% elif battle.battle_type == 'trainer' %}
+<audio id="bgm-battle" loop preload="auto" muted autoplay>
+  <source src="{% static 'sounds/bgm/battle_trainer.mp3' %}" type="audio/mpeg">
+</audio>
+{% else %}
+<audio id="bgm-battle" loop preload="auto" muted autoplay>
   <source src="{% static 'sounds/bgm/battle_wild.mp3' %}" type="audio/mpeg">
 </audio>
+{% endif %}
+
+
+
+<!-- ── ── Battle BGM Player ───────────────────────────────────────────────────── -->
+<div id="battle-bgm-player" class="zone-bgm-widget" title="Musique de combat">
+  <button id="bgm-toggle" class="bgm-btn" aria-label="Lecture / Pause">
+    <i class="fas fa-music" id="bgm-icon"></i>
+  </button>
+  <div class="bgm-info">
+    <span id="bgm-zone-name" class="bgm-zone-name">Combat</span>
+    <div class="bgm-progress-wrap">
+      <div id="bgm-progress-bar" class="bgm-progress-bar"></div>
+    </div>
+  </div>
+  <input id="bgm-volume" type="range" min="0" max="100" value="30"
+         class="bgm-volume" title="Volume" aria-label="Volume">
+</div>
+
 
 {% endblock content %}
 
@@ -575,6 +603,7 @@
 window.BATTLE_CONFIG = {
   battleId:         {{ battle.id }},
   battleType:       '{{ battle.battle_type }}',
+  isRival:          {{ is_rival|yesno:"true,false" }},
   csrfToken:        '{{ csrf_token }}',
   playerPokemonId:   {{ battle.player_pokemon.id }},
   playerTrainerId:   '{{ battle.player_trainer.id }}',
@@ -602,6 +631,263 @@ window.BATTLE_CONFIG = {
     evoSound:       '{% static "sounds/pokemon-evolution-sound-effect.mp3" %}',
   },
 };
+// Activer la garde anti-quitter pendant le combat
+window.__battleInProgress = true;
 </script>
 <script src="{% static 'js/battle-game.js' %}"></script>
+
+<style>
+/* ── Keyboard shortcuts hint ──────────────────────────────────────────── */
+#kbd-hint {
+  position: fixed;
+  bottom: 70px;
+  right: 12px;
+  background: rgba(0,0,0,.72);
+  color: rgba(255,255,255,.9);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: .72rem;
+  line-height: 1.7;
+  z-index: 900;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,.1);
+  transition: opacity .6s ease;
+  max-width: 220px;
+}
+#kbd-hint kbd {
+  display: inline-block;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 3px;
+  padding: 0 5px;
+  font-size: .7rem;
+  font-family: monospace;
+  margin: 0 1px;
+}
+#kbd-hint .hint-row { display: flex; align-items: center; gap: 6px; }
+#kbd-hint .hint-action { color: rgba(255,255,255,.55); font-size: .68rem; }
+</style>
+
+<div id="kbd-hint" style="right: 5em; max-width: 50em;">
+  <div style="font-weight:600; margin-bottom:1em; opacity:.6; font-size:.65rem; letter-spacing:.05em;">⌨️ RACCOURCIS</div>
+  <div class="hint-row"><kbd>Z</kbd> <span class="hint-action">Attaquer</span></div>
+  <div class="hint-row"><kbd>&</kbd><kbd>é</kbd><kbd>"</kbd><kbd>'</kbd> <span class="hint-action">ou</span> <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></div>
+  <div class="hint-row" style="padding-left:1em; font-size:.65rem; color:rgba(255,255,255,.45);">→ Capacité 1–4</div>
+  <div class="hint-row"><kbd>X</kbd> <span class="hint-action">Retour menu</span></div>
+  <div class="hint-row"><kbd>Q</kbd> <span class="hint-action">Objets</span></div>
+  <div class="hint-row"><kbd>E</kbd> <span class="hint-action">Équipe</span></div>
+  <div class="hint-row"><kbd>R</kbd> <span class="hint-action">Fuir</span></div>
+</div>
+
+<script>
+// ── Raccourcis clavier (AZERTY + QWERTY) ──────────────────────────────────
+// Menu principal :
+//   Z / Entrée     → Attaquer
+//   Q              → Objets
+//   E              → Équipe
+//   R              → Fuir
+// Menu capacités (quand ouvert) :
+//   & / 1          → Capacité 1
+//   é / 2          → Capacité 2
+//   " / 3          → Capacité 3
+//   ' / 4          → Capacité 4
+//   X / Échap      → Retour menu principal
+// Tous menus :
+//   X / Échap      → Retour menu principal
+(function () {
+  // AZERTY row-1 → capacités 1-4
+  const MOVE_KEYS = {
+    '&': 0, '1': 0,
+    'é': 1, '2': 1, 'É': 1,
+    '"': 2, '3': 2,
+    "'": 3, '4': 3,
+  };
+
+  function activeMenu() {
+    const ids = ['main-menu', 'moves-menu', 'items-menu', 'team-menu'];
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== 'none') return id;
+    }
+    return null;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (document.querySelector('.modal.show')) return;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+    if (window.__animationLock) return;
+
+    const menu = activeMenu();
+    const key  = e.key;
+
+    // ── Menu principal ───────────────────────────────────────────────────
+    if (menu === 'main-menu') {
+      if (key === 'z' || key === 'Z' || key === 'Enter') {
+        e.preventDefault(); document.querySelector('.action-fight')?.click();
+      } else if (key === 'r' || key === 'R') {
+        e.preventDefault(); document.querySelector('.action-run')?.click();
+      } else if (key === 'q' || key === 'Q') {
+        e.preventDefault(); document.querySelector('.action-bag')?.click();
+      } else if (key === 'e' || key === 'E') {
+        e.preventDefault(); document.querySelector('.action-pokemon')?.click();
+      }
+    }
+
+    // ── Menu capacités ───────────────────────────────────────────────────
+    if (menu === 'moves-menu') {
+      if (key === 'x' || key === 'X' || key === 'Escape') {
+        e.preventDefault();
+        if (typeof showMainMenu === 'function') showMainMenu();
+      }
+      if (key in MOVE_KEYS) {
+        e.preventDefault();
+        const idx  = MOVE_KEYS[key];
+        const btns = document.querySelectorAll('.moves-grid .move-btn');
+        if (btns[idx] && !btns[idx].disabled) btns[idx].click();
+      }
+    }
+
+    // ── Autres menus : Échap pour retour ─────────────────────────────────
+    if (menu === 'items-menu' || menu === 'team-menu') {
+      if (key === 'x' || key === 'X' || key === 'Escape') {
+        e.preventDefault();
+        if (typeof showMainMenu === 'function') showMainMenu();
+      }
+    }
+
+    // ── Si aucun menu ouvert + touche numéro : ouvre menu + sélectionne ──
+    if (!menu && key in MOVE_KEYS) {
+      const fightBtn = document.querySelector('.action-fight');
+      if (fightBtn) {
+        e.preventDefault();
+        fightBtn.click();
+        // Wait one tick for moves-menu to show then click the move
+        setTimeout(() => {
+          const idx  = MOVE_KEYS[key];
+          const btns = document.querySelectorAll('.moves-grid .move-btn');
+          if (btns[idx] && !btns[idx].disabled) btns[idx].click();
+        }, 50);
+      }
+    }
+  });
+
+  // ── Auto-masquage du hint après 12s, réapparition au hover ──────────────
+  const hint = document.getElementById('kbd-hint');
+  if (hint) {
+    let hideTimer = setTimeout(() => hint.style.opacity = '0', 12000);
+    hint.addEventListener('mouseenter', () => {
+      clearTimeout(hideTimer);
+      hint.style.opacity = '1';
+    });
+    hint.addEventListener('mouseleave', () => {
+      hideTimer = setTimeout(() => hint.style.opacity = '0', 3000);
+    });
+    // Show hint briefly when moves menu opens
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.action-fight')) {
+        hint.style.opacity = '1';
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => hint.style.opacity = '0', 5000);
+      }
+    });
+  }
+})();
+</script>
+
 {% endblock js %}
+<script>
+/* ════════════════════════════════════════════════════════════════
+   WEATHER VIDEO LOADER — Pokemon Showdown assets
+   Appelle window.updateBattleWeather('rain'|'sun'|'sandstorm'|'hail')
+   depuis le JS de combat pour changer la météo dynamiquement.
+   ════════════════════════════════════════════════════════════════ */
+(function () {
+  const BASE = '/static/img/battle_backgrounds/weather/';
+  const WEATHER_MAP = {
+    'sun':        { file: 'weather-gen6-sunnyday',  cls: 'weather-sunny' },
+    'sun_harsh':  { file: 'weather-gen6-sunnyday',  cls: 'weather-sunny' },
+    'rain':       { file: 'weather-gen6-raindance', cls: '' },
+    'rain_heavy': { file: 'weather-gen6-raindance', cls: '' },
+    'sandstorm':  { file: 'weather-gen6-sandstorm', cls: '' },
+    'hail':       { file: 'weather-gen6-hail',      cls: '' },
+    'snow':       { file: 'weather-gen6-hail',      cls: '' },
+  };
+
+  function loadWeatherVideo(weatherName) {
+    const container = document.getElementById('weather-container');
+    if (!container) return;
+    const entry = WEATHER_MAP[weatherName];
+    if (!entry) { container.innerHTML = ''; return; }
+
+    const video = document.createElement('video');
+    video.className  = 'weather-video ' + entry.cls;
+    video.autoplay   = true;
+    video.loop       = true;
+    video.muted      = true;
+    video.playsInline = true;
+
+    ['.webm', '.mp4'].forEach(ext => {
+      const s = document.createElement('source');
+      s.src  = BASE + entry.file + ext;
+      s.type = ext === '.webm' ? 'video/webm' : 'video/mp4';
+      video.appendChild(s);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(video);
+    video.play().catch(() => {});
+  }
+
+  // Expose globalement pour le JS de combat
+  window.updateBattleWeather = loadWeatherVideo;
+
+  // Auto-init si data-weather présent sur la scène
+  document.addEventListener('DOMContentLoaded', function() {
+    const scene = document.querySelector('.battle-scene');
+    const w = scene && scene.dataset.weather;
+    if (w) loadWeatherVideo(w);
+  });
+})();
+</script>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   BATTLE SCENE SCALER
+   - Canvas fixe 1280×540px, scaled uniformément
+   - Sous 1280px : scale < 1, letterbox noire
+   - Classes CSS ajoutées selon la largeur réelle pour adapter
+     le panel d'action hors-scène (log + menus)
+   ════════════════════════════════════════════════════════════════════ */
+(function () {
+  const SCENE_W = 1280;
+  const SCENE_H = 540;
+
+  function scaleBattle() {
+    const wrapper = document.getElementById('battle-wrapper');
+    const scene   = wrapper ? wrapper.querySelector('.battle-scene') : null;
+    if (!wrapper || !scene) return;
+
+    const availW  = wrapper.clientWidth;
+    const scale   = availW / SCENE_W;
+    const scaledH = Math.round(SCENE_H * scale);
+
+    scene.style.transform = `scale(${scale})`;
+    wrapper.style.height  = scaledH + 'px';
+
+    // Classes responsive sur le body selon largeur réelle disponible
+    const body = document.body;
+    body.classList.toggle('battle-sm',  availW < 768);
+    body.classList.toggle('battle-md',  availW >= 768 && availW < 1280);
+    body.classList.toggle('battle-lg',  availW >= 1280);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scaleBattle);
+  } else {
+    scaleBattle();
+  }
+  window.addEventListener('resize', scaleBattle);
+  setTimeout(scaleBattle, 200);
+})();
+</script>

@@ -63,13 +63,41 @@ class BattleListView(generic.ListView):
     model               = Battle
     template_name       = 'battle/battle_list.html'
     context_object_name = 'battles'
-    paginate_by         = 10
+    paginate_by         = 20
 
     def get_queryset(self):
         trainer = get_or_create_player_trainer(self.request.user)
-        return Battle.objects.filter(
+        qs = Battle.objects.filter(
             Q(player_trainer=trainer) | Q(opponent_trainer=trainer)
         ).order_by('-created_at')
+
+        result = self.request.GET.get('result', 'all')
+        if result == 'win':
+            qs = qs.filter(winner=trainer)
+        elif result == 'loss':
+            qs = qs.exclude(winner=trainer).exclude(winner__isnull=True)
+        elif result == 'active':
+            qs = qs.filter(is_active=True)
+
+        battle_type = self.request.GET.get('type', 'all')
+        if battle_type in ('wild', 'trainer', 'gym', 'elite_four'):
+            qs = qs.filter(battle_type=battle_type)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        trainer = get_or_create_player_trainer(self.request.user)
+        all_battles = Battle.objects.filter(
+            Q(player_trainer=trainer) | Q(opponent_trainer=trainer)
+        )
+        context['stat_total']    = all_battles.count()
+        context['stat_win']      = all_battles.filter(winner=trainer).count()
+        context['stat_loss']     = all_battles.exclude(winner=trainer).exclude(winner__isnull=True).count()
+        context['stat_active']   = all_battles.filter(is_active=True).count()
+        context['result_filter'] = self.request.GET.get('result', 'all')
+        context['type_filter']   = self.request.GET.get('type', 'all')
+        return context
 
 
 @method_decorator(login_required, name='dispatch')
@@ -83,40 +111,44 @@ class BattleDetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         battle  = self.object
 
-        viewer = get_player_trainer(self.request.user)
+        viewer     = get_player_trainer(self.request.user)
         player_won = (battle.winner == battle.player_trainer) if battle.winner else None
 
-        # Équipe complète du joueur (depuis le trainer du combat)
-        player_team = battle.player_trainer.pokemon_team.filter(
-            is_in_party=True
-        ).select_related('species', 'species__primary_type', 'species__secondary_type')
+        bs                = battle.battle_state if isinstance(battle.battle_state, dict) else {}
+        player_used_ids   = bs.get('player_used_ids', [])
+        opponent_used_ids = bs.get('opponent_used_ids', [])
+        hp_snapshot       = bs.get('hp_snapshot', {})
 
-        # Équipe complète de l'adversaire
-        # Pour les combats sauvages : toujours utiliser opponent_pokemon (le pokemon unique
-        # du combat), même si opponent_trainer est renseigné (données corrompues legacy).
+        # ── Équipe joueur : filtrer par player_used_ids si disponible ─────────
+        if player_used_ids:
+            player_team = list(
+                battle.player_trainer.pokemon_team
+                .filter(id__in=player_used_ids)
+                .select_related('species', 'species__primary_type', 'species__secondary_type')
+            )
+        else:
+            # Fallback legacy : équipe complète en party
+            player_team = list(
+                battle.player_trainer.pokemon_team
+                .filter(is_in_party=True)
+                .select_related('species', 'species__primary_type', 'species__secondary_type')
+            )
+
+        # ── Équipe adversaire ─────────────────────────────────────────────────
         if battle.battle_type == 'wild' or not battle.opponent_trainer:
             opponent_team = [battle.opponent_pokemon] if battle.opponent_pokemon else []
+        elif opponent_used_ids:
+            opponent_team = list(
+                battle.opponent_trainer.pokemon_team
+                .filter(id__in=opponent_used_ids)
+                .select_related('species', 'species__primary_type', 'species__secondary_type')
+            )
         else:
-            # Utiliser les IDs trackés dans battle_state pour afficher uniquement
-            # les Pokémon réellement envoyés dans ce combat
-            bs = battle.battle_state if isinstance(battle.battle_state, dict) else {}
-            opponent_used_ids = bs.get('opponent_used_ids', [])
-            player_used_ids   = bs.get('player_used_ids', [])
-
-            if opponent_used_ids:
-                opponent_team = list(battle.opponent_trainer.pokemon_team.filter(
-                    id__in=opponent_used_ids
-                ).select_related('species', 'species__primary_type', 'species__secondary_type'))
-            else:
-                # Fallback legacy: équipe actuelle
-                opponent_team = list(battle.opponent_trainer.pokemon_team.filter(
-                    is_in_party=True
-                ).select_related('species', 'species__primary_type', 'species__secondary_type'))
-
-            if player_used_ids:
-                player_team = list(battle.player_trainer.pokemon_team.filter(
-                    id__in=player_used_ids
-                ).select_related('species', 'species__primary_type', 'species__secondary_type'))
+            opponent_team = list(
+                battle.opponent_trainer.pokemon_team
+                .filter(is_in_party=True)
+                .select_related('species', 'species__primary_type', 'species__secondary_type')
+            )
 
         # Argent gagné depuis l'historique
         money_earned = 0
@@ -134,6 +166,7 @@ class BattleDetailView(generic.DetailView):
             'player_team':   player_team,
             'opponent_team': opponent_team,
             'money_earned':  money_earned,
+            'hp_snapshot':   hp_snapshot,
         })
         return context
 
@@ -161,9 +194,75 @@ class BattleGameView(generic.DetailView):
         # Zone actuelle du joueur (pour les boutons "Retour" des modals)
         try:
             player_location = PlayerLocation.objects.get(trainer=battle.player_trainer)
-            context['current_zone'] = player_location.current_zone
+            current_zone = player_location.current_zone
+            context['current_zone'] = current_zone
         except PlayerLocation.DoesNotExist:
+            current_zone = None
             context['current_zone'] = None
+
+        # Terrain + background selon le type de zone
+        # Fichiers disponibles dans template/static/img/battle_backgrounds/ :
+        # bg-beach.png, bg-beachshore.png, bg-city.png, bg-dampcave.png,
+        # bg-deepsea.png, bg-desert.png, bg-earthycave.png, bg-forest.png,
+        # bg-icecave.png, bg-meadow.png, bg-mountain.png, bg-river.png,
+        # bg-route.png, bg-space.jpg, bg-thunderplains.png, bg-volcanocave.png
+
+        zone_type = getattr(current_zone, 'zone_type', 'route') if current_zone else 'route'
+        zone_name = (getattr(current_zone, 'name', '') or '').lower()
+
+        # Mapping zone_type → (data-terrain CSS, fichier bg, couleur fallback)
+        # Pour 'cave' et 'water', on affine selon le nom de la zone
+        def _pick_bg(ztype, zname):
+            if ztype == 'route':
+                if any(k in zname for k in ('desert', 'sable', 'sahara')):
+                    return ('desert',        'bg-desert',        '#c9a227')
+                if any(k in zname for k in ('montagne', 'mountain', 'pic', 'summit')):
+                    return ('mountain',      'bg-mountain',      '#797d7f')
+                if any(k in zname for k in ('thunder', 'foudre', 'orage', 'electr')):
+                    return ('thunderplains', 'bg-thunderplains', '#2c3e50')
+                return ('route',             'bg-route',         '#5cb85c')
+
+            if ztype == 'city':
+                return ('city',              'bg-city',          '#8fa8c8')
+
+            if ztype == 'cave':
+                if any(k in zname for k in ('glace', 'ice', 'gel', 'frost')):
+                    return ('icecave',        'bg-icecave',       '#aed6f1')
+                if any(k in zname for k in ('volcan', 'volcano', 'feu', 'fire', 'magma', 'lava')):
+                    return ('volcanocave',    'bg-volcanocave',   '#7b241c')
+                if any(k in zname for k in ('terre', 'earth', 'sable', 'sandy')):
+                    return ('earthycave',     'bg-earthycave',    '#3d2b1f')
+                return ('cave',               'bg-dampcave',      '#1a1a1a')
+
+            if ztype == 'forest':
+                return ('forest',            'bg-forest',        '#1b4332')
+
+            if ztype == 'water':
+                if any(k in zname for k in ('mer', 'sea', 'ocean', 'deep', 'abyssal', 'fond')):
+                    return ('sea',            'bg-deepsea',       '#1a3a5c')
+                if any(k in zname for k in ('plage', 'beach', 'rivage', 'shore')):
+                    return ('beach',          'bg-beachshore',    '#70a8d8')
+                return ('water',              'bg-river',         '#1a6699')
+
+            if ztype == 'building':
+                return ('city',              'bg-city',          '#2a2a2a')
+
+            return ('route',                 'bg-meadow',        '#5cb85c')  # fallback
+
+        terrain, bg_key, bg_fallback = _pick_bg(zone_type, zone_name)
+
+        # Extension : .jpg uniquement pour bg-space, sinon .png
+        bg_ext = '.jpg' if bg_key == 'bg-space' else '.png'
+
+        context['battle_terrain']     = terrain
+        context['battle_bg_png']      = f'/static/img/battle_backgrounds/{bg_key}{bg_ext}'
+        context['battle_bg_fallback'] = bg_fallback
+
+        # Rival : trainer_type == 'rival' → musique spéciale
+        context['is_rival'] = (
+            battle.opponent_trainer is not None
+            and battle.opponent_trainer.trainer_type == 'rival'
+        )
 
         # Pourcentage EXP correct (relatif au niveau actuel, pas cumulatif)
         pp = battle.player_pokemon
@@ -225,17 +324,63 @@ def _handle_attack(request, battle, trainer, response_data):
                     f"Adversaire envoie {new_opponent.species.name} !"
                 )
             else:
+                _save_hp_snapshot(battle)
                 battle.is_active = False
                 battle.winner    = battle.player_trainer
-                battle.save(update_fields=['is_active', 'winner'])
+                battle.save(update_fields=['is_active', 'winner', 'battle_state'])
                 response_data['battle_ended'] = True
                 response_data['result']       = 'victory'
         else:
+            _save_hp_snapshot(battle)
             battle.is_active = False
             battle.winner    = battle.player_trainer
-            battle.save(update_fields=['is_active', 'winner'])
+            battle.save(update_fields=['is_active', 'winner', 'battle_state'])
             response_data['battle_ended'] = True
             response_data['result']       = 'victory'
+
+
+
+def _save_hp_snapshot(battle):
+    """
+    Enregistre les HP actuels de TOUS les Pokémon de l'équipe du joueur
+    (pas seulement ceux envoyés en combat) ainsi que ceux de l'adversaire.
+    Appelé juste avant de marquer un combat comme terminé.
+    Format : { str(pokemon_id): {'hp': int, 'max_hp': int, 'ko': bool} }
+    """
+    try:
+        bs = battle.battle_state if isinstance(battle.battle_state, dict) else {}
+        snapshot = {}
+
+        # Toute l'équipe du joueur (in party), qu'ils aient combattu ou non
+        for poke in battle.player_trainer.pokemon_team.filter(is_in_party=True):
+            snapshot[str(poke.id)] = {
+                'hp':     poke.current_hp,
+                'max_hp': poke.max_hp,
+                'ko':     poke.current_hp == 0,
+            }
+
+        # Pokémon adverses qui ont participé
+        opponent_used_ids = bs.get('opponent_used_ids', [])
+        if battle.opponent_trainer and opponent_used_ids:
+            for poke in battle.opponent_trainer.pokemon_team.filter(id__in=opponent_used_ids):
+                snapshot[str(poke.id)] = {
+                    'hp':     poke.current_hp,
+                    'max_hp': poke.max_hp,
+                    'ko':     poke.current_hp == 0,
+                }
+        elif battle.opponent_pokemon:
+            p = battle.opponent_pokemon
+            snapshot[str(p.id)] = {
+                'hp':     p.current_hp,
+                'max_hp': p.max_hp,
+                'ko':     p.current_hp == 0,
+            }
+
+        bs['hp_snapshot'] = snapshot
+        battle.battle_state = bs
+        battle.save(update_fields=['battle_state'])
+    except Exception as exc:
+        logger.warning("Impossible de sauvegarder hp_snapshot : %s", exc)
 
 
 def _handle_flee(request, battle, trainer, response_data):
@@ -243,9 +388,10 @@ def _handle_flee(request, battle, trainer, response_data):
     success = battle.attempt_flee()
     response_data['fled'] = success
     if success:
+        _save_hp_snapshot(battle)
         battle.is_active = False
         battle.winner    = battle.player_trainer
-        battle.save(update_fields=['is_active', 'winner'])
+        battle.save(update_fields=['is_active', 'winner', 'battle_state'])
         response_data['log']          = ['Vous avez réussi à fuir !']
         response_data['battle_ended'] = True
         response_data['result']       = 'fled'
@@ -553,6 +699,7 @@ def battle_action_view(request, pk):
         if not response_data.get('battle_ended'):
             is_ended, winner, end_message = check_battle_end(battle)
             if is_ended:
+                _save_hp_snapshot(battle)
                 response_data['battle_ended'] = True
                 response_data['winner']       = winner.username if winner else 'Draw'
                 response_data['result']       = 'victory' if winner == battle.player_trainer else 'defeat'
@@ -1043,13 +1190,21 @@ def battle_trainer_complete_view(request, battle_id):
         else ""
     )
 
+    # Récupérer la zone courante du joueur pour les liens de navigation
+    try:
+        player_location = PlayerLocation.objects.get(trainer=player_trainer)
+        current_zone = player_location.current_zone
+    except PlayerLocation.DoesNotExist:
+        current_zone = None
+
     return render(request, 'battle/battle_trainer_complete.html', {
-        'battle':       battle,
-        'opponent':     opponent,
-        'player_won':   player_won,
-        'money_earned': money_earned,
-        'badge_earned': badge_earned,
-        'dialogue':     dialogue,
+        'battle':        battle,
+        'opponent':      opponent,
+        'player_won':    player_won,
+        'money_earned':  money_earned,
+        'badge_earned':  badge_earned,
+        'dialogue':      dialogue,
+        'current_zone':  current_zone,
     })
 
 

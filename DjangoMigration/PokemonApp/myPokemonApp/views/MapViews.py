@@ -38,6 +38,12 @@ def map_view(request):
     gym_cities      = set(GymLeader.objects.values_list('gym_city', flat=True))
     zones_with_gym  = {fr for fr, en in ZONE_TRANSLATIONS.items() if en in gym_cities}
 
+    # IDs des zones directement connectées à la zone courante (pour le bouton "Voyager")
+    current_zone    = player_location.current_zone
+    outgoing_ids    = set(ZoneConnection.objects.filter(from_zone=current_zone).values_list('to_zone_id', flat=True))
+    incoming_ids    = set(ZoneConnection.objects.filter(to_zone=current_zone, is_bidirectional=True).values_list('from_zone_id', flat=True))
+    connected_zone_ids = list(outgoing_ids | incoming_ids)
+
     accessible_zones = [
         {
             'zone':       zone,
@@ -51,9 +57,10 @@ def map_view(request):
     ]
 
     return render(request, 'map/map_overview.html', {
-        'current_zone':    player_location.current_zone,
-        'zones':           accessible_zones,
-        'player_location': player_location,
+        'current_zone':       player_location.current_zone,
+        'zones':              accessible_zones,
+        'player_location':    player_location,
+        'connected_zone_ids': connected_zone_ids,
     })
 
 

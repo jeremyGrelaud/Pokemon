@@ -5,9 +5,9 @@
 - https://github.com/msikma/pokesprite/tree/master/items (for items HM, battle iitems ... sprites)
 - https://www.pokepedia.fr (for map sprites)
 - https://downloads.khinsider.com/game-soundtracks/album/pokemon-firered-leafgreen-enhanced-soundtrack (for soundtracks)  --> ajout des OST des différentes zones du jeux sur zone detail
+- https://play.pokemonshowdown.com/fx/ (for battle scenes backgrounds)
 
 - Johto reference for future integration ? https://gamefaqs.gamespot.com/gbc/375087-pokemon-crystal-version/faqs/75486/full-trainer-info-list
-
 
 
 
@@ -17,12 +17,11 @@ For education purpose only
 
 TODO Roadmap :
 
-- Improve battle 'GUI'
+- Improve Moves effects during battle 
+- rajouter la connexion entre la route 22  et 23 et conditionner l'accès à l'obtention des 8 badges, + rajouter les zones manquantes comme la grotte taupiqeur, + rajouter les étages souterrains dans les gros (même mécanique que la tour pokémon)
+
 - After everything, implement different game mods ?
 
-- dans la vue de recap de combat côté trainer les pokemon affichés sont ceux actuellement dans l'équipe et pas ceux réellement utilisés dans le combat
-
-- pas d'affichage dans le battle log lorsqu'un ennemi rate une attaque, + pas d'affichage du badge/tag de l'état paralysie mais les messages s'affichent bien dans le battle log
 
 
 TODO BugFixes :

@@ -22,7 +22,7 @@ class PokemonOverView(GenericOverview):
     """Vue liste de tous les Pokémon (templates)"""
     model = Pokemon
     template_name = "pokemon/pokedex.html"
-    
+
     class PokedexTable(tables.Table):
         pokedex_number = tables.Column(verbose_name="#")
         name = tables.TemplateColumn(
@@ -37,6 +37,11 @@ class PokemonOverView(GenericOverview):
             '{% if record.secondary_type %}<span class="badge badge-type-{{record.secondary_type.name}}">{{record.secondary_type.name}}</span>{% endif %}',
             verbose_name="Type 2"
         )
+        caught = tables.TemplateColumn(
+            '{% if record.id in caught_ids %}<span class="badge badge-success"><i class="fas fa-check"></i> Capturé</span>{% else %}<span class="badge badge-secondary">—</span>{% endif %}',
+            verbose_name="Capturé",
+            orderable=False,
+        )
         base_hp = tables.Column(verbose_name="HP")
         base_attack = tables.Column(verbose_name="ATK")
         base_defense = tables.Column(verbose_name="DEF")
@@ -44,63 +49,88 @@ class PokemonOverView(GenericOverview):
         base_special_defense = tables.Column(verbose_name="SP.DEF")
         base_speed = tables.Column(verbose_name="SPD")
         total_stats = tables.Column(empty_values=(), verbose_name="Total")
-        
+
         def render_total_stats(self, record):
-            return (record.base_hp + record.base_attack + record.base_defense + 
-                   record.base_special_attack + record.base_special_defense + record.base_speed)
-        
+            return (record.base_hp + record.base_attack + record.base_defense +
+                    record.base_special_attack + record.base_special_defense + record.base_speed)
+
         class Meta:
             model = Pokemon
-            fields = ('pokedex_number', 'name', 'primary_type', 'secondary_type', 
-                     'base_hp', 'base_attack', 'base_defense', 'base_special_attack',
-                     'base_special_defense', 'base_speed', 'total_stats')
+            fields = ('pokedex_number', 'name', 'caught', 'primary_type', 'secondary_type',
+                      'base_hp', 'base_attack', 'base_defense', 'base_special_attack',
+                      'base_special_defense', 'base_speed', 'total_stats')
             attrs = {'class': 'table table-striped table-hover'}
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         # Filtres
         pokemon_filter = Q()
-        search_query = bleach.clean(self.request.GET.get('searchQuery', ''), tags=[], attributes={})
-        type_filter = self.request.GET.get('typeFilter', '')
-        gen_filter = self.request.GET.get('genFilter', 'all')
-        
+        search_query  = bleach.clean(self.request.GET.get('searchQuery', ''), tags=[], attributes={})
+        type_filter   = self.request.GET.get('typeFilter', '')
+        gen_filter    = self.request.GET.get('genFilter', 'all')
+        caught_filter = self.request.GET.get('caughtFilter', 'all')  # all | caught | missing
+
         if search_query:
-            pokemon_filter.add(Q(name__icontains=search_query) | 
-                             Q(pokedex_number__icontains=search_query), Q.AND)
-        
-        if type_filter:
             pokemon_filter.add(
-                Q(primary_type__name=type_filter) | Q(secondary_type__name=type_filter), 
+                Q(name__icontains=search_query) | Q(pokedex_number__icontains=search_query),
                 Q.AND
             )
-        
-        # Génération (Gen 1 = 1-151)
+
+        if type_filter:
+            pokemon_filter.add(
+                Q(primary_type__name=type_filter) | Q(secondary_type__name=type_filter),
+                Q.AND
+            )
+
         if gen_filter == 'gen1':
             pokemon_filter.add(Q(pokedex_number__lte=151), Q.AND)
-        
+
+        # Caught IDs for the current trainer
+        caught_ids = set()
+        try:
+            from myPokemonApp.gameUtils import get_or_create_player_trainer
+            trainer   = get_or_create_player_trainer(self.request.user)
+            caught_ids = set(
+                trainer.pokemon_team.values_list('species_id', flat=True)
+            )
+        except Exception:
+            pass
+
+        # Filter by caught status
+        if caught_filter == 'caught' and caught_ids:
+            pokemon_filter.add(Q(id__in=caught_ids), Q.AND)
+        elif caught_filter == 'missing':
+            pokemon_filter.add(~Q(id__in=caught_ids), Q.AND)
+
         # Pagination
-        queryset = Pokemon.objects.filter(pokemon_filter).distinct().order_by('pokedex_number')
-        paginator = Paginator(queryset, 20)
+        queryset    = Pokemon.objects.filter(pokemon_filter).distinct().order_by('pokedex_number')
+        paginator   = Paginator(queryset, 20)
         page_number = self.request.GET.get('page', 1)
         page_objects = paginator.get_page(page_number)
-        
-        # Table
+
+        # Table — pass caught_ids into template context used by TemplateColumn
         table = self.PokedexTable(page_objects)
-        
+        # Make caught_ids available to the table's TemplateColumn via extra context
+        # django_tables2 TemplateColumns have access to the table's context
+        table.context = {'caught_ids': caught_ids}
+
         # Types pour le filtre
         types = PokemonType.objects.all().order_by('name')
-        
+
         context.update({
-            'table': table,
-            'pageObjects': page_objects,
-            'searchQuery': search_query,
-            'typeFilter': type_filter,
-            'genFilter': gen_filter,
-            'types': types,
-            'total_count': Pokemon.objects.count()
+            'table':        table,
+            'pageObjects':  page_objects,
+            'searchQuery':  search_query,
+            'typeFilter':   type_filter,
+            'genFilter':    gen_filter,
+            'caughtFilter': caught_filter,
+            'types':        types,
+            'total_count':  Pokemon.objects.count(),
+            'total_caught': len(caught_ids),
+            'caught_ids':   caught_ids,
         })
-        
+
         return context
 
 
@@ -109,28 +139,24 @@ class PokemonDetailView(generic.DetailView):
     model = Pokemon
     template_name = "pokemon/pokemon_detail.html"
     context_object_name = 'pokemon'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         pokemon = self.object
-        
-        # Évolutions
+
         evolutions_from = pokemon.evolutions_from.all()
-        evolutions_to = pokemon.evolutions_to.all()
-        
-        # Capacités apprises par niveau
+        evolutions_to   = pokemon.evolutions_to.all()
         learnable_moves = pokemon.learnable_moves.all().order_by('level_learned')
-        
-        # Stats totales
+
         total_stats = (pokemon.base_hp + pokemon.base_attack + pokemon.base_defense +
-                      pokemon.base_special_attack + pokemon.base_special_defense + 
-                      pokemon.base_speed)
-        
+                       pokemon.base_special_attack + pokemon.base_special_defense +
+                       pokemon.base_speed)
+
         context.update({
             'evolutions_from': evolutions_from,
-            'evolutions_to': evolutions_to,
+            'evolutions_to':   evolutions_to,
             'learnable_moves': learnable_moves,
-            'total_stats': total_stats
+            'total_stats':     total_stats,
         })
-        
+
         return context

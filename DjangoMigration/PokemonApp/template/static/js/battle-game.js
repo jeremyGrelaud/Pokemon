@@ -151,14 +151,20 @@ $(document).ready(function() {
    * Start the actual battle after intro (or immediately for wild battles)
    */
   function startBattle() {
-    // Start BGM
-    if (BATTLE_CONFIG.battleType === 'gym') {
-      audioManager.playBGM('battle_gym');
+    // Start BGM — ordre de priorité : gym > rival > trainer > wild
+    let track;
+    if (BATTLE_CONFIG.battleType === 'gym' || BATTLE_CONFIG.battleType === 'elite_four') {
+      track = 'battle_gym';
+    } else if (BATTLE_CONFIG.isRival) {
+      track = 'battle_rival';
     } else if (BATTLE_CONFIG.battleType === 'trainer') {
-      audioManager.playBGM('battle_trainer');
+      track = 'battle_trainer';
     } else {
-      audioManager.playBGM('battle_wild');
+      track = 'battle_wild';
     }
+    // Initialiser le widget avant de lancer la BGM
+    audioManager.initBattleWidget(track);
+    audioManager.playBGM(track);
     
     // Entry animations
     setTimeout(() => {
@@ -928,6 +934,9 @@ function updateExpBar(expPercent) {
 function handleBattleEnd(data) {
   console.log('🏁 Battle ended:', data);
   
+  // ── Désactiver IMMÉDIATEMENT la garde beforeunload ────────────────────────
+  window.__battleInProgress = false;
+
   // Arrêter la musique
   if (audioManager) {
     audioManager.stopBGM();
@@ -1299,12 +1308,13 @@ function triggerEvolution(evoData, battleEndData = null) {
   const fromName = evoData.from_name;
   const toName   = evoData.to_name;
 
+  let spriteBefore, spriteAfter;
   if (evoData.is_shiny){
-    const spriteBefore = SPRITE_BASE_BACK_SHINY   + lowerForSprite(fromName) + '.png';
-    const spriteAfter  = SPRITE_BASE_SHINY + lowerForSprite(toName)   + '.png';
+    spriteBefore = SPRITE_BASE_BACK_SHINY   + lowerForSprite(fromName) + '.png';
+    spriteAfter  = SPRITE_BASE_SHINY + lowerForSprite(toName)   + '.png';
   } else {
-    const spriteBefore = SPRITE_BASE_BACK   + lowerForSprite(fromName) + '.png';
-    const spriteAfter  = SPRITE_BASE_NORMAL + lowerForSprite(toName)   + '.png';
+    spriteBefore = SPRITE_BASE_BACK   + lowerForSprite(fromName) + '.png';
+    spriteAfter  = SPRITE_BASE_NORMAL + lowerForSprite(toName)   + '.png';
   }
 
   document.getElementById('evo-sprite-before').src = spriteBefore;

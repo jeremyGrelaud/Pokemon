@@ -7,13 +7,35 @@
    SCENE LAYOUT
    ============================================================================ */
 
+/* ──────────────────────────────────────────────────────────────────
+   WRAPPER : letterbox noir autour de la scène
+   La hauteur est ajustée en JS selon la largeur disponible
+   ────────────────────────────────────────────────────────────────── */
+.battle-wrapper {
+  width: 100%;
+  background: #000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+  /* height set by JS */
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   SCÈNE : canvas interne FIXE 960×540px
+   transform: scale() appliqué par JS — jamais de resize interne
+   Tous les enfants utilisent des px absolus, jamais de % ou vh/vw
+   ────────────────────────────────────────────────────────────────── */
 .battle-scene {
   position: relative;
-  width: 100%;
-  height: 80vh;
+  width: 1280px;
+  height: 540px;
+  flex-shrink: 0;
   overflow: hidden;
   background: #000;
   font-family: 'Arial', sans-serif;
+  transform-origin: top left;
+  /* scale set by JS */
 }
 
 /* ============================================================================
@@ -26,50 +48,126 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-size: cover;
+  /* 100% 100% étire l'image pour remplir exactement le canvas 1280×540
+     sans barres noires, quelle que soit la taille source de l'image */
+  background-size: 100% 100%;
   background-position: center;
   z-index: 1;
 }
 
+/* ── Mapping terrain → background ──────────────────────────────────
+   Fichiers disponibles dans /static/img/battle_backgrounds/
+   bg-beach.png, bg-beachshore.png, bg-city.png, bg-dampcave.png,
+   bg-deepsea.png, bg-desert.png, bg-earthycave.png, bg-forest.png,
+   bg-icecave.png, bg-meadow.png, bg-mountain.png, bg-river.png,
+   bg-route.png, bg-space.jpg, bg-thunderplains.png, bg-volcanocave.png
+   ───────────────────────────────────────────────────────────────── */
+
 .battle-scene[data-terrain="grass"] .battle-background {
-  background-image: linear-gradient(to bottom, 
-    #87CEEB 0%, 
-    #7EC8E3 40%, 
-    #90EE90 60%, 
-    #228B22 100%
-  );
+  background-image: url("/static/img/battle_backgrounds/bg-meadow.png");
+  background-size: 100% 100%;
+  background-color: #87CEEB;
+}
+
+.battle-scene[data-terrain="route"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-route.png");
+  /* background-size: 100% 100%; */
+  background-color: #8FBC8F;
 }
 
 .battle-scene[data-terrain="water"] .battle-background {
-  background-image: linear-gradient(to bottom, 
-    #87CEEB 0%, 
-    #4682B4 50%, 
-    #1E90FF 100%
-  );
+  background-image: url("/static/img/battle_backgrounds/bg-river.png");
+  background-size: 100% 100%;
+  background-color: #4682B4;
+}
+
+.battle-scene[data-terrain="sea"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-deepsea.png");
+  background-size: 100% 100%;
+  background-color: #1a3a5c;
+}
+
+.battle-scene[data-terrain="beach"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-beach.png");
+  background-size: 100% 100%;
+  background-color: #f4d03f;
+}
+
+.battle-scene[data-terrain="beachshore"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-beachshore.png");
+  background-size: 100% 100%;
+  background-color: #70a8d8;
 }
 
 .battle-scene[data-terrain="cave"] .battle-background {
-  background-image: linear-gradient(to bottom, 
-    #2C3E50 0%, 
-    #34495E 50%, 
-    #1C2833 100%
-  );
+  background-image: url("/static/img/battle_backgrounds/bg-dampcave.png");
+  background-size: 100% 100%;
+  background-color: #2C3E50;
 }
 
-/* Depth effect */
-.battle-background::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60%;
-  background: linear-gradient(to bottom, 
-    transparent 0%, 
-    rgba(0,0,0,0.3) 100%
-  );
-  z-index: 2;
+.battle-scene[data-terrain="earthycave"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-earthycave.png");
+  background-size: 100% 100%;
+  background-color: #3d2b1f;
 }
+
+.battle-scene[data-terrain="icecave"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-icecave.png");
+  background-size: 100% 100%;
+  background-color: #aed6f1;
+}
+
+.battle-scene[data-terrain="volcanocave"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-volcanocave.png");
+  background-size: 100% 100%;
+  background-color: #7b241c;
+}
+
+.battle-scene[data-terrain="forest"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-forest.png");
+  background-size: 100% 100%;
+  background-color: #2d5a27;
+}
+
+.battle-scene[data-terrain="city"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-city.png");
+  background-size: 100% 100%;
+  background-color: #b0c4de;
+}
+
+.battle-scene[data-terrain="desert"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-desert.png");
+  background-size: 100% 100%;
+  background-color: #d4ac0d;
+}
+
+.battle-scene[data-terrain="mountain"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-mountain.png");
+  background-size: 100% 100%;
+  background-color: #797d7f;
+}
+
+.battle-scene[data-terrain="thunderplains"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-thunderplains.png");
+  background-size: 100% 100%;
+  background-color: #2c3e50;
+}
+
+.battle-scene[data-terrain="space"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-space.jpg");
+  background-size: 100% 100%;
+  background-color: #0a0a1a;
+}
+
+/* Fallback pour terrains sans mapping spécifique */
+.battle-scene[data-terrain="building"] .battle-background,
+.battle-scene[data-terrain="indoor"] .battle-background {
+  background-image: url("/static/img/battle_backgrounds/bg-city.png");
+  background-size: 100% 100%;
+  background-color: #3d3d3d;
+}
+
+/* ::before horizon supprimé */
 
 /* Weather Effects */
 .weather-effect {
@@ -98,119 +196,67 @@
    ============================================================================ */
 
 .battlefield {
-  position: relative;
-  height: 100%;
-  padding: 20px 0;
+  position: absolute;
+  inset: 0;
   z-index: 5;
 }
 
 /* Lignes Opponent et Player */
+/* Rows positionnées en absolu dans la scène 16:9 —
+   stables quel que soit le zoom ou la taille d'écran */
 .opponent-row {
-  margin-bottom: 15vh;
+  position: absolute;
+  top: 12px;
+  left: 0; right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0 16px;
 }
+.opponent-row > * { flex: 0 0 auto; }
 
 .player-row {
-  padding-bottom: 0;
+  position: absolute;
+  bottom: 0px;
+  left: 0; right: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 16px;
 }
+.player-row > * { flex: 0 0 auto; }
 
 
 
 /* Battle Sides - Position relative */
 .battle-side {
   position: relative;
-  min-height: 200px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
+  /* pas de min-height: tout est géré par les px absolus */
 }
 
 .opponent-side {
-  margin-right: 5vw;
+  margin-right: 240px;
+  margin-top: 90px;
 }
 
 .player-side {
-  margin-left: 5vw;
+  margin-left: 200px;
 }
 
-Pokemon Platforms
-.pokemon-platform {
-  position: absolute;
-  width: 150px;
-  height: 40px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0,0,0,0.5) 0%,
-    rgba(0,0,0,0.3) 40%,
-    transparent 70%
-  );
-  border-radius: 50%;
-  bottom: -40px;
-  left: 50%;
-  transform: translateX(-50%) perspective(400px) rotateX(65deg);
-}
-
-/* Plateforme de combat Pokémon - Version améliorée */
-.pokemon-platform {
-  position: absolute;
-  width: 10vw;
-  height: 20vh;
-  background:
-    /* Texture de terre/herbe */
-    linear-gradient(
-      to bottom,
-      #5a9d58 0%,
-      #4a7d48 50%,
-      #3a5d38 100%
-    ),
-    /* Effet de relief */
-    radial-gradient(
-      ellipse at center,
-      rgba(255, 255, 255, 0.3) 0%,
-      rgba(255, 255, 255, 0.1) 30%,
-      transparent 70%
-    ),
-    /* Bords irréguliers pour un effet naturel */
-    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="50" viewBox="0 0 180 50"><path d="M0,10 Q30,0 60,15 Q90,5 120,20 Q150,10 180,15 L180,50 L0,50 Z" fill="rgba(0,0,0,0.2)"/></svg>');
-  border-radius: 50%;
-  bottom: -135px;
-  left: 50%;
-  transform: translateX(-50%) perspective(500px) rotateX(70deg);
-  box-shadow:
-    0 0 15px rgba(0, 0, 0, 0.4),
-    inset 0 0 10px rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  z-index: 10;
-}
-
-/* Effet de brillance pour simuler l'herbe humide */
-.pokemon-platform::after {
-  content: "";
-  position: absolute;
-  top: 5%;
-  left: 10%;
-  width: 80%;
-  height: 20%;
-  background: linear-gradient(
-    to right,
-    transparent 0%,
-    rgba(255, 255, 255, 0.4) 50%,
-    transparent 100%
-  );
-  border-radius: 50%;
-  opacity: 0.6;
-  transform: rotate(-10deg);
-}
 
 /* Pokemon Container */
 .pokemon-container {
   position: relative;
   display: inline-block;
-  z-index: 20; /* Doit être > à celui de .pokemon-platform (10) */
+  z-index: 20;
 }
 
 .pokemon-shadow {
   position: absolute;
-  bottom: -20px;
+  bottom: 40px;
   left: 50%;
   transform: translateX(-50%);
   width: 100px;
@@ -224,6 +270,10 @@ Pokemon Platforms
   z-index: 1; /* Peut être 1, car le parent a déjà un z-index: 20 */
 }
 
+.player-pokemon-shadow {
+  bottom: 100px;
+}
+
 /* Pokemon Sprites */
 .pokemon-sprite {
   bottom: -40px;
@@ -234,6 +284,14 @@ Pokemon Platforms
   filter: drop-shadow(0 10px 25px rgba(0,0,0,0.6));
   position: relative;
   display: block;
+}
+
+.player-sprite {
+  bottom: 80px;
+}
+
+.opponent-sprite {
+  bottom: 0px;
 }
 
 /* Idle Animations */
@@ -249,7 +307,6 @@ Pokemon Platforms
 
 .opponent-sprite {
   animation: pokemon-idle-opponent 2.5s ease-in-out infinite;
-  bottom: -60px;
 }
 
 .player-sprite {
@@ -386,8 +443,8 @@ Pokemon Platforms
   padding: 12px 16px;
   box-shadow: 0 6px 16px rgba(0,0,0,0.4);
   backdrop-filter: blur(10px);
-  margin: 20px;
-  width: 10vw;
+  /* clamp: au moins 200px, idéalement 28% de la scène, max 340px */
+  width: 320px;  /* px fixe — ne dépend pas du viewport */
 }
 
 .info-content {
@@ -608,6 +665,10 @@ Pokemon Platforms
   100% { border-color: #333;    box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
 }
 
+.player-bar {
+  margin-bottom: 40px;
+}
+
 .player-bar.level-up-flash {
   animation: levelUpBorderPulse 1.4s ease-in-out forwards;
 }
@@ -704,27 +765,32 @@ Pokemon Platforms
    UI LAYER
    ============================================================================ */
 
+/* battle-ui ne contient plus que l'action-panel
+   Le battle-log est maintenant en dehors de la scène */
 .battle-ui {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
+  /* hors scène — flux normal */
+  width: 100%;
 }
 
-/* Battle Log Compact */
+/* Battle Log — maintenant EN DEHORS de la scène */
 .battle-log-compact {
-  background: rgba(0, 0, 0, 0.85);
-  color: white;
-  padding: 12px 20px;
-  max-height: 120px;
+  background: #1a1a2e;
+  color: #e8e8e8;
+  padding: 10px 20px;
+  max-height: 120px;  /* 4 lignes visibles (~28px × 4 + padding) */
   overflow-y: auto;
   font-family: 'Courier New', monospace;
-  font-size: 14px;
-  backdrop-filter: blur(10px);
+  font-size: 13px;
+  line-height: 1.6;
+  border-bottom: 3px solid #333;
+  border-left: 4px solid #e74c3c;
+  /* scrollbar custom */
+  scrollbar-width: thin;
+  scrollbar-color: #e74c3c #2a2a3e;
 }
+.battle-log-compact::-webkit-scrollbar { height: 4px; width: 4px; }
+.battle-log-compact::-webkit-scrollbar-track { background: #2a2a3e; }
+.battle-log-compact::-webkit-scrollbar-thumb { background: #e74c3c; border-radius: 2px; }
 
 .log-messages {
   display: flex;
@@ -1064,25 +1130,69 @@ Pokemon Platforms
    RESPONSIVE
    ============================================================================ */
 
-@media (max-width: 768px) {
-  .pokemon-sprite {
-    width: 150px;
-    height: 150px;
-  }
-  
-  .info-bar {
-    margin: 10px;
-  }
-  
-  .opponent-row,
-  .player-row {
-    margin: 20px 0;
-  }
-  
-  .menu-grid,
-  .moves-grid,
-  .items-grid,
-  .team-grid {
-    grid-template-columns: 1fr;
-  }
+/* ══════════════════════════════════════════════════════════════════════
+   RESPONSIVE PANEL D'ACTION (hors scène, classes body injectées par JS)
+   battle-lg : ≥ 1280px   — pleine taille
+   battle-md : 768–1279px — compact
+   battle-sm : < 768px    — mini
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ─── battle-md ─────────────────────────────────────────────────────── */
+body.battle-md .battle-log-compact {
+  font-size: 12px;
+  max-height: 108px;
+  padding: 8px 16px;
+}
+body.battle-md .menu-container { padding: 12px 16px; }
+body.battle-md .action-btn { padding: 16px; font-size: 15px; }
+body.battle-md .action-btn i { font-size: 24px; }
+body.battle-md .move-btn { padding: 12px; }
+body.battle-md .move-name { font-size: 14px; }
+body.battle-md .menu-grid { gap: 10px; }
+body.battle-md .moves-grid { gap: 8px; }
+
+/* ─── battle-sm ─────────────────────────────────────────────────────── */
+body.battle-sm .battle-log-compact {
+  font-size: 11px;
+  max-height: 88px;
+  padding: 6px 12px;
+  border-left-width: 3px;
+}
+body.battle-sm .menu-container { padding: 8px 10px; }
+body.battle-sm .menu-header h4 { font-size: 0.9rem; }
+body.battle-sm .action-btn {
+  padding: 10px 8px;
+  font-size: 12px;
+  gap: 4px;
+  border-width: 2px;
+  border-radius: 8px;
+}
+body.battle-sm .action-btn i { font-size: 18px; }
+body.battle-sm .move-btn { padding: 8px 10px; }
+body.battle-sm .move-name { font-size: 12px; }
+body.battle-sm .move-pp { font-size: 10px; }
+body.battle-sm .move-type-badge { font-size: 9px; padding: 2px 6px; }
+body.battle-sm .menu-grid { gap: 6px; }
+body.battle-sm .moves-grid { gap: 6px; }
+body.battle-sm .team-switch-grid { grid-template-columns: 1fr; gap: 6px; }
+body.battle-sm .btn-back { padding: 5px 10px; font-size: 12px; }
+/* ══════════════════════════════════════════════════════════════════
+   EFFETS MÉTÉO VIDÉO (Pokemon Showdown)
+   <video class="weather-video"> injecté par JS dans #weather-container
+   Fichiers dans /static/img/battle_backgrounds/weather/
+   ══════════════════════════════════════════════════════════════════ */
+.weather-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  opacity: 0.65;
+  mix-blend-mode: screen;
+  z-index: 3;
+}
+.weather-video.weather-sunny {
+  opacity: 0.55;
+  mix-blend-mode: multiply;
 }

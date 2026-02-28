@@ -109,6 +109,9 @@
         <h6 class="m-0 font-weight-bold text-primary flex-grow-1">
           {{ battle.player_trainer.username }}
         </h6>
+        <small class="text-muted ml-2" style="font-size:.65rem;" title="HP enregistrés à la fin du combat">
+          <i class="fas fa-camera"></i> fin du combat
+        </small>
         {% if player_won %}
         <i class="fas fa-crown text-warning"></i>
         {% endif %}
@@ -148,21 +151,33 @@
               {% endif %}
             </div>
 
-            <!-- HP bar -->
-            {% widthratio poke.current_hp poke.max_hp 100 as hp_p %}
-            <div class="d-flex align-items-center" style="gap:8px;">
-              <div class="progress flex-grow-1" style="height:8px;">
-                <div class="progress-bar
-                            {% if hp_p|add:0 > 50 %}bg-success
-                            {% elif hp_p|add:0 > 20 %}bg-warning
-                            {% else %}bg-danger{% endif %}"
-                     style="width:{{ hp_p }}%"></div>
+            <!-- HP bar (snapshot au moment de la fin du combat) -->
+            {% with snap=hp_snapshot|dict_get:poke.id %}
+            {% if snap %}
+              {% widthratio snap.hp snap.max_hp 100 as hp_p %}
+              <div class="d-flex align-items-center" style="gap:8px;">
+                <div class="progress flex-grow-1" style="height:8px;">
+                  <div class="progress-bar
+                              {% if snap.ko %}bg-secondary
+                              {% elif hp_p|add:0 > 50 %}bg-success
+                              {% elif hp_p|add:0 > 20 %}bg-warning
+                              {% else %}bg-danger{% endif %}"
+                       style="width:{% if snap.ko %}100{% else %}{{ hp_p }}{% endif %}%;
+                              {% if snap.ko %}opacity:.35{% endif %}"></div>
+                </div>
+                <small class="text-muted" style="white-space:nowrap;">
+                  {% if snap.ko %}
+                    <span class="text-danger font-weight-bold">K.O.</span>
+                  {% else %}
+                    {{ snap.hp }}/{{ snap.max_hp }}
+                  {% endif %}
+                </small>
               </div>
-              <small class="text-muted" style="white-space:nowrap;">
-                {{ poke.current_hp }}/{{ poke.max_hp }}
-                {% if poke.current_hp == 0 %}<span class="text-danger">K.O.</span>{% endif %}
-              </small>
-            </div>
+            {% else %}
+              {# Fallback: pas encore de snapshot (anciens combats) #}
+              <small class="text-muted"><i class="fas fa-question-circle"></i> HP non enregistrés</small>
+            {% endif %}
+            {% endwith %}
 
             <!-- Status -->
             {% if poke.status_condition %}
@@ -251,21 +266,32 @@
               {% endif %}
             </div>
 
-            <!-- HP bar -->
-            {% widthratio poke.current_hp poke.max_hp 100 as hp_p2 %}
-            <div class="d-flex align-items-center" style="gap:8px;">
-              <div class="progress flex-grow-1" style="height:8px;">
-                <div class="progress-bar
-                            {% if hp_p2|add:0 > 50 %}bg-success
-                            {% elif hp_p2|add:0 > 20 %}bg-warning
-                            {% else %}bg-danger{% endif %}"
-                     style="width:{{ hp_p2 }}%"></div>
+            <!-- HP bar (snapshot fin de combat) -->
+            {% with snap=hp_snapshot|dict_get:poke.id %}
+            {% if snap %}
+              {% widthratio snap.hp snap.max_hp 100 as hp_p2 %}
+              <div class="d-flex align-items-center" style="gap:8px;">
+                <div class="progress flex-grow-1" style="height:8px;">
+                  <div class="progress-bar
+                              {% if snap.ko %}bg-secondary
+                              {% elif hp_p2|add:0 > 50 %}bg-success
+                              {% elif hp_p2|add:0 > 20 %}bg-warning
+                              {% else %}bg-danger{% endif %}"
+                       style="width:{% if snap.ko %}100{% else %}{{ hp_p2 }}{% endif %}%;
+                              {% if snap.ko %}opacity:.35{% endif %}"></div>
+                </div>
+                <small class="text-muted" style="white-space:nowrap;">
+                  {% if snap.ko %}
+                    <span class="text-danger font-weight-bold">K.O.</span>
+                  {% else %}
+                    {{ snap.hp }}/{{ snap.max_hp }}
+                  {% endif %}
+                </small>
               </div>
-              <small class="text-muted" style="white-space:nowrap;">
-                {{ poke.current_hp }}/{{ poke.max_hp }}
-                {% if poke.current_hp == 0 %}<span class="text-danger">K.O.</span>{% endif %}
-              </small>
-            </div>
+            {% else %}
+              <small class="text-muted"><i class="fas fa-question-circle"></i> HP non enregistrés</small>
+            {% endif %}
+            {% endwith %}
 
             {% if poke.status_condition %}
             <span class="badge badge-warning mt-1">

@@ -16,6 +16,32 @@
   {% endif %}
 </div>
 
+<!-- Healing / Active Battle CTAs -->
+{% if team_needs_healing or active_battle %}
+<div class="row mb-2">
+  {% if active_battle %}
+  <div class="col-12 {% if team_needs_healing %}mb-2{% endif %}">
+    <div class="alert alert-danger d-flex align-items-center justify-content-between mb-0 shadow-sm" style="border-left:4px solid #e74a3b;animation:sidebar-pulse 2s infinite;">
+      <span><i class="fas fa-fist-raised fa-fw mr-2"></i> <strong>Combat en cours !</strong> Vous avez un combat actif non terminé.</span>
+      <a href="{% url 'BattleDetailView' active_battle.id %}" class="btn btn-danger btn-sm ml-3 text-nowrap">
+        <i class="fas fa-play mr-1"></i> Reprendre
+      </a>
+    </div>
+  </div>
+  {% endif %}
+  {% if team_needs_healing %}
+  <div class="col-12">
+    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-0 shadow-sm" style="border-left:4px solid #f6c23e;">
+      <span><i class="fas fa-heartbeat fa-fw mr-2"></i> <strong>Équipe blessée !</strong> Certains Pokémon ont besoin de soins.</span>
+      <a href="{% url 'PokemonCenterListView' %}" class="btn btn-warning btn-sm ml-3 text-nowrap">
+        <i class="fas fa-hospital mr-1"></i> Soigner
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- Content Row -->
 <div class="row">
   <!-- Total Pokémon -->
@@ -240,6 +266,27 @@
               Objets
             </a>
           </div>
+          <div class="col-md-2 mb-3">
+            <a href="{% url 'map_view' %}" class="btn btn-lg btn-block btn-outline-secondary">
+              <i class="fas fa-map-location-dot fa-2x mb-2"></i><br>
+              Carte
+            </a>
+          </div>
+          {% if active_battle %}
+          <div class="col-md-2 mb-3">
+            <a href="{% url 'BattleDetailView' active_battle.id %}" class="btn btn-lg btn-block btn-danger" style="animation:sidebar-pulse 2s infinite;">
+              <i class="fas fa-fist-raised fa-2x mb-2"></i><br>
+              Combat
+            </a>
+          </div>
+          {% else %}
+          <div class="col-md-2 mb-3">
+            <a href="{% url 'BattleListView' %}" class="btn btn-lg btn-block btn-outline-danger">
+              <i class="fas fa-fist-raised fa-2x mb-2"></i><br>
+              Combats
+            </a>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
