@@ -322,17 +322,9 @@ function playTurnAnimations(data, onDone) {
     const attackerName = isPlayer ? $('#player-name').text() : $('#opponent-name').text();
     if (moveName) addBattleLog(`${attackerName} utilise ${moveName} !`);
 
-    // Sprite bounce de l'attaquant
-    $(spriteId).addClass('attacking');
-    setTimeout(() => $(spriteId).removeClass('attacking'), 600);
-
-    // Effet + son au moment du lancer
+    // Animation de l'attaque — playMoveAnimation gère le sprite bounce + les effets PS
     setTimeout(() => {
-      if (moveCategory === 'physical') {
-        battleEffects.physicalAttack(fromPos, toPos, 'slash');
-      } else {
-        battleEffects.specialAttack(fromPos, toPos, moveType);
-      }
+      battleEffects.playMoveAnimation(cleanName, fromPos, toPos, isPlayer, moveType, moveCategory);
       try { audioManager.playSFX(`attacks/${cleanName}`); } catch(e) {}
     }, ATTACK_DELAY);
 
@@ -1035,14 +1027,29 @@ function addBattleLog(message) {
   log.parent().scrollTop(0);
 }
 
+/**
+ * Retourne le centre d'un élément en coordonnées locales de .battle-scene
+ * (espace non-scalé 1280×540), quel que soit le scale CSS appliqué à la scène.
+ */
 function getElementCenter(element) {
-  const offset = element.offset();
-  const width = element.width();
-  const height = element.height();
-  
+  const el = element instanceof jQuery ? element[0] : element;
+  const scene = document.querySelector('.battle-scene');
+  if (!scene || !el) return { x: 0, y: 0 };
+
+  const sceneRect = scene.getBoundingClientRect();
+  const elRect    = el.getBoundingClientRect();
+
+  // scale effectif de la scène (sceneRect.width / 1280)
+  const scale = sceneRect.width / 1280;
+
+  // Coordonnées viewport centrées sur l'élément, relatives au coin haut-gauche de la scène
+  const viewX = elRect.left + elRect.width  / 2 - sceneRect.left;
+  const viewY = elRect.top  + elRect.height / 2 - sceneRect.top;
+
+  // Division par le scale → coordonnées dans l'espace non-scalé (1280×540)
   return {
-    x: offset.left + width / 2,
-    y: offset.top + height / 2
+    x: viewX / scale,
+    y: viewY / scale,
   };
 }
 
