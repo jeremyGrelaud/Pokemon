@@ -137,6 +137,7 @@
 
       <!-- Sprite Adversaire (droite) -->
       <div class="battle-side opponent-side">
+          <div class="pokemon-platform opponent-platform"></div>
           <div class="pokemon-container opponent-container" id="opponent-container">
             <div class="pokemon-shadow"></div>
             <img class="pokemon-sprite opponent-sprite"
@@ -152,6 +153,7 @@
     <div class="player-row">
       <!-- Sprite Joueur (gauche) -->
       <div class="battle-side player-side">
+          <div class="pokemon-platform player-platform"></div>
           <div class="pokemon-container player-container" id="player-container">
             <div class="pokemon-shadow player-pokemon-shadow"></div>
             <img class="pokemon-sprite player-sprite"
@@ -538,10 +540,28 @@
   </div>
 </div>
 
-<!-- Audio Elements (preload) -->
-<audio id="bgm-battle" loop preload="auto">
+<!-- Audio Elements (preload)
+     muted + autoplay = TOUJOURS autorisé par les navigateurs.
+     AudioManager récupère cet élément et le désilence au premier clic. -->
+{% if battle.battle_type == 'gym' %}
+  {% with track="battle_gym" %}
+<audio id="bgm-battle" loop preload="auto" muted autoplay>
+  <source src="{% static 'sounds/bgm/' %}{{ track }}.mp3" type="audio/mpeg">
+</audio>
+  {% endwith %}
+{% elif is_rival %}
+<audio id="bgm-battle" loop preload="auto" muted autoplay>
+  <source src="{% static 'sounds/bgm/battle_rival.mp3' %}" type="audio/mpeg">
+</audio>
+{% elif battle.battle_type == 'trainer' %}
+<audio id="bgm-battle" loop preload="auto" muted autoplay>
+  <source src="{% static 'sounds/bgm/battle_trainer.mp3' %}" type="audio/mpeg">
+</audio>
+{% else %}
+<audio id="bgm-battle" loop preload="auto" muted autoplay>
   <source src="{% static 'sounds/bgm/battle_wild.mp3' %}" type="audio/mpeg">
 </audio>
+{% endif %}
 
 
 
@@ -775,6 +795,7 @@ window.__battleInProgress = true;
 })();
 </script>
 
+{% endblock js %}
 <script>
 /* ════════════════════════════════════════════════════════════════
    WEATHER VIDEO LOADER — Pokemon Showdown assets
@@ -830,4 +851,43 @@ window.__battleInProgress = true;
 })();
 </script>
 
-{% endblock js %}
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   BATTLE SCENE SCALER
+   - Canvas fixe 1280×540px, scaled uniformément
+   - Sous 1280px : scale < 1, letterbox noire
+   - Classes CSS ajoutées selon la largeur réelle pour adapter
+     le panel d'action hors-scène (log + menus)
+   ════════════════════════════════════════════════════════════════════ */
+(function () {
+  const SCENE_W = 1280;
+  const SCENE_H = 540;
+
+  function scaleBattle() {
+    const wrapper = document.getElementById('battle-wrapper');
+    const scene   = wrapper ? wrapper.querySelector('.battle-scene') : null;
+    if (!wrapper || !scene) return;
+
+    const availW  = wrapper.clientWidth;
+    const scale   = availW / SCENE_W;
+    const scaledH = Math.round(SCENE_H * scale);
+
+    scene.style.transform = `scale(${scale})`;
+    wrapper.style.height  = scaledH + 'px';
+
+    // Classes responsive sur le body selon largeur réelle disponible
+    const body = document.body;
+    body.classList.toggle('battle-sm',  availW < 768);
+    body.classList.toggle('battle-md',  availW >= 768 && availW < 1280);
+    body.classList.toggle('battle-lg',  availW >= 1280);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scaleBattle);
+  } else {
+    scaleBattle();
+  }
+  window.addEventListener('resize', scaleBattle);
+  setTimeout(scaleBattle, 200);
+})();
+</script>

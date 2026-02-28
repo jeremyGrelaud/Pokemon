@@ -55,11 +55,48 @@ class AudioManager {
         this.bgm.currentTime = 0;
       }
 
-      this.bgm = new Audio(`/static/sounds/bgm/${track}.mp3`);
-      this.bgm.loop   = true;
-      this.bgm.volume = this.volume.bgm;
+      // ── Stratégie muted-autoplay ──────────────────────────────────────────
+      // Le HTML injecte un <audio id="bgm-battle" muted autoplay> avec la bonne
+      // source — les navigateurs l'autorisent toujours en muted.
+      // On récupère cet élément (déjà en cours de lecture muette) plutôt que
+      // d'en créer un nouveau qui serait bloqué.
+      const preloaded = document.getElementById('bgm-battle');
+      if (preloaded && preloaded.muted) {
+        this.bgm = preloaded;
+        this.bgm.loop   = true;
+        this.bgm.volume = this.volume.bgm;
+        // L'audio joue déjà (muted) — on le désilence immédiatement si permission,
+        // sinon on attend le premier geste utilisateur.
+        this.bgm.muted = false;
+        const testPlay = this.bgm.play();
+        if (testPlay !== undefined) {
+          testPlay
+            .then(() => {
+              console.log(`🎵 BGM désilencée : ${track}`);
+              this.markUnlocked();
+              this._widgetSetPlaying(true);
+            })
+            .catch(() => {
+              // Pas encore de geste — on remet muted et on attend le premier clic
+              this.bgm.muted = true;
+              console.info('🔇 BGM muette en attente du premier geste…');
+              this._waitForGestureThenUnmute();
+            });
+        }
+      } else {
+        // Fallback : création classique d'un new Audio()
+        this.bgm = new Audio(`/static/sounds/bgm/${track}.mp3`);
+        this.bgm.loop   = true;
+        this.bgm.volume = this.volume.bgm;
+        const playPromise = this.bgm.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => { this.markUnlocked(); this._widgetSetPlaying(true); })
+            .catch(() => this._waitForGestureThenUnmute());
+        }
+      }
 
-      // Mise à jour de la barre de progression du widget
+      // Barre de progression
       this.bgm.addEventListener('timeupdate', () => {
         const w = this._widget;
         if (w && this.bgm.duration) {
@@ -69,37 +106,7 @@ class AudioManager {
         }
       });
 
-      const playPromise = this.bgm.play();
-
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log(`🎵 Playing BGM: ${track}`);
-            this.markUnlocked();
-            this._widgetSetPlaying(true);
-          })
-          .catch(error => {
-            console.warn(`❌ BGM blocked for "${track}": ${error.message}`);
-            if (track === 'battle_rival') {
-              console.info('🎵 Fallback: battle_rival → battle_trainer');
-              this.playBGM('battle_trainer');
-              return;
-            }
-            if (this.unlocked) {
-              // L'utilisateur avait déjà autorisé — retenter après un court délai
-              console.info('🔁 Retrying BGM (was unlocked)…');
-              setTimeout(() => {
-                this.bgm.play()
-                  .then(() => { this.markUnlocked(); this._widgetSetPlaying(true); })
-                  .catch(() => this._widgetPromptClick());
-              }, 400);
-            } else {
-              this._widgetPromptClick();
-            }
-          });
-      }
-
-      // Fallback 404
+      // Fallback 404 battle_rival
       this.bgm.addEventListener('error', () => {
         if (track === 'battle_rival') {
           console.info('🎵 Fallback 404: battle_rival → battle_trainer');
@@ -110,6 +117,48 @@ class AudioManager {
     } catch (error) {
       console.error('BGM Error:', error);
     }
+  }
+
+  /** Attend le premier clic/touche/keydown sur la page pour désilencer la BGM. */
+  _waitForGestureThenUnmute() {
+    if (this._pendingUnlock) return;
+    this._pendingUnlock = true;
+
+    if (this._widget) {
+      this._widgetSetPlaying(false);
+      const nameEl = this._widget.querySelector('.bgm-zone-name');
+      if (nameEl) nameEl.textContent = '▶ Cliquez pour la musique';
+      this._widget.style.opacity   = '1';
+      this._widget.style.animation = 'bgm-pulse 1s ease-in-out infinite alternate';
+    }
+    this._showUnlockBanner();
+
+    const resume = () => {
+      if (!this.bgm) return;
+      this.bgm.muted  = false;
+      this.bgm.volume = this.volume.bgm;
+      // Si l'audio était en pause (fallback new Audio), on relance
+      if (this.bgm.paused) {
+        this.bgm.play().catch(() => {});
+      }
+      this.markUnlocked();
+      this._pendingUnlock = false;
+      this._widgetSetPlaying(true);
+      if (this._widget) {
+        this._widget.style.animation = '';
+        const label = AudioManager._TRACK_LABELS[this._currentTrack] ?? this._currentTrack;
+        const nameEl = this._widget.querySelector('.bgm-zone-name');
+        if (nameEl) nameEl.textContent = label;
+      }
+      this._removeBanner();
+      ['click','keydown','touchstart'].forEach(ev =>
+        document.removeEventListener(ev, resume, { capture: true })
+      );
+    };
+
+    ['click','keydown','touchstart'].forEach(ev =>
+      document.addEventListener(ev, resume, { capture: true, once: true })
+    );
   }
 
   stopBGM() {
@@ -353,52 +402,28 @@ class AudioManager {
   }
 
   /** Affiche le widget en mode "cliquez pour jouer" quand l'autoplay est bloqué */
-  _widgetPromptClick() {
-    if (!this._widget) {
-      // Fallback : ancienne petite notification
-      this.showAudioPrompt();
-      return;
-    }
-    this._widgetSetPlaying(false);
-    const nameEl = this._widget.querySelector('.bgm-zone-name');
-    if (nameEl) nameEl.textContent = '▶ Cliquez pour la musique';
-    this._widget.style.opacity   = '1';
-    this._widget.style.animation = 'bgm-pulse 1s ease-in-out infinite alternate';
-    // Un seul clic suffit pour démarrer
-    const btn = this._widget.querySelector('.bgm-btn');
-    if (btn) {
-      const onFirstClick = () => {
-        this.bgm.play()
-          .then(() => { this.markUnlocked(); this._widgetSetPlaying(true); })
-          .catch(() => {});
-        this._widget.style.animation = '';
-        const label = AudioManager._TRACK_LABELS[this._currentTrack] ?? this._currentTrack;
-        const nameEl2 = this._widget.querySelector('.bgm-zone-name');
-        if (nameEl2) nameEl2.textContent = label;
-        btn.removeEventListener('click', onFirstClick);
-      };
-      btn.addEventListener('click', onFirstClick);
-    }
+  // Alias conservés pour compatibilité avec d'éventuels appels externes
+  _widgetPromptClick() { this._waitForGestureThenUnmute(); }
+  showAudioPrompt()    { this._waitForGestureThenUnmute(); }
+
+  _showUnlockBanner() {
+    if (document.getElementById('_audio-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = '_audio-banner';
+    banner.style.cssText = `
+      position:fixed;bottom:0;left:0;right:0;
+      background:rgba(15,20,40,0.88);color:#ddd;
+      padding:10px 20px;z-index:10001;
+      font-family:Arial,sans-serif;font-size:13px;text-align:center;
+      border-top:1px solid rgba(100,160,255,0.3);pointer-events:none;
+    `;
+    banner.innerHTML = `<i class="fas fa-volume-mute"></i>&nbsp; Cliquez n'importe où pour activer la musique`;
+    document.body.appendChild(banner);
   }
 
-  showAudioPrompt() {
-    const prompt = document.createElement('div');
-    prompt.style.cssText = `
-      position:fixed;bottom:80px;right:20px;
-      background:rgba(15,20,40,0.92);color:white;
-      padding:12px 18px;border-radius:8px;z-index:10000;
-      font-family:Arial,sans-serif;font-size:13px;
-      cursor:pointer;border:1px solid rgba(100,160,255,0.35);
-    `;
-    prompt.innerHTML = `<i class="fas fa-volume-mute mr-2"></i>Cliquez pour activer le son`;
-    prompt.onclick = () => {
-      this.bgm && this.bgm.play()
-        .then(() => { this.markUnlocked(); this._widgetSetPlaying(true); })
-        .catch(() => {});
-      prompt.remove();
-    };
-    document.body.appendChild(prompt);
-    setTimeout(() => prompt.parentNode && prompt.remove(), 6000);
+  _removeBanner() {
+    const b = document.getElementById('_audio-banner');
+    if (b) b.remove();
   }
 
   preloadSounds(soundList) {

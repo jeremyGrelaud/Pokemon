@@ -671,28 +671,6 @@
     else if (!document.hidden && audio && playing) audio.volume = volumeEl.value / 100;
   });
 
-  // ── Unlock audio pour la page suivante (combat) ──────────────────────────
-  // Intercepter tous les liens de navigation vers un combat / rencontre.
-  // Le simple fait de cliquer sur un lien est un "geste utilisateur" :
-  // on en profite pour créer un AudioContext silencieux qui mémorise
-  // l'autorisation de lecture dans sessionStorage.
-  document.querySelectorAll(
-    'a[href*="encounter"], a[href*="battle"], a[href*="challenge"], a[href*="wild"]'
-  ).forEach(link => {
-    link.addEventListener('click', () => {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const buf = ctx.createBuffer(1, 1, 22050);
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start(0);
-        ctx.close();
-      } catch(e) { /* silencieux */ }
-      sessionStorage.setItem('audioUnlocked', '1');
-      sessionStorage.setItem('bgmVolume', volumeEl.value);
-    });
-  });
 })();
 </script>
 {% endif %}
