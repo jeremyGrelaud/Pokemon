@@ -65,7 +65,9 @@
 
 <!-- Battle Scene Container -->
 <!-- Options: grass, water, cave -->
-<div class="battle-scene" data-terrain="grass">
+<!-- ══ BATTLE WRAPPER (letterbox) ══════════════════════════════ -->
+<div class="battle-wrapper" id="battle-wrapper">
+<div class="battle-scene" data-terrain="{{ battle_terrain|default:'grass' }}">
   
   <!-- Background Layer -->
   <div class="battle-background">
@@ -74,14 +76,12 @@
   </div>
 
 
-  <!-- Zone de combat (sprites et plateformes) -->
+  <!-- Zone de combat — layout 100% absolu, zoom-stable -->
   <div class="battlefield">
-    
-    <!-- LIGNE 1: ADVERSAIRE (Info gauche + Sprite droite) -->
-    <div class="row align-items-center opponent-row">
-      <!-- Colonne Info Adversaire (gauche) -->
-      <div class="col-6 d-flex justify-content-start">
-        <div class="info-bar opponent-bar">
+
+    <!-- ADVERSAIRE : info haut-gauche, sprite haut-droite -->
+    <div class="opponent-row">
+      <div class="info-bar opponent-bar">
           <div class="info-content">
             <div class="name-level-row">
               <span class="pokemon-name" id="opponent-name">
@@ -133,12 +133,10 @@
               {% endif %}
             </div>
           </div>
-        </div>
       </div>
 
-      <!-- Colonne Sprite Adversaire (droite) -->
-      <div class="col-6 d-flex justify-content-end">
-        <div class="battle-side opponent-side">
+      <!-- Sprite Adversaire (droite) -->
+      <div class="battle-side opponent-side">
           <div class="pokemon-platform opponent-platform"></div>
           <div class="pokemon-container opponent-container" id="opponent-container">
             <div class="pokemon-shadow"></div>
@@ -148,30 +146,26 @@
                 alt="{{ battle.opponent_pokemon.species.name }}"
                 onerror="this.src='{% static 'img/pokeball.png' %}'">
           </div>
-        </div>
       </div>
     </div>
 
-    <!-- LIGNE 2: JOUEUR (Sprite gauche + Info droite) -->
-    <div class="row align-items-center player-row">
-      <!-- Colonne Sprite Joueur (gauche) -->
-      <div class="col-6 d-flex justify-content-start">
-        <div class="battle-side player-side">
+    <!-- JOUEUR : sprite bas-gauche, info bas-droite -->
+    <div class="player-row">
+      <!-- Sprite Joueur (gauche) -->
+      <div class="battle-side player-side">
           <div class="pokemon-platform player-platform"></div>
           <div class="pokemon-container player-container" id="player-container">
-            <div class="pokemon-shadow"></div>
+            <div class="pokemon-shadow player-pokemon-shadow"></div>
             <img class="pokemon-sprite player-sprite"
                 id="player-sprite"
                 src="{% static 'img/sprites_gen5/' %}{% if battle.player_pokemon.is_shiny %}back-shiny{% else %}back{% endif %}/{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
                 alt="{{ battle.player_pokemon.species.name }}"
                 onerror="this.src='{% static 'img/pokeball.png' %}'">
           </div>
-        </div>
       </div>
 
-      <!-- Colonne Info Joueur (droite) -->
-      <div class="col-6 d-flex justify-content-end">
-        <div class="info-bar player-bar">
+      <!-- Info Joueur (droite) -->
+      <div class="info-bar player-bar">
           <div class="info-content">
             <div class="name-level-row">
               <span class="pokemon-name" id="player-name">
@@ -232,7 +226,6 @@
 
 
           </div>
-        </div>
       </div>
     </div>
 
@@ -242,17 +235,12 @@
     </div>
   </div>
 
+</div><!-- /battle-scene -->
+</div><!-- /battle-wrapper -->
 
-
-  <!-- UI Layer -->
+<!-- ══ ACTION PANEL (hors scène, non scalé) ═══════════════════════ -->
+<!-- UI Layer (log déplacé hors scène) -->
   <div class="battle-ui">
-    
-    <!-- Battle Log (Compact) -->
-    <div class="battle-log-compact" id="battle-log-compact">
-      <div class="log-messages" id="log-messages"></div>
-    </div>
-
-    <!-- Action Menu -->
     <div class="action-panel" id="action-panel">
       
       <!-- Main Menu -->
@@ -345,6 +333,10 @@
     </div>
   </div>
 
+
+<!-- ══ BATTLE LOG — en dehors de la scène, toujours visible ══════════════ -->
+<div class="battle-log-compact" id="battle-log-compact">
+  <div class="log-messages" id="log-messages"></div>
 </div>
 
 <!-- Modal de Switch Forcé (quand Pokemon KO) -->
@@ -786,3 +778,37 @@ window.__battleInProgress = true;
 </script>
 
 {% endblock js %}
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   BATTLE SCENE SCALER — canvas interne fixe 960×540, scale uniforme
+   Letterbox noir automatique. Zoom navigateur = transparent.
+   ════════════════════════════════════════════════════════════════════ */
+(function () {
+  const SCENE_W = 1280;
+  const SCENE_H = 540;
+
+  function scaleBattle() {
+    const wrapper = document.getElementById('battle-wrapper');
+    const scene   = wrapper ? wrapper.querySelector('.battle-scene') : null;
+    if (!wrapper || !scene) return;
+
+    const availW = wrapper.clientWidth;
+    const scale  = availW / SCENE_W;
+    const scaledH = Math.round(SCENE_H * scale);
+
+    scene.style.transform = `scale(${scale})`;
+    wrapper.style.height  = scaledH + 'px';
+  }
+
+  // Init
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scaleBattle);
+  } else {
+    scaleBattle();
+  }
+  // Zoom / resize
+  window.addEventListener('resize', scaleBattle);
+  // Fallback pour les changements de layout tardifs
+  setTimeout(scaleBattle, 200);
+})();
+</script>

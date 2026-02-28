@@ -194,9 +194,23 @@ class BattleGameView(generic.DetailView):
         # Zone actuelle du joueur (pour les boutons "Retour" des modals)
         try:
             player_location = PlayerLocation.objects.get(trainer=battle.player_trainer)
-            context['current_zone'] = player_location.current_zone
+            current_zone = player_location.current_zone
+            context['current_zone'] = current_zone
         except PlayerLocation.DoesNotExist:
+            current_zone = None
             context['current_zone'] = None
+
+        # Terrain de combat selon le type de zone
+        ZONE_TYPE_TO_TERRAIN = {
+            'route':    'grass',
+            'city':     'city',
+            'cave':     'cave',
+            'forest':   'forest',
+            'water':    'water',
+            'building': 'building',
+        }
+        zone_type = getattr(current_zone, 'zone_type', 'route') if current_zone else 'route'
+        context['battle_terrain'] = ZONE_TYPE_TO_TERRAIN.get(zone_type, 'grass')
 
         # Rival : trainer_type == 'rival' → musique spéciale
         context['is_rival'] = (
