@@ -816,16 +816,50 @@ def battle_create_trainer_view(request, trainer_id):
     player_trainer   = get_player_trainer(request.user)
     opponent_trainer = get_object_or_404(Trainer, pk=trainer_id, is_npc=True)
 
-    # Vérifier que le joueur est bien dans la zone du dresseur
+    # Vérifier que le joueur est bien dans la zone (et l'étage) du dresseur
     try:
-        player_location = PlayerLocation.objects.get(trainer=player_trainer)
-        if opponent_trainer.location and player_location.current_zone.name != opponent_trainer.location:
-            messages.error(
-                request,
-                f"{opponent_trainer.get_full_title()} se trouve à {opponent_trainer.location}, "
-                f"mais vous êtes à {player_location.current_zone.name} !",
+        player_location   = PlayerLocation.objects.get(trainer=player_trainer)
+        current_zone_name = player_location.current_zone.name
+        trainer_loc       = opponent_trainer.location  # ex: "Mont Sélénite-3" ou "Route 1"
+
+        if trainer_loc:
+            # Cas 1 — dresseur dans une zone simple (sans étage) : correspondance exacte
+            # Cas 2 — dresseur dans une zone à étages : le joueur doit être dans la même
+            #          zone parente ET accéder à cet étage depuis la vue floor_detail
+            #          (URL referer). On bloque si la location ne correspond pas du tout.
+            in_zone = (
+                trainer_loc == current_zone_name
+                or trainer_loc.startswith(current_zone_name + "-")
             )
-            return redirect('zone_detail', zone_id=player_location.current_zone.id)
+
+            if not in_zone:
+                if "-" in trainer_loc:
+                    parts = trainer_loc.rsplit("-", 1)
+                    display_loc = f"{parts[0]} (étage {parts[1]})"
+                else:
+                    display_loc = trainer_loc
+                messages.error(
+                    request,
+                    f"{opponent_trainer.get_full_title()} se trouve à {display_loc}, "
+                    f"mais vous êtes à {current_zone_name} !",
+                )
+                return redirect('zone_detail', zone_id=player_location.current_zone.id)
+
+            # Cas 2 bis — dresseur sur un étage précis : vérifier que le joueur
+            # arrive bien depuis la page de cet étage (referer contient floor_number)
+            if trainer_loc.startswith(current_zone_name + "-"):
+                floor_number = trainer_loc.rsplit("-", 1)[1]
+                referer = request.META.get('HTTP_REFERER', '')
+                # On accepte si le referer contient "/floor/<floor_number>"
+                # OU s'il n'y a pas de referer (accès direct, admin, etc.)
+                if referer and f"/floor/{floor_number}" not in referer:
+                    messages.error(
+                        request,
+                        f"Vous devez vous trouver à l'étage {floor_number} "
+                        f"de {current_zone_name} pour affronter ce dresseur.",
+                    )
+                    return redirect('zone_detail', zone_id=player_location.current_zone.id)
+
     except PlayerLocation.DoesNotExist:
         messages.error(request, "Position introuvable. Veuillez voyager vers une zone.")
         return redirect('map_view')
@@ -1076,6 +1110,18 @@ def battle_trainer_complete_view(request, battle_id):
                     )
                     for notif in gym_notifications:
                         messages.success(request, f"{notif['title']} : {notif['message']}")
+
+                    # ── 8e badge : débloquer la Route 23 ──────────────────────
+                    if player_trainer.badges >= 8:
+                        try:
+                            from myPokemonApp.questEngine import set_story_flag_and_trigger
+                            set_story_flag_and_trigger(player_trainer, 'all_badges_obtained')
+                            messages.info(
+                                request,
+                                "🎖️ Vous possédez les 8 badges de Kanto ! Les gardes de la Ligue vous ouvrent désormais la Route 23."
+                            )
+                        except Exception as e:
+                            logger.warning("Erreur flag all_badges_obtained: %s", e)
             except GymLeader.DoesNotExist:
                 pass  # Pas un Champion d'Arène
 
@@ -1134,47 +1180,58 @@ def battle_trainer_complete_view(request, battle_id):
             logger.warning("Erreur déclenchement quêtes post-combat : %s", exc)
 
     # =========================================================
-    # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
+    # DÉFAITE → soigner et téléporter au dernier Centre Pokémon visité
     # =========================================================
     if not player_won:
         try:
-            # Trouver la zone avec Centre Pokémon
             player_location = PlayerLocation.objects.get(trainer=player_trainer)
-            current_zone    = player_location.current_zone
 
-            # Chercher le centre le plus proche : d'abord la zone actuelle, sinon
-            # la première zone connectée avec un centre
-            if current_zone.has_pokemon_center:
-                center_zone = current_zone
-            else:
-                # Chercher parmi les connexions directes
-                connected_ids = ZoneConnection.objects.filter(
-                    from_zone=current_zone
-                ).values_list('to_zone_id', flat=True)
-                reverse_ids  = ZoneConnection.objects.filter(
-                    to_zone=current_zone, is_bidirectional=True
-                ).values_list('from_zone_id', flat=True)
-                all_ids      = list(connected_ids) + list(reverse_ids)
+            # Priorité 1 : dernier centre utilisé (tracké dans PlayerLocation)
+            center_zone = player_location.last_pokemon_center
 
-                center_zone = Zone.objects.filter(
-                    id__in=all_ids, has_pokemon_center=True
-                ).first()
+            # Priorité 2 : zone actuelle si elle a un centre (rare mais possible)
+            if not center_zone:
+                current_zone = player_location.current_zone
+                if current_zone.has_pokemon_center:
+                    center_zone = current_zone
 
-                if not center_zone:
-                    # Fallback: premier centre disponible
-                    center_zone = Zone.objects.filter(has_pokemon_center=True).first()
+            # Priorité 3 : BFS sur les connexions (cherche le centre le plus proche)
+            if not center_zone:
+                from collections import deque
+                visited  = {player_location.current_zone.id}
+                queue    = deque([player_location.current_zone])
+                found    = None
+                while queue and not found:
+                    zone_node = queue.popleft()
+                    # Voisins directs
+                    neighbor_ids = set(
+                        ZoneConnection.objects.filter(from_zone=zone_node)
+                        .values_list('to_zone_id', flat=True)
+                    ) | set(
+                        ZoneConnection.objects.filter(
+                            to_zone=zone_node, is_bidirectional=True
+                        ).values_list('from_zone_id', flat=True)
+                    )
+                    for nid in neighbor_ids:
+                        if nid not in visited:
+                            visited.add(nid)
+                            neighbor = Zone.objects.get(pk=nid)
+                            if neighbor.has_pokemon_center:
+                                found = neighbor
+                                break
+                            queue.append(neighbor)
+                center_zone = found
 
             if center_zone:
                 player_location.current_zone = center_zone
-                if center_zone.has_pokemon_center:
-                    player_location.last_pokemon_center = center_zone
+                player_location.last_pokemon_center = center_zone
                 player_location.save()
 
-                # Sauvegarder la location dans la save active
                 save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
                 if save:
-                    save.current_location = center_zone.name
-                    save.save()
+                    save.current_location    = center_zone.name
+                    save.last_pokemon_center = center_zone.name
+                    save.save(update_fields=['current_location', 'last_pokemon_center'])
 
                 messages.warning(
                     request,

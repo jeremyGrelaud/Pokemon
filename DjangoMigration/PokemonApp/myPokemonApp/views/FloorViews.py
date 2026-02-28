@@ -66,11 +66,23 @@ def floor_detail_view(request, zone_id, floor_number):
     # Rival sur cet étage ?
     rival_encounter = check_rival_encounter(trainer, zone, floor=floor)
 
-    # Étages adjacents (navigation)
-    all_floors = list(zone.floors.order_by('floor_number'))
+    # Étages adjacents (navigation) — un étage ne communique qu'avec ses voisins directs
+    all_floors  = list(zone.floors.order_by('floor_number'))
     current_idx = next((i for i, f in enumerate(all_floors) if f.floor_number == floor_number), 0)
     floor_below = all_floors[current_idx - 1] if current_idx > 0 else None
     floor_above = all_floors[current_idx + 1] if current_idx < len(all_floors) - 1 else None
+
+    # Pour la sidebar : marquer chaque étage comme navigable (adjacent) ou non
+    # Un étage est navigable depuis l'étage courant uniquement s'il est floor_above ou floor_below.
+    navigable_numbers = {f.floor_number for f in [floor_below, floor_above] if f}
+    floors_nav = [
+        {
+            'floor':       f,
+            'is_current':  f.floor_number == floor_number,
+            'navigable':   f.floor_number in navigable_numbers,
+        }
+        for f in all_floors
+    ]
 
     return render(request, 'map/floor_detail.html', {
         'zone':             zone,
@@ -82,6 +94,7 @@ def floor_detail_view(request, zone_id, floor_number):
         'floor_below':      floor_below,
         'floor_above':      floor_above,
         'all_floors':       all_floors,
+        'floors_nav':       floors_nav,
         'current_zone':     player_location.current_zone,
     })
 

@@ -192,24 +192,28 @@ def travel_to_zone_view(request, zone_id):
     if not current_zone.is_safe_zone:
         defeated_ids = get_defeated_trainer_ids(trainer)
 
-        # Chercher uniquement les dresseurs marqués is_battle_required
+        # Dresseurs obligatoires dans la zone (sans étage)
         required_qs = Trainer.objects.filter(
             is_npc=True,
             is_battle_required=True,
             location=current_zone.name,
         ).exclude(id__in=defeated_ids)
 
-        # Même logique pour les étages accessibles
+        # Même logique pour les étages ACCESSIBLES de la zone actuelle.
+        # On utilise un union explicite pour éviter les doublons de queryset.
         if current_zone.has_floors:
-            for floor in current_zone.floors.all():
+            accessible_floor_keys = []
+            for floor in current_zone.floors.order_by('floor_number'):
                 accessible, _ = can_access_floor(trainer, floor)
                 if accessible:
-                    floor_key = f"{current_zone.name}-{floor.floor_number}"
-                    required_qs = required_qs | Trainer.objects.filter(
-                        is_npc=True,
-                        is_battle_required=True,
-                        location=floor_key,
-                    ).exclude(id__in=defeated_ids)
+                    accessible_floor_keys.append(f"{current_zone.name}-{floor.floor_number}")
+
+            if accessible_floor_keys:
+                required_qs = required_qs | Trainer.objects.filter(
+                    is_npc=True,
+                    is_battle_required=True,
+                    location__in=accessible_floor_keys,
+                ).exclude(id__in=defeated_ids)
 
         blocker = required_qs.first()
         if blocker:
