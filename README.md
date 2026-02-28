@@ -17,11 +17,8 @@ For education purpose only
 
 TODO Roadmap :
 
-- Improve Moves effects during battle 
-- rajouter la connexion entre la route 22  et 23 et conditionner l'accès à l'obtention des 8 badges, + rajouter les zones manquantes comme la grotte taupiqeur, + rajouter les étages souterrains dans les gros (même mécanique que la tour pokémon)
-
+- Improve Moves effects during battle (use real pokemon game move animations)
 - After everything, implement different game mods ?
-
 
 
 TODO BugFixes :
