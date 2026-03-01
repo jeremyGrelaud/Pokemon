@@ -1,29 +1,371 @@
 {% extends "base.html" %} {% load static %} {% load i18n %}
+
 {% block title %}
 <title>PokemonApp • Login</title>
-{% endblock title %} 
+{% endblock title %}
+
 {% block content %}
 
-<div class="row justify-content-center">
-    <div class="col-xl-4 col-lg-12 col-md-9">
-        <div class="card o-hidden border-0 shadow-lg my-5">
-            <div class="card-body p-0">
-                <div class="p-5 col-xl-12">
-                    <div class="text-center">
-                        <h1 class="h4 text-gray-900 mb-4">My custom Login template</h1>
-                    </div>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
 
-                    <form method="post">
-                        {% csrf_token %}
-                        {{ form.as_p }}
-                        <button class="btn btn-pokemon btn-user btn-block" type="submit">Login</button>
-                    </form>
-                   
-                </div>
-            </div>
-        </div>
+  /* ── GB Palette ── */
+  :root {
+    --gb-darkest:  #0f380f;
+    --gb-dark:     #306230;
+    --gb-mid:      #8bac0f;
+    --gb-light:    #9bbc0f;
+    --gb-cream:    #e8f5d0;
+    --gb-white:    #f5ffd8;
+    --gb-lightest: #c4cfa1;
+    --px: 3px;
+  }
+
+  /* ── Page background ── */
+  body {
+    background: var(--gb-darkest) !important;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Scrolling grid overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--gb-dark) 1px, transparent 1px),
+      linear-gradient(90deg, var(--gb-dark) 1px, transparent 1px);
+    background-size: 36px 36px;
+    opacity: 0.28;
+    animation: gridMove 10s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @keyframes gridMove {
+    from { background-position: 0 0; }
+    to   { background-position: 36px 36px; }
+  }
+
+  /* Floating pokéballs */
+  .poke-floaters {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .poke-ball {
+    position: absolute;
+    border-radius: 50%;
+    border: 3px solid var(--gb-mid);
+    opacity: 0;
+    animation: floatRise linear infinite;
+  }
+  .poke-ball::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    width: 30%;
+    height: 30%;
+    border-radius: 50%;
+    background: var(--gb-mid);
+  }
+  .poke-ball:nth-child(1) { left:  6%; width:16px; height:16px; animation-duration:13s; animation-delay:0s; }
+  .poke-ball:nth-child(2) { left: 22%; width:22px; height:22px; animation-duration:17s; animation-delay:2s; }
+  .poke-ball:nth-child(3) { left: 43%; width:12px; height:12px; animation-duration:11s; animation-delay:1s; }
+  .poke-ball:nth-child(4) { left: 61%; width:20px; height:20px; animation-duration:15s; animation-delay:4s; }
+  .poke-ball:nth-child(5) { left: 78%; width:26px; height:26px; animation-duration:19s; animation-delay:3s; }
+  .poke-ball:nth-child(6) { left: 91%; width:14px; height:14px; animation-duration:14s; animation-delay:6s; }
+
+  @keyframes floatRise {
+    from { bottom: -60px; opacity: 0; }
+    8%   { opacity: 0.16; }
+    92%  { opacity: 0.16; }
+    to   { bottom: 110vh; opacity: 0; }
+  }
+
+  /* ── Wrapper ── */
+  .login-wrapper {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 92vh;
+    padding: 20px;
+  }
+
+  /* ── Card ── */
+  .poke-card {
+    width: min(440px, 100%);
+    background: var(--gb-white);
+    box-shadow:
+      0 0 0 var(--px) var(--gb-darkest),
+      0 0 0 calc(var(--px)*2) var(--gb-mid),
+      0 0 0 calc(var(--px)*3) var(--gb-darkest),
+      6px 8px 0 calc(var(--px)*3) rgba(0,0,0,0.55);
+    animation: popIn .55s cubic-bezier(.175,.885,.32,1.275) both;
+  }
+  @keyframes popIn {
+    from { transform: scale(.75) translateY(30px); opacity: 0; }
+    to   { transform: scale(1)   translateY(0);    opacity: 1; }
+  }
+
+  /* ── Card header ── */
+  .poke-card-header {
+    background: var(--gb-darkest);
+    padding: 28px 24px 20px;
+    text-align: center;
+    border-bottom: var(--px) solid var(--gb-mid);
+    position: relative;
+    overflow: hidden;
+  }
+  .poke-card-header::before {
+    content: '';
+    position: absolute;
+    top: -40px; left: -40px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--gb-dark) 0%, transparent 70%);
+    opacity: .5;
+  }
+  .poke-card-header::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; right: -40px;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--gb-dark) 0%, transparent 70%);
+    opacity: .4;
+  }
+
+  /* Spinning pokéball */
+  .header-ball {
+    display: inline-block;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: 4px solid var(--gb-mid);
+    background: linear-gradient(
+      to bottom,
+      var(--gb-mid) 0%, var(--gb-mid) 43%,
+      var(--gb-darkest) 43%, var(--gb-darkest) 57%,
+      var(--gb-dark) 57%, var(--gb-dark) 100%
+    );
+    position: relative;
+    margin-bottom: 16px;
+    animation: wobble 3.5s ease-in-out infinite;
+    box-shadow: 0 0 0 4px var(--gb-darkest), 0 0 16px var(--gb-mid);
+  }
+  .header-ball::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--gb-white);
+    border: 3px solid var(--gb-darkest);
+    box-shadow: 0 0 0 2px var(--gb-mid);
+  }
+  @keyframes wobble {
+    0%,40%,100% { transform: rotate(0deg); }
+    10%  { transform: rotate(18deg); }
+    20%  { transform: rotate(-14deg); }
+    30%  { transform: rotate(8deg); }
+  }
+
+  .header-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: .62rem;
+    color: var(--gb-light);
+    letter-spacing: 3px;
+    text-shadow: 2px 2px 0 var(--gb-darkest);
+    line-height: 1.9;
+    position: relative;
+    z-index: 1;
+    margin: 0;
+  }
+  .header-title span {
+    display: block;
+    font-size: .95rem;
+    color: var(--gb-cream);
+    animation: textBlink 1.5s step-end infinite;
+  }
+  @keyframes textBlink {
+    0%,100% { opacity: 1; }
+    50%      { opacity: .35; }
+  }
+
+  /* ── Card body ── */
+  .poke-card-body { padding: 30px 28px 24px; }
+
+  /* ── Django form.as_p overrides ── */
+  .poke-card-body p {
+    margin-bottom: 18px;
+  }
+  .poke-card-body label {
+    display: block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: .45rem;
+    color: var(--gb-darkest);
+    letter-spacing: 1px;
+    margin-bottom: 7px;
+  }
+  .poke-card-body input[type="text"],
+  .poke-card-body input[type="password"],
+  .poke-card-body input[type="email"] {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--gb-cream);
+    border: none;
+    box-shadow:
+      0 0 0 var(--px) var(--gb-darkest),
+      inset 3px 3px 0 rgba(0,0,0,.12);
+    font-family: 'VT323', monospace;
+    font-size: 1.3rem;
+    color: var(--gb-darkest);
+    outline: none;
+    transition: box-shadow .15s, background .15s;
+  }
+  .poke-card-body input:focus {
+    background: var(--gb-white);
+    box-shadow:
+      0 0 0 var(--px) var(--gb-dark),
+      0 0 0 calc(var(--px)*2) var(--gb-darkest),
+      inset 3px 3px 0 rgba(0,0,0,.12);
+  }
+  .poke-card-body input::placeholder { color: var(--gb-lightest); }
+
+  /* Error list from Django */
+  .poke-card-body ul.errorlist {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+  }
+  .poke-card-body ul.errorlist li {
+    font-family: 'Press Start 2P', monospace;
+    font-size: .38rem;
+    color: #cc0000;
+    padding: 4px 6px;
+    background: #fff0f0;
+    border-left: 3px solid #cc0000;
+    margin-top: 4px;
+    line-height: 1.8;
+  }
+
+  /* ── Submit button ── */
+  .btn-poke-login {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--gb-darkest);
+    color: var(--gb-light);
+    font-family: 'Press Start 2P', monospace;
+    font-size: .6rem;
+    letter-spacing: 2px;
+    border: none;
+    cursor: pointer;
+    box-shadow:
+      0 0 0 var(--px) var(--gb-mid),
+      4px 4px 0 var(--px) rgba(0,0,0,.4);
+    transition: transform .08s, box-shadow .08s, background .1s;
+    position: relative;
+    margin-top: 4px;
+  }
+  .btn-poke-login::after {
+    content: '▶';
+    position: absolute;
+    right: 16px; top: 50%;
+    transform: translateY(-50%);
+    font-size: .5rem;
+    color: var(--gb-mid);
+    animation: arrowBlink .9s step-end infinite;
+  }
+  @keyframes arrowBlink {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+  .btn-poke-login:hover  { background: var(--gb-dark); color: var(--gb-cream); }
+  .btn-poke-login:active {
+    transform: translate(3px, 3px);
+    box-shadow:
+      0 0 0 var(--px) var(--gb-mid),
+      1px 1px 0 var(--px) rgba(0,0,0,.4);
+  }
+
+  /* ── Footer strip ── */
+  .poke-card-footer {
+    background: var(--gb-darkest);
+    padding: 9px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: var(--px) solid var(--gb-mid);
+  }
+  .poke-card-footer p {
+    font-family: 'Press Start 2P', monospace;
+    font-size: .32rem;
+    color: var(--gb-dark);
+    letter-spacing: 1px;
+    margin: 0;
+  }
+  .led-dots span {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 5px;
+  }
+  .led-dots span:nth-child(1) { background: #cc0000; box-shadow: 0 0 6px #cc0000; }
+  .led-dots span:nth-child(2) { background: var(--gb-mid); box-shadow: 0 0 6px var(--gb-mid); }
+  .led-dots span:nth-child(3) { background: #3a6fe8; box-shadow: 0 0 6px #3a6fe8; }
+  .led-dots span:nth-child(4) { background: #e8c63a; box-shadow: 0 0 6px #e8c63a; }
+</style>
+
+<!-- Floating pokéballs -->
+<div class="poke-floaters" aria-hidden="true">
+  <div class="poke-ball"></div>
+  <div class="poke-ball"></div>
+  <div class="poke-ball"></div>
+  <div class="poke-ball"></div>
+  <div class="poke-ball"></div>
+  <div class="poke-ball"></div>
+</div>
+
+<div class="login-wrapper">
+  <div class="poke-card">
+
+    <!-- Header -->
+    <div class="poke-card-header">
+      <div class="header-ball" aria-hidden="true"></div>
+      <p class="header-title">
+        BIENVENUE SUR
+        <span>Djangomon </span>
+      </p>
     </div>
 
+    <!-- Body — Django form conservé intact -->
+    <div class="poke-card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn-poke-login" type="submit">
+          COMMENCER L'AVENTURE
+        </button>
+      </form>
+    </div>
+
+    <!-- Footer -->
+    <div class="poke-card-footer">
+      <p>© Djangomon </p>
+      <div class="led-dots" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <p>v1.0.0</p>
+    </div>
+
+  </div>
 </div>
 
 {% endblock content %}
