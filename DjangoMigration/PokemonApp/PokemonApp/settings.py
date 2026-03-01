@@ -53,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'myPokemonApp.middleware.starter_required.StarterRequiredMiddleware', 
 ]
 
 ROOT_URLCONF = 'PokemonApp.urls'

@@ -40,17 +40,8 @@ class GenericOverview(generic.ListView):
 
 @method_decorator(login_required, name='dispatch')
 class DashboardView(generic.TemplateView):
-    """Dashboard principal"""
+    """Dashboard principal, le middleware StarterRequiredMiddleware force choose_starter"""
     template_name = "dashboard.html"
-
-    def dispatch(self, request, *args, **kwargs):
-        """Redirige vers la sélection du starter si le joueur n'a pas encore de Pokémon"""
-        if request.user.is_authenticated:
-            trainer = get_or_create_player_trainer(request.user)
-            if not trainer.pokemon_team.exists():
-                return redirect('choose_starter')
-        return super().dispatch(request, *args, **kwargs)
-    
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
