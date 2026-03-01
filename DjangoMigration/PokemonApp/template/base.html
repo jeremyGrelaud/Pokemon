@@ -83,42 +83,17 @@
           </a>
         </li>
 
-        <hr class="sidebar-divider" />
-        <div class="sidebar-heading">Encyclopédies</div>
-
-        <!-- Pokédex -->
-        <li class="nav-item {% if 'Pokemon' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'PokemonOverView' %}">
-            <i class="fas fa-book"></i>
-            <span>Pokédex</span>
-          </a>
-        </li>
-
-        <!-- Capacités -->
-        <li class="nav-item {% if 'Move' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'PokemonMoveOverView' %}">
-            <i class="fas fa-bolt"></i>
-            <span>Capacités</span>
-          </a>
-        </li>
-        <!-- Objets -->
-        <li class="nav-item {% if 'Item' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'ItemListView' %}">
-            <i class="fas fa-shopping-bag"></i>
-            <span>Objets</span>
-          </a>
-        </li>
-
-        <!-- Champions d'Arène -->
-        <li class="nav-item {% if 'Gym' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'GymLeaderListView' %}">
-            <i class="fas fa-trophy"></i>
-            <span>Arènes</span>
-          </a>
-        </li>
 
         <hr class="sidebar-divider" />
         <div class="sidebar-heading">Gameplay</div>
+
+        <!-- Maps  -->
+        <li class="nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'map_view' %}">
+            <i class="fas fa-map-location-dot"></i>
+            <span>Maps</span>
+          </a>
+        </li>
 
         <!-- Mon Équipe -->
         <li class="nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
@@ -128,13 +103,6 @@
           </a>
         </li>
 
-        <!-- Maps  -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'map_view' %}">
-            <i class="fas fa-map-location-dot"></i>
-            <span>Maps</span>
-          </a>
-        </li>
 
         <!-- Combats -->
         {% if active_battle %}
@@ -202,39 +170,71 @@
 
           <!-- Mini barres HP équipe -->
           {% if sidebar_team %}
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            {% for p in sidebar_team %}
-            <div title="{{ p.name }}{% if p.status %} — {{ p.status }}{% endif %}"
-                 style="display:flex; align-items:center; gap:6px;">
-              <span style="width:62px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-                           color:{% if p.needs %}#f39c12{% else %}#adb5bd{% endif %}; font-size:.68rem;">
-                {{ p.name }}
-              </span>
-              <div style="flex:1; height:5px; background:rgba(255,255,255,.15); border-radius:3px; overflow:hidden;">
-                <div style="height:100%; width:{{ p.hp_pct }}%; border-radius:3px; transition:width .4s;
-                  background:{% if p.hp_pct > 50 %}#27ae60{% elif p.hp_pct > 20 %}#f39c12{% else %}#e74c3c{% endif %};"></div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              {% for p in sidebar_team %}
+              <div title="{{ p.name }}{% if p.status %} — {{ p.status }}{% endif %}"
+                  style="display:flex; align-items:center; gap:6px;">
+                <span style="width:62px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                            color:{% if p.needs %}#f39c12{% else %}#adb5bd{% endif %}; font-size:.68rem;">
+                  {{ p.name }}
+                </span>
+                <div style="flex:1; height:5px; background:rgba(255,255,255,.15); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:{{ p.hp_pct }}%; border-radius:3px; transition:width .4s;
+                    background:{% if p.hp_pct > 50 %}#27ae60{% elif p.hp_pct > 20 %}#f39c12{% else %}#e74c3c{% endif %};"></div>
+                </div>
               </div>
+              {% endfor %}
             </div>
-            {% endfor %}
-          </div>
 
-          {% if team_needs_healing %}
-          <a href="{% url 'PokemonCenterListView' %}"
-             class="d-block mt-2 text-warning text-decoration-none"
-             style="font-size:.68rem; animation: sidebar-pulse 2s infinite;">
-            <i class="fas fa-hospital fa-fw"></i> Centre Pokémon
-          </a>
-          {% endif %}
+            {% if team_needs_healing %}
+            <a href="{% url 'PokemonCenterListView' %}"
+              class="d-block mt-2 text-warning text-decoration-none"
+              style="font-size:.68rem; animation: sidebar-pulse 2s infinite;">
+              <i class="fas fa-hospital fa-fw"></i> Centre Pokémon
+            </a>
+            {% endif %}
           {% endif %}
 
         </div>
         {% endif %}
         <!-- ─────────────────────────────────────────────────────────────── -->
 
-        <div class="text-center d-none d-md-inline mt-4">
-          <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-        
+
+        <hr class="sidebar-divider" />
+        <div class="sidebar-heading">Encyclopédies</div>
+
+        <!-- Pokédex -->
+        <li class="nav-item {% if 'Pokemon' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'PokemonOverView' %}">
+            <i class="fas fa-book"></i>
+            <span>Pokédex</span>
+          </a>
+        </li>
+
+        <!-- Capacités -->
+        <li class="nav-item {% if 'Move' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'PokemonMoveOverView' %}">
+            <i class="fas fa-bolt"></i>
+            <span>Capacités</span>
+          </a>
+        </li>
+        <!-- Objets -->
+        <li class="nav-item {% if 'Item' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'ItemListView' %}">
+            <i class="fas fa-shopping-bag"></i>
+            <span>Objets</span>
+          </a>
+        </li>
+
+        <!-- Champions d'Arène -->
+        <li class="nav-item {% if 'Gym' in request.resolver_match.url_name %}active{% endif %}">
+          <a class="nav-link" href="{% url 'GymLeaderListView' %}">
+            <i class="fas fa-trophy"></i>
+            <span>Arènes</span>
+          </a>
+        </li>
+
+
         {% else %}
         <!-- Non connecté -->
         <li class="nav-item active">
