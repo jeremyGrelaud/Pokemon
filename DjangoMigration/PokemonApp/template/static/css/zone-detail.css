@@ -1,0 +1,301 @@
+/* ── Minimap sticky ──────────────────────────────────────────────────────── */
+.zone-minimap-panel { position: sticky; top: 80px; }
+.minimap-gif { max-height: 320px; width: auto; border-radius: 6px; }
+@media (max-width: 991px) {
+  .zone-minimap-panel { position: static; margin-bottom: 1.5rem; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ACTION CARDS
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Grille secondaire (centre / shop / gym) */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+/* Base commune */
+.action-card {
+  display: block;
+  text-decoration: none !important;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  cursor: pointer;
+  color: #fff !important;
+}
+.action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,.22);
+  text-decoration: none !important;
+}
+.action-card:hover .action-card__arrow { transform: translateX(5px); }
+
+.action-card__inner {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* Images */
+.action-card__img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.25));
+}
+.action-card__img--large { width: 90px; height: 90px; }
+.action-card__img--trainer { width: 72px; height: 72px; image-rendering: pixelated; }
+.action-card__img--glow-warn { filter: drop-shadow(0 0 10px #f39c12); }
+.action-card__img--defeated { filter: grayscale(60%); opacity: .7; }
+
+.action-card__icon-wrap { display: flex; }
+
+.action-card__title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+.action-card__subtitle {
+  font-size: 0.8rem;
+  opacity: 0.78;
+  line-height: 1.4;
+}
+.action-card__alert {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffe17a;
+}
+
+.action-card__cta {
+  margin-top: auto;
+  padding-top: 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  opacity: 0.92;
+  border-top: 1px solid rgba(255,255,255,.18);
+  display: flex;
+  align-items: center;
+}
+.action-card__arrow { transition: transform 0.2s ease; }
+
+.action-card__badge-won {
+  display: inline-block;
+  font-size: 0.7rem;
+  background: rgba(255,255,255,.2);
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 700;
+}
+
+/* ── Hero card (hautes herbes) ─────────────────────────────────────────── */
+.action-card--hero {
+  background: linear-gradient(135deg, #1a7a3c 0%, #27ae60 50%, #2ecc71 100%);
+  box-shadow: 0 4px 20px rgba(39, 174, 96, .35);
+  margin-bottom: 0;
+}
+.action-card--hero .action-card__inner {
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 28px;
+}
+.action-card--hero .action-card__text { flex: 1; }
+.action-card--hero .action-card__title { font-size: 1.5rem; }
+.action-card--hero .action-card__subtitle { font-size: 0.85rem; }
+.action-card--hero .action-card__cta {
+  border-top: none;
+  border-left: 1px solid rgba(255,255,255,.25);
+  padding-top: 0;
+  padding-left: 20px;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+/* Subtle animated bg texture */
+.action-card--hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent 0px,
+    transparent 20px,
+    rgba(255,255,255,.03) 20px,
+    rgba(255,255,255,.03) 40px
+  );
+  pointer-events: none;
+}
+
+/* ── Centre Pokémon ────────────────────────────────────────────────────── */
+.action-card--center {
+  background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+  box-shadow: 0 4px 16px rgba(231,76,60,.3);
+}
+.action-card--urgent {
+  box-shadow: 0 0 0 3px #f39c12, 0 6px 20px rgba(231,76,60,.5) !important;
+  animation: urgentPulse 2s ease-in-out infinite;
+}
+@keyframes urgentPulse {
+  0%,100% { box-shadow: 0 0 0 3px #f39c12, 0 6px 20px rgba(231,76,60,.5); }
+  50%      { box-shadow: 0 0 0 5px #f39c12, 0 10px 28px rgba(231,76,60,.7); }
+}
+
+/* ── Pokemart ──────────────────────────────────────────────────────────── */
+.action-card--shop {
+  background: linear-gradient(135deg, #5c3d8a 0%, #764ba2 100%);
+  box-shadow: 0 4px 16px rgba(118,75,162,.3);
+}
+
+/* ── Arène ─────────────────────────────────────────────────────────────── */
+.action-card--gym {
+  background: linear-gradient(135deg, #d35400 0%, #e67e22 100%);
+  box-shadow: 0 4px 16px rgba(230,126,34,.3);
+}
+.action-card--done {
+  background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+  box-shadow: none;
+  opacity: 0.8;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   WILD POKEMON BOX
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.wild-box {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+.wild-box__header {
+  background: linear-gradient(90deg, #2d3748 0%, #3d4f66 100%);
+  color: #fff;
+  padding: 12px 20px;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.3px;
+}
+.wild-box__body { background: #fff; }
+
+/* Ligne individuelle */
+.wild-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #f1f3f5;
+  transition: background 0.15s;
+}
+.wild-row:last-child { border-bottom: none; }
+.wild-row--clickable { cursor: pointer; }
+.wild-row--clickable:hover { background: #f7faff; }
+.wild-row--clickable:hover .wild-row__cta { opacity: 1; color: #4e73df; }
+
+.wild-row__sprite img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.wild-row__info {
+  flex: 1;
+  min-width: 0;
+}
+.wild-row__name {
+  display: block;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #2d3748;
+}
+.wild-row__types {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.wild-row__level {
+  font-size: 0.78rem;
+  color: #6c757d;
+  font-weight: 600;
+  white-space: nowrap;
+  width: 70px;
+  text-align: center;
+}
+
+.wild-row__rate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 130px;
+}
+.wild-rate-bar {
+  flex: 1;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.wild-rate-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+.wild-rate--high  { background: linear-gradient(90deg, #28a745, #51cf66); }
+.wild-rate--mid   { background: linear-gradient(90deg, #ffc107, #ffd43b); }
+.wild-rate--low   { background: linear-gradient(90deg, #dc3545, #ff6b6b); }
+
+.wild-rate-pct {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6c757d;
+  width: 36px;
+  text-align: right;
+}
+
+.wild-row__cta {
+  opacity: 0.2;
+  color: #adb5bd;
+  font-size: 0.9rem;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+/* ── Type chips ────────────────────────────────────────────────────────── */
+.type-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #fff;
+}
+.type-normal   { background: #9fa19f; }
+.type-grass, .type-plante  { background: #4caf50; }
+.type-fire, .type-feu      { background: #f44336; }
+.type-water, .type-eau     { background: #2196f3; }
+.type-electric, .type-électrik { background: #ffeb3b; color: #555; }
+.type-psychic  { background: #e91e63; }
+.type-ice, .type-glace     { background: #80deea; color: #333; }
+.type-dragon   { background: #6200ea; }
+.type-dark, .type-ténèbres { background: #37474f; }
+.type-fairy, .type-fée     { background: #f48fb1; }
+.type-fighting, .type-combat { background: #bf360c; }
+.type-poison   { background: #9c27b0; }
+.type-ground, .type-sol    { background: #795548; }
+.type-flying, .type-vol    { background: #7986cb; }
+.type-bug, .type-insecte   { background: #8bc34a; }
+.type-rock, .type-roche    { background: #a1887f; }
+.type-ghost, .type-spectre { background: #512da8; }
+.type-steel, .type-acier   { background: #90a4ae; color: #333; }
