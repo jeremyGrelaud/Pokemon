@@ -212,7 +212,10 @@ class RivalEncounter(models.Model):
         Quest, on_delete=models.CASCADE, related_name='rival_encounter'
     )
     rival        = models.ForeignKey(
-        'Trainer', on_delete=models.CASCADE, related_name='rival_encounters'
+        'Trainer', on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='rival_encounters',
+        help_text="NULL avec la nouvelle archi RivalTemplate/PlayerRival — résolu per-player."
     )
     zone         = models.ForeignKey(
         'Zone', on_delete=models.SET_NULL, null=True, related_name='rival_encounters'

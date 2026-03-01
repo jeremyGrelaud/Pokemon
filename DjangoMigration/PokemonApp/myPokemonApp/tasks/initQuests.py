@@ -132,7 +132,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          15,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Rival - Pallet Town',
+        # trigger_trainer supprimé : résolu per-player via RivalTemplate/PlayerRival
         'objective_text': 'Battre Blue',
         'reward_flag':    'rival_pallet_town_beaten',
         'icon':           'fa-user-ninja',
@@ -174,7 +174,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          35,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Rival - Route 22 (1)',
+        # trigger_trainer supprimé : résolu per-player via RivalTemplate/PlayerRival
         'objective_text': 'Battre Blue sur la Route 22',
         'reward_flag':    'rival_route22_beaten',
         'icon':           'fa-user-ninja',
@@ -228,7 +228,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          65,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Rival - Cerulean City',
+        # trigger_trainer supprimé : résolu per-player via RivalTemplate/PlayerRival
         'objective_text': 'Battre Blue sur le Pont Cerclef (Route 24)',
         'reward_flag':    'rival_cerulean_beaten',
         'icon':           'fa-user-ninja',
@@ -312,6 +312,18 @@ ALL_QUESTS = [
         'reward_item_name': 'CS01 Coupe',
         'reward_flag':    'visited_ss_anne',
         'icon':           'fa-ship',
+    },
+    {
+        'quest_id':       'rival_ss_anne',
+        'title':          'Blue à Bord du SS Anne',
+        'description':    "Blue est aussi monté à bord du SS Anne. Il vous cherche querelle dans les couloirs du bateau.",
+        'quest_type':     'rival',
+        'order':          95,
+        'trigger_type':   'defeat_trainer',
+        # trigger_trainer supprimé : résolu per-player via RivalTemplate/PlayerRival
+        'objective_text': 'Battre Blue à bord du SS Anne',
+        'reward_flag':    'rival_ss_anne_beaten',
+        'icon':           'fa-user-ninja',
     },
     {
         'quest_id':       'defeat_lt_surge',
@@ -406,7 +418,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          145,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Rival - Pokemon Tower',
+        # trigger_trainer supprimé : résolu per-player via RivalTemplate/PlayerRival
         'objective_text': 'Battre Blue au sommet de la Tour Pokémon',
         'reward_flag':    'rival_tower_beaten',
         'icon':           'fa-user-ninja',
@@ -521,7 +533,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          185,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Rival - Silph Co.',
+        # trigger_trainer supprimé : résolu per-player via RivalTemplate/PlayerRival
         'objective_text': 'Battre Blue au 7F de Sylphe SARL',
         'reward_flag':    'rival_silph_beaten',
         'icon':           'fa-user-ninja',
@@ -633,7 +645,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          255,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Rival - Route 22 (2)',
+        # trigger_trainer supprimé : résolu per-player via RivalTemplate/PlayerRival
         'objective_text': 'Battre Blue sur la Route 22 (avant les gardes de la Ligue)',
         'reward_flag':    'rival_route22_final_beaten',
         'icon':           'fa-user-ninja',
@@ -720,7 +732,7 @@ ALL_QUESTS = [
         'quest_type':     'rival',
         'order':          320,
         'trigger_type':   'defeat_trainer',
-        'trigger_trainer_username': 'Champion Blue',
+        # trigger_trainer supprimé : résolu per-player via RivalTemplate/PlayerRival
         'objective_text': 'Battre Blue, Champion de la Ligue Pokémon',
         'reward_flag':    'rival_champion_beaten',
         'reward_money':   10000,
@@ -925,7 +937,8 @@ def init_quests():
         'get_ss_ticket':          ['defeat_misty'],
         'reach_vermilion':        ['defeat_misty'],
         'board_ss_anne':          ['reach_vermilion', 'get_ss_ticket'],
-        'defeat_lt_surge':        ['board_ss_anne'],
+        'rival_ss_anne':           ['board_ss_anne'],
+        'defeat_lt_surge':        ['board_ss_anne', 'rival_ss_anne'],
         # Ch5
         'explore_rock_tunnel':    ['defeat_lt_surge'],
         'reach_celadon':          ['explore_rock_tunnel'],
@@ -990,60 +1003,65 @@ def init_quests():
 # =============================================================================
 
 RIVAL_ENCOUNTERS_DATA = [
-    # quest_id          → identifie la quête associée
-    # rival_trainer     → username exact du Trainer dans initializeItemsAndNpcs.py
-    # zone_name         → zone où l'encounter est affiché (pour RivalEncounter.zone)
-    # floor_number      → étage (optionnel, pour les bâtiments à étages)
+    # quest_id      → identifie la quête associée
+    # zone_name     → zone où l'encounter est affiché (pour RivalEncounter.zone)
+    # floor_number  → étage (optionnel, pour les bâtiments à étages)
+    # pre_battle / post_battle → dialogues génériques (surclassés par RivalTemplate si besoin)
+    #
+    # NOTE : le champ 'rival_trainer' a été supprimé.
+    # Il n'existe plus de Trainer global "Rival - Pallet Town" etc.
+    # Les Trainer NPC sont créés par joueur via PlayerRival.spawn_for_player()
+    # lors du choix du starter. La résolution per-player est faite dans
+    # questEngine.check_rival_encounter() qui consulte PlayerRival.
     {
-        'quest_id':         'rival_route_22',
-        'rival_trainer':    'Rival - Route 22 (1)',
-        'zone_name':        'Route 22',
-        'pre_battle':       "Hé ! Attends un peu ! Je savais que tu viendrais ici. Allez !",
-        'post_battle':      "Quoi ?! Tu as gagné ?! Peu importe. La prochaine fois ce sera différent.",
+        'quest_id':    'rival_pallet_town',
+        'zone_name':   'Bourg Palette',
+        'pre_battle':  "Attends ! Vérifions nos Pokémon ! Allez, je te défie !",
+        'post_battle': "Hein ?! Incroyable... Je dois m'entraîner plus dur.",
     },
     {
-        'quest_id':         'rival_pallet_town',
-        'rival_trainer':    'Rival - Pallet Town',
-        'zone_name':        'Bourg Palette',
-        'pre_battle':       "Attends ! Vérifions nos Pokémon ! Allez, je te défie !",
-        'post_battle':      "Hein ?! Incroyable... Je dois m'entraîner plus dur.",
+        'quest_id':    'rival_route_22',
+        'zone_name':   'Route 22',
+        'pre_battle':  "Hé ! Attends un peu ! Je savais que tu viendrais ici. Allez !",
+        'post_battle': "Quoi ?! Tu as gagné ?! Peu importe. La prochaine fois ce sera différent.",
     },
     {
-        'quest_id':         'rival_cerulean',
-        'rival_trainer':    'Rival - Cerulean City',
-        'zone_name':        'Route 24',
-        'pre_battle':       "Encore toi ! Mes Pokémon ont grandi depuis la dernière fois. Prépare-toi !",
-        'post_battle':      "Encore ?! Bah... La prochaine fois je te battrai facilement.",
+        'quest_id':    'rival_cerulean',
+        'zone_name':   'Route 24',
+        'pre_battle':  "Encore toi ! Mes Pokémon ont grandi depuis la dernière fois. Prépare-toi !",
+        'post_battle': "Encore ?! Bah... La prochaine fois je te battrai facilement.",
     },
     {
-        'quest_id':         'rival_pokemon_tower',
-        'rival_trainer':    'Rival - Pokemon Tower',
-        'zone_name':        'Tour Pokémon',
-        'floor_number':     7,
-        'pre_battle':       "Tu es venu chercher la même chose que moi ? Montre-moi si tu le mérites !",
-        'post_battle':      "J'aurais dû mieux m'entraîner avant de venir ici.",
+        'quest_id':    'rival_ss_anne',
+        'zone_name':   'SS Anne',
+        'pre_battle':  "Toi ici ?! On va régler ça maintenant !",
+        'post_battle': "Pfff... La chance était de ton côté. C'est tout.",
     },
     {
-        'quest_id':         'rival_silph_co',
-        'rival_trainer':    'Rival - Silph Co.',
-        'zone_name':        'Sylphe SARL',
-        'floor_number':     7,
-        'pre_battle':       "Tu as du culot de venir jusqu'ici. Mais tu ne passeras pas !",
-        'post_battle':      "Tch... tu as encore gagné. Va, monte voir le Président.",
+        'quest_id':    'rival_pokemon_tower',
+        'zone_name':   'Tour Pokémon',
+        'floor_number': 7,
+        'pre_battle':  "Tu es venu chercher la même chose que moi ? Montre-moi si tu le mérites !",
+        'post_battle': "J'aurais dû mieux m'entraîner avant de venir ici.",
     },
     {
-        'quest_id':         'rival_route_22_final',
-        'rival_trainer':    'Rival - Route 22 (2)',
-        'zone_name':        'Route 22',
-        'pre_battle':       "Tu veux affronter la Ligue ? Tu devras d'abord passer par moi.",
-        'post_battle':      "Pfff... Vas-y alors. Mais ne crois pas que tu vas gagner facilement là-haut.",
+        'quest_id':    'rival_silph_co',
+        'zone_name':   'Sylphe SARL',
+        'floor_number': 7,
+        'pre_battle':  "Tu as du culot de venir jusqu'ici. Mais tu ne passeras pas !",
+        'post_battle': "Tch... tu as encore gagné. Va, monte voir le Président.",
     },
     {
-        'quest_id':         'rival_champion',
-        'rival_trainer':    'Champion Blue',
-        'zone_name':        'Plateau Indigo',
-        'pre_battle':       "J'ai battu les 4 As en premier. Je suis le Champion ! Tu n'as aucune chance.",
-        'post_battle':      "Perdu... contre toi... Je dois revoir toute ma façon de dresser. Tu mérites vraiment ce titre.",
+        'quest_id':    'rival_route_22_final',
+        'zone_name':   'Route 22',
+        'pre_battle':  "Tu veux affronter la Ligue ? Tu devras d'abord passer par moi.",
+        'post_battle': "Pfff... Vas-y alors. Mais ne crois pas que tu vas gagner facilement là-haut.",
+    },
+    {
+        'quest_id':    'rival_champion',
+        'zone_name':   'Plateau Indigo',
+        'pre_battle':  "J'ai battu les 4 As en premier. Je suis le Champion ! Tu n'as aucune chance.",
+        'post_battle': "Perdu... contre toi... Je dois revoir toute ma façon de dresser. Tu mérites vraiment ce titre.",
     },
 ]
 
@@ -1051,11 +1069,17 @@ RIVAL_ENCOUNTERS_DATA = [
 
 def init_rival_encounters():
     """
-    Crée les RivalEncounter en liant chaque rencontre au Trainer spécifique
-    défini dans initializeItemsAndNpcs.py (un trainer distinct par combat).
-    Le champ 'rival' de RivalEncounter pointe vers ce trainer précis.
+    Crée les RivalEncounter liés à chaque quête rival.
+
+    Nouvelle architecture (RivalTemplate/PlayerRival) :
+      - Le champ RivalEncounter.rival est NULL : il n'existe plus de Trainer
+        global "Rival - Pallet Town". Les Trainer NPC sont créés par joueur
+        dans choose_starter_view() via PlayerRival.spawn_for_player().
+      - La résolution per-player est faite dans questEngine.check_rival_encounter()
+        qui consulte PlayerRival pour retrouver le bon Trainer NPC de chaque joueur.
+      - RIVAL_ENCOUNTERS_DATA n'a plus besoin du champ 'rival_trainer'.
     """
-    from myPokemonApp.models import Quest, Trainer, Zone, ZoneFloor, RivalEncounter
+    from myPokemonApp.models import Quest, Zone, ZoneFloor, RivalEncounter
 
     created = updated = 0
     for enc in RIVAL_ENCOUNTERS_DATA:
@@ -1064,13 +1088,6 @@ def init_rival_encounters():
 
         if not quest or not zone:
             print(f"  ⚠ Rencontre ignorée (quête/zone manquante) : {enc['quest_id']}")
-            continue
-
-        # Trainer spécifique à ce combat (username exact de initializeItemsAndNpcs)
-        rival_trainer = Trainer.objects.filter(username=enc['rival_trainer']).first()
-        if not rival_trainer:
-            print(f"  ⚠ Trainer introuvable : '{enc['rival_trainer']}' (enc: {enc['quest_id']})")
-            print(f"      → Lancez initialize_rival_battles() d'abord.")
             continue
 
         floor = None
@@ -1082,11 +1099,12 @@ def init_rival_encounters():
         _, is_new = RivalEncounter.objects.update_or_create(
             quest=quest,
             defaults={
-                'rival':           rival_trainer,
+                # rival=None : résolu per-player par questEngine.check_rival_encounter()
+                'rival':           None,
                 'zone':            zone,
                 'floor':           floor,
                 'pre_battle_text': enc['pre_battle'],
-                'post_battle_text':enc['post_battle'],
+                'post_battle_text': enc['post_battle'],
             }
         )
         if is_new:

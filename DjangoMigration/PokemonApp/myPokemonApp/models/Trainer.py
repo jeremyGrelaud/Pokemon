@@ -216,3 +216,210 @@ class TrainerInventory(models.Model):
     
     def __str__(self):
         return f"{self.trainer.username} - {self.item.name} x{self.quantity}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RIVAL — Modèle par template + instance per-player
+# ─────────────────────────────────────────────────────────────────────────────
+
+class RivalTemplate(models.Model):
+    """
+    Template statique d'un combat de rival.
+
+    Peuplé une seule fois au lancement du serveur (init script), indépendamment
+    des joueurs. Stocke la définition du combat (quest_id, combat_order, starter
+    requis du rival, dialogues) mais PAS de Trainer ni de Pokémon — ceux-ci
+    sont créés à la demande par PlayerRival.spawn_for_player().
+    """
+
+    STARTER_CHOICES = [
+        ('Bulbasaur',  'Bulbizarre'),
+        ('Charmander', 'Salamèche'),
+        ('Squirtle',   'Carapuce'),
+        ('any',        'Indépendant du starter'),
+    ]
+
+    # Identifiant stable (= quest_id associé).
+    # Pas unique seul : 3 templates existent par quest_id (un par starter joueur).
+    # La contrainte d'unicité est (quest_id, player_starter_match) via Meta.
+    quest_id     = models.CharField(max_length=60)
+    combat_order = models.IntegerField(default=0, help_text="Ordre chronologique (1=Bourg Palette, 2=Route 22…)")
+
+    # Quel starter le rival utilise pour CE combat et QUEL starter joueur
+    # déclenche cette version. 'any' = valable pour tout starter joueur.
+    rival_starter        = models.CharField(max_length=20, choices=STARTER_CHOICES, default='any')
+    player_starter_match = models.CharField(
+        max_length=20, choices=STARTER_CHOICES, default='any',
+        help_text="Starter joueur qui active cette version. 'any' = toutes versions."
+    )
+
+    # Dialogues
+    intro_text    = models.TextField(blank=True)
+    defeat_text   = models.TextField(blank=True)
+    victory_text  = models.TextField(blank=True)
+    pre_battle_text  = models.TextField(blank=True)
+    post_battle_text = models.TextField(blank=True)
+
+    # Argent gagné par le joueur
+    money_reward = models.IntegerField(default=175)
+
+    # Données de l'équipe (JSON) :
+    # [{"species": "Charmander", "level": 5, "moves": ["Scratch","Growl"],
+    #   "fixed_ivs": {"iv_hp":10,...}, "fixed_nature": "Hardy"}, ...]
+    team_data = models.JSONField(default=list)
+
+    class Meta:
+        verbose_name = 'Template Rival'
+        verbose_name_plural = 'Templates Rival'
+        ordering = ['combat_order', 'player_starter_match']
+        # 3 templates peuvent exister par quest_id (un par starter joueur).
+        # La combinaison (quest_id, player_starter_match) doit être unique.
+        unique_together = [('quest_id', 'player_starter_match')]
+
+    def __str__(self):
+        return f"[Template] {self.quest_id} (rival={self.rival_starter}, vs={self.player_starter_match})"
+
+
+class PlayerRival(models.Model):
+    """
+    Instance de combat rival pour UN joueur spécifique.
+
+    Créée dans choose_starter_view() dès que le joueur choisit son starter :
+    on itère sur tous les RivalTemplate dont player_starter_match correspond
+    et on matérialise un Trainer + son équipe pour ce joueur.
+
+    Ainsi chaque joueur possède ses propres Trainer NPC rival, isolés
+    des autres joueurs, avec des noms uniques (ex: "Rival_alice_pallet").
+    """
+
+    player   = models.ForeignKey(
+        Trainer, on_delete=models.CASCADE,
+        related_name='rival_instances',
+        help_text="Trainer joueur propriétaire de cette instance."
+    )
+    template = models.ForeignKey(
+        RivalTemplate, on_delete=models.CASCADE,
+        related_name='player_instances',
+    )
+    trainer  = models.OneToOneField(
+        Trainer, on_delete=models.CASCADE,
+        related_name='rival_info',
+        null=True, blank=True,
+        help_text="Trainer NPC matérialisé pour ce joueur (créé à spawn_for_player)."
+    )
+
+    class Meta:
+        unique_together = ['player', 'template']
+        verbose_name = 'Instance Rival (joueur)'
+        verbose_name_plural = 'Instances Rival (joueur)'
+
+    def __str__(self):
+        return f"Rival de {self.player.username} — {self.template.quest_id}"
+
+    # ------------------------------------------------------------------
+    # Méthode de spawn : crée le Trainer NPC + son équipe
+    # ------------------------------------------------------------------
+
+    def spawn_for_player(self):
+        """
+        Matérialise un Trainer NPC unique pour ce joueur depuis le template.
+
+        - Nom unique : "Rival_{player.username}_{quest_id}" (tronqué à 50 chars)
+        - IVs/nature fixes tirés du template (team_data)
+        - Idempotent : ne recrée pas si self.trainer existe déjà
+
+        Retourne le Trainer NPC créé (ou existant).
+        """
+        if self.trainer_id:
+            return self.trainer  # déjà matérialisé
+
+        from myPokemonApp.models import Pokemon, PokemonMove
+        from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+        import random
+
+        tmpl = self.template
+
+        # ── Nom unique par joueur ─────────────────────────────────────────────
+        raw_name = f"Rival_{self.player.username}_{tmpl.quest_id}"
+        npc_name = raw_name[:50]
+
+        npc = Trainer.objects.create(
+            username=npc_name,
+            trainer_type='rival',
+            location='',          # sera mis à jour par RivalEncounter
+            is_npc=True,
+            npc_class='Rival',
+            can_rebattle=False,
+            money=tmpl.money_reward,
+            intro_text=tmpl.intro_text,
+            defeat_text=tmpl.defeat_text,
+            victory_text=tmpl.victory_text,
+        )
+
+        # ── Équipe ────────────────────────────────────────────────────────────
+        NATURE_MODIFIERS = {
+            'Lonely':('attack','defense'),'Brave':('attack','speed'),
+            'Adamant':('attack','special_attack'),'Naughty':('attack','special_defense'),
+            'Bold':('defense','attack'),'Relaxed':('defense','speed'),
+            'Impish':('defense','special_attack'),'Lax':('defense','special_defense'),
+            'Timid':('speed','attack'),'Hasty':('speed','defense'),
+            'Jolly':('speed','special_attack'),'Naive':('speed','special_defense'),
+            'Modest':('special_attack','attack'),'Mild':('special_attack','defense'),
+            'Quiet':('special_attack','speed'),'Rash':('special_attack','special_defense'),
+            'Calm':('special_defense','attack'),'Gentle':('special_defense','defense'),
+            'Sassy':('special_defense','speed'),'Careful':('special_defense','special_attack'),
+        }
+        NEUTRAL_NATURES = {
+            'Hardy','Docile','Bashful','Quirky','Serious'
+        }
+        ALL_NATURES = list(NATURE_MODIFIERS.keys()) + list(NEUTRAL_NATURES)
+
+        from myPokemonApp.models import PlayablePokemon
+
+        for i, pdata in enumerate(tmpl.team_data, 1):
+            try:
+                species = Pokemon.objects.get(name=pdata['species'])
+            except Pokemon.DoesNotExist:
+                continue
+
+            # IVs : fixed_ivs du template ou aléatoire 0-20
+            raw_ivs = pdata.get('fixed_ivs') or {
+                stat: random.randint(0, 20)
+                for stat in ('iv_hp','iv_attack','iv_defense',
+                             'iv_special_attack','iv_special_defense','iv_speed')
+            }
+            nature = pdata.get('fixed_nature') or random.choice(ALL_NATURES)
+
+            pokemon = PlayablePokemon(
+                species=species,
+                trainer=npc,
+                level=pdata.get('level', 5),
+                original_trainer=npc_name,
+                is_in_party=True,
+                party_position=i,
+                nature=nature,
+                **raw_ivs,
+            )
+            pokemon._skip_learn_moves = True   # évite learn_initial_moves (bug corrigé)
+            pokemon.calculate_stats()
+            pokemon.current_hp = pokemon.max_hp
+            pokemon.save()
+
+            # Moves
+            seen = set()
+            for move_name in pdata.get('moves', []):
+                try:
+                    move = PokemonMove.objects.get(name=move_name)
+                    if move.id not in seen:
+                        seen.add(move.id)
+                        PokemonMoveInstance.objects.get_or_create(
+                            pokemon=pokemon, move=move,
+                            defaults={'current_pp': move.pp}
+                        )
+                except PokemonMove.DoesNotExist:
+                    pass
+
+        # ── Lier et persister ─────────────────────────────────────────────────
+        self.trainer = npc
+        self.save(update_fields=['trainer'])
+        return npc
