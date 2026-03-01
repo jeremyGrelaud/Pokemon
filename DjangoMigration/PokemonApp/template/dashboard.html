@@ -111,9 +111,8 @@
 
 </div>
 
-<!-- ── Zone actuelle — hero CTA ───────────────────────────────────────────── -->
 {% if current_zone %}
-<div class="mb-4">
+<div class="mb-3">
   <a href="{% url 'zone_detail' current_zone.id %}" class="zone-hero">
     <img src="{% static 'img/mapSprites/Kanto/' %}{{ current_zone.name|zone_image_path }}"
          class="zone-hero__bg"
@@ -129,41 +128,6 @@
         <i class="fas fa-arrow-right mr-2"></i>Explorer la zone
       </div>
     </div>
-    <!-- Raccourcis rapides dans la zone -->
-    <div class="zone-hero__shortcuts">
-      {% if not current_zone.is_safe_zone and not current_zone.has_floors %}
-      <a href="{% url 'wild_encounter' current_zone.id %}?type=grass"
-         class="zone-shortcut zone-shortcut--grass"
-         onclick="event.stopPropagation()">
-        <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}" onerror="this.style.display='none'">
-        <span>Chercher</span>
-      </a>
-      {% endif %}
-      {% if current_zone.has_pokemon_center %}
-      <a href="{% if pokemon_center %}{% url 'PokemonCenterDetailView' pokemon_center.id %}{% else %}{% url 'PokemonCenterListView' %}{% endif %}"
-         class="zone-shortcut zone-shortcut--center {% if team_needs_healing %}zone-shortcut--urgent{% endif %}"
-         onclick="event.stopPropagation()">
-        <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}" onerror="this.style.display='none'">
-        <span>{% if team_needs_healing %}Soigner !{% else %}Centre{% endif %}</span>
-      </a>
-      {% endif %}
-      {% if current_zone.has_shop %}
-      <a href="{% if zone_shop %}{% url 'ShopDetailView' zone_shop.id %}{% else %}{% url 'ShopListView' %}{% endif %}"
-         class="zone-shortcut zone-shortcut--shop"
-         onclick="event.stopPropagation()">
-        <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}" onerror="this.style.display='none'">
-        <span>Boutique</span>
-      </a>
-      {% endif %}
-      {% if gym_leader %}
-      <a href="{% url 'battle_challenge_gym' gym_leader.id %}"
-         class="zone-shortcut zone-shortcut--gym"
-         onclick="event.stopPropagation()">
-        <i class="fas fa-trophy"></i>
-        <span>Arène</span>
-      </a>
-      {% endif %}
-    </div>
   </a>
 </div>
 {% endif %}
@@ -176,6 +140,7 @@
         <h6 class="m-0 font-weight-bold text-primary">Actions Rapides</h6>
       </div>
       <div class="card-body pb-2">
+        <!-- Actions globales -->
         <div class="quick-grid">
 
           <a href="{% url 'PokemonOverView' %}" class="quick-card quick-card--blue">
@@ -244,8 +209,71 @@
           {% endif %}
 
         </div>
+
+        <!-- Actions de la zone actuelle -->
+        {% if current_zone %}
+        <div class="quick-zone-divider">
+          <span class="quick-zone-divider__line"></span>
+          <span class="quick-zone-divider__label">
+            <i class="fas fa-map-marker-alt mr-1"></i>{{ current_zone.name }}
+            <span class="quick-zone-divider__type">— {{ current_zone.get_zone_type_display }}</span>
+          </span>
+          <span class="quick-zone-divider__line"></span>
+        </div>
+
+        <div class="quick-grid">
+
+        <div class="quick-grid">
+
+
+          <!-- Rencontre sauvage (zones non-sûres sans étages) -->
+          {% if not current_zone.is_safe_zone and not current_zone.has_floors %}
+          <a href="{% url 'wild_encounter' current_zone.id %}?type=grass" class="quick-card quick-card--zone">
+            <div class="quick-card__img">
+              <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}" alt="Chercher" onerror="this.outerHTML='<i class=\'fas fa-leaf\'></i>'">
+            </div>
+            <div class="quick-card__label">Explorer</div>
+          </a>
+          {% endif %}
+
+          <!-- Centre Pokémon si la zone en a un -->
+          {% if current_zone.has_pokemon_center %}
+          <a href="{% if pokemon_center %}{% url 'PokemonCenterDetailView' pokemon_center.id %}{% else %}{% url 'PokemonCenterListView' %}{% endif %}"
+             class="quick-card quick-card--zone {% if team_needs_healing %}quick-card--danger quick-card--pulse{% endif %}">
+            <div class="quick-card__img">
+              <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}" alt="Centre" onerror="this.outerHTML='<i class=\'fas fa-hospital\'></i>'">
+            </div>
+            <div class="quick-card__label">{% if team_needs_healing %}Soigner !{% else %}Centre{% endif %}</div>
+          </a>
+          {% endif %}
+
+          <!-- Boutique locale si la zone en a une -->
+          {% if current_zone.has_shop %}
+          <a href="{% if zone_shop %}{% url 'ShopDetailView' zone_shop.id %}{% else %}{% url 'ShopListView' %}{% endif %}"
+             class="quick-card quick-card--zone">
+            <div class="quick-card__img">
+              <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}" alt="Boutique" onerror="this.outerHTML='<i class=\'fas fa-store\'></i>'">
+            </div>
+            <div class="quick-card__label">Boutique</div>
+          </a>
+          {% endif %}
+
+          <!-- Arène si présente dans la zone -->
+          {% if gym_leader %}
+          <a href="{% url 'battle_challenge_gym' gym_leader.id %}" class="quick-card quick-card--zone">
+            <div class="quick-card__img">
+              <i class="fas fa-trophy"></i>
+            </div>
+            <div class="quick-card__label">Arène</div>
+          </a>
+          {% endif %}
+
+        </div>
+        {% endif %}{# /current_zone #}
+
       </div>
     </div>
+  </div>
   </div>
 </div>
 
