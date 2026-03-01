@@ -40,7 +40,7 @@
             <span class="move-value d-flex align-items-center" style="gap:8px;">
               <img src="{% static 'img/movesTypesSprites/' %}move-{{ move.category }}.png"
                    alt="{{ move.category }}"
-                   style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;">
+                   style="width:28px;height:28px;object-fit:contain;">
               <strong>{{ move.get_category_display }}</strong>
             </span>
           </div>
@@ -184,7 +184,7 @@
              title="{{ lm.pokemon.name }} — Niv. {{ lm.level_learned }}">
             <img src="{% static 'img/sprites_gen5/normal/' %}{{ lm.pokemon.name|lowerPokemonFileNames }}.png"
                  alt="{{ lm.pokemon.name }}"
-                 style="width:32px;height:32px;object-fit:contain;image-rendering:pixelated;"
+                 style="width:32px;height:32px;object-fit:contain;"
                  onerror="this.style.display='none'">
             <span>{{ lm.pokemon.name }}</span>
             <small class="learner-lv">Niv.{{ lm.level_learned }}</small>

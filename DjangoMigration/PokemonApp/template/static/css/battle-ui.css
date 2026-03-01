@@ -350,7 +350,6 @@
 .evo-sprite-wrap { position: relative; display: flex; justify-content: center; align-items: center; }
 .evo-sprite {
   width: 180px; height: 180px; object-fit: contain;
-  image-rendering: pixelated;
   filter: drop-shadow(0 0 12px rgba(255,215,0,.5));
 }
 /* Rotation 3D de la silhouette (effet morph des jeux) —
@@ -467,7 +466,6 @@
   width: 40px;
   height: 40px;
   object-fit: contain;
-  image-rendering: pixelated;
 }
 
 .item-info {
