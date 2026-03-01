@@ -1,0 +1,19 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   center-list.css  –  Liste des Centres Pokémon
+   Note : .pulse-animation, @keyframes pulse, .bg-gradient-danger dans components.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+.center-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.center-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.2) !important;
+  border-color: #e74c3c;
+}
+.center-card-greyed {
+  opacity: 0.6;
+  border: 2px dashed #bbb;
+  cursor: not-allowed;
+}

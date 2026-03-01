@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/center-list.css' %}" rel="stylesheet" />
+{% endblock css %}
 
 {% block title %}
 <title>Centres Pokémon - Pokémon Gen 1</title>
@@ -14,10 +18,10 @@
         style="width: 40px; height: 40px; object-fit:contain; vertical-align:middle;"> Centres Pokémon
   </h1>
   <div>
-    <span class="badge badge-info p-2">
+    <span class="badge bg-info p-2">
       <i class="fas fa-heartbeat"></i> {{ total_visits }} visites
     </span>
-    <span class="badge badge-success p-2">
+    <span class="badge bg-success p-2">
       <i class="fas fa-star"></i> {{ total_pokemon_healed }} Pokémon soignés
     </span>
   </div>
@@ -26,7 +30,7 @@
 {% if current_zone %}
 <div class="alert alert-info border-left-info mb-4">
   <div class="d-flex align-items-center">
-    <i class="fas fa-map-marker-alt fa-2x mr-3 text-info"></i>
+    <i class="fas fa-map-marker-alt fa-2x me-3 text-info"></i>
     <div>
       <strong>Vous êtes à : {{ current_zone.name }}</strong>
       <p class="mb-0 mt-1 text-muted" style="font-size:.9rem;">
@@ -48,11 +52,11 @@
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0"><i class="fas fa-plus-circle"></i> {{ center.name }}</h5>
           {% if not is_local %}
-          <span class="badge badge-light text-secondary"><i class="fas fa-map-marker-alt"></i> Autre ville</span>
+          <span class="badge bg-light text-secondary"><i class="fas fa-map-marker-alt"></i> Autre ville</span>
           {% elif center.is_available %}
-          <span class="badge badge-success"><i class="fas fa-check"></i> Ouvert</span>
+          <span class="badge bg-success"><i class="fas fa-check"></i> Ouvert</span>
           {% else %}
-          <span class="badge badge-secondary"><i class="fas fa-lock"></i> Fermé</span>
+          <span class="badge bg-secondary"><i class="fas fa-lock"></i> Fermé</span>
           {% endif %}
         </div>
       </div>
@@ -67,17 +71,17 @@
 
         <div class="mb-3">
           <div class="d-flex align-items-center mb-2">
-            <i class="fas fa-map-marker-alt {% if is_local %}text-danger{% else %}text-muted{% endif %} mr-2"></i>
+            <i class="fas fa-map-marker-alt {% if is_local %}text-danger{% else %}text-muted{% endif %} me-2"></i>
             <strong>{{ center.location }}</strong>
           </div>
         </div>
 
         <div class="mb-3 p-3 bg-light rounded">
           <div class="d-flex align-items-center mb-2">
-            <i class="fas fa-user-nurse {% if is_local %}text-danger{% else %}text-muted{% endif %} mr-2"></i>
+            <i class="fas fa-user-nurse {% if is_local %}text-danger{% else %}text-muted{% endif %} me-2"></i>
             <strong>{{ center.nurse_name }}</strong>
           </div>
-          <small class="text-muted font-italic">"{{ center.nurse_greeting|truncatewords:15 }}"</small>
+          <small class="text-muted fst-italic">"{{ center.nurse_greeting|truncatewords:15 }}"</small>
         </div>
 
         <div class="row text-center mb-3">
@@ -97,17 +101,17 @@
 
         {% if not is_local %}
         <div class="alert alert-secondary py-2 text-center mb-0" style="font-size:.85rem;">
-          <i class="fas fa-map-marker-alt mr-1"></i>
+          <i class="fas fa-map-marker-alt me-1"></i>
           Voyagez à <strong>{{ center.location }}</strong> pour accéder à ce centre.
         </div>
         {% else %}
         <div>
           <h6 class="border-bottom pb-2">Services disponibles</h6>
           <ul class="list-unstyled mb-0">
-            <li class="mb-1"><i class="fas fa-check text-success mr-2"></i>Soin complet des Pokémon</li>
-            <li class="mb-1"><i class="fas fa-check text-success mr-2"></i>Restauration des PP</li>
-            <li class="mb-1"><i class="fas fa-check text-success mr-2"></i>Guérison des statuts</li>
-            <li class="mb-1"><i class="fas fa-check text-success mr-2"></i>Accès au PC</li>
+            <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Soin complet des Pokémon</li>
+            <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Restauration des PP</li>
+            <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Guérison des statuts</li>
+            <li class="mb-1"><i class="fas fa-check text-success me-2"></i>Accès au PC</li>
           </ul>
         </div>
         {% endif %}
@@ -191,30 +195,6 @@
 
 {% block js %}
 {{ block.super }}
-<style>
-.center-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
-  border: 2px solid transparent;
-}
-.center-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
-  border-color: #e74c3c;
-}
-.center-card-greyed {
-  opacity: 0.6;
-  border: 2px dashed #bbb;
-  cursor: not-allowed;
-}
-.bg-gradient-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
-.border-left-info { border-left: 4px solid #17a2b8; }
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
-}
-.pulse-animation { animation: pulse 2s infinite ease-in-out; }
-</style>
 <script>
 $(document).ready(function() {
   $('.center-card').on('click', function(e) {

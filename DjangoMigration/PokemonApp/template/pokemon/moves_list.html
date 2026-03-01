@@ -5,49 +5,115 @@
 
 {% block title %}<title>Capacités - Pokémon Gen 1</title>{% endblock %}
 
+{% block css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/move-list.css' %}">
+{% endblock css %}
+
 {% block content %}
-<h1 class="h3 mb-4"><i class="fas fa-bolt"></i> Liste des Capacités</h1>
+
+<!-- Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0" style="color:#333;">
+    <i class="fas fa-bolt" style="color:#f7d02c;"></i> Capacités
+  </h1>
+  <span class="result-count">
+    <i class="fas fa-database me-1 text-muted"></i>
+    {{ pageObjects.paginator.count }} capacité{% if pageObjects.paginator.count != 1 %}s{% endif %}
+  </span>
+</div>
 
 <!-- Filters -->
 <div class="card shadow mb-4">
   <div class="card-body">
-    <form method="GET" class="form-inline flex-wrap" style="gap:8px;">
-      <input type="text" class="form-control mr-2 mb-1" name="searchQuery"
-             placeholder="Rechercher..." value="{{ searchQuery }}">
-      <select class="form-control mr-2 mb-1" name="typeFilter" onchange="this.form.submit()">
-        <option value="">Tous les types</option>
-        {% for type in types %}
-        <option value="{{ type.name }}" {% if typeFilter == type.name %}selected{% endif %}>{{ type.name }}</option>
-        {% endfor %}
-      </select>
-      <select class="form-control mr-2 mb-1" name="categoryFilter" onchange="this.form.submit()">
-        <option value="">Toutes catégories</option>
-        <option value="physical" {% if categoryFilter == 'physical' %}selected{% endif %}>
-          Physique
-        </option>
-        <option value="special" {% if categoryFilter == 'special' %}selected{% endif %}>
-          Spécial
-        </option>
-        <option value="status" {% if categoryFilter == 'status' %}selected{% endif %}>
-          Statut
-        </option>
-      </select>
-      <button class="btn btn-primary mb-1" type="submit">
-        <i class="fas fa-search"></i>
-      </button>
-      {% if searchQuery or typeFilter or categoryFilter %}
-      <a href="{% url 'PokemonMoveOverView' %}" class="btn btn-secondary mb-1">
-        <i class="fas fa-times"></i> Réinitialiser
-      </a>
-      {% endif %}
+    <form method="GET" id="filterForm">
+      <div class="row g-2 align-items-center">
+
+        <!-- Search -->
+        <div class="col-md-4">
+          <div class="input-group">
+            <input type="text" class="form-control" name="searchQuery"
+                   placeholder="Rechercher une capacité..." value="{{ searchQuery }}">
+            <button class="btn btn-danger" type="submit">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Type -->
+        <div class="col-md-3">
+          <select class="form-select" name="typeFilter" onchange="this.form.submit()">
+            <option value="">Tous les types</option>
+            {% for type in types %}
+            <option value="{{ type.name }}" {% if typeFilter == type.name %}selected{% endif %}>
+              {{ type.name|capfirst }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Catégorie avec icônes sprite -->
+        <div class="col-md-3">
+          <div class="btn-group btn-group-sm w-100" role="group">
+            <a href="?searchQuery={{ searchQuery }}&typeFilter={{ typeFilter }}&categoryFilter="
+               class="btn {% if not categoryFilter %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+              Toutes
+            </a>
+            <a href="?searchQuery={{ searchQuery }}&typeFilter={{ typeFilter }}&categoryFilter=physical"
+               class="btn {% if categoryFilter == 'physical' %}btn-danger{% else %}btn-outline-danger{% endif %}"
+               title="Physique">
+              <img src="{% static 'img/movesTypesSprites/move-physical.png' %}" class="cat-btn-img" alt="Physique">
+            </a>
+            <a href="?searchQuery={{ searchQuery }}&typeFilter={{ typeFilter }}&categoryFilter=special"
+               class="btn {% if categoryFilter == 'special' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+               title="Spécial">
+              <img src="{% static 'img/movesTypesSprites/move-special.png' %}" class="cat-btn-img" alt="Spécial">
+            </a>
+            <a href="?searchQuery={{ searchQuery }}&typeFilter={{ typeFilter }}&categoryFilter=status"
+               class="btn {% if categoryFilter == 'status' %}btn-success{% else %}btn-outline-success{% endif %}"
+               title="Statut">
+              <img src="{% static 'img/movesTypesSprites/move-status.png' %}" class="cat-btn-img" alt="Statut">
+            </a>
+          </div>
+        </div>
+
+        <!-- Reset -->
+        <div class="col-md-2">
+          {% if searchQuery or typeFilter or categoryFilter %}
+          <a href="{% url 'PokemonMoveOverView' %}" class="btn btn-light w-100">
+            <i class="fas fa-times me-1"></i>Réinitialiser
+          </a>
+          {% endif %}
+        </div>
+
+      </div>
     </form>
   </div>
 </div>
 
 <!-- Table -->
 <div class="card shadow mb-4">
-  <div class="card-body">
-    {% optimized_render_table table 'table.html' pageObjects %}
+  <div class="card-header py-3 d-flex align-items-center justify-content-between">
+    <h6 class="m-0 section-title">
+      <i class="fas fa-list me-1"></i>Liste des capacités
+    </h6>
+    {% if typeFilter or categoryFilter %}
+    <div class="d-flex align-items-center gap-2">
+      {% if typeFilter %}
+      <span class="badge badge-type-{{ typeFilter|lower }} badge-type-pill">{{ typeFilter|capfirst }}</span>
+      {% endif %}
+      {% if categoryFilter %}
+      <img src="{% static 'img/movesTypesSprites/move-' %}{{ categoryFilter }}.png"
+           style="width:22px;height:22px;object-fit:contain;" title="{{ categoryFilter }}">
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive moves-table">
+      {% optimized_render_table table 'table.html' pageObjects %}
+    </div>
   </div>
 </div>
-{% endblock %}
+
+{% endblock content %}

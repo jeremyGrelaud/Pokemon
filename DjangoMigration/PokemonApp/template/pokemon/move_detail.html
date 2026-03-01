@@ -1,139 +1,157 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/move-detail.css' %}" rel="stylesheet" />
+{% endblock css %}
 {% load custom_filters %}
 
 {% block title %}<title>{{ move.name }} — Capacité</title>{% endblock %}
 
 {% block content %}
 
-{# ─── En-tête ─────────────────────────────────────────────────────────────── #}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-  <h1 class="h3 mb-0 text-gray-800">
-    <i class="fas fa-bolt text-warning"></i> {{ move.name }}
-  </h1>
+{# ─── Breadcrumb + bouton retour ──────────────────────────────────────────── #}
+<div class="d-flex align-items-center justify-content-between mb-3 move-breadcrumb">
+  <div>
+    <a href="{% url 'PokemonMoveOverView' %}"><i class="fas fa-bolt"></i> Capacités</a>
+    <span>›</span>
+    <strong>{{ move.name }}</strong>
+  </div>
   <a href="{% url 'PokemonMoveOverView' %}" class="btn btn-sm btn-outline-secondary">
-    <i class="fas fa-arrow-left"></i> Retour aux capacités
+    <i class="fas fa-arrow-left me-1"></i>Retour à la liste
   </a>
 </div>
 
-<div class="row">
+<div class="row g-4">
 
   {# ─── Carte principale ──────────────────────────────────────────────────── #}
-  <div class="col-lg-5 mb-4">
+  <div class="col-lg-5">
     <div class="card shadow move-main-card h-100">
       <div class="card-body p-0">
 
         {# Bandeau coloré selon le type #}
         <div class="move-banner move-banner-type-{{ move.type.name|lower }} d-flex align-items-center justify-content-between px-4 py-3">
-          <span class="move-banner-name">{{ move.name }}</span>
+          <div>
+            <div class="move-banner-name">{{ move.name }}</div>
+            <small style="opacity:.75;font-size:.78rem;letter-spacing:.3px;">
+              {{ move.get_category_display }} — {{ move.type.name|capfirst }}
+            </small>
+          </div>
           <span class="badge badge-type-{{ move.type.name|lower }} move-banner-badge">
             {{ move.type.name|upper }}
           </span>
         </div>
 
-        {# Corps de la carte #}
+        {# Corps #}
         <div class="px-4 py-3">
 
           {# Catégorie #}
-          <div class="move-info-row mb-3">
+          <div class="move-info-row border-bottom pb-2 mb-2">
             <span class="move-label">Catégorie</span>
             <span class="move-value d-flex align-items-center" style="gap:8px;">
               <img src="{% static 'img/movesTypesSprites/' %}move-{{ move.category }}.png"
                    alt="{{ move.category }}"
-                   style="width:28px;height:28px;object-fit:contain;image-rendering:pixelated;">
+                   style="width:28px;height:28px;object-fit:contain;">
               <strong>{{ move.get_category_display }}</strong>
             </span>
           </div>
 
-          <hr class="my-2">
-
           {# Bulles de stats #}
-          <div class="row text-center my-3">
+          <div class="row text-center my-4">
             <div class="col-4">
               <div class="stat-bubble {% if move.power and move.power > 0 %}stat-bubble-power{% else %}stat-bubble-none{% endif %}">
                 {% if move.power and move.power > 0 %}{{ move.power }}{% else %}—{% endif %}
               </div>
-              <small class="text-muted d-block mt-1">Puissance</small>
+              <small class="text-muted d-block mt-2 fw-semibold" style="font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;">Puissance</small>
             </div>
             <div class="col-4">
               <div class="stat-bubble stat-bubble-acc">
-                {% if move.accuracy %}{{ move.accuracy }}%{% else %}∞{% endif %}
+                {% if move.accuracy %}{{ move.accuracy }}{% else %}∞{% endif %}
               </div>
-              <small class="text-muted d-block mt-1">Précision</small>
+              <small class="text-muted d-block mt-2 fw-semibold" style="font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;">
+                Précision{% if move.accuracy %}%{% endif %}
+              </small>
             </div>
             <div class="col-4">
               <div class="stat-bubble stat-bubble-pp">{{ move.pp }}</div>
-              <small class="text-muted d-block mt-1">PP</small>
+              <small class="text-muted d-block mt-2 fw-semibold" style="font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;">PP</small>
             </div>
           </div>
 
-          <hr class="my-2">
+          {# Infos complémentaires #}
+          <div class="border-top pt-3">
 
-          {# Priorité #}
-          {% if move.priority != 0 %}
-          <div class="move-info-row mt-2">
-            <span class="move-label">Priorité</span>
-            <span class="move-value">
-              {% if move.priority > 0 %}
-                <span class="badge badge-success font-weight-bold" style="font-size:.85rem;">+{{ move.priority }}</span>
-              {% else %}
-                <span class="badge badge-danger font-weight-bold" style="font-size:.85rem;">{{ move.priority }}</span>
-              {% endif %}
-            </span>
+            {% if move.priority != 0 %}
+            <div class="move-info-row">
+              <span class="move-label">Priorité</span>
+              <span class="move-value">
+                {% if move.priority > 0 %}
+                  <span class="badge bg-success fw-bold px-3">+{{ move.priority }}</span>
+                {% else %}
+                  <span class="badge bg-danger fw-bold px-3">{{ move.priority }}</span>
+                {% endif %}
+              </span>
+            </div>
+            {% endif %}
+
+            {% if move.max_pp and move.max_pp != move.pp %}
+            <div class="move-info-row">
+              <span class="move-label">PP Maximum</span>
+              <span class="move-value fw-bold">{{ move.max_pp }}</span>
+            </div>
+            {% endif %}
+
+            {# Nombre d'apprenants #}
+            <div class="move-info-row">
+              <span class="move-label">Pokémon apprenants</span>
+              <span class="move-value">
+                <span class="badge bg-secondary text-white px-3">{{ learners|length }}</span>
+              </span>
+            </div>
+
           </div>
-          {% endif %}
-
-          {# PP Max si différent #}
-          {% if move.max_pp != move.pp %}
-          <div class="move-info-row mt-2">
-            <span class="move-label">PP Maximum</span>
-            <span class="move-value font-weight-bold">{{ move.max_pp }}</span>
-          </div>
-          {% endif %}
-
         </div>
       </div>
     </div>
   </div>
 
-  {# ─── Effets & détails ──────────────────────────────────────────────────── #}
-  <div class="col-lg-7 mb-4">
+  {# ─── Colonne droite ────────────────────────────────────────────────────── #}
+  <div class="col-lg-7 d-flex flex-column gap-3">
 
-    {# Effets #}
+    {# Effets & statut #}
     {% if move.effect or move.inflicts_status or move.effect_chance %}
-    <div class="card shadow mb-3">
+    <div class="card shadow">
       <div class="card-header py-2">
-        <h6 class="mb-0 font-weight-bold text-secondary">
-          <i class="fas fa-magic"></i> Effets
+        <h6 class="mb-0 fw-bold text-secondary">
+          <i class="fas fa-magic me-1"></i> Effets
         </h6>
       </div>
       <div class="card-body">
 
         {% if move.inflicts_status %}
-        <div class="d-flex align-items-center mb-2" style="gap:10px;">
+        <div class="d-flex align-items-center gap-3 mb-3">
           <span class="move-label">Statut infligé</span>
-          <span class="badge badge-danger px-3 py-1" style="font-size:.85rem;">
-            {{ move.inflicts_status|upper }}
+          <span class="badge bg-danger px-3 py-2" style="font-size:.82rem;border-radius:20px;">
+            <i class="fas fa-skull-crossbones me-1"></i>{{ move.inflicts_status|upper }}
           </span>
           {% if move.effect_chance %}
-          <span class="text-muted" style="font-size:.85rem;">({{ move.effect_chance }}% de chance)</span>
+          <span class="text-muted small">({{ move.effect_chance }}% de chance)</span>
           {% endif %}
         </div>
         {% endif %}
 
         {% if move.effect %}
-        <div class="effect-box {% if move.inflicts_status %}mt-2{% endif %}">
-          <i class="fas fa-info-circle text-info mr-2"></i>
-          {{ move.effect }}
+        <div class="effect-box {% if move.inflicts_status %}mt-1{% endif %}">
+          <i class="fas fa-info-circle text-info me-2"></i>{{ move.effect }}
         </div>
         {% endif %}
 
         {% if move.effect_chance and not move.inflicts_status %}
-        <div class="move-info-row mt-2">
+        <div class="move-info-row mt-3">
           <span class="move-label">Chance d'effet</span>
-          <span class="move-value d-flex align-items-center" style="gap:8px;">
-            <div style="width:100px;height:8px;background:#e9ecef;border-radius:4px;overflow:hidden;">
-              <div style="width:{{ move.effect_chance }}%;height:100%;background:#17a2b8;border-radius:4px;"></div>
+          <span class="d-flex align-items-center gap-2">
+            <div class="effect-chance-bar">
+              <div class="effect-chance-fill" style="width:{{ move.effect_chance }}%;"></div>
             </div>
             <strong>{{ move.effect_chance }}%</strong>
           </span>
@@ -146,20 +164,24 @@
 
     {# Modificateurs de stats #}
     {% if move.stat_changes %}
-    <div class="card shadow mb-3">
+    <div class="card shadow">
       <div class="card-header py-2">
-        <h6 class="mb-0 font-weight-bold text-secondary">
-          <i class="fas fa-chart-line"></i> Modificateurs de stats
+        <h6 class="mb-0 fw-bold text-secondary">
+          <i class="fas fa-chart-line me-1"></i> Modificateurs de stats
         </h6>
       </div>
       <div class="card-body py-2">
         {% for stat, val in move.stat_changes.items %}
-        <div class="d-flex align-items-center justify-content-between py-1 {% if not forloop.last %}border-bottom{% endif %}">
-          <span class="text-capitalize">{{ stat|title }}</span>
+        <div class="d-flex align-items-center justify-content-between py-2 {% if not forloop.last %}border-bottom{% endif %}">
+          <span class="text-capitalize fw-medium">{{ stat|title }}</span>
           {% if val > 0 %}
-          <span class="badge badge-success px-3">+{{ val }}</span>
+          <span class="badge bg-success px-3 py-2" style="border-radius:20px;">
+            <i class="fas fa-arrow-up me-1"></i>+{{ val }}
+          </span>
           {% else %}
-          <span class="badge badge-danger px-3">{{ val }}</span>
+          <span class="badge bg-danger px-3 py-2" style="border-radius:20px;">
+            <i class="fas fa-arrow-down me-1"></i>{{ val }}
+          </span>
           {% endif %}
         </div>
         {% endfor %}
@@ -167,174 +189,53 @@
     </div>
     {% endif %}
 
-    {# Pokémon pouvant apprendre ce move #}
-    <div class="card shadow">
+    {# Pokémon apprenants #}
+    <div class="card shadow flex-grow-1">
       <div class="card-header py-2 d-flex align-items-center justify-content-between">
-        <h6 class="mb-0 font-weight-bold text-secondary">
-          <i class="fas fa-list text-primary"></i> Pokémon pouvant apprendre cette capacité
+        <h6 class="mb-0 fw-bold text-secondary">
+          <i class="fas fa-list me-1"></i> Pokémon apprenant cette capacité
         </h6>
-        <span class="badge badge-primary">{{ learners|length }}</span>
+        <span class="badge bg-secondary text-white">{{ learners|length }}</span>
       </div>
-      <div class="card-body py-3">
+      <div class="card-body">
         {% if learners %}
+
+        {# Tri : niveau 1 (départ) d'abord, puis par niveau #}
         <div class="d-flex flex-wrap" style="gap:6px;">
           {% for lm in learners %}
           <a href="{% url 'PokemonDetailView' lm.pokemon.id %}"
              class="learner-chip badge-type-{{ lm.pokemon.primary_type.name|lower }}"
-             title="{{ lm.pokemon.name }} — Niv. {{ lm.level_learned }}">
+             title="{{ lm.pokemon.name }} — appris au niveau {{ lm.level_learned }}">
             <img src="{% static 'img/sprites_gen5/normal/' %}{{ lm.pokemon.name|lowerPokemonFileNames }}.png"
                  alt="{{ lm.pokemon.name }}"
-                 style="width:32px;height:32px;object-fit:contain;image-rendering:pixelated;"
+                 style="width:30px;height:30px;object-fit:contain;"
                  onerror="this.style.display='none'">
             <span>{{ lm.pokemon.name }}</span>
             <small class="learner-lv">Niv.{{ lm.level_learned }}</small>
           </a>
           {% endfor %}
         </div>
+
+        {# Résumé rapide #}
+        <div class="mt-3 pt-2 border-top d-flex gap-3" style="font-size:.78rem;color:#aaa;">
+          <span><i class="fas fa-layer-group me-1"></i>{{ learners|length }} Pokémon</span>
+          {% with first=learners.0 %}
+          {% if first %}
+          <span><i class="fas fa-sort-numeric-up me-1"></i>Niveau min : {{ first.level_learned }}</span>
+          {% endif %}
+          {% endwith %}
+        </div>
+
         {% else %}
-        <p class="text-muted text-center small mb-0">Aucun Pokémon n'apprend cette capacité.</p>
+        <div class="text-center py-4">
+          <i class="fas fa-ghost fa-2x text-muted mb-2 d-block"></i>
+          <p class="text-muted small mb-0">Aucun Pokémon n'apprend cette capacité.</p>
+        </div>
         {% endif %}
       </div>
     </div>
 
-  </div>
-</div>
+  </div>{# /col-lg-7 #}
+</div>{# /row #}
 
 {% endblock content %}
-
-{% block js %}
-{{ block.super }}
-<style>
-/* ── Carte principale ─────────────────────────────────────────────────────── */
-.move-main-card {
-  border-radius: 12px;
-  overflow: hidden;
-  border: none;
-}
-
-/* ── Bandeaux colorés par type ───────────────────────────────────────────── */
-.move-banner {
-  min-height: 76px;
-  color: #fff;
-}
-.move-banner-type-normal   { background: linear-gradient(135deg, #7a7960, #a8a77a); }
-.move-banner-type-fire     { background: linear-gradient(135deg, #b55a18, #ee8130); }
-.move-banner-type-water    { background: linear-gradient(135deg, #3a5bb3, #6390f0); }
-.move-banner-type-electric { background: linear-gradient(135deg, #b89400, #f7d02c); color:#333 !important; }
-.move-banner-type-grass    { background: linear-gradient(135deg, #4e8a2a, #7ac74c); }
-.move-banner-type-ice      { background: linear-gradient(135deg, #5faeac, #96d9d6); color:#333 !important; }
-.move-banner-type-fighting { background: linear-gradient(135deg, #8c1e1a, #c22e28); }
-.move-banner-type-poison   { background: linear-gradient(135deg, #6b246b, #a33ea1); }
-.move-banner-type-ground   { background: linear-gradient(135deg, #b8963a, #e2bf65); color:#333 !important; }
-.move-banner-type-flying   { background: linear-gradient(135deg, #6b57c4, #a98ff3); }
-.move-banner-type-psychic  { background: linear-gradient(135deg, #b52050, #f95587); }
-.move-banner-type-bug      { background: linear-gradient(135deg, #6a7510, #a6b91a); }
-.move-banner-type-rock     { background: linear-gradient(135deg, #7a6b18, #b6a136); }
-.move-banner-type-ghost    { background: linear-gradient(135deg, #3e2860, #735797); }
-.move-banner-type-dragon   { background: linear-gradient(135deg, #3a1ab8, #6f35fc); }
-.move-banner-type-dark     { background: linear-gradient(135deg, #3a2a1c, #705746); }
-.move-banner-type-steel    { background: linear-gradient(135deg, #7a7a9a, #b7b7ce); color:#333 !important; }
-.move-banner-type-fairy    { background: linear-gradient(135deg, #a04070, #d685ad); }
-
-.move-banner-name {
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: .5px;
-  text-shadow: 0 1px 3px rgba(0,0,0,.25);
-}
-.move-banner-badge {
-  font-size: .8rem !important;
-  padding: 4px 12px !important;
-  border: 2px solid rgba(255,255,255,.4);
-}
-
-/* ── Lignes infos ─────────────────────────────────────────────────────────── */
-.move-info-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.move-label {
-  font-size: .78rem;
-  text-transform: uppercase;
-  letter-spacing: .6px;
-  color: #aaa;
-  font-weight: 600;
-}
-.move-value { font-size: .95rem; }
-
-/* ── Bulles de statistiques ───────────────────────────────────────────────── */
-.stat-bubble {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #fff;
-  box-shadow: 0 3px 10px rgba(0,0,0,.2);
-}
-.stat-bubble-power { background: linear-gradient(135deg, #c0392b, #e74c3c); }
-.stat-bubble-none  { background: linear-gradient(135deg, #7f8c8d, #95a5a6); }
-.stat-bubble-acc   { background: linear-gradient(135deg, #27ae60, #2ecc71); }
-.stat-bubble-pp    { background: linear-gradient(135deg, #2980b9, #3498db); }
-
-/* ── Boîte d'effet ────────────────────────────────────────────────────────── */
-.effect-box {
-  background: #f8f9fa;
-  border-left: 4px solid #17a2b8;
-  border-radius: 0 6px 6px 0;
-  padding: 10px 14px;
-  font-size: .9rem;
-  color: #444;
-  line-height: 1.6;
-}
-
-/* ── Chips Pokémon apprenants ─────────────────────────────────────────────── */
-.learner-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 9px 3px 4px;
-  border-radius: 20px;
-  color: #fff !important;
-  font-size: .78rem;
-  font-weight: 600;
-  text-decoration: none !important;
-  transition: transform .12s, box-shadow .12s;
-}
-.learner-chip:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0,0,0,.22);
-}
-.learner-lv {
-  font-size: .65rem;
-  opacity: .8;
-  font-weight: 400;
-  margin-left: 2px;
-}
-
-/* Couleurs par type pour les chips */
-.badge-type-normal.learner-chip   { background: #a8a77a; }
-.badge-type-fire.learner-chip     { background: #ee8130; }
-.badge-type-water.learner-chip    { background: #6390f0; }
-.badge-type-electric.learner-chip { background: #b89400; }
-.badge-type-grass.learner-chip    { background: #7ac74c; }
-.badge-type-ice.learner-chip      { background: #5faeac; color:#333 !important; }
-.badge-type-fighting.learner-chip { background: #c22e28; }
-.badge-type-poison.learner-chip   { background: #a33ea1; }
-.badge-type-ground.learner-chip   { background: #b8963a; }
-.badge-type-flying.learner-chip   { background: #a98ff3; }
-.badge-type-psychic.learner-chip  { background: #f95587; }
-.badge-type-bug.learner-chip      { background: #7a8810; }
-.badge-type-rock.learner-chip     { background: #b6a136; }
-.badge-type-ghost.learner-chip    { background: #735797; }
-.badge-type-dragon.learner-chip   { background: #6f35fc; }
-.badge-type-dark.learner-chip     { background: #705746; }
-.badge-type-steel.learner-chip    { background: #9696b0; }
-.badge-type-fairy.learner-chip    { background: #d685ad; }
-</style>
-{% endblock js %}

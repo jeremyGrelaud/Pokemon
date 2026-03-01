@@ -18,7 +18,7 @@
             <i class="fas fa-folder"></i> Slot {{ save_slot.slot }}
           </h5>
           {% if save_slot.save.is_active %}
-            <span class="badge badge-success">
+            <span class="badge bg-success">
               <i class="fas fa-check"></i> Active
             </span>
           {% endif %}
@@ -93,30 +93,8 @@
   </div>
 </div>
 
-<style>
-.save-slot {
-  transition: all 0.3s ease;
-  height: 100%;
-  min-height: 400px;
-}
-
-.save-slot:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-}
-
-.save-empty {
-  border: 2px dashed #ccc;
-}
-
-.save-exists {
-  border: 2px solid #28a745;
-}
-
-.save-info p {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-</style>
+{% block css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/save-select.css' %}">
+{% endblock css %}
 {% endblock %}

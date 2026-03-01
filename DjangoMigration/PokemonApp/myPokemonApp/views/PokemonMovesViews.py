@@ -25,25 +25,41 @@ class PokemonMoveOverView(GenericOverview):
     
     class MovesTable(tables.Table):
         name = tables.TemplateColumn(
-            '<a href="{% url \'PokemonMoveDetailView\' record.id %}">{{ record.name }}</a>'
+            '<a href="{% url \'PokemonMoveDetailView\' record.id %}" class="move-link">{{ record.name }}</a>',
+            verbose_name="Nom"
         )
         type = tables.TemplateColumn(
-            '<span class="badge badge-type-{{record.type.name}}">{{record.type.name}}</span>'
+            '<span class="badge badge-type-{{record.type.name|lower}} badge-type-pill">{{record.type.name|capfirst}}</span>',
+            verbose_name="Type"
         )
         category = tables.TemplateColumn(
+            '<div class="d-flex align-items-center" style="gap:6px;">'
             '<img src="/static/img/movesTypesSprites/move-{{ record.category }}.png" '
-            'alt="{{ record.category }}" title="{{ record.get_category_display }}" '
-            'style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
-            '{{ record.get_category_display }}'
+            'alt="{{ record.category }}" '
+            'style="width:24px;height:24px;object-fit:contain;">'
+            '<span>{{ record.get_category_display }}</span>'
+            '</div>',
+            verbose_name="Catégorie",
+            orderable=False
         )
-        power = tables.Column()
-        accuracy = tables.Column()
-        pp = tables.Column()
-        
+        power = tables.Column(verbose_name="Puissance")
+        accuracy = tables.Column(verbose_name="Précision")
+        pp = tables.Column(verbose_name="PP")
+
+        def render_power(self, value):
+            if not value or value == 0:
+                return "—"
+            return value
+
+        def render_accuracy(self, value):
+            if not value:
+                return "∞"
+            return f"{value}%"
+
         class Meta:
             model = PokemonMove
             fields = ('name', 'type', 'category', 'power', 'accuracy', 'pp')
-            attrs = {'class': 'table table-striped table-hover'}
+            attrs = {'class': 'table table-striped table-hover moves-table'}
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

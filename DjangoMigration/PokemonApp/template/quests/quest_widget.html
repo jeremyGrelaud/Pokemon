@@ -2,10 +2,10 @@
 {# Widget quêtes actives — inclus dans le dashboard ou la sidebar carte #}
 <div class="card shadow mb-4" id="quest-widget">
   <div class="card-header py-2 d-flex align-items-center justify-content-between">
-    <h6 class="m-0 font-weight-bold text-warning">
+    <h6 class="m-0 fw-bold text-warning">
       <i class="fas fa-scroll"></i> Quêtes actives
       {% if active_quests %}
-      <span class="badge badge-warning ml-1" style="font-size:.65rem;">{{ active_quests|length }}</span>
+      <span class="badge bg-warning ms-1" style="font-size:.65rem;">{{ active_quests|length }}</span>
       {% endif %}
     </h6>
     <a href="{% url 'quest_log' %}" class="btn btn-xs btn-outline-warning" style="font-size:.7rem;padding:2px 8px;">
@@ -19,20 +19,20 @@
 
         <!-- Row: icon + title + type badge -->
         <div class="d-flex align-items-start">
-          <div class="quest-icon-wrap mr-2">
+          <div class="quest-icon-wrap me-2">
             <i class="fas {{ progress.quest.icon|default:'fa-scroll' }} quest-icon"></i>
           </div>
           <div class="flex-grow-1 min-w-0">
             <div class="d-flex align-items-center justify-content-between">
-              <span class="font-weight-bold quest-title">{{ progress.quest.title }}</span>
-              <span class="badge quest-type-badge quest-type-{{ progress.quest.quest_type }} ml-1">
+              <span class="fw-bold quest-title">{{ progress.quest.title }}</span>
+              <span class="badge quest-type-badge quest-type-{{ progress.quest.quest_type }} ms-1">
                 {{ progress.quest.get_quest_type_display }}
               </span>
             </div>
 
             {% if progress.quest.objective_text %}
             <div class="text-muted quest-objective">
-              <i class="fas fa-map-pin mr-1" style="font-size:.65rem;"></i>{{ progress.quest.objective_text }}
+              <i class="fas fa-map-pin me-1" style="font-size:.65rem;"></i>{{ progress.quest.objective_text }}
             </div>
             {% endif %}
 
@@ -48,54 +48,9 @@
       {% endfor %}
     {% else %}
       <p class="text-muted text-center small mb-0 py-2">
-        <i class="fas fa-check-circle text-success mr-1"></i>
+        <i class="fas fa-check-circle text-success me-1"></i>
         Aucune quête active.
       </p>
     {% endif %}
   </div>
 </div>
-
-<style>
-/* ── Quest item layout ──────────────────────────────────── */
-.quest-item        { font-size:.82rem; line-height:1.3; }
-.quest-title       { font-size:.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
-.quest-objective   { font-size:.73rem; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-/* ── Icon ───────────────────────────────────────────────── */
-.quest-icon-wrap {
-  width:22px; height:22px; flex-shrink:0;
-  background:#f6c23e22; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  margin-top:1px;
-}
-.quest-icon { font-size:.65rem; color:#f6c23e; }
-
-/* ── Type badge ─────────────────────────────────────────── */
-.quest-type-badge  { font-size:.58rem; padding:1px 5px; border-radius:3px; white-space:nowrap; flex-shrink:0; }
-.quest-type-main   { background:#4e73df22; color:#4e73df; }
-.quest-type-side   { background:#1cc88a22; color:#1cc88a; }
-.quest-type-rival  { background:#e74a3b22; color:#e74a3b; }
-.quest-type-hm     { background:#36b9cc22; color:#36b9cc; }
-
-/* ── Animated progress bar ──────────────────────────────── */
-@keyframes quest-shimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
-}
-.quest-progress-track {
-  height: 4px;
-  background: rgba(246,194,62,.2);
-  border-radius: 2px;
-  overflow: hidden;
-  position: relative;
-}
-.quest-progress-fill {
-  position: absolute;
-  top: 0; left: 0;
-  height: 100%;
-  width: 30%;
-  background: linear-gradient(90deg, transparent, #f6c23e, transparent);
-  border-radius: 2px;
-  animation: quest-shimmer 2s ease-in-out infinite;
-}
-</style>

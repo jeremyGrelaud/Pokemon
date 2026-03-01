@@ -15,35 +15,42 @@
   </ol>
 </nav>
 
-<!-- Gym Leader Header -->
+<!-- Gym Leader Header — couleurs adoucies -->
 <div class="row mb-4">
   <div class="col-12">
-    <div class="card shadow-lg border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-      <div class="card-body text-white">
+    <div class="card shadow border-0 gym-header-card">
+      <div class="card-body text-white py-4">
         <div class="row align-items-center">
           <div class="col-md-8">
-            <h1 class="display-4 mb-2">
-              <i class="fas fa-trophy"></i> {{ gym_leader.gym_name }}
+            <h1 class="mb-2 fw-bold">
+              <i class="fas fa-trophy me-2"></i>{{ gym_leader.gym_name }}
             </h1>
-            <h3 class="mb-3">{{ gym_leader.gym_city }}</h3>
-            <p class="lead mb-2">
-              <strong>Champion:</strong> {{ gym_leader.trainer.username }}
+            <h5 class="mb-3 text-white-50">{{ gym_leader.gym_city }}</h5>
+            <p class="mb-2">
+              <span class="text-white-50">Champion :</span>
+              <strong>{{ gym_leader.trainer.username }}</strong>
             </p>
             <p class="mb-2">
-              <strong>Spécialité:</strong> 
-              <span class="badge badge-type-{{ gym_leader.specialty_type.name }} p-2" style="font-size: 1.1rem;">
+              <span class="text-white-50">Spécialité :</span>
+              <span class="badge badge-type-{{ gym_leader.specialty_type.name }} px-2 py-1 ms-1">
                 {{ gym_leader.specialty_type.name|upper }}
               </span>
             </p>
             <p class="mb-0">
-              <strong>Récompense:</strong> Badge {{ gym_leader.badge_name }} (#{{ gym_leader.badge_order }})
+              <span class="text-white-50">Récompense :</span>
+              <span class="ms-1">Badge {{ gym_leader.badge_name }} (#{{ gym_leader.badge_order }})</span>
             </p>
           </div>
           <div class="col-md-4 text-center">
-            <div class="p-4">
-              <i class="fas fa-award fa-5x mb-3" style="color: #ffd700;"></i>
-              <h4>Badge {{ gym_leader.badge_order }}/8</h4>
+            <!-- Badge sprite -->
+            <img src="{% static 'img/badges_sprites/Kanto/' %}{{ gym_leader.badge_name|badge_sprite_path }}"
+                 alt="{{ gym_leader.badge_name }}"
+                 class="badge-sprite mb-2"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div style="display:none;">
+              <i class="fas fa-award fa-4x" style="color: #ffd700;"></i>
             </div>
+            <div class="text-white-50 small mt-1">Badge {{ gym_leader.badge_order }}/8</div>
           </div>
         </div>
       </div>
@@ -56,38 +63,44 @@
   <div class="col-lg-4 mb-4">
     <!-- Trainer Card -->
     <div class="card shadow mb-4">
-      <div class="card-header py-3 bg-gradient-primary text-white">
-        <h6 class="m-0 font-weight-bold">
-          <i class="fas fa-user"></i> Informations du Champion
+      <div class="card-header py-3 bg-primary text-white">
+        <h6 class="m-0 fw-bold">
+          <i class="fas fa-user me-2"></i>Informations du Champion
         </h6>
       </div>
       <div class="card-body">
         <div class="text-center mb-3">
-          <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}" 
+          <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}"
                alt="{{ gym_leader.trainer.username }}"
-               style="height: 160px;  object-fit: contain;"
+               style="height: 160px; object-fit: contain;"
                onerror="this.src='{% static 'img/pokeball.png' %}'">
         </div>
-        
-        <table class="table table-sm">
+
+        <table class="table table-sm table-borderless">
           <tr>
-            <td><strong>Nom:</strong></td>
-            <td>{{ gym_leader.trainer.username }}</td>
+            <td class="text-muted">Nom</td>
+            <td class="fw-semibold">{{ gym_leader.trainer.username }}</td>
           </tr>
           <tr>
-            <td><strong>Arène:</strong></td>
+            <td class="text-muted">Arène</td>
             <td>{{ gym_leader.gym_name }}</td>
           </tr>
           <tr>
-            <td><strong>Ville:</strong></td>
+            <td class="text-muted">Ville</td>
             <td>{{ gym_leader.gym_city }}</td>
           </tr>
           <tr>
-            <td><strong>Badge:</strong></td>
-            <td>{{ gym_leader.badge_name }}</td>
+            <td class="text-muted">Badge</td>
+            <td>
+              <img src="{% static 'img/badges_sprites/Kanto/' %}{{ gym_leader.badge_name|badge_sprite_path }}"
+                   alt="{{ gym_leader.badge_name }}"
+                   style="height:24px; width:24px; object-fit:contain; margin-right:6px;"
+                   onerror="this.style.display='none';">
+              {{ gym_leader.badge_name }}
+            </td>
           </tr>
           <tr>
-            <td><strong>Type:</strong></td>
+            <td class="text-muted">Type</td>
             <td>
               <span class="badge badge-type-{{ gym_leader.specialty_type.name }}">
                 {{ gym_leader.specialty_type.name }}
@@ -96,16 +109,16 @@
           </tr>
           {% if gym_leader.tm_reward %}
           <tr>
-            <td><strong>CT Récompense:</strong></td>
+            <td class="text-muted">CT</td>
             <td>{{ gym_leader.tm_reward.name }}</td>
           </tr>
           {% endif %}
         </table>
 
         {% if gym_leader.trainer.intro_text %}
-        <div class="mt-3 p-3 bg-light border-left border-primary">
-          <small class="text-muted">Message du champion:</small>
-          <p class="mb-0 mt-1"><em>"{{ gym_leader.trainer.intro_text }}"</em></p>
+        <div class="mt-3 p-3 bg-light rounded border-start border-3 border-primary">
+          <small class="text-muted">Message du champion :</small>
+          <p class="mb-0 mt-1 fst-italic">"{{ gym_leader.trainer.intro_text }}"</p>
         </div>
         {% endif %}
       </div>
@@ -115,10 +128,12 @@
     <div class="card shadow border-warning">
       <div class="card-body text-center">
         <h5 class="mb-3">Prêt à relever le défi ?</h5>
-        <a href="{% url 'battle_challenge_gym' gym_leader.id %}" 
-           class="btn btn-lg btn-warning btn-block">
-          <i class="fas fa-fist-raised"></i> Défier {{ gym_leader.trainer.username }}
-        </a>
+        <div class="d-grid">
+          <a href="{% url 'battle_challenge_gym' gym_leader.id %}"
+             class="btn btn-lg btn-warning">
+            <i class="fas fa-fist-raised me-2"></i>Défier {{ gym_leader.trainer.username }}
+          </a>
+        </div>
         <small class="text-muted d-block mt-2">
           Vous devez avoir {{ gym_leader.badge_order }} badge(s) pour combattre
         </small>
@@ -130,8 +145,8 @@
     <!-- Équipe du Champion -->
     <div class="card shadow mb-4">
       <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
-          <i class="fas fa-users"></i> Équipe du Champion ({{ team|length }} Pokémon)
+        <h6 class="m-0 fw-bold text-primary">
+          <i class="fas fa-users me-2"></i>Équipe du Champion ({{ team|length }} Pokémon)
         </h6>
       </div>
       <div class="card-body">
@@ -139,7 +154,7 @@
         <div class="row">
           {% for pokemon in team %}
           <div class="col-md-6 mb-4">
-            <div class="card pokemon-card h-100 border-primary">
+            <div class="card pokemon-card h-100 border border-primary-subtle">
               <div class="card-body">
                 <div class="row align-items-center">
                   <div class="col-4 text-center">
@@ -149,15 +164,15 @@
                          onerror="this.src='{% static 'img/pokeball.png' %}'">
                   </div>
                   <div class="col-8">
-                    <h5 class="mb-2">
+                    <h6 class="mb-1 fw-bold">
                       {{ pokemon.species.name }}
                       {% if pokemon.nickname %}
-                      <small class="text-muted">({{ pokemon.nickname }})</small>
+                      <small class="text-muted fw-normal">({{ pokemon.nickname }})</small>
                       {% endif %}
-                    </h5>
-                    <p class="mb-2">
-                      <span class="badge badge-danger">Niv. {{ pokemon.level }}</span>
-                      <span class="badge badge-type-{{ pokemon.species.primary_type.name }}">
+                    </h6>
+                    <div class="mb-2">
+                      <span class="badge bg-danger me-1">Niv. {{ pokemon.level }}</span>
+                      <span class="badge badge-type-{{ pokemon.species.primary_type.name }} me-1">
                         {{ pokemon.species.primary_type.name }}
                       </span>
                       {% if pokemon.species.secondary_type %}
@@ -165,34 +180,32 @@
                         {{ pokemon.species.secondary_type.name }}
                       </span>
                       {% endif %}
-                    </p>
-                    
+                    </div>
+
                     <!-- Mini Stats -->
-                    <div class="small">
-                      <div class="row text-center">
-                        <div class="col-4">
-                          <strong>{{ pokemon.max_hp }}</strong><br>
-                          <small class="text-muted">HP</small>
-                        </div>
-                        <div class="col-4">
-                          <strong>{{ pokemon.attack }}</strong><br>
-                          <small class="text-muted">ATK</small>
-                        </div>
-                        <div class="col-4">
-                          <strong>{{ pokemon.defense }}</strong><br>
-                          <small class="text-muted">DEF</small>
-                        </div>
+                    <div class="row text-center small">
+                      <div class="col-4">
+                        <div class="fw-bold">{{ pokemon.max_hp }}</div>
+                        <div class="text-muted" style="font-size:.7rem;">HP</div>
+                      </div>
+                      <div class="col-4">
+                        <div class="fw-bold">{{ pokemon.attack }}</div>
+                        <div class="text-muted" style="font-size:.7rem;">ATK</div>
+                      </div>
+                      <div class="col-4">
+                        <div class="fw-bold">{{ pokemon.defense }}</div>
+                        <div class="text-muted" style="font-size:.7rem;">DEF</div>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <!-- Capacités -->
-                <div class="mt-3">
-                  <small class="text-muted font-weight-bold">Capacités connues:</small>
+                <div class="mt-3 pt-2 border-top">
+                  <small class="text-muted fw-semibold">Capacités connues :</small>
                   <div class="mt-1">
                     {% for move_instance in pokemon.pokemonmoveinstance_set.all|slice:":4" %}
-                    <span class="badge badge-secondary mr-1 mb-1">
+                    <span class="badge bg-secondary me-1 mb-1">
                       {{ move_instance.move.name }}
                     </span>
                     {% empty %}
@@ -216,47 +229,58 @@
 
     <!-- Stratégie Recommandée -->
     <div class="card shadow">
-      <div class="card-header py-3 bg-info text-white">
-        <h6 class="m-0 font-weight-bold">
-          <i class="fas fa-lightbulb"></i> Conseils Stratégiques
+      <div class="card-header py-3 bg-info-subtle border-bottom border-info">
+        <h6 class="m-0 fw-bold text-info-emphasis">
+          <i class="fas fa-lightbulb me-2"></i>Conseils Stratégiques
         </h6>
       </div>
       <div class="card-body">
-        <h6>Type {{ gym_leader.specialty_type.name|capfirst }}</h6>
-        <p class="mb-3">Cette arène est spécialisée dans le type {{ gym_leader.specialty_type.name }}.</p>
-        
+        <h6 class="fw-semibold">Type {{ gym_leader.specialty_type.name|capfirst }}</h6>
+        <p class="text-muted mb-4">Cette arène est spécialisée dans le type {{ gym_leader.specialty_type.name }}.</p>
+
         <div class="row">
+          <!-- Efficaces contre -->
           <div class="col-md-6 mb-3">
-            <div class="card bg-success text-white">
-              <div class="card-body">
-                <h6><i class="fas fa-check-circle"></i> Efficaces contre</h6>
-                <p class="mb-0 small">
-                  Types recommandés:
+            <div class="card border-success bg-success-subtle">
+              <div class="card-body py-3">
+                <h6 class="fw-bold text-success mb-2">
+                  <i class="fas fa-check-circle me-1"></i>Efficaces contre
+                </h6>
+                <p class="mb-1 small text-muted">Types recommandés :</p>
+                <div class="d-flex flex-wrap gap-1">
                   {% for type in gym_leader.specialty_type.weak_against.all|slice:":3" %}
-                  <span class="badge badge-light text-dark">{{ type.name }}</span>
+                  <span class="badge badge-type-{{ type.name }}">{{ type.name }}</span>
+                  {% empty %}
+                  <small class="text-muted">–</small>
                   {% endfor %}
-                </p>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- À éviter -->
           <div class="col-md-6 mb-3">
-            <div class="card bg-danger text-white">
-              <div class="card-body">
-                <h6><i class="fas fa-times-circle"></i> À éviter</h6>
-                <p class="mb-0 small">
-                  Types faibles:
+            <div class="card border-danger bg-danger-subtle">
+              <div class="card-body py-3">
+                <h6 class="fw-bold text-danger mb-2">
+                  <i class="fas fa-times-circle me-1"></i>À éviter
+                </h6>
+                <p class="mb-1 small text-muted">Types faibles :</p>
+                <div class="d-flex flex-wrap gap-1">
                   {% for type in gym_leader.specialty_type.strong_against.all|slice:":3" %}
-                  <span class="badge badge-light text-dark">{{ type.name }}</span>
+                  <span class="badge badge-type-{{ type.name }}">{{ type.name }}</span>
+                  {% empty %}
+                  <small class="text-muted">–</small>
                   {% endfor %}
-                </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="alert alert-warning mb-0">
-          <i class="fas fa-exclamation-triangle"></i>
-          <strong>Astuce:</strong> Préparez des Potions et assurez-vous que votre équipe est au niveau recommandé !
+        <div class="alert alert-warning d-flex align-items-center mb-0 mt-1">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <div><strong>Astuce :</strong> Préparez des Potions et assurez-vous que votre équipe est au niveau recommandé !</div>
         </div>
       </div>
     </div>
@@ -266,26 +290,39 @@
 <!-- Back Button -->
 <div class="mb-4">
   <a href="{% url 'GymLeaderListView' %}" class="btn btn-secondary">
-    <i class="fas fa-arrow-left"></i> Retour aux Arènes
+    <i class="fas fa-arrow-left me-1"></i>Retour aux Arènes
   </a>
 </div>
 {% endblock content %}
 
+{% block css %}
+{{ block.super }}
+<style>
+  /* Header de la page arène — dégradé plus doux */
+  .gym-header-card {
+    background: linear-gradient(135deg, #4a5568 0%, #553c9a 60%, #6b46c1 100%);
+  }
+
+  /* Badge sprite dans le header */
+  .badge-sprite {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
+  }
+
+  /* Cartes Pokémon — transition douce */
+  .pokemon-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
+  }
+  .pokemon-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12) !important;
+  }
+</style>
+{% endblock css %}
+
 {% block js %}
 {{ block.super }}
-<script>
-  // Animation des cartes Pokémon
-  $(document).ready(function() {
-    $('.pokemon-card').hover(
-      function() { 
-        $(this).addClass('shadow-lg');
-        $(this).css('transform', 'translateY(-5px)');
-      },
-      function() { 
-        $(this).removeClass('shadow-lg');
-        $(this).css('transform', 'translateY(0)');
-      }
-    );
-  });
-</script>
 {% endblock js %}

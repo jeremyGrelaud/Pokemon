@@ -22,13 +22,13 @@
       <div class="d-flex align-items-center">
 
         <!-- Pourcentage -->
-        <div class="text-center pr-4" style="min-width:100px; border-right:1px solid #dee2e6;">
+        <div class="text-center pe-4" style="min-width:100px; border-right:1px solid #dee2e6;">
           <div style="font-size:2.4rem; font-weight:800; line-height:1; color:#28a745;">{{ completion_percent }}%</div>
           <div class="text-muted small mt-1">complété</div>
         </div>
 
         <!-- Barre + texte -->
-        <div class="flex-grow-1 pl-4">
+        <div class="flex-grow-1 ps-4">
           <div class="d-flex align-items-center justify-content-between mb-2">
             <span style="font-weight:600;">Succès débloqués</span>
             <span class="text-muted small">{{ total_completed }} / {{ total_achievements }}</span>
@@ -41,7 +41,7 @@
             </div>
           </div>
           <div class="d-flex mt-2">
-            <small class="text-success mr-3"><i class="fas fa-check-circle"></i> {{ total_completed }} débloqués</small>
+            <small class="text-success me-3"><i class="fas fa-check-circle"></i> {{ total_completed }} débloqués</small>
             <small class="text-muted"><i class="fas fa-lock"></i> restants à débloquer</small>
           </div>
         </div>
@@ -53,13 +53,13 @@
   <!-- Onglets Bootstrap 4 -->
   <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
     <li class="nav-item">
-      <a class="nav-link active" id="tab-achievements-link" data-toggle="tab" href="#tab-achievements" role="tab">
+      <a class="nav-link active" id="tab-achievements-link" data-bs-toggle="tab" href="#tab-achievements" role="tab">
         <i class="fas fa-trophy"></i> Succès
-        <span class="badge badge-success ml-1">{{ total_completed }}</span>
+        <span class="badge bg-success ms-1">{{ total_completed }}</span>
       </a>
     </li>
     <li class="nav-item">
-      <a class="nav-link" id="tab-stats-link" data-toggle="tab" href="#tab-stats" role="tab">
+      <a class="nav-link" id="tab-stats-link" data-bs-toggle="tab" href="#tab-stats" role="tab">
         <i class="fas fa-chart-bar"></i> Statistiques
       </a>
     </li>
@@ -74,17 +74,17 @@
       <div class="card shadow-sm mb-4">
         <div class="card-header d-flex align-items-center" style="padding:0.85rem 1.25rem;">
           {% if category == 'combat' %}
-            <i class="fas fa-fist-raised text-danger mr-2"></i><span style="font-weight:600;">Combat</span>
+            <i class="fas fa-fist-raised text-danger me-2"></i><span style="font-weight:600;">Combat</span>
           {% elif category == 'capture' %}
-            <i class="fas fa-network-wired text-primary mr-2"></i><span style="font-weight:600;">Capture</span>
+            <i class="fas fa-network-wired text-primary me-2"></i><span style="font-weight:600;">Capture</span>
           {% elif category == 'collection' %}
-            <i class="fas fa-book text-info mr-2"></i><span style="font-weight:600;">Collection</span>
+            <i class="fas fa-book text-info me-2"></i><span style="font-weight:600;">Collection</span>
           {% elif category == 'exploration' %}
-            <i class="fas fa-map text-success mr-2"></i><span style="font-weight:600;">Exploration</span>
+            <i class="fas fa-map text-success me-2"></i><span style="font-weight:600;">Exploration</span>
           {% elif category == 'progression' %}
-            <i class="fas fa-star text-warning mr-2"></i><span style="font-weight:600;">Progression</span>
+            <i class="fas fa-star text-warning me-2"></i><span style="font-weight:600;">Progression</span>
           {% endif %}
-          <span class="ml-auto text-muted small">
+          <span class="ms-auto text-muted small">
             <i class="fas fa-trophy"></i> {{ achievements|length }} succès
           </span>
         </div>
@@ -97,7 +97,7 @@
                 <div class="d-flex align-items-start">
 
                   <!-- Icône -->
-                  <div class="ach-icon-wrap rounded d-flex align-items-center justify-content-center mr-3
+                  <div class="ach-icon-wrap rounded d-flex align-items-center justify-content-center me-3
                                {% if data.completed %}bg-icon-done{% else %}bg-icon-locked{% endif %}"
                        style="width:56px; height:56px; min-width:56px; flex-shrink:0;">
                     {% if data.completed %}
@@ -114,7 +114,7 @@
 
                     <!-- Barre de progression -->
                     <div class="d-flex align-items-center mb-2">
-                      <div class="progress mr-2" style="height:8px; border-radius:6px; flex:1; min-width:0; overflow:hidden;">
+                      <div class="progress me-2" style="height:8px; border-radius:6px; flex:1; min-width:0; overflow:hidden;">
                         <div class="progress-bar {% if data.completed %}bg-success{% else %}bg-info{% endif %}"
                              role="progressbar"
                              style="width:{{ data.progress_percent }}%; border-radius:6px;"
@@ -298,8 +298,8 @@
               {% if stats.best_pokemon %}
               <div class="p-3 rounded border d-flex align-items-center">
                 <img src="{% static 'img/sprites_gen5/' %}{% if stats.best_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ stats.best_pokemon.species.name|lowerPokemonFileNames }}.png"
-                     class="mr-3"
-                     style="width:52px; height:52px; image-rendering:pixelated;"
+                     class="me-3"
+                     style="width:52px; height:52px;"
                      onerror="this.style.display='none'">
                 <div>
                   <div style="font-weight:600;">Pokémon le plus fort</div>
@@ -307,7 +307,7 @@
                     {{ stats.best_pokemon.species.name }}
                     {% if stats.best_pokemon.nickname %}« {{ stats.best_pokemon.nickname }} »{% endif %}
                   </div>
-                  <span class="badge badge-warning">Niv. {{ stats.best_pokemon.level }}</span>
+                  <span class="badge bg-warning">Niv. {{ stats.best_pokemon.level }}</span>
                 </div>
               </div>
               {% else %}

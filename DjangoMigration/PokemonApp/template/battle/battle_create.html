@@ -12,17 +12,17 @@
   <!-- ONGLETS -->
   <ul class="nav nav-tabs mb-4" role="tablist">
     <li class="nav-item">
-      <a class="nav-link active" data-toggle="tab" href="#wild">
+      <a class="nav-link active" data-bs-toggle="tab" href="#wild">
         <i class="fas fa-paw"></i> Pokémon Sauvage
       </a>
     </li>
     <li class="nav-item">
-      <a class="nav-link" data-toggle="tab" href="#trainers">
+      <a class="nav-link" data-bs-toggle="tab" href="#trainers">
         <i class="fas fa-users"></i> Dresseurs ({{ npc_trainers.count }})
       </a>
     </li>
     <li class="nav-item">
-      <a class="nav-link" data-toggle="tab" href="#gym">
+      <a class="nav-link" data-bs-toggle="tab" href="#gym">
         <i class="fas fa-trophy"></i> Champions d'Arène
       </a>
     </li>
@@ -133,7 +133,7 @@
                     <div class="col-md-8">
                       <h6 class="mb-1">
                         {% if trainer.npc_class %}
-                        <span class="badge badge-primary">{{ trainer.npc_class }}</span>
+                        <span class="badge bg-primary">{{ trainer.npc_class }}</span>
                         {% endif %}
                         <strong>{{ trainer.username }}</strong>
                       </h6>
@@ -150,12 +150,12 @@
                       {% endif %}
                       
                       <div class="mt-2">
-                        <span class="badge badge-info">
+                        <span class="badge bg-info">
                           <i class="fas fa-coins"></i> {{ trainer.get_reward }}₽
                         </span>
                         
                         {% if save and save.is_trainer_defeated %}
-                        <span class="badge badge-success">
+                        <span class="badge bg-success">
                           <i class="fas fa-check"></i> Battu
                         </span>
                         {% endif %}
@@ -163,7 +163,7 @@
                     </div>
                     
                     <!-- Bouton -->
-                    <div class="col-md-4 text-right">
+                    <div class="col-md-4 text-end">
                       {% if not save or not save.is_trainer_defeated or trainer.can_rebattle %}
                       <a href="{% url 'battle_create_trainer' trainer.id %}" 
                          class="btn btn-danger">

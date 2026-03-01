@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/transaction-history.css' %}" rel="stylesheet" />
+{% endblock css %}
 
 {% block title %}
 <title>Historique des Achats - Pokémon Gen 1</title>
@@ -12,7 +16,7 @@
     <i class="fas fa-receipt text-primary"></i> Historique des Transactions
   </h1>
   <div>
-    <span class="badge badge-warning p-2" style="font-size: 1.1rem;">
+    <span class="badge bg-warning p-2" style="font-size: 1.1rem;">
       <i class="fas fa-coins"></i> {{ trainer.money }}₽
     </span>
   </div>
@@ -23,12 +27,12 @@
   <div class="col-xl-4 col-md-6 mb-4">
     <div class="card border-left-danger shadow h-100 py-2">
       <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-danger text-uppercase mb-1">
               Total Dépensé
             </div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_spent }}₽</div>
+            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_spent }}₽</div>
           </div>
           <div class="col-auto">
             <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
@@ -41,12 +45,12 @@
   <div class="col-xl-4 col-md-6 mb-4">
     <div class="card border-left-success shadow h-100 py-2">
       <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-success text-uppercase mb-1">
               Total Gagné (Ventes)
             </div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_earned }}₽</div>
+            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_earned }}₽</div>
           </div>
           <div class="col-auto">
             <i class="fas fa-hand-holding-usd fa-2x text-gray-300"></i>
@@ -59,12 +63,12 @@
   <div class="col-xl-4 col-md-6 mb-4">
     <div class="card border-left-info shadow h-100 py-2">
       <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-info text-uppercase mb-1">
               Bilan Net
             </div>
-            <div class="h5 mb-0 font-weight-bold {% if total_earned > total_spent %}text-success{% else %}text-danger{% endif %}">
+            <div class="h5 mb-0 fw-bold {% if total_earned > total_spent %}text-success{% else %}text-danger{% endif %}">
               {% widthratio total_earned 1 1 as earned %}
               {% widthratio total_spent 1 1 as spent %}
               {{ earned|add:spent|floatformat:0 }}₽
@@ -82,7 +86,7 @@
 <!-- Transactions Table -->
 <div class="card shadow mb-4">
   <div class="card-header py-3">
-    <h6 class="m-0 font-weight-bold text-primary">
+    <h6 class="m-0 fw-bold text-primary">
       <i class="fas fa-list"></i> Dernières Transactions
     </h6>
   </div>
@@ -109,11 +113,11 @@
             </td>
             <td>
               {% if transaction.transaction_type == 'buy' %}
-                <span class="badge badge-danger">
+                <span class="badge bg-danger">
                   <i class="fas fa-shopping-cart"></i> Achat
                 </span>
               {% else %}
-                <span class="badge badge-success">
+                <span class="badge bg-success">
                   <i class="fas fa-hand-holding-usd"></i> Vente
                 </span>
               {% endif %}
@@ -124,7 +128,7 @@
               <small class="text-muted">{{ transaction.item.get_item_type_display }}</small>
             </td>
             <td>
-              <span class="badge badge-info">x{{ transaction.quantity }}</span>
+              <span class="badge bg-info">x{{ transaction.quantity }}</span>
             </td>
             <td>{{ transaction.unit_price }}₽</td>
             <td>
@@ -190,26 +194,4 @@ $(document).ready(function() {
   {% endif %}
 });
 </script>
-
-<style>
-.border-left-danger {
-  border-left: 4px solid #dc3545;
-}
-
-.border-left-success {
-  border-left: 4px solid #28a745;
-}
-
-.border-left-info {
-  border-left: 4px solid #17a2b8;
-}
-
-.table-danger {
-  background-color: rgba(220, 53, 69, 0.05);
-}
-
-.table-success {
-  background-color: rgba(40, 167, 69, 0.05);
-}
-</style>
 {% endblock js %}

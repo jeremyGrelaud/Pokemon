@@ -1,0 +1,40 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   shop-list.css  –  Liste des boutiques
+   Note : .shop-header-local est défini dans shop-detail.css (gradient partagé)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.shop-card {
+  border: 2px solid transparent;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.shop-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(0,0,0,.15) !important;
+  border-color: #6b46c1;
+}
+.shop-card-greyed {
+  opacity: .6;
+  border: 2px dashed #bbb !important;
+}
+.shop-card-greyed:hover { transform: none !important; }
+
+/* ── Animation d'apparition ──────────────────────────────────────────────── */
+.shop-card,
+.shop-card-greyed {
+  animation: fadeInUp .4s ease both;
+}
+.col-lg-4:nth-child(1)  .shop-card, .col-lg-4:nth-child(1)  .shop-card-greyed { animation-delay:   0ms; }
+.col-lg-4:nth-child(2)  .shop-card, .col-lg-4:nth-child(2)  .shop-card-greyed { animation-delay: 100ms; }
+.col-lg-4:nth-child(3)  .shop-card, .col-lg-4:nth-child(3)  .shop-card-greyed { animation-delay: 200ms; }
+.col-lg-4:nth-child(4)  .shop-card, .col-lg-4:nth-child(4)  .shop-card-greyed { animation-delay: 300ms; }
+.col-lg-4:nth-child(5)  .shop-card, .col-lg-4:nth-child(5)  .shop-card-greyed { animation-delay: 400ms; }
+.col-lg-4:nth-child(6)  .shop-card, .col-lg-4:nth-child(6)  .shop-card-greyed { animation-delay: 500ms; }
+.col-lg-4:nth-child(7)  .shop-card, .col-lg-4:nth-child(7)  .shop-card-greyed { animation-delay: 600ms; }
+.col-lg-4:nth-child(8)  .shop-card, .col-lg-4:nth-child(8)  .shop-card-greyed { animation-delay: 700ms; }
+.col-lg-4:nth-child(9)  .shop-card, .col-lg-4:nth-child(9)  .shop-card-greyed { animation-delay: 800ms; }
+.col-lg-4:nth-child(10) .shop-card, .col-lg-4:nth-child(10) .shop-card-greyed { animation-delay: 900ms; }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

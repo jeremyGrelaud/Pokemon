@@ -5,45 +5,271 @@
 {% block title %}<title>Objets</title>{% endblock %}
 
 {% block content %}
-<h1 class="h3 mb-4"><i class="fas fa-shopping-bag"></i> Objets</h1>
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0"><i class="fas fa-shopping-bag me-2"></i>Objets</h1>
+  <span class="badge bg-secondary fs-6" id="item-count">{{ items|length }} objets</span>
+</div>
 
+<!-- Filtres -->
 <div class="card shadow mb-4">
-  <div class="card-body">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-center">
+
+      <!-- Recherche par nom -->
+      <div class="col-md-4">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+          <input type="text" id="searchInput" class="form-control"
+                 placeholder="Rechercher un objet…"
+                 value="">
+        </div>
+      </div>
+
+      <!-- Filtre par type (boutons) -->
+      <div class="col-md-8">
+        <div class="d-flex flex-wrap gap-1">
+          <button class="btn btn-sm btn-primary active filter-btn" data-type="">
+            Tous
+          </button>
+          {% for value, label in item_types %}
+          <button class="btn btn-sm btn-outline-secondary filter-btn" data-type="{{ value }}">
+            {{ label }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Tableau -->
+<div class="card shadow mb-4">
+  <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover align-middle">
-        <thead>
+      <table class="table table-hover align-middle mb-0" id="itemTable">
+        <thead class="table-light">
           <tr>
-            <th style="width:60px;"></th>
+            <th class="ps-3" style="width:56px;"></th>
             <th>Nom</th>
             <th>Type</th>
             <th>Prix</th>
+            <th>Effet</th>
+            <th class="text-center">Consommable</th>
             <th>Description</th>
           </tr>
         </thead>
         <tbody>
           {% for item in items %}
-          <tr>
-            <td class="text-center">
+          <tr class="item-row"
+              data-type="{{ item.item_type }}"
+              data-name="{{ item.name|lower }}">
+
+            <!-- Sprite -->
+            <td class="text-center ps-3">
               {% with sprite=item|item_sprite_path %}
                 {% if sprite %}
                   <img src="{% static 'img/items_sprites/' %}{{ sprite }}"
                        alt="{{ item.name }}"
                        style="width:40px;height:40px;object-fit:contain;"
-                       onerror="this.style.display='none';">
+                       onerror="this.replaceWith(document.createElementNS('http://www.w3.org/2000/svg','svg'))">
                 {% else %}
-                  <i class="fas fa-box text-secondary"></i>
+                  <span class="d-inline-flex align-items-center justify-content-center rounded"
+                        style="width:40px;height:40px;background:#f0f0f0;">
+                    <i class="fas fa-box text-secondary"></i>
+                  </span>
                 {% endif %}
               {% endwith %}
             </td>
-            <td><strong>{{ item.name }}</strong></td>
-            <td><span class="badge badge-secondary">{{ item.get_item_type_display }}</span></td>
-            <td>{{ item.price }}₽</td>
-            <td><small class="text-muted">{{ item.description|truncatewords:15 }}</small></td>
+
+            <!-- Nom -->
+            <td>
+              <span class="fw-semibold">{{ item.name }}</span>
+            </td>
+
+            <!-- Type -->
+            <td>
+              <span class="badge item-type-badge item-type-{{ item.item_type }}">
+                {{ item.get_item_type_display }}
+              </span>
+            </td>
+
+            <!-- Prix -->
+            <td class="text-nowrap">
+              {% if item.price > 0 %}
+                <i class="fas fa-coins text-warning me-1" style="font-size:.8rem;"></i>{{ item.price }}₽
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Effet condensé -->
+            <td class="small">
+              {% if item.heal_amount > 0 %}
+                <span class="text-success"><i class="fas fa-heart me-1"></i>+{{ item.heal_amount }} HP</span>
+              {% elif item.heal_percentage > 0 %}
+                <span class="text-success"><i class="fas fa-heart me-1"></i>+{{ item.heal_percentage }}% HP</span>
+              {% elif item.cures_status %}
+                <span class="text-info">
+                  <i class="fas fa-plus-circle me-1"></i>
+                  Soigne {% if item.specific_status %}{{ item.specific_status }}{% else %}statut{% endif %}
+                </span>
+              {% elif item.item_type == 'pokeball' %}
+                <span class="text-primary">
+                  <i class="fas fa-circle me-1"></i>
+                  x{{ item.catch_rate_modifier }} capture
+                </span>
+              {% elif item.item_type == 'evolution' %}
+                <span class="text-purple">
+                  <i class="fas fa-star me-1"></i>Évolution
+                  {% if item.evolves_pokemon %}<em>({{ item.evolves_pokemon }})</em>{% endif %}
+                </span>
+              {% elif item.held_effect %}
+                <span class="text-secondary"><i class="fas fa-shield-alt me-1"></i>{{ item.held_effect|truncatewords:4 }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Consommable -->
+            <td class="text-center">
+              {% if item.is_consumable %}
+                <i class="fas fa-check-circle text-success" title="Consommable"></i>
+              {% else %}
+                <i class="fas fa-infinity text-secondary" title="Réutilisable"></i>
+              {% endif %}
+            </td>
+
+            <!-- Description -->
+            <td class="text-muted small">{{ item.description|truncatewords:12 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
+              Aucun objet trouvé.
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
+
+  <!-- Pied de tableau : compteur dynamique -->
+  <div class="card-footer bg-white border-top py-2 px-3">
+    <small class="text-muted">
+      <span id="visibleCount">{{ items|length }}</span> objet(s) affiché(s)
+    </small>
+  </div>
 </div>
+
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+  /* Couleurs des badges de type d'objet */
+  .item-type-potion    { background: #198754; color: #fff; }
+  .item-type-pokeball  { background: #e63946; color: #fff; }
+  .item-type-evolution { background: #6f42c1; color: #fff; }
+  .item-type-status    { background: #0dcaf0; color: #212529; }
+  .item-type-battle    { background: #fd7e14; color: #fff; }
+  .item-type-held      { background: #6c757d; color: #fff; }
+  .item-type-key       { background: #ffc107; color: #212529; }
+
+  /* Bouton de filtre actif */
+  .filter-btn.active {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: #fff;
+  }
+
+  /* Highlight recherche */
+  .item-row.highlight td:nth-child(2) {
+    color: var(--bs-primary);
+  }
+
+  /* Ligne masquée par filtre */
+  .item-row.hidden { display: none; }
+</style>
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+<script>
+(function() {
+  const rows       = document.querySelectorAll('.item-row');
+  const searchInput = document.getElementById('searchInput');
+  const filterBtns  = document.querySelectorAll('.filter-btn');
+  const visibleCount = document.getElementById('visibleCount');
+
+  let currentType = '';
+  let currentSearch = '';
+
+  function applyFilters() {
+    let count = 0;
+    rows.forEach(row => {
+      const matchType   = !currentType || row.dataset.type === currentType;
+      const matchSearch = !currentSearch || row.dataset.name.includes(currentSearch);
+      if (matchType && matchSearch) {
+        row.classList.remove('hidden');
+        count++;
+      } else {
+        row.classList.add('hidden');
+      }
+    });
+    visibleCount.textContent = count;
+  }
+
+  // Filtres de type
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active', 'btn-primary'));
+      filterBtns.forEach(b => b.classList.add('btn-outline-secondary'));
+      btn.classList.add('active', 'btn-primary');
+      btn.classList.remove('btn-outline-secondary');
+      currentType = btn.dataset.type;
+      applyFilters();
+    });
+  });
+
+  // Recherche
+  searchInput.addEventListener('input', () => {
+    currentSearch = searchInput.value.toLowerCase().trim();
+    applyFilters();
+  });
+
+  // Tri par colonne (simple)
+  let sortAsc = true;
+  let lastSortCol = -1;
+  document.querySelectorAll('#itemTable thead th').forEach((th, colIdx) => {
+    if (colIdx === 0 || colIdx === 5 || colIdx === 6) return; // Skip sprite, consommable, desc
+    th.style.cursor = 'pointer';
+    th.title = 'Cliquez pour trier';
+    th.addEventListener('click', () => {
+      if (lastSortCol === colIdx) sortAsc = !sortAsc;
+      else { sortAsc = true; lastSortCol = colIdx; }
+
+      const tbody = document.querySelector('#itemTable tbody');
+      const rowsArr = Array.from(rows);
+      rowsArr.sort((a, b) => {
+        const aVal = a.cells[colIdx]?.textContent.trim() ?? '';
+        const bVal = b.cells[colIdx]?.textContent.trim() ?? '';
+        const aNum = parseFloat(aVal.replace(/[^\d.]/g, ''));
+        const bNum = parseFloat(bVal.replace(/[^\d.]/g, ''));
+        if (!isNaN(aNum) && !isNaN(bNum)) return sortAsc ? aNum - bNum : bNum - aNum;
+        return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+      rowsArr.forEach(r => tbody.appendChild(r));
+
+      // Indicateur visuel
+      document.querySelectorAll('#itemTable thead th').forEach(h => {
+        h.innerHTML = h.innerHTML.replace(/ [▲▼]$/, '');
+      });
+      th.innerHTML += sortAsc ? ' ▲' : ' ▼';
+    });
+  });
+})();
+</script>
 {% endblock %}

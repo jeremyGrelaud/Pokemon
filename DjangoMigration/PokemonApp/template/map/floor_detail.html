@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/floor-detail.css' %}" rel="stylesheet" />
+{% endblock css %}
 {% load custom_filters %}
 
 {% block title %}<title>{{ zone.name }} — {{ floor.floor_name }}</title>{% endblock %}
@@ -25,14 +29,14 @@
     {# ── Header étage ────────────────────────────────────────────────────── #}
     <div class="card shadow mb-4">
       <div class="card-header py-3 d-flex align-items-center justify-content-between">
-        <h4 class="m-0 font-weight-bold">
-          <i class="fas fa-layer-group text-primary mr-2"></i>
+        <h4 class="m-0 fw-bold">
+          <i class="fas fa-layer-group text-primary me-2"></i>
           {{ zone.name }} — <span class="text-primary">{{ floor.floor_name }}</span>
         </h4>
         {% if floor.is_safe %}
-        <span class="badge badge-success">Zone sûre</span>
+        <span class="badge bg-success">Zone sûre</span>
         {% else %}
-        <span class="badge badge-danger">Pokémon sauvages</span>
+        <span class="badge bg-danger">Pokémon sauvages</span>
         {% endif %}
       </div>
       <div class="card-body">
@@ -62,14 +66,14 @@
     {% if rival_encounter %}
     <div class="card shadow border-danger mb-4">
       <div class="card-header bg-danger text-white py-2">
-        <h6 class="m-0 font-weight-bold">
+        <h6 class="m-0 fw-bold">
           <i class="fas fa-user-ninja"></i> Rival — {{ rival_encounter.rival.username }} !
         </h6>
       </div>
       <div class="card-body">
         {% if rival_encounter.pre_battle_text %}
         <blockquote class="blockquote mb-3">
-          <p class="mb-0 font-italic">"{{ rival_encounter.pre_battle_text }}"</p>
+          <p class="mb-0 fst-italic">"{{ rival_encounter.pre_battle_text }}"</p>
           <footer class="blockquote-footer">{{ rival_encounter.rival.username }}</footer>
         </blockquote>
         {% endif %}
@@ -87,7 +91,7 @@
     {% if trainers %}
     <div class="card shadow mb-4">
       <div class="card-header py-2">
-        <h6 class="m-0 font-weight-bold"><i class="fas fa-users"></i> Dresseurs</h6>
+        <h6 class="m-0 fw-bold"><i class="fas fa-users"></i> Dresseurs</h6>
       </div>
       <div class="card-body p-0">
         {% for entry in trainers %}
@@ -103,7 +107,7 @@
               <strong>{{ npc.get_full_title }}</strong>
               <br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small>
             </div>
-            <span class="badge badge-secondary"><i class="fas fa-check"></i> Vaincu</span>
+            <span class="badge bg-secondary"><i class="fas fa-check"></i> Vaincu</span>
           </div>
         </div>
         {% else %}
@@ -118,9 +122,9 @@
               <br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small>
             </div>
             {% if is_defeated %}
-            <span class="badge badge-warning"><i class="fas fa-redo"></i> Revancher</span>
+            <span class="badge bg-warning"><i class="fas fa-redo"></i> Revancher</span>
             {% else %}
-            <span class="badge badge-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
+            <span class="badge bg-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
             {% endif %}
           </div>
         </a>
@@ -135,7 +139,7 @@
     {% if wild_spawns and not floor.is_safe %}
     <div class="card shadow mb-4">
       <div class="card-header py-2">
-        <h6 class="m-0 font-weight-bold"><i class="fas fa-paw"></i> Pokémon sauvages</h6>
+        <h6 class="m-0 fw-bold"><i class="fas fa-paw"></i> Pokémon sauvages</h6>
       </div>
       <div class="card-body p-2">
         <div class="table-responsive">
@@ -215,7 +219,7 @@
         {% for fn in floors_nav reversed %}
           {% if fn.is_current %}
           <div class="btn btn-sm btn-block mb-1 btn-primary disabled" style="cursor:default;">
-            <i class="fas fa-map-marker-alt mr-1"></i> {{ fn.floor.floor_name }}
+            <i class="fas fa-map-marker-alt me-1"></i> {{ fn.floor.floor_name }}
             <small class="d-block" style="font-size:.65rem;opacity:.8;">Vous êtes ici</small>
           </div>
           {% elif fn.navigable %}
@@ -228,7 +232,7 @@
                style="cursor:not-allowed;opacity:.45;"
                title="Accès non direct — passez par les étages intermédiaires">
             {{ fn.floor.floor_name }}
-            <i class="fas fa-lock ml-1" style="font-size:.7rem;"></i>
+            <i class="fas fa-lock ms-1" style="font-size:.7rem;"></i>
           </div>
           {% endif %}
         {% endfor %}
@@ -243,15 +247,6 @@
   </div>
 
 </div>
-
-<style>
-.current-floor-indicator {
-  background: linear-gradient(135deg, #4e73df, #2e59d9);
-  color: #fff;
-  border-radius: 8px;
-  padding: 10px;
-}
-</style>
 
 {% if zone.music %}
 <!-- ── Zone BGM Player (hérité de la zone parente) ───────────────────────── -->

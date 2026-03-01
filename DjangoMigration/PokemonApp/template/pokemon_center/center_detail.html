@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/center-detail.css' %}" rel="stylesheet" />
+{% endblock css %}
 {% load custom_filters %}
 
 {% block title %}
@@ -29,11 +33,11 @@
             <p class="lead mb-2">{{ center.location }}</p>
             <p class="mb-0">
               {% if center.healing_cost == 0 %}
-                <span class="badge badge-success p-2">
+                <span class="badge bg-success p-2">
                   <i class="fas fa-heart"></i> Soins Gratuits
                 </span>
               {% else %}
-                <span class="badge badge-warning p-2">
+                <span class="badge bg-warning p-2">
                   <i class="fas fa-coins"></i> {{ center.healing_cost }}₽ par soin
                 </span>
               {% endif %}
@@ -120,7 +124,7 @@
               <button id="heal-btn" class="btn btn-lg btn-success btn-heal-team" data-center-id="{{ center.id }}">
                 <i class="fas fa-plus-circle"></i> Soigner Mon Équipe
                 {% if center.healing_cost > 0 %}
-                  <span class="badge badge-light ml-2">{{ center.healing_cost }}₽</span>
+                  <span class="badge bg-light ms-2">{{ center.healing_cost }}₽</span>
                 {% endif %}
               </button>
             {% else %}
@@ -155,7 +159,7 @@
           <div class="team-pokemon-status mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <strong>{{ pokemon.species.name }}</strong>
-              <span class="badge badge-secondary">Niv. {{ pokemon.level }}</span>
+              <span class="badge bg-secondary">Niv. {{ pokemon.level }}</span>
             </div>
             
             <!-- HP Bar -->
@@ -178,7 +182,7 @@
             <!-- Status -->
             {% if pokemon.status_condition %}
             <div class="mt-1">
-              <span class="badge badge-danger">
+              <span class="badge bg-danger">
                 {{ pokemon.get_status_condition_display }}
               </span>
             </div>
@@ -425,361 +429,4 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-
-<style>
-/* Pokemon Center Header */
-.pokemon-center-header {
-  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-}
-
-/* Nurse Card */
-.nurse-card {
-  background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
-}
-
-.nurse-sprite {
-  max-width: 200px;
-  height: auto;
-}
-
-/* Dialogue Box */
-.dialogue-box {
-  position: relative;
-  background: white;
-  border: 3px solid #333;
-  border-radius: 15px;
-  padding: 20px;
-  max-width: 500px;
-  margin: 0 auto;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-.dialogue-arrow {
-  position: absolute;
-  top: -15px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 15px solid transparent;
-  border-right: 15px solid transparent;
-  border-bottom: 15px solid #333;
-}
-
-.dialogue-arrow::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: -12px;
-  width: 0;
-  height: 0;
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-bottom: 12px solid white;
-}
-
-/* Healing Machine */
-.healing-machine {
-  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-}
-
-.machine-top {
-  background: #34495e;
-  border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.machine-light {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #95a5a6;
-  transition: all 0.3s;
-}
-
-.machine-light.active {
-  background: #f39c12;
-  box-shadow: 0 0 20px #f39c12;
-  animation: pulse-light 1s infinite;
-}
-
-.machine-light.complete {
-  background: #27ae60;
-  box-shadow: 0 0 20px #27ae60;
-}
-
-@keyframes pulse-light {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.machine-screen {
-  background: #2c3e50;
-  color: #2ecc71;
-  padding: 10px 20px;
-  border-radius: 5px;
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-}
-
-.machine-pokeball-slots {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.pokeball-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  position: relative;
-  cursor: default;
-}
-
-/* Pokéball visuelle réaliste */
-.pokeball-visual {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  border: 3px solid #222;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-  transition: all 0.3s;
-}
-
-.pokeball-top {
-  background: #e74c3c;
-  width: 100%;
-  height: 50%;
-  position: relative;
-}
-
-.pokeball-bottom {
-  background: #f5f5f5;
-  width: 100%;
-  height: 50%;
-}
-
-.pokeball-center-band {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  transform: translateY(-50%);
-  height: 10px;
-  background: #222;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-}
-
-.pokeball-button {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #aaa;
-  border: 3px solid #222;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 0 2px #fff;
-}
-
-.pokeball-button-inner {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ddd;
-}
-
-.pokeball-label {
-  font-size: 11px;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
-  max-width: 80px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Pokémon sprite caché dans la ball */
-.pokemon-heal-sprite {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%) scale(0);
-  opacity: 0;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: 10;
-  pointer-events: none;
-}
-
-.pokemon-heal-sprite img {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 6px rgba(255,255,255,0.8));
-  image-rendering: pixelated;
-}
-
-.pokemon-heal-sprite.visible {
-  opacity: 1;
-  transform: translateX(-50%) scale(1);
-}
-
-/* État: Pokémon blessé (avant soin) */
-.pokeball-slot.needs-healing .pokeball-top {
-  background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
-}
-.pokeball-slot.needs-healing .pokeball-button {
-  background: #f39c12;
-}
-.pokeball-slot.needs-healing .pokeball-button-inner {
-  background: #ffd700;
-}
-
-/* État: Dépôt dans la machine */
-.pokeball-slot.depositing .pokeball-visual {
-  animation: pokeball-deposit 0.4s ease;
-  box-shadow: 0 0 15px rgba(243, 156, 18, 0.7);
-}
-
-@keyframes pokeball-deposit {
-  0% { transform: translateY(-5px); }
-  50% { transform: translateY(3px) scale(0.95); }
-  100% { transform: translateY(0) scale(1); }
-}
-
-/* État: En cours de soin */
-.pokeball-slot.healing .pokeball-visual {
-  animation: pokeball-heal-rotate 1.5s ease-in-out infinite;
-  box-shadow: 0 0 20px rgba(100, 200, 255, 0.9), 0 0 40px rgba(100, 200, 255, 0.4);
-  border-color: #4fc3f7;
-}
-
-.pokeball-slot.healing .pokeball-top {
-  animation: pokeball-open-top 1.5s ease-in-out infinite;
-}
-
-.pokeball-slot.healing .pokeball-button {
-  background: #4fc3f7;
-  animation: button-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pokeball-heal-rotate {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  25% { transform: rotate(-8deg) scale(1.05); }
-  75% { transform: rotate(8deg) scale(1.05); }
-}
-
-@keyframes pokeball-open-top {
-  0%, 100% { transform: translateY(0); background: #e74c3c; }
-  40%, 60% { transform: translateY(-5px); background: #4fc3f7; }
-}
-
-@keyframes button-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 195, 247, 0.8); background: #4fc3f7; }
-  50% { box-shadow: 0 0 0 6px rgba(79, 195, 247, 0); background: #81d4fa; }
-}
-
-/* État: Soigné */
-.pokeball-slot.healed .pokeball-visual {
-  box-shadow: 0 0 15px rgba(39, 174, 96, 0.7);
-  border-color: #27ae60;
-}
-
-.pokeball-slot.healed .pokeball-top {
-  background: #e74c3c;
-}
-
-.pokeball-slot.healed .pokeball-button {
-  background: #27ae60;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #27ae60;
-}
-
-/* Machine en cours de soin */
-.healing-machine.machine-healing {
-  animation: machine-glow 1.5s ease-in-out infinite;
-}
-
-.healing-machine.machine-complete {
-  box-shadow: 0 0 20px rgba(39, 174, 96, 0.5);
-}
-
-@keyframes machine-glow {
-  0%, 100% { box-shadow: 0 8px 16px rgba(0,0,0,0.2), 0 0 0px rgba(79, 195, 247, 0); }
-  50% { box-shadow: 0 8px 16px rgba(0,0,0,0.2), 0 0 30px rgba(79, 195, 247, 0.5); }
-}
-
-.pokeball-icon {
-  font-size: 30px;
-  color: #e74c3c;
-}
-
-.pulse-animation {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-/* HP Bar Mini */
-.hp-bar-mini {
-  height: 10px;
-  background: #e9ecef;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.hp-bar-fill-mini {
-  height: 100%;
-  transition: width 0.3s;
-}
-
-/* Heal Button Animation */
-.btn-heal-team {
-  animation: pulse-button 2s infinite;
-}
-
-@keyframes pulse-button {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
-  50% { box-shadow: 0 0 20px 5px rgba(40, 167, 69, 0); }
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .pokeball-visual {
-    width: 55px;
-    height: 55px;
-  }
-  
-  .pokeball-button {
-    width: 16px;
-    height: 16px;
-  }
-
-  .pokemon-heal-sprite img {
-    width: 50px;
-    height: 50px;
-  }
-  
-  .dialogue-box {
-    max-width: 100%;
-  }
-}
-</style>
 {% endblock js %}

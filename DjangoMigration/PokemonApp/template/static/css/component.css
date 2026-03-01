@@ -1,0 +1,31 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   components.css  –  Composants réutilisables partagés entre plusieurs pages
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Bordures colorées (utilisées dans history, transaction_history) ─────── */
+.border-left-primary { border-left: 4px solid #4e73df; }
+.border-left-success { border-left: 4px solid #1cc88a; }
+.border-left-info    { border-left: 4px solid #17a2b8; }
+.border-left-warning { border-left: 4px solid #f6c23e; }
+.border-left-danger  { border-left: 4px solid #e74c3c; }
+
+/* ── Gradients utilitaires ───────────────────────────────────────────────── */
+.bg-gradient-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+
+/* ── Animation pulse générique ───────────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.1); opacity: 0.8; }
+}
+.pulse-animation { animation: pulse 2s infinite ease-in-out; }
+
+/* ── Barre HP (utilisée dans my_team, center_detail) ────────────────────── */
+.hp-bar      { width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+.hp-bar-fill { height: 100%; transition: width .3s; }
+.hp-high     { background: #28a745; }
+.hp-medium   { background: #ffc107; }
+.hp-low      { background: #dc3545; }
+
+/* Variante mini (center_detail) */
+.hp-bar-mini      { height: 10px; background: #e9ecef; border-radius: 5px; overflow: hidden; }
+.hp-bar-fill-mini { height: 100%; transition: width .3s; }

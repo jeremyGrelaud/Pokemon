@@ -1,0 +1,244 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   center-detail.css  –  Page détail Centre Pokémon
+   Note : .hp-bar-mini / .pulse-animation / @keyframes pulse
+          sont maintenant dans components.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.pokemon-center-header {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+/* ── Nurse card ──────────────────────────────────────────────────────────── */
+.nurse-card { background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%); }
+.nurse-sprite { max-width: 200px; height: auto; }
+
+/* ── Dialogue box ────────────────────────────────────────────────────────── */
+.dialogue-box {
+  position: relative;
+  background: white;
+  border: 3px solid #333;
+  border-radius: 15px;
+  padding: 20px;
+  max-width: 500px;
+  margin: 0 auto;
+  box-shadow: 0 4px 6px rgba(0,0,0,.1);
+}
+.dialogue-arrow {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 15px solid #333;
+}
+.dialogue-arrow::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: -12px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 12px solid white;
+}
+
+/* ── Machine de soin ─────────────────────────────────────────────────────── */
+.healing-machine {
+  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 8px 16px rgba(0,0,0,.2);
+}
+.machine-top {
+  background: #34495e;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.machine-light {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #95a5a6;
+  transition: all 0.3s;
+}
+.machine-light.active {
+  background: #f39c12;
+  box-shadow: 0 0 20px #f39c12;
+  animation: pulse-light 1s infinite;
+}
+.machine-light.complete {
+  background: #27ae60;
+  box-shadow: 0 0 20px #27ae60;
+}
+@keyframes pulse-light {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.machine-screen {
+  background: #2c3e50;
+  color: #2ecc71;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+}
+.machine-pokeball-slots {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+/* ── Pokéball slot ────────────────────────────────────────────────────────── */
+.pokeball-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  cursor: default;
+}
+.pokeball-visual {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 3px solid #222;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  transition: all 0.3s;
+}
+.pokeball-top    { background: #e74c3c; width: 100%; height: 50%; position: relative; }
+.pokeball-bottom { background: #f5f5f5; width: 100%; height: 50%; }
+.pokeball-center-band {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  height: 10px;
+  background: #222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.pokeball-button {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #aaa;
+  border: 3px solid #222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px #fff;
+}
+.pokeball-button-inner { width: 8px; height: 8px; border-radius: 50%; background: #ddd; }
+.pokeball-label {
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.7);
+  max-width: 80px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Sprite Pokémon caché ─────────────────────────────────────────────────── */
+.pokemon-heal-sprite {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 10;
+  pointer-events: none;
+}
+.pokemon-heal-sprite img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(255,255,255,.8));
+  image-rendering: pixelated;
+}
+.pokemon-heal-sprite.visible {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* ── États des slots ──────────────────────────────────────────────────────── */
+.pokeball-slot.needs-healing .pokeball-top    { background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%); }
+.pokeball-slot.needs-healing .pokeball-button { background: #f39c12; }
+.pokeball-slot.needs-healing .pokeball-button-inner { background: #ffd700; }
+
+.pokeball-slot.depositing .pokeball-visual {
+  animation: pokeball-deposit 0.4s ease;
+  box-shadow: 0 0 15px rgba(243,156,18,.7);
+}
+@keyframes pokeball-deposit {
+  0%   { transform: translateY(-5px); }
+  50%  { transform: translateY(3px) scale(0.95); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.pokeball-slot.healing .pokeball-visual {
+  animation: pokeball-heal-rotate 1.5s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(100,200,255,.9), 0 0 40px rgba(100,200,255,.4);
+  border-color: #4fc3f7;
+}
+.pokeball-slot.healing .pokeball-top    { animation: pokeball-open-top 1.5s ease-in-out infinite; }
+.pokeball-slot.healing .pokeball-button { background: #4fc3f7; animation: button-pulse 1.5s ease-in-out infinite; }
+
+@keyframes pokeball-heal-rotate {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.05); }
+  75% { transform: rotate(8deg)  scale(1.05); }
+}
+@keyframes pokeball-open-top {
+  0%, 100% { transform: translateY(0);   background: #e74c3c; }
+  40%, 60%  { transform: translateY(-5px); background: #4fc3f7; }
+}
+@keyframes button-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79,195,247,.8); background: #4fc3f7; }
+  50%       { box-shadow: 0 0 0 6px rgba(79,195,247,0); background: #81d4fa; }
+}
+
+.pokeball-slot.healed .pokeball-visual { box-shadow: 0 0 15px rgba(39,174,96,.7); border-color: #27ae60; }
+.pokeball-slot.healed .pokeball-top    { background: #e74c3c; }
+.pokeball-slot.healed .pokeball-button { background: #27ae60; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #27ae60; }
+
+/* ── Machine states ───────────────────────────────────────────────────────── */
+.healing-machine.machine-healing  { animation: machine-glow 1.5s ease-in-out infinite; }
+.healing-machine.machine-complete { box-shadow: 0 0 20px rgba(39,174,96,.5); }
+@keyframes machine-glow {
+  0%, 100% { box-shadow: 0 8px 16px rgba(0,0,0,.2), 0 0 0px rgba(79,195,247,0); }
+  50%       { box-shadow: 0 8px 16px rgba(0,0,0,.2), 0 0 30px rgba(79,195,247,.5); }
+}
+
+/* ── Bouton heal ──────────────────────────────────────────────────────────── */
+.pokeball-icon { font-size: 30px; color: #e74c3c; }
+.btn-heal-team { animation: pulse-button 2s infinite; }
+@keyframes pulse-button {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(40,167,69,.7); }
+  50%       { box-shadow: 0 0 20px 5px rgba(40,167,69,0); }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .pokeball-visual        { width: 55px; height: 55px; }
+  .pokeball-button        { width: 16px; height: 16px; }
+  .pokemon-heal-sprite img{ width: 50px; height: 50px; }
+  .dialogue-box           { max-width: 100%; }
+}

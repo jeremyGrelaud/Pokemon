@@ -9,39 +9,45 @@
 
 <!-- Page Heading -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-  <h1 class="h3 mb-0 text-gray-800">
-    <i class="fas fa-trophy text-warning mr-2"></i>Boîte à Badges
+  <h1 class="h3 mb-0">
+    <i class="fas fa-trophy text-warning me-2"></i>Boîte à Badges
   </h1>
   <a href="{% url 'GymLeaderListView' %}" class="d-none d-sm-inline-block btn btn-sm btn-outline-primary shadow-sm">
-    <i class="fas fa-list fa-sm"></i> Voir les Arènes
+    <i class="fas fa-list fa-sm me-1"></i>Voir les Arènes
   </a>
 </div>
 
-<!-- Compteur -->
+<!-- Barre de progression -->
 <div class="row mb-4">
   <div class="col-12">
-    <div class="card shadow border-left-warning">
+    <div class="card shadow badge-progress-card">
       <div class="card-body py-3">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Progression</div>
-            <div class="h4 mb-0 font-weight-bold text-gray-800">
-              {{ badges_count }} / 8 Badges obtenus
-            </div>
+        <div class="d-flex align-items-center gap-3">
+
+          <!-- Compteur badges -->
+          <div class="flex-shrink-0">
+            <div class="text-xs fw-bold text-warning text-uppercase mb-1" style="font-size:.7rem; letter-spacing:.05em;">Progression</div>
+            <div class="h4 mb-0 fw-bold">{{ badges_count }}<span class="text-muted fs-6 fw-normal"> / 8 badges</span></div>
           </div>
-          <div class="flex-grow-1 mx-4">
-            <div class="progress" style="height: 14px; border-radius: 7px;">
-              <div class="progress-bar bg-warning" role="progressbar"
-                   style="width: {{ badges_count|mul:12.5 }}%; border-radius: 7px;"
+
+          <!-- Barre -->
+          <div class="flex-grow-1">
+            <div class="progress" style="height:14px; border-radius:7px;">
+              <div class="progress-bar bg-warning fw-semibold" role="progressbar"
+                   style="width:{{ badges_count|mul:12.5 }}%; border-radius:7px; font-size:.7rem;"
                    aria-valuenow="{{ badges_count }}" aria-valuemin="0" aria-valuemax="8">
+                {% if badges_count > 0 %}{{ badges_count }}/8{% endif %}
               </div>
             </div>
           </div>
+
+          <!-- Badge champion si 8/8 -->
           {% if badges_count >= 8 %}
-          <span class="badge badge-warning px-3 py-2" style="font-size:.95rem;">
-            <i class="fas fa-crown mr-1"></i> Champion !
+          <span class="badge bg-warning text-dark px-3 py-2 flex-shrink-0" style="font-size:.9rem;">
+            <i class="fas fa-crown me-1"></i>Champion !
           </span>
           {% endif %}
+
         </div>
       </div>
     </div>
@@ -51,59 +57,54 @@
 <!-- Grille des badges -->
 <div class="card shadow mb-4">
   <div class="card-header py-3">
-    <h6 class="m-0 font-weight-bold text-primary">Badges de Kanto</h6>
+    <h6 class="m-0 fw-bold text-primary">
+      <i class="fas fa-medal me-2"></i>Badges de Kanto
+    </h6>
   </div>
   <div class="card-body">
     <div class="row justify-content-center">
       {% for entry in badge_data %}
       {% with gl=entry.gym_leader %}
-      <div class="col-6 col-sm-4 col-md-3 col-lg-3 mb-4">
+      <div class="col-6 col-sm-4 col-md-3 mb-4">
         <a href="{% url 'GymLeaderDetailView' gl.id %}"
-           class="text-decoration-none"
+           class="text-decoration-none badge-card-link"
            title="{% if entry.obtained %}Badge obtenu{% else %}Non obtenu — Battre {{ gl.trainer.username }}{% endif %}">
-          <div class="card h-100 text-center border
-               {% if entry.obtained %}border-warning shadow{% else %}border-light{% endif %}"
-               style="transition: transform .15s; cursor: pointer;"
-               onmouseover="this.style.transform='scale(1.04)'"
-               onmouseout="this.style.transform='scale(1)'">
+          <div class="card h-100 text-center badge-card {% if entry.obtained %}badge-card--obtained{% else %}badge-card--locked{% endif %}">
             <div class="card-body py-3 px-2">
 
               <!-- Sprite du badge -->
               <div class="mb-2 position-relative d-inline-block">
-                <img
-                  src="{% static 'img/badges_sprites/Kanto/' %}{{ gl.badge_name|badge_sprite_path }}"
-                  alt="{{ gl.badge_name }}"
-                  style="width: 64px; height: 64px; object-fit: contain;
-                         {% if not entry.obtained %}filter: grayscale(100%) opacity(0.35);{% endif %}"
-                  onerror="this.src='{% static 'img/pokeball.png' %}';this.style.width='48px';this.style.height='48px';">
-
+                <img src="{% static 'img/badges_sprites/Kanto/' %}{{ gl.badge_name|badge_sprite_path }}"
+                     alt="{{ gl.badge_name }}"
+                     class="badge-sprite {% if not entry.obtained %}badge-sprite--locked{% endif %}"
+                     onerror="this.src='{% static 'img/pokeball.png' %}'; this.style.width='48px'; this.style.height='48px';">
                 {% if entry.obtained %}
-                <!-- Petite coche verte -->
-                <span class="position-absolute"
-                      style="bottom:-4px; right:-6px; font-size:1.1rem; line-height:1;">✅</span>
+                <span class="position-absolute badge-check">✅</span>
                 {% endif %}
               </div>
 
               <!-- Nom du badge -->
-              <div class="font-weight-bold text-gray-800 mb-1" style="font-size:.85rem;">
-                {{ gl.badge_name }}
-              </div>
+              <div class="fw-bold mb-1" style="font-size:.85rem;">{{ gl.badge_name }}</div>
 
               <!-- Champion & ville -->
-              <div class="text-muted" style="font-size:.75rem;">
+              <div class="text-muted d-flex align-items-center justify-content-center gap-1 mb-1" style="font-size:.75rem;">
                 <img src="{% static 'img/trainer_sprites/' %}{{ gl.trainer|trainer_sprite_path }}"
-                     style="height:28px; object-fit:contain; vertical-align:middle;"
+                     style="height:24px; object-fit:contain; vertical-align:middle;"
                      onerror="this.style.display='none'">
-                {{ gl.trainer.username }}
+                <span>{{ gl.trainer.username }}</span>
               </div>
               <div class="text-muted" style="font-size:.72rem;">{{ gl.gym_city }}</div>
 
               <!-- Statut -->
               <div class="mt-2">
                 {% if entry.obtained %}
-                  <span class="badge badge-warning" style="font-size:.7rem;">Obtenu</span>
+                  <span class="badge bg-warning text-dark" style="font-size:.68rem;">
+                    <i class="fas fa-check me-1"></i>Obtenu
+                  </span>
                 {% else %}
-                  <span class="badge badge-secondary" style="font-size:.7rem;">Non obtenu</span>
+                  <span class="badge bg-secondary" style="font-size:.68rem;">
+                    <i class="fas fa-lock me-1"></i>Non obtenu
+                  </span>
                 {% endif %}
               </div>
 
@@ -114,7 +115,7 @@
       {% endwith %}
       {% empty %}
       <div class="col-12 text-center text-muted py-4">
-        <i class="fas fa-exclamation-circle fa-2x mb-2"></i>
+        <i class="fas fa-exclamation-circle fa-2x mb-2 d-block"></i>
         <p>Aucune arène configurée.</p>
       </div>
       {% endfor %}
@@ -126,11 +127,59 @@
 <!-- Bannière Ligue Pokémon -->
 <div class="card shadow border-warning mb-4">
   <div class="card-body text-center py-4">
-    <i class="fas fa-crown fa-3x text-warning mb-3"></i>
-    <h4 class="font-weight-bold text-gray-800">Tous les badges de Kanto obtenus !</h4>
+    <i class="fas fa-crown fa-3x text-warning mb-3 d-block"></i>
+    <h4 class="fw-bold mb-2">Tous les badges de Kanto obtenus !</h4>
     <p class="text-muted mb-0">Tu es prêt(e) à affronter la Ligue Pokémon. Direction le Plateau Indigo !</p>
   </div>
 </div>
 {% endif %}
 
 {% endblock content %}
+
+{% block css %}
+{{ block.super }}
+<style>
+/* ── Carte de progression ────────────────────────────────────────────────── */
+.badge-progress-card {
+  border-left: 4px solid #ffc107;
+}
+
+/* ── Cards badges ────────────────────────────────────────────────────────── */
+.badge-card {
+  transition: transform .15s ease, box-shadow .15s ease;
+  cursor: pointer;
+}
+.badge-card--obtained {
+  border: 2px solid #ffc107 !important;
+}
+.badge-card--locked {
+  border: 1px solid #dee2e6;
+  opacity: .8;
+}
+.badge-card-link:hover .badge-card {
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(0,0,0,.14) !important;
+}
+.badge-card-link:hover .badge-card--obtained {
+  box-shadow: 0 6px 18px rgba(255,193,7,.3) !important;
+}
+
+/* ── Sprite ──────────────────────────────────────────────────────────────── */
+.badge-sprite {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.badge-sprite--locked {
+  filter: grayscale(100%) opacity(0.35);
+}
+
+/* ── Coche obtenu ────────────────────────────────────────────────────────── */
+.badge-check {
+  bottom: -4px;
+  right: -6px;
+  font-size: 1rem;
+  line-height: 1;
+}
+</style>
+{% endblock %}

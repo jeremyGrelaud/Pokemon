@@ -20,8 +20,8 @@
   <div class="col-lg-4 mb-4">
     <!-- Pokémon Info Card -->
     <div class="card shadow mb-4">
-      <div class="card-header py-3 text-center bg-gradient-primary text-white">
-        <h4 class="m-0 font-weight-bold">#{{ pokemon.pokedex_number|stringformat:"03d" }} {{ pokemon.name }}</h4>
+      <div class="card-header py-3 text-center bg-gradient-primary text-dark">
+        <h4 class="m-0 fw-bold">#{{ pokemon.pokedex_number|stringformat:"03d" }} {{ pokemon.name }}</h4>
       </div>
       <div class="card-body text-center">
         <!-- Sprite -->
@@ -32,7 +32,7 @@
         
         <!-- Types -->
         <div class="mb-3">
-          <span class="badge badge-type-{{ pokemon.primary_type.name }} p-2 mr-1">
+          <span class="badge badge-type-{{ pokemon.primary_type.name }} p-2 me-1">
             {{ pokemon.primary_type.name|upper }}
           </span>
           {% if pokemon.secondary_type %}
@@ -64,7 +64,7 @@
     {% if evolutions_from or evolutions_to %}
     <div class="card shadow mb-4">
       <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
+        <h6 class="m-0 fw-bold text-primary">
           <i class="fas fa-arrow-right"></i> Évolutions
         </h6>
       </div>
@@ -113,7 +113,7 @@
     <!-- Stats de Base -->
     <div class="card shadow mb-4">
       <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
+        <h6 class="m-0 fw-bold text-primary">
           <i class="fas fa-chart-bar"></i> Stats de Base
         </h6>
       </div>
@@ -189,7 +189,7 @@
     <!-- Capacités Apprises -->
     <div class="card shadow mb-4">
       <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
+        <h6 class="m-0 fw-bold text-primary">
           <i class="fas fa-bolt"></i> Capacités Apprises
         </h6>
       </div>

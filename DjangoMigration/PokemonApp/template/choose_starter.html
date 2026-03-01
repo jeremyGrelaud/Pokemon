@@ -12,11 +12,11 @@
       <!-- Header -->
       <div class="text-center mb-5">
         <img src="{% static 'img/pokedex_transparent.png' %}" style="width:56px;" alt="Pokédex" class="mb-3">
-        <h1 class="h2 font-weight-bold text-gray-800">Bienvenue, {{ trainer.username }} !</h1>
+        <h1 class="h2 fw-bold text-gray-800">Bienvenue, {{ trainer.username }} !</h1>
         <p class="lead text-muted">
           Professeur Chen vous attend. Choisissez votre Pokémon de départ pour commencer votre aventure !
         </p>
-        <small class="text-muted"><i class="fas fa-sync-alt fa-xs mr-1"></i>Survolez une carte pour voir les stats</small>
+        <small class="text-muted"><i class="fas fa-sync-alt fa-xs me-1"></i>Survolez une carte pour voir les stats</small>
         <hr>
       </div>
 
@@ -35,7 +35,7 @@
               <div class="flip-card__face flip-card__face--front">
 
                 {% if is_shiny %}
-                <div class="shiny-ribbon"><i class="fas fa-star fa-xs mr-1"></i>Chromatique !</div>
+                <div class="shiny-ribbon"><i class="fas fa-star fa-xs me-1"></i>Chromatique !</div>
                 {% endif %}
 
                 <div class="pokemon-number">#{{ starter.pokedex_number|stringformat:"03d" }}</div>
@@ -53,11 +53,11 @@
 
                 <!-- Types -->
                 <div class="type-badges mb-3">
-                  <span class="type-badge type-{{ starter.primary_type.name|lower }}">
+                  <span class="type-badge badge-type-{{ starter.primary_type.name|lower }}">
                     {{ starter.primary_type.name|upper }}
                   </span>
                   {% if starter.secondary_type %}
-                  <span class="type-badge type-{{ starter.secondary_type.name|lower }}">
+                  <span class="type-badge badge-type-{{ starter.secondary_type.name|lower }}">
                     {{ starter.secondary_type.name|upper }}
                   </span>
                   {% endif %}
@@ -83,7 +83,7 @@
                 </div>
 
                 <div class="flip-hint">
-                  <i class="fas fa-info-circle mr-1"></i>Survolez pour les stats complètes
+                  <i class="fas fa-info-circle me-1"></i>Survolez pour les stats complètes
                 </div>
               </div>
 
@@ -91,7 +91,7 @@
               <div class="flip-card__face flip-card__face--back">
 
                 {% if is_shiny %}
-                <div class="shiny-ribbon"><i class="fas fa-star fa-xs mr-1"></i>Chromatique !</div>
+                <div class="shiny-ribbon"><i class="fas fa-star fa-xs me-1"></i>Chromatique !</div>
                 {% endif %}
 
                 <div class="back-header">
@@ -102,11 +102,11 @@
                   <div>
                     <div class="pokemon-name-back">{{ starter.name }}</div>
                     <div class="type-badges">
-                      <span class="type-badge type-{{ starter.primary_type.name|lower }}">
+                      <span class="type-badge badge-type-{{ starter.primary_type.name|lower }}">
                         {{ starter.primary_type.name|upper }}
                       </span>
                       {% if starter.secondary_type %}
-                      <span class="type-badge type-{{ starter.secondary_type.name|lower }}">
+                      <span class="type-badge badge-type-{{ starter.secondary_type.name|lower }}">
                         {{ starter.secondary_type.name|upper }}
                       </span>
                       {% endif %}
@@ -183,7 +183,7 @@
                 <!-- Bouton de sélection -->
                 <button type="submit" name="starter_id" value="{{ starter.id }}"
                         class="btn-choose {% if is_shiny %}btn-choose-shiny{% endif %}">
-                  <i class="fas fa-hand-pointer mr-2"></i>
+                  <i class="fas fa-hand-pointer me-2"></i>
                   Choisir {{ starter.name }}{% if is_shiny %} ✨{% endif %}
                 </button>
               </div>
@@ -204,333 +204,6 @@
   </div>
 </div>
 
-<style>
-
-/* ── Variables ─────────────────────────────────────────────────────────────── */
-:root {
-  --card-w: 290px;
-  --card-h: 440px;
-  --radius: 18px;
-  --transition: 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
-}
-
-/* ── Wrapper flip ──────────────────────────────────────────────────────────── */
-.flip-wrapper {
-  width: var(--card-w);
-  height: var(--card-h);
-  perspective: 1000px;
-  cursor: pointer;
-  position: relative;
-  /* Sélection : border bleue autour du wrapper */
-  border-radius: calc(var(--radius) + 4px);
-  transition: transform 0.15s;
-}
-.flip-wrapper:hover .flip-card__face--front {
-  transform: rotateY(180deg);
-}
-.flip-wrapper:hover .flip-card__face--back {
-  transform: rotateY(0deg);
-}
-
-/* Carte sélectionnée */
-.flip-wrapper.selected {
-  box-shadow: 0 0 0 4px #4e73df;
-}
-.flip-wrapper.selected .flip-card__face--front {
-  transform: rotateY(180deg);
-}
-.flip-wrapper.selected .flip-card__face--back {
-  transform: rotateY(0deg);
-}
-
-/* Shiny wrapper */
-.flip-wrapper.is-shiny {
-  box-shadow: 0 0 20px rgba(246, 194, 62, 0.55);
-  animation: shinyGlow 2.5s ease-in-out infinite;
-}
-@keyframes shinyGlow {
-  0%,100% { box-shadow: 0 0 16px rgba(246,194,62,.5); }
-  50%      { box-shadow: 0 0 34px rgba(246,194,62,.9); }
-}
-
-/* ── Faces communes ────────────────────────────────────────────────────────── */
-.flip-card__face {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transition: transform var(--transition);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,.1);
-}
-
-/* ── FACE AVANT ─────────────────────────────────────────────────────────────── */
-.flip-card__face--front {
-  background: #fff;
-  transform: rotateY(0deg);
-  padding: 24px 20px 16px;
-  justify-content: flex-start;
-}
-
-.pokemon-number {
-  font-size: 0.72rem;
-  color: #aaa;
-  font-weight: 700;
-  letter-spacing: 1px;
-  align-self: flex-start;
-}
-
-.sprite-area {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pokemon-sprite {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,.15));
-  transition: transform 0.3s;
-}
-.flip-wrapper:hover .pokemon-sprite {
-  transform: scale(1.08) translateY(-4px);
-}
-
-.pokemon-name {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #2d3748;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-/* ── Stats preview (face avant) ─────────────────────────────────────────────── */
-.stats-preview {
-  width: 100%;
-  margin-top: 4px;
-  margin-bottom: 8px;
-}
-.stat-preview-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 5px;
-}
-.stat-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #888;
-  width: 28px;
-  text-align: right;
-  letter-spacing: 0.5px;
-}
-.stat-bar-mini {
-  flex: 1;
-  height: 6px;
-  background: #f0f0f0;
-  border-radius: 99px;
-  overflow: hidden;
-}
-.stat-val {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #555;
-  width: 24px;
-  text-align: right;
-}
-
-.flip-hint {
-  font-size: 0.68rem;
-  color: #bbb;
-  margin-top: 4px;
-}
-
-/* ── FACE ARRIÈRE ────────────────────────────────────────────────────────────── */
-.flip-card__face--back {
-  background: #1a1f35;
-  color: #e8eaf6;
-  transform: rotateY(-180deg);
-  padding: 18px 20px 16px;
-  justify-content: flex-start;
-}
-
-/* shiny back */
-.is-shiny .flip-card__face--back {
-  background: linear-gradient(145deg, #1a1404, #2a1e00);
-}
-
-.back-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  margin-bottom: 12px;
-}
-.back-sprite {
-  width: 60px;
-  height: 60px;
-  object-fit: contain;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
-}
-.pokemon-name-back {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: 0.5px;
-}
-
-/* ── Stats section (face arrière) ───────────────────────────────────────────── */
-.stats-section {
-  width: 100%;
-  flex: 1;
-}
-.stats-title {
-  font-size: 0.6rem;
-  letter-spacing: 2px;
-  color: #7b85a8;
-  font-weight: 700;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  padding-bottom: 6px;
-}
-
-.stat-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 7px;
-}
-.stat-name {
-  font-size: 0.62rem;
-  font-weight: 700;
-  width: 44px;
-  text-align: right;
-  color: #9ca3c0;
-  letter-spacing: 0.3px;
-}
-.stat-bar-wrap {
-  flex: 1;
-  height: 8px;
-  background: rgba(255,255,255,.1);
-  border-radius: 99px;
-  overflow: hidden;
-}
-.stat-bar-full {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.6s ease 0.3s;
-}
-.stat-number {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #e8eaf6;
-  width: 28px;
-  text-align: right;
-}
-
-.stat-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid rgba(255,255,255,.08);
-  margin-top: 8px;
-  padding-top: 7px;
-  font-size: 0.65rem;
-  color: #7b85a8;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-.stat-total-val {
-  font-size: 0.85rem;
-  color: #fff;
-  font-weight: 800;
-}
-
-/* ── Couleurs des barres de stats ───────────────────────────────────────────── */
-.stat-hp     { background: linear-gradient(90deg, #4caf50, #81c784); }
-.stat-atk    { background: linear-gradient(90deg, #ef5350, #ff7043); }
-.stat-def    { background: linear-gradient(90deg, #ff9800, #ffb74d); }
-.stat-spa    { background: linear-gradient(90deg, #5c6bc0, #7986cb); }
-.stat-spdef  { background: linear-gradient(90deg, #00acc1, #4dd0e1); }
-.stat-spd    { background: linear-gradient(90deg, #ec407a, #f48fb1); }
-
-/* Noms colorés */
-.stat-name-hp      { color: #81c784; }
-.stat-name-atk     { color: #ff7043; }
-.stat-name-def     { color: #ffb74d; }
-.stat-name-spa     { color: #7986cb; }
-.stat-name-spd-def { color: #4dd0e1; }
-.stat-name-spd     { color: #f48fb1; }
-
-/* ── Bouton choisir ─────────────────────────────────────────────────────────── */
-.btn-choose {
-  display: block;
-  width: 100%;
-  padding: 10px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #4e73df, #36b9cc);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.85rem;
-  cursor: pointer;
-  letter-spacing: 0.3px;
-  transition: opacity 0.2s, transform 0.15s;
-  margin-top: 8px;
-}
-.btn-choose:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-.btn-choose-shiny {
-  background: linear-gradient(135deg, #f6c23e, #e0a800);
-  color: #1a1404;
-}
-
-/* ── Type badges ────────────────────────────────────────────────────────────── */
-.type-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.type-badge {
-  display: inline-block;
-  padding: 2px 9px;
-  border-radius: 99px;
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  color: #fff;
-  text-transform: uppercase;
-}
-
-/* Types front (sombre) */
-.type-grass, .type-plante { background: #4caf50; }
-.type-fire,  .type-feu    { background: #f44336; }
-.type-water, .type-eau    { background: #2196f3; }
-.type-poison               { background: #9c27b0; }
-
-/* ── Shiny ribbon ───────────────────────────────────────────────────────────── */
-.shiny-ribbon {
-  position: absolute;
-  top: 12px;
-  right: -6px;
-  background: linear-gradient(90deg, #f6c23e, #e0a800);
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 800;
-  padding: 3px 14px 3px 10px;
-  border-radius: 4px 0 0 4px;
-  letter-spacing: 0.5px;
-  box-shadow: -2px 2px 6px rgba(0,0,0,.2);
-  z-index: 10;
-}
-</style>
 
 <!-- ═══════════════════════════════════════════════════════════════ SCRIPT ═══ -->
 <script>
@@ -560,4 +233,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
+{% block css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/choose-starter.css' %}">
+{% endblock css %}
 {% endblock content %}

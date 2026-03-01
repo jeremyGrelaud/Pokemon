@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/history.css' %}" rel="stylesheet" />
+{% endblock css %}
 
 {% block title %}
 <title>Historique Centres Pokémon - Pokémon Gen 1</title>
@@ -28,12 +32,12 @@
   <div class="col-xl-3 col-md-6 mb-4">
     <div class="card border-left-primary shadow h-100 py-2">
       <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-primary text-uppercase mb-1">
               Visites Totales
             </div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_visits }}</div>
+            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_visits }}</div>
           </div>
           <div class="col-auto">
             <i class="fas fa-hospital fa-2x text-gray-300"></i>
@@ -47,12 +51,12 @@
   <div class="col-xl-3 col-md-6 mb-4">
     <div class="card border-left-success shadow h-100 py-2">
       <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-success text-uppercase mb-1">
               Pokémon Soignés
             </div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_healed }}</div>
+            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_healed }}</div>
           </div>
           <div class="col-auto">
             <i class="fas fa-heart fa-2x text-gray-300"></i>
@@ -66,12 +70,12 @@
   <div class="col-xl-3 col-md-6 mb-4">
     <div class="card border-left-warning shadow h-100 py-2">
       <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-warning text-uppercase mb-1">
               Argent Dépensé
             </div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_spent }}₽</div>
+            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_spent }}₽</div>
           </div>
           <div class="col-auto">
             <i class="fas fa-coins fa-2x text-gray-300"></i>
@@ -85,12 +89,12 @@
   <div class="col-xl-3 col-md-6 mb-4">
     <div class="card border-left-info shadow h-100 py-2">
       <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-info text-uppercase mb-1">
               Centre Favori
             </div>
-            <div class="h6 mb-0 font-weight-bold text-gray-800">
+            <div class="h6 mb-0 fw-bold text-gray-800">
               {% if favorite_center %}
                 {{ favorite_center.center__name|truncatewords:3 }}
               {% else %}
@@ -113,7 +117,7 @@
 <!-- Visits Timeline -->
 <div class="card shadow mb-4">
   <div class="card-header py-3 d-flex justify-content-between align-items-center">
-    <h6 class="m-0 font-weight-bold text-primary">
+    <h6 class="m-0 fw-bold text-primary">
       <i class="fas fa-calendar-alt"></i> Historique des Visites
     </h6>
     
@@ -154,7 +158,7 @@
                       {{ visit.visited_at|date:"M Y" }}
                     </small>
                     <div class="mt-1">
-                      <small class="badge badge-secondary">
+                      <small class="badge bg-secondary">
                         {{ visit.visited_at|date:"H:i" }}
                       </small>
                     </div>
@@ -178,7 +182,7 @@
                 <!-- Healing Stats -->
                 <div class="col-md-3">
                   <div class="d-flex align-items-center">
-                    <i class="fas fa-users fa-2x text-success mr-3"></i>
+                    <i class="fas fa-users fa-2x text-success me-3"></i>
                     <div>
                       <div class="h5 mb-0 text-success">{{ visit.pokemon_healed }}</div>
                       <small class="text-muted">Pokémon soignés</small>
@@ -193,7 +197,7 @@
                     <div class="h5 mb-0 text-warning">{{ visit.cost }}₽</div>
                     <small class="text-muted">Coût</small>
                     {% else %}
-                    <span class="badge badge-success p-2">
+                    <span class="badge bg-success p-2">
                       GRATUIT
                     </span>
                     {% endif %}
@@ -247,7 +251,7 @@
   <div class="col-lg-6 mb-4">
     <div class="card shadow">
       <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
+        <h6 class="m-0 fw-bold text-primary">
           <i class="fas fa-chart-line"></i> Visites par Mois
         </h6>
       </div>
@@ -260,7 +264,7 @@
   <div class="col-lg-6 mb-4">
     <div class="card shadow">
       <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">
+        <h6 class="m-0 fw-bold text-primary">
           <i class="fas fa-chart-pie"></i> Centres les Plus Visités
         </h6>
       </div>
@@ -286,98 +290,6 @@
 
 {% block js %}
 {{ block.super }}
-
-<style>
-/* Timeline Styles */
-.timeline {
-  position: relative;
-  padding: 20px 0;
-}
-
-.timeline::before {
-  content: '';
-  position: absolute;
-  left: 50px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: #e9ecef;
-}
-
-.timeline-item {
-  position: relative;
-  padding-left: 100px;
-  margin-bottom: 0;
-}
-
-.timeline-marker {
-  position: absolute;
-  left: 38px;
-  top: 20px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  z-index: 1;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.timeline-content {
-  padding: 10px 0;
-}
-
-.border-left-danger {
-  border-left: 4px solid #e74c3c;
-}
-
-.border-left-primary {
-  border-left: 4px solid #4e73df;
-}
-
-.border-left-success {
-  border-left: 4px solid #1cc88a;
-}
-
-.border-left-warning {
-  border-left: 4px solid #f6c23e;
-}
-
-.border-left-info {
-  border-left: 4px solid #36b9cc;
-}
-
-/* Hover Effects */
-.timeline-item:hover .timeline-content .card {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  transform: translateX(5px);
-  transition: all 0.3s ease;
-}
-
-/* Filter Active */
-.btn-group .btn.active {
-  background-color: #4e73df;
-  color: white;
-  border-color: #4e73df;
-}
-
-/* Responsive Timeline */
-@media (max-width: 768px) {
-  .timeline::before {
-    left: 20px;
-  }
-  
-  .timeline-item {
-    padding-left: 60px;
-  }
-  
-  .timeline-marker {
-    left: 8px;
-  }
-}
-</style>
 
 <script>
 $(document).ready(function() {
