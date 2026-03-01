@@ -173,7 +173,7 @@ def restore_game_snapshot(trainer, snapshot):
         except Pokemon.DoesNotExist:
             continue
 
-        restored = PlayablePokemon.objects.create(
+        restored = PlayablePokemon(
             species=species,
             nickname=pd.get('nickname'),
             level=pd['level'],
@@ -210,6 +210,10 @@ def restore_game_snapshot(trainer, snapshot):
             pokeball_used=pd.get('pokeball_used'),
             friendship=pd.get('friendship', 70),
         )
+        # Poser le flag AVANT save() pour bloquer learn_initial_moves().
+        # Les moves seront restaurés manuellement depuis le snapshot juste après.
+        restored._skip_learn_moves = True
+        restored.save()
 
         for md in pd.get('moves', []):
             try:
