@@ -156,8 +156,10 @@ class PlayablePokemon(models.Model):
         
         super().save(*args, **kwargs)
         
-        # Auto-apprentissage des moves initiaux après sauvegarde
-        if is_new:
+        # Auto-apprentissage des moves initiaux après sauvegarde.
+        # Désactivé si _skip_learn_moves=True (ex: restauration de snapshot)
+        # pour éviter que les moves du snapshot soient écrasés/doublonnés.
+        if is_new and not getattr(self, '_skip_learn_moves', False):
             self.learn_initial_moves()
     
     def learn_initial_moves(self):

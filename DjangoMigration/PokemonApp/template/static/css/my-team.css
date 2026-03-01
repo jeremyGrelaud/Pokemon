@@ -53,7 +53,6 @@
   border-radius: 4px;
   font-size: .68rem;
   color: #fff;
-  background: #6c757d;
   min-width: 0;
 }
 .move-mini-name {
@@ -78,7 +77,6 @@
 .move-card-full {
   border-radius: 8px;
   padding: 8px 10px;
-  background: #6c757d;
   color: #fff;
   transition: transform .15s, box-shadow .15s;
 }
