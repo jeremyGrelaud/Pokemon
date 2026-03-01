@@ -12,7 +12,7 @@
     {% endif %}
     
     {% if inventory_item.is_new %}
-    <span class="badge badge-info" style="position: absolute; top: 10px; left: 10px;">
+    <span class="badge bg-info" style="position: absolute; top: 10px; left: 10px;">
       NOUVEAU
     </span>
     {% endif %}
@@ -57,7 +57,7 @@
 
       <!-- Item Type Badge -->
       <div class="text-center mb-3">
-        <span class="badge badge-secondary">
+        <span class="badge bg-secondary">
           {{ inventory_item.item.get_item_type_display }}
         </span>
       </div>
@@ -100,7 +100,7 @@
 
       <!-- Quantity Selector -->
       <div class="form-group mb-3">
-        <label class="small font-weight-bold">Quantité :</label>
+        <label class="small fw-bold">Quantité :</label>
         <input type="number" 
                class="form-control form-control-sm buy-quantity" 
                min="1" 

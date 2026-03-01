@@ -20,8 +20,8 @@
   <div class="col-6 col-md-3 mb-2">
     <div class="card border-left-primary shadow h-100 py-2">
       <div class="card-body py-2">
-        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total</div>
-        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stat_total }}</div>
+        <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total</div>
+        <div class="h5 mb-0 fw-bold text-gray-800">{{ stat_total }}</div>
       </div>
     </div>
   </div>
@@ -29,8 +29,8 @@
     <a href="?result=win&type={{ type_filter }}" class="text-decoration-none">
     <div class="card border-left-success shadow h-100 py-2 {% if result_filter == 'win' %}bg-success-light{% endif %}">
       <div class="card-body py-2">
-        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Victoires</div>
-        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stat_win }}</div>
+        <div class="text-xs fw-bold text-success text-uppercase mb-1">Victoires</div>
+        <div class="h5 mb-0 fw-bold text-gray-800">{{ stat_win }}</div>
       </div>
     </div>
     </a>
@@ -39,8 +39,8 @@
     <a href="?result=loss&type={{ type_filter }}" class="text-decoration-none">
     <div class="card border-left-danger shadow h-100 py-2">
       <div class="card-body py-2">
-        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Défaites</div>
-        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stat_loss }}</div>
+        <div class="text-xs fw-bold text-danger text-uppercase mb-1">Défaites</div>
+        <div class="h5 mb-0 fw-bold text-gray-800">{{ stat_loss }}</div>
       </div>
     </div>
     </a>
@@ -49,8 +49,8 @@
     <a href="?result=active&type={{ type_filter }}" class="text-decoration-none">
     <div class="card border-left-warning shadow h-100 py-2">
       <div class="card-body py-2">
-        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">En cours</div>
-        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stat_active }}</div>
+        <div class="text-xs fw-bold text-warning text-uppercase mb-1">En cours</div>
+        <div class="h5 mb-0 fw-bold text-gray-800">{{ stat_active }}</div>
       </div>
     </div>
     </a>
@@ -104,12 +104,12 @@
 
       <!-- Reset si filtres actifs -->
       {% if result_filter != 'all' or type_filter != 'all' %}
-      <a href="{% url 'BattleListView' %}" class="btn btn-sm btn-light ml-1" title="Réinitialiser">
+      <a href="{% url 'BattleListView' %}" class="btn btn-sm btn-light ms-1" title="Réinitialiser">
         <i class="fas fa-times"></i> Réinitialiser
       </a>
       {% endif %}
 
-      <span class="ml-auto text-muted small">
+      <span class="ms-auto text-muted small">
         {{ page_obj.paginator.count }} combat{{ page_obj.paginator.count|pluralize }}
       </span>
     </div>
@@ -134,19 +134,19 @@
                 {% elif battle.is_active %}#ffc107
                 {% else %}#6c757d{% endif %};">
 
-        <div class="row align-items-center no-gutters">
+        <div class="row align-items-center g-0">
 
           <!-- Résultat -->
-          <div class="col-auto mr-3 text-center" style="min-width:64px;">
+          <div class="col-auto me-3 text-center" style="min-width:64px;">
             {% if battle.winner == battle.player_trainer %}
               <i class="fas fa-trophy fa-2x text-warning"></i>
-              <div><small class="text-success font-weight-bold">Victoire</small></div>
+              <div><small class="text-success fw-bold">Victoire</small></div>
             {% elif battle.winner %}
               <i class="fas fa-times-circle fa-2x text-danger"></i>
-              <div><small class="text-danger font-weight-bold">Défaite</small></div>
+              <div><small class="text-danger fw-bold">Défaite</small></div>
             {% elif battle.is_active %}
               <i class="fas fa-hourglass-half fa-2x text-warning"></i>
-              <div><small class="text-warning font-weight-bold">En cours</small></div>
+              <div><small class="text-warning fw-bold">En cours</small></div>
             {% else %}
               <i class="fas fa-minus-circle fa-2x text-muted"></i>
               <div><small class="text-muted">—</small></div>
@@ -157,36 +157,36 @@
           <div class="col">
             <div class="d-flex align-items-center mb-1 flex-wrap">
               {% if battle.battle_type == 'wild' %}
-                <span class="badge badge-success mr-2"><i class="fas fa-leaf"></i> Sauvage</span>
+                <span class="badge bg-success me-2"><i class="fas fa-leaf"></i> Sauvage</span>
               {% elif battle.battle_type == 'trainer' %}
-                <span class="badge badge-info mr-2"><i class="fas fa-user"></i> Dresseur</span>
+                <span class="badge bg-info me-2"><i class="fas fa-user"></i> Dresseur</span>
               {% elif battle.battle_type == 'gym' %}
-                <span class="badge badge-warning text-dark mr-2"><i class="fas fa-medal"></i> Arène</span>
+                <span class="badge bg-warning text-dark me-2"><i class="fas fa-medal"></i> Arène</span>
               {% else %}
-                <span class="badge badge-secondary mr-2">{{ battle.get_battle_type_display }}</span>
+                <span class="badge bg-secondary me-2">{{ battle.get_battle_type_display }}</span>
               {% endif %}
 
-              <span class="font-weight-bold text-gray-800 mr-2">
+              <span class="fw-bold text-gray-800 me-2">
                 {% if battle.opponent_trainer %}{{ battle.opponent_trainer.get_full_title }}
                 {% else %}Pokémon Sauvage{% endif %}
               </span>
-              <small class="text-muted ml-auto">{{ battle.created_at|date:"d/m/Y H:i" }}</small>
+              <small class="text-muted ms-auto">{{ battle.created_at|date:"d/m/Y H:i" }}</small>
             </div>
 
             <div class="d-flex align-items-center flex-wrap">
               {% if battle.player_pokemon %}
-              <div class="d-flex align-items-center mr-3">
+              <div class="d-flex align-items-center me-3">
                 <img src="{% static 'img/sprites_gen5/' %}{% if battle.player_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ battle.player_pokemon.species.name|lowerPokemonFileNames }}.png"
                      style="width:40px;height:40px;object-fit:contain;"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">
-                <small class="ml-1 text-muted">
+                <small class="ms-1 text-muted">
                   {{ battle.player_pokemon.nickname|default:battle.player_pokemon.species.name }}
                   <span class="text-gray-500">Niv.{{ battle.player_pokemon.level }}</span>
                 </small>
               </div>
               {% endif %}
 
-              <span class="text-muted mr-3"><i class="fas fa-arrow-right"></i></span>
+              <span class="text-muted me-3"><i class="fas fa-arrow-right"></i></span>
 
               {% if battle.battle_type == 'wild' %}
                 {% if battle.opponent_pokemon %}
@@ -194,7 +194,7 @@
                   <img src="{% static 'img/sprites_gen5/' %}{% if battle.opponent_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ battle.opponent_pokemon.species.name|lowerPokemonFileNames }}.png"
                        style="width:40px;height:40px;object-fit:contain;"
                        onerror="this.src='{% static 'img/pokeball.png' %}'">
-                  <small class="ml-1 text-muted">
+                  <small class="ms-1 text-muted">
                     {{ battle.opponent_pokemon.species.name }}
                     <span class="text-gray-500">Niv.{{ battle.opponent_pokemon.level }}</span>
                   </small>
@@ -215,7 +215,7 @@
           </div>
 
           <!-- Tours + flèche -->
-          <div class="col-auto ml-3 text-right d-none d-md-block">
+          <div class="col-auto ms-3 text-end d-none d-md-block">
             <small class="text-muted d-block">{{ battle.current_turn }} tours</small>
             <i class="fas fa-chevron-right text-muted"></i>
           </div>

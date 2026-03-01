@@ -3,7 +3,7 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="{% static 'img/pokeball.png'%}" />
     
     {% block title %}
@@ -15,457 +15,500 @@
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet" />
     
     <!-- Custom styles -->
-    <link href="{% static 'css/sb-admin-2.css'%}" rel="stylesheet" />
+    <link href="{% static 'css/sb-admin-5.css'%}" rel="stylesheet" />
     <link href="{% static 'css/pokemon-types.css'%}" rel="stylesheet" />
     <link href="{% static 'css/bgm.css'%}" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/toast-notifications.css' %}">
+
     <style>
     @keyframes sidebar-pulse {
       0%, 100% { opacity: 1; }
       50%       { opacity: .55; }
     }
+
+    /* ── Couleur rouge Pokémon pour la sidebar ──────────────────────────── */
+    #layoutSidenav #layoutSidenav_nav .sb-sidenav {
+      background: linear-gradient(180deg, #c0392b 0%, #96281b 100%);
+    }
+    #layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link {
+      color: rgba(255,255,255,.75);
+    }
+    #layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link .sb-nav-link-icon {
+      color: rgba(255,255,255,.5);
+    }
+    #layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link:hover,
+    #layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link.active {
+      color: #fff;
+    }
+    #layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link.active .sb-nav-link-icon {
+      color: #fff;
+    }
+    #layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .sb-sidenav-menu-heading {
+      color: rgba(255,255,255,.4);
+    }
+    #layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-footer {
+      background: rgba(0,0,0,.2);
+    }
+    .sidebar-divider {
+      border-top: 1px solid rgba(255,255,255,.15);
+      margin: .5rem 1rem;
+    }
+
+    /* ── Topbar ──────────────────────────────────────────────────────────── */
+    .sb-topnav {
+      background: #fff !important;
+      box-shadow: 0 .15rem 1.75rem 0 rgba(58,59,69,.15);
+    }
+    .sb-topnav .navbar-brand {
+      color: #e74a3b !important;
+      font-weight: 700;
+    }
+    #sidebarToggle { color: #858796; }
+
+    /* ── img-profile (avatar topbar) ────────────────────────────────────── */
+    .img-profile {
+      height: 2rem;
+      width: 2rem;
+      object-fit: contain;
+      background: #f8f9fc;
+    }
+
+    /* ── Mobile bottom nav ───────────────────────────────────────────────── */
+    .mobile-bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: calc(56px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: #fff;
+      border-top: 1px solid #e3e6f0;
+      display: flex;
+      align-items: stretch;
+      z-index: 1060;
+      box-shadow: 0 -2px 10px rgba(0,0,0,.08);
+    }
+    .mobile-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: .6rem;
+      color: #858796;
+      text-decoration: none !important;
+      gap: 2px;
+      transition: color .15s, background .15s;
+      border-top: 3px solid transparent;
+    }
+    .mobile-nav-item i { font-size: 1.1rem; }
+    .mobile-nav-item.active { color: #e74a3b; border-top-color: #e74a3b; }
+    .mobile-nav-item:hover { color: #5a5c69; }
+    .mobile-nav-battle { color: #dc3545 !important; animation: sidebar-pulse 1.2s infinite; }
+    .mobile-nav-heal   { color: #f6c23e !important; animation: sidebar-pulse 2s infinite; }
+
+    @media (max-width: 991.98px) {
+      #layoutSidenav_content { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+    }
+
+    /* ── Shiny shimmer ───────────────────────────────────────────────────── */
+    @keyframes shiny-shimmer {
+      0%   { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
+      30%  { filter: brightness(1.25) drop-shadow(0 0 6px  #ffd700); }
+      60%  { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
+      100% { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
+    }
+    .shiny-sprite { animation: shiny-shimmer 3s ease-in-out infinite; }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
 
-    {% block css %}
-
-    {% endblock css %}
+    {% block css %}{% endblock css %}
 
     <!-- Auto-save -->
     {% if has_active_save %}
-      <script>
-      let activeSaveId = {{ active_save.id }};
-
-      function autoSave() {
-        if (!activeSaveId) return;
-        // Ne pas auto-sauvegarder pendant un combat actif (évite corruption)
-        if (window.__battleInProgress) return;
-
-        fetch(`/saves/${activeSaveId}/save/`, {
-          method: 'GET',
-          headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-        })
+    <script>
+    let activeSaveId = {{ active_save.id }};
+    function autoSave() {
+      if (!activeSaveId || window.__battleInProgress) return;
+      fetch(`/saves/${activeSaveId}/save/`, { method:'GET', headers:{'X-CSRFToken':'{{ csrf_token }}'} })
         .then(r => r.json())
         .then(data => {
           if (data.success && data.save_id) {
             activeSaveId = data.save_id;
-            // Toast discret de confirmation
-            if (typeof showToast === 'function') {
-              showToast('💾 Partie sauvegardée automatiquement', 'info', 2500);
-            }
+            if (typeof showToast === 'function') showToast('💾 Partie sauvegardée automatiquement','info',2500);
           }
-        })
-        .catch(() => {});
-      }
-
-      setInterval(autoSave, 5 * 60 * 1000);
-      </script>
+        }).catch(()=>{});
+    }
+    setInterval(autoSave, 5 * 60 * 1000);
+    </script>
     {% endif %}
 
   </head>
 
-  <body id="page-top">
-    <div id="wrapper">
-      {% block sidebar %}
-      <!-- Sidebar -->
-      <ul class="navbar-nav bg-gradient-danger sidebar sidebar-dark accordion" id="accordionSidebar">
-        <!-- Brand -->
-        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{% url 'home'%}">
-          <img class="sidebar-brand-img" src="{% static 'img/pokeball.png'%}" style="width: 40px; height: 40px;" />
-          <div class="sidebar-brand-text mx-3">Pokémon Gen 1</div>
-        </a>
+  <body class="sb-nav-fixed">
 
-        <hr class="sidebar-divider my-0" />
-        
-        {% if user.is_authenticated %}
-        <!-- Dashboard -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'home'%}">
-            <i class="fas fa-fw fa-tachometer-alt"></i>
-            <span>Dashboard</span>
-          </a>
-        </li>
+    <!-- ══ TOPBAR ══════════════════════════════════════════════════════════ -->
+    {% block topbar %}
+    <nav class="sb-topnav navbar navbar-expand navbar-light">
 
+      <!-- Brand -->
+      <a class="navbar-brand ps-3 d-flex align-items-center gap-2" href="{% url 'home' %}">
+        <img src="{% static 'img/pokeball.png' %}" style="width:28px;height:28px;" alt="" />
+        <span>Pokémon Gen 1</span>
+      </a>
 
-        <hr class="sidebar-divider" />
-        <div class="sidebar-heading">Gameplay</div>
+      <!-- Sidebar Toggle -->
+      <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+      </button>
 
-        <!-- Maps  -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'map_view' %}">
-            <i class="fas fa-map-location-dot"></i>
-            <span>Maps</span>
-          </a>
-        </li>
+      <!-- BGM block -->
+      <div class="ms-auto me-2">
+        {% block bgm %}{% endblock bgm %}
+      </div>
 
-        <!-- Mon Équipe -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'MyTeamView' %}">
-            <i class="fas fa-users"></i>
-            <span>Mon Équipe</span>
-          </a>
-        </li>
-
-
-        <!-- Combats -->
-        {% if active_battle %}
-        <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link d-flex align-items-center justify-content-between" href="{% url 'BattleDetailView' active_battle.id %}">
-            <span><i class="fas fa-fist-raised fa-fw"></i> <span>Combat en cours</span></span>
-            <span class="badge badge-danger" style="animation:sidebar-pulse 1.2s infinite;font-size:.65rem;">⚔️ Live</span>
-          </a>
-        </li>
-        {% endif %}
-        {% if user.is_superuser %}
-        <li class="nav-item {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'BattleListView' %}">
-            <i class="fas fa-fist-raised"></i>
-            <span>Combats (admin view)</span>
-          </a>
-        </li>
-        {% endif %}
-
-        <!-- Boutiques -->
-        <li class="nav-item {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'ShopListView' %}">
-            <i class="fas fa-shopping-cart"></i>
-            <span>Boutiques</span>
-          </a>
-        </li>
-
-        <!-- Centre Pokémon -->
-        <li class="nav-item {% if 'PokemonCenter' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'PokemonCenterListView' %}">
-            <i class="fas fa-hospital"></i>
-            <span>Centre Pokémon</span>
-          </a>
-        </li>
-
-        <!-- Centre Pokémon -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'capture_journal' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'capture_journal' %}">
-            <i class="fas fa-book"></i>
-            <span>Journal de captures</span>
-          </a>
-        </li>
-
-        <!-- Liste de sauvegardes  -->
-        <li class="nav-item {% if request.resolver_match.url_name == 'save_select' %}active{% endif %}">
-          <a class="nav-link" href="{% url 'save_select' %}">
-            <i class="fas fa-save"></i>
-            <span>Liste des sauvegardes</span>
-          </a>
-        </li>
-
-        <!-- ── Widget Zone + HP équipe ───────────────────────────────────── -->
-        {% if current_zone %}
-        <hr class="sidebar-divider mt-3 mb-0" />
-        <div class="px-3 py-2" style="font-size:.72rem;">
-
-          <!-- Zone actuelle -->
-          <a href="{% url 'zone_detail' current_zone.id %}"
-             class="d-flex align-items-center gap-2 text-white-50 text-decoration-none mb-2"
-             style="gap:6px; transition:color .15s;"
-             onmouseover="this.style.color='#fff'" onmouseout="this.style.color=''">
-            <i class="fas fa-map-marker-alt fa-fw text-danger"></i>
-            <span class="font-weight-bold text-white" style="font-size:.78rem;">{{ current_zone.name }}</span>
-          </a>
-
-          <!-- Mini barres HP équipe -->
-          {% if sidebar_team %}
-            <div style="display:flex; flex-direction:column; gap:4px;">
-              {% for p in sidebar_team %}
-              <div title="{{ p.name }}{% if p.status %} — {{ p.status }}{% endif %}"
-                  style="display:flex; align-items:center; gap:6px;">
-                <span style="width:62px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-                            color:{% if p.needs %}#f39c12{% else %}#adb5bd{% endif %}; font-size:.68rem;">
-                  {{ p.name }}
-                </span>
-                <div style="flex:1; height:5px; background:rgba(255,255,255,.15); border-radius:3px; overflow:hidden;">
-                  <div style="height:100%; width:{{ p.hp_pct }}%; border-radius:3px; transition:width .4s;
-                    background:{% if p.hp_pct > 50 %}#27ae60{% elif p.hp_pct > 20 %}#f39c12{% else %}#e74c3c{% endif %};"></div>
-                </div>
-              </div>
-              {% endfor %}
-            </div>
-
-            {% if team_needs_healing %}
-            <a href="{% url 'PokemonCenterListView' %}"
-              class="d-block mt-2 text-warning text-decoration-none"
-              style="font-size:.68rem; animation: sidebar-pulse 2s infinite;">
-              <i class="fas fa-hospital fa-fw"></i> Centre Pokémon
-            </a>
+      <!-- User dropdown -->
+      <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
+             href="#" id="userDropdown" role="button"
+             data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="d-none d-lg-inline text-gray-600 small">{{ user.username }}</span>
+            {% if lead_pokemon_sprite %}
+            <img class="img-profile rounded-circle"
+                 src="{% static lead_pokemon_sprite %}"
+                 onerror="this.src='{% static 'img/pokeball.png' %}'" />
+            {% else %}
+            <img class="img-profile rounded-circle" src="{% static 'img/pokeball.png' %}" />
             {% endif %}
-          {% endif %}
-
-        </div>
-        {% endif %}
-        <!-- ─────────────────────────────────────────────────────────────── -->
-
-
-        <hr class="sidebar-divider" />
-        <div class="sidebar-heading">Encyclopédies</div>
-
-        <!-- Pokédex -->
-        <li class="nav-item {% if 'Pokemon' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'PokemonOverView' %}">
-            <i class="fas fa-book"></i>
-            <span>Pokédex</span>
           </a>
-        </li>
-
-        <!-- Capacités -->
-        <li class="nav-item {% if 'Move' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'PokemonMoveOverView' %}">
-            <i class="fas fa-bolt"></i>
-            <span>Capacités</span>
-          </a>
-        </li>
-        <!-- Objets -->
-        <li class="nav-item {% if 'Item' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'ItemListView' %}">
-            <i class="fas fa-shopping-bag"></i>
-            <span>Objets</span>
-          </a>
-        </li>
-
-        <!-- Champions d'Arène -->
-        <li class="nav-item {% if 'Gym' in request.resolver_match.url_name %}active{% endif %}">
-          <a class="nav-link" href="{% url 'GymLeaderListView' %}">
-            <i class="fas fa-trophy"></i>
-            <span>Arènes</span>
-          </a>
-        </li>
-
-
-        {% else %}
-        <!-- Non connecté -->
-        <li class="nav-item active">
-          <a class="nav-link" href="{% url 'home'%}">
-            <i class="fas fa-fw fa-info-circle"></i>
-            <span>Informations</span>
-          </a>
-        </li>
-        {% endif %}
-      </ul>
-      {% endblock sidebar %}
-
-      <!-- Content Wrapper -->
-      <div id="content-wrapper" class="d-flex flex-column">
-        <div id="content">
-          {% block topbar %}
-          <!-- Topbar -->
-          <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-            <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-              <i class="fa fa-bars"></i>
-            </button>
-
-            <ul class="navbar-nav ml-auto">
-              <!-- User Info -->
-              <li class="nav-item dropdown no-arrow">
-                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
-                   data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{user.username}}</span>
-                  {% if lead_pokemon_sprite %}
-                  <img class="img-profile rounded-circle"
-                       src="{% static lead_pokemon_sprite %}"
-                       style="background:#f8f9fc;object-fit:contain;"
-                       onerror="this.src='{% static 'img/pokeball.png' %}'" />
-                  {% else %}
-                  <img class="img-profile rounded-circle" src="{% static 'img/pokeball.png'%}" />
-                  {% endif %}
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
+            {% if user.is_authenticated %}
+              {% if user.is_superuser %}
+              <li>
+                <a class="dropdown-item" href="/admin" target="_blank">
+                  <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>Admin Django
                 </a>
-                <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                  {% if user.is_authenticated %}
-                    {% if user.is_superuser %}
-                      <a class="dropdown-item" href="/admin" target="_blank">
-                        <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Admin Django
-                      </a>
-                      <div class="dropdown-divider"></div>
-                    {% endif %}
-                    <a class="dropdown-item" href="{% url 'MyTeamView' %}">
-                      <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                      Mon Profil
-                    </a>
-                    <!-- ACHIEVEMENTS WIDGET -->
-                    <div class="dropdown-divider"></div>
-                    <h6 class="dropdown-header">
-                      <i class="fas fa-trophy text-warning"></i> Succès
-                    </h6>
-                    
-                    <div id="achievements-widget">
-                      <div class="dropdown-item-text">
-                        <small class="text-muted">Chargement...</small>
-                      </div>
-                    </div>
-
-                    <!-- Manual save button  -->
-                    {% if has_active_save %}
-                      <a class="dropdown-item" href="#" data-toggle="modal" data-target="#saveModal">
-                        <i class="fas fa-save fa-sm fa-fw mr-2 text-gray-400"></i>
-                        Sauvegarder
-                      </a>
-                    {% endif %}
-
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="/logout">
-                      <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                      Déconnexion
-                    </a>
-                  {% else %}
-                    <a class="dropdown-item" href="/login">
-                      <i class="fas fa-sign-in-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                      Connexion
-                    </a>
-                  {% endif %}
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              {% endif %}
+              <li>
+                <a class="dropdown-item" href="{% url 'MyTeamView' %}">
+                  <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>Mon Profil
+                </a>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><h6 class="dropdown-header"><i class="fas fa-trophy text-warning"></i> Succès</h6></li>
+              <li>
+                <div id="achievements-widget">
+                  <div class="dropdown-item-text">
+                    <small class="text-muted">Chargement...</small>
+                  </div>
                 </div>
               </li>
-            </ul>
-          </nav>
-          {% endblock topbar %}
+              {% if has_active_save %}
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#saveModal">
+                  <i class="fas fa-save fa-sm fa-fw me-2 text-gray-400"></i>Sauvegarder
+                </a>
+              </li>
+              {% endif %}
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" href="/logout">
+                  <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>Déconnexion
+                </a>
+              </li>
+            {% else %}
+              <li>
+                <a class="dropdown-item" href="/login">
+                  <i class="fas fa-sign-in-alt fa-sm fa-fw me-2 text-gray-400"></i>Connexion
+                </a>
+              </li>
+            {% endif %}
+          </ul>
+        </li>
+      </ul>
+    </nav>
+    {% endblock topbar %}
 
-          <!-- Page Content -->
-          <div class="container-fluid">
-            {% block content %}
-            <!-- Le contenu des pages -->
-            {% endblock content %}
+    <!-- ══ LAYOUT ══════════════════════════════════════════════════════════ -->
+    <div id="layoutSidenav">
+
+      <!-- ── SIDEBAR NAV ─────────────────────────────────────────────────── -->
+      <div id="layoutSidenav_nav">
+        {% block sidebar %}
+        <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+          <div class="sb-sidenav-menu">
+            <div class="nav">
+
+              {% if user.is_authenticated %}
+
+              <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
+                 href="{% url 'home' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
+                Dashboard
+              </a>
+
+              <div class="sb-sidenav-menu-heading">Gameplay</div>
+
+              <a class="nav-link {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}"
+                 href="{% url 'map_view' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-map-location-dot"></i></div>
+                Maps
+              </a>
+
+              <a class="nav-link {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}"
+                 href="{% url 'MyTeamView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
+                Mon Équipe
+              </a>
+
+              {% if active_battle %}
+              <a class="nav-link d-flex align-items-center justify-content-between {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}"
+                 href="{% url 'BattleDetailView' active_battle.id %}">
+                <span>
+                  <span class="sb-nav-link-icon"><i class="fas fa-fist-raised fa-fw"></i></span>
+                  Combat en cours
+                </span>
+                <span class="badge bg-danger ms-auto" style="animation:sidebar-pulse 1.2s infinite;font-size:.65rem;">⚔️ Live</span>
+              </a>
+              {% endif %}
+
+              {% if user.is_superuser %}
+              <a class="nav-link {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}"
+                 href="{% url 'BattleListView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-fist-raised"></i></div>
+                Combats (admin)
+              </a>
+              {% endif %}
+
+              <a class="nav-link {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}"
+                 href="{% url 'ShopListView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-shopping-cart"></i></div>
+                Boutiques
+              </a>
+
+              <a class="nav-link {% if 'PokemonCenter' in request.resolver_match.url_name %}active{% endif %}"
+                 href="{% url 'PokemonCenterListView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-hospital"></i></div>
+                Centre Pokémon
+              </a>
+
+              <a class="nav-link {% if request.resolver_match.url_name == 'capture_journal' %}active{% endif %}"
+                 href="{% url 'capture_journal' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-book"></i></div>
+                Journal de captures
+              </a>
+
+              <a class="nav-link {% if request.resolver_match.url_name == 'save_select' %}active{% endif %}"
+                 href="{% url 'save_select' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-save"></i></div>
+                Sauvegardes
+              </a>
+
+              <!-- Widget Zone + HP équipe -->
+              {% if current_zone %}
+              <hr class="sidebar-divider" />
+              <div class="px-3 py-2" style="font-size:.72rem;">
+                <a href="{% url 'zone_detail' current_zone.id %}"
+                   class="d-flex align-items-center text-white-50 text-decoration-none mb-2"
+                   style="gap:6px;transition:color .15s;"
+                   onmouseover="this.style.color='#fff'" onmouseout="this.style.color=''">
+                  <i class="fas fa-map-marker-alt fa-fw text-danger"></i>
+                  <span class="fw-bold text-white" style="font-size:.78rem;">{{ current_zone.name }}</span>
+                </a>
+                {% if sidebar_team %}
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  {% for p in sidebar_team %}
+                  <div title="{{ p.name }}{% if p.status %} — {{ p.status }}{% endif %}"
+                       style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:62px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+                                 color:{% if p.needs %}#f39c12{% else %}#adb5bd{% endif %};font-size:.68rem;">
+                      {{ p.name }}
+                    </span>
+                    <div style="flex:1;height:5px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden;">
+                      <div style="height:100%;width:{{ p.hp_pct }}%;border-radius:3px;transition:width .4s;
+                        background:{% if p.hp_pct > 50 %}#27ae60{% elif p.hp_pct > 20 %}#f39c12{% else %}#e74c3c{% endif %};"></div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% if team_needs_healing %}
+                <a href="{% url 'PokemonCenterListView' %}"
+                   class="d-block mt-2 text-warning text-decoration-none"
+                   style="font-size:.68rem;animation:sidebar-pulse 2s infinite;">
+                  <i class="fas fa-hospital fa-fw"></i> Centre Pokémon
+                </a>
+                {% endif %}
+                {% endif %}
+              </div>
+              {% endif %}
+
+              <div class="sb-sidenav-menu-heading">Encyclopédies</div>
+
+              <a class="nav-link {% if 'Pokemon' in request.resolver_match.url_name %}active{% endif %}"
+                 href="{% url 'PokemonOverView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-book"></i></div>
+                Pokédex
+              </a>
+
+              <a class="nav-link {% if 'Move' in request.resolver_match.url_name %}active{% endif %}"
+                 href="{% url 'PokemonMoveOverView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-bolt"></i></div>
+                Capacités
+              </a>
+
+              <a class="nav-link {% if 'Item' in request.resolver_match.url_name %}active{% endif %}"
+                 href="{% url 'ItemListView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-shopping-bag"></i></div>
+                Objets
+              </a>
+
+              <a class="nav-link {% if 'Gym' in request.resolver_match.url_name %}active{% endif %}"
+                 href="{% url 'GymLeaderListView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-trophy"></i></div>
+                Arènes
+              </a>
+
+              {% else %}
+              <!-- Non connecté -->
+              <a class="nav-link active" href="{% url 'home' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-info-circle"></i></div>
+                Informations
+              </a>
+              {% endif %}
+
+            </div>
           </div>
-        </div>
+
+          <div class="sb-sidenav-footer">
+            <div class="small text-white-50">
+              {% if user.is_authenticated %}{{ user.username }}{% else %}Non connecté{% endif %}
+            </div>
+          </div>
+        </nav>
+        {% endblock sidebar %}
+      </div>
+
+      <!-- ── CONTENT ────────────────────────────────────────────────────── -->
+      <div id="layoutSidenav_content">
+        <main>
+          <div class="container-fluid px-4 py-3">
+            {% block content %}{% endblock content %}
+          </div>
+        </main>
 
         {% block footer %}
-        <footer class="sticky-footer bg-white">
-          <div class="container my-auto">
-            <div class="copyright text-center my-auto">
-              <span>Pokémon Gen 1 &copy; <script>document.write(new Date().getFullYear())</script></span>
+        <footer class="py-4 bg-light mt-auto">
+          <div class="container-fluid px-4">
+            <div class="d-flex align-items-center justify-content-center small">
+              <span class="text-muted">Pokémon Gen 1 &copy; <script>document.write(new Date().getFullYear())</script></span>
             </div>
           </div>
         </footer>
         {% endblock footer %}
       </div>
-    </div>
+
+    </div><!-- /layoutSidenav -->
 
 
-    <!--  ACHIEVEMENTS WIDGET LOADER  -->
+    <!-- ══ ACHIEVEMENTS WIDGET LOADER ══════════════════════════════════════ -->
     {% if user.is_authenticated %}
     <script>
-    // Charger le widget achievements au clic du dropdown
-    $('#userDropdown').on('click', function() {
-      // Charger seulement si pas déjà chargé
-      if ($('#achievements-widget').find('.text-muted').length > 0) {
-        $.get('{% url "achievements_widget" %}', function(data) {
-          $('#achievements-widget').html(data);
-        });
+    document.getElementById('userDropdown').addEventListener('click', function() {
+      const widget = document.getElementById('achievements-widget');
+      if (widget && widget.querySelector('.text-muted')) {
+        fetch('{% url "achievements_widget" %}')
+          .then(r => r.text())
+          .then(html => { widget.innerHTML = html; });
       }
     });
     </script>
     {% endif %}
 
-    <!-- Save Modal -->
+    <!-- ══ SAVE MODAL ══════════════════════════════════════════════════════ -->
     {% if has_active_save %}
     <div class="modal fade" id="saveModal" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">
-              <i class="fas fa-save"></i> Sauvegarder la Partie
-            </h5>
-            <button type="button" class="close text-white" data-dismiss="modal">
-              <span>&times;</span>
-            </button>
+            <h5 class="modal-title"><i class="fas fa-save"></i> Sauvegarder la Partie</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
-          
           <div class="modal-body">
             <p class="mb-3">Choisissez sur quel slot sauvegarder :</p>
-            
             <div class="list-group" id="saveSlotsList">
-              <div class="text-center py-3">
-                <div class="spinner-border text-primary"></div>
-              </div>
+              <div class="text-center py-3"><div class="spinner-border text-primary"></div></div>
             </div>
           </div>
-          
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">
-              Annuler
-            </button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
           </div>
         </div>
       </div>
     </div>
 
     <script>
-    // Charger les slots
-    $('#saveModal').on('show.bs.modal', function () {
+    document.getElementById('saveModal').addEventListener('show.bs.modal', function () {
       fetch('{% url "save_slots_list" %}')
         .then(r => r.json())
         .then(data => {
-          const container = $('#saveSlotsList');
-          container.empty();
-          
+          const container = document.getElementById('saveSlotsList');
+          container.innerHTML = '';
           data.slots.forEach(slot => {
-            const item = $(`
-              <a href="#" class="list-group-item list-group-item-action ${slot.is_current ? 'active' : ''}">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <h6 class="mb-1">
-                      <i class="fas fa-folder${slot.exists ? '' : '-plus'}"></i>
-                      Slot ${slot.slot}: ${slot.name}
-                    </h6>
-                    ${slot.exists ? `
-                      <small>
-                        <i class="fas fa-clock"></i> ${slot.play_time} |
-                        <i class="fas fa-medal"></i> ${slot.badges} badge(s) |
-                        <i class="fas fa-coins"></i> ${slot.money}₽
-                      </small>
-                    ` : '<small class="text-muted">Vide</small>'}
-                  </div>
-                  ${slot.is_current ? '<span class="badge badge-success">Actuel</span>' : ''}
+            const a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item list-group-item-action' + (slot.is_current ? ' active' : '');
+            a.innerHTML = `
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="mb-1">
+                    <i class="fas fa-folder${slot.exists ? '' : '-plus'}"></i>
+                    Slot ${slot.slot}: ${slot.name}
+                  </h6>
+                  ${slot.exists
+                    ? `<small><i class="fas fa-clock"></i> ${slot.play_time} | <i class="fas fa-medal"></i> ${slot.badges} badge(s) | <i class="fas fa-coins"></i> ${slot.money}₽</small>`
+                    : '<small class="text-muted">Vide</small>'}
                 </div>
-              </a>
-            `);
-            
-            item.click(function(e) {
+                ${slot.is_current ? '<span class="badge bg-success">Actuel</span>' : ''}
+              </div>`;
+            a.addEventListener('click', function(e) {
               e.preventDefault();
               saveToSlot(slot.slot, slot.save_id);
             });
-            
-            container.append(item);
+            container.appendChild(a);
           });
         });
     });
 
     function saveToSlot(slotNum, saveId) {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('saveModal'));
       if (!saveId) {
-        // Créer nouveau slot
         const name = prompt(`Nom pour Slot ${slotNum}:`, `Aventure ${slotNum}`);
         if (!name) return;
-
-        $.post(`/saves/create/${slotNum}/quick/`, {
-          csrfmiddlewaretoken: '{{ csrf_token }}',
-          save_name: name
-        }, function(data) {
-          if (data.success) {
-            if (typeof activeSaveId !== 'undefined' && data.save_id) {
-              activeSaveId = data.save_id;
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        fd.append('save_name', name);
+        fetch(`/saves/create/${slotNum}/quick/`, { method:'POST', body:fd })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              if (typeof activeSaveId !== 'undefined' && data.save_id) activeSaveId = data.save_id;
+              alert(`Sauvegardé dans Slot ${slotNum} !`);
+              modal.hide();
+              location.reload();
             }
-            alert(`Sauvegardé dans Slot ${slotNum} !`);
-            $('#saveModal').modal('hide');
-            location.reload();
-          }
-        });
+          });
       } else {
-        // Sauvegarder dans slot existant
         fetch(`/saves/${saveId}/save/`)
           .then(r => r.json())
           .then(data => {
             if (data.success) {
-              if (typeof activeSaveId !== 'undefined' && data.save_id) {
-                activeSaveId = data.save_id;
-              }
+              if (typeof activeSaveId !== 'undefined' && data.save_id) activeSaveId = data.save_id;
               alert(`Sauvegardé dans Slot ${slotNum} !`);
-              $('#saveModal').modal('hide');
+              modal.hide();
               location.reload();
             }
           });
@@ -474,190 +517,88 @@
     </script>
     {% endif %}
 
-    <!-- Django Messages → our Toast model -->
+    <!-- ══ DJANGO MESSAGES → TOAST ══════════════════════════════════════════ -->
     {% if messages %}
     <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        var djangoTagMap = {
-          'debug':   'info',
-          'info':    'info',
-          'success': 'success',
-          'warning': 'warning',
-          'error':   'error',
-        };
-        {% for message in messages %}
-        (function () {
-          var rawTag = '{{ message.tags }}';
-          var type = 'info';
-          ['error', 'warning', 'success', 'info', 'debug'].forEach(function (t) {
-            if (rawTag.indexOf(t) !== -1 && type === 'info') {
-              type = djangoTagMap[t] || 'info';
-            }
-          });
-          showToast('{{ message|escapejs }}', type, type === 'error' ? 7000 : 4000);
-        })();
-        {% endfor %}
-      });
+    document.addEventListener('DOMContentLoaded', function () {
+      var map = { debug:'info', info:'info', success:'success', warning:'warning', error:'error' };
+      {% for message in messages %}
+      (function() {
+        var raw = '{{ message.tags }}', type = 'info';
+        ['error','warning','success','info','debug'].forEach(function(t) {
+          if (raw.indexOf(t) !== -1 && type === 'info') type = map[t] || 'info';
+        });
+        showToast('{{ message|escapejs }}', type, type === 'error' ? 7000 : 4000);
+      })();
+      {% endfor %}
+    });
     </script>
     {% endif %}
 
     {% block js %}
-    <!-- Bootstrap core JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.0/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'js/sb-admin-2.min.js'%}"></script>
-    
+    <!-- Bootstrap 5 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/sb-admin-5.js' %}"></script>
     <!-- Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
-
-    <script>
-      // Toggle sidebar
-      $("#sidebarToggle, #sidebarToggleTop").on('click', function(e) {
-        $("body").toggleClass("sidebar-toggled");
-        $(".sidebar").toggleClass("toggled");
-      });
-    </script>
-
-    <!-- Toast Notification System -->
-    <link rel="stylesheet" href="{% static 'css/toast-notifications.css' %}">
+    <!-- Toast -->
     <script src="{% static 'js/toast-notifications.js' %}"></script>
 
-    <!-- UX globals : beforeunload combat + sidebar animation -->
     <script>
-    // ── Garde anti-quitter pendant un combat ──────────────────────────────────
-    // battle_game_v2.html positionne window.__battleInProgress = true.
-    // handleBattleEnd() dans battle-game.js le remet à false dès la fin du combat.
     window.__battleInProgress = false;
-
-    window.addEventListener('beforeunload', function (e) {
+    window.addEventListener('beforeunload', function(e) {
       if (!window.__battleInProgress) return;
       e.preventDefault();
       e.returnValue = 'Un combat est en cours. Quitter maintenant peut corrompre votre progression.';
     });
+    (function() {
+      function tagShiny() {
+        document.querySelectorAll('img').forEach(img => {
+          if ((img.src.includes('/shiny/') || img.src.includes('/back-shiny/')) && !img.classList.contains('shiny-sprite'))
+            img.classList.add('shiny-sprite');
+        });
+      }
+      document.addEventListener('DOMContentLoaded', tagShiny);
+      setInterval(tagShiny, 2000);
+    })();
+    </script>
+    {% endblock js %}
+
+    <!-- ══ MOBILE BOTTOM NAV ════════════════════════════════════════════════ -->
+    <nav class="d-lg-none mobile-bottom-nav" id="mobile-bottom-nav">
+      <a href="{% url 'home' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+        <i class="fas fa-tachometer-alt"></i><span>Dashboard</span>
+      </a>
+      <a href="{% url 'MyTeamView' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
+        <i class="fas fa-users"></i><span>Équipe</span>
+      </a>
+      <a href="{% url 'map_view' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
+        <i class="fas fa-map-location-dot"></i><span>Carte</span>
+      </a>
+      {% if active_battle %}
+      <a href="{% url 'BattleDetailView' active_battle.id %}" class="mobile-nav-item mobile-nav-battle">
+        <i class="fas fa-fist-raised"></i><span>Combat ⚔️</span>
+      </a>
+      {% else %}
+      <a href="{% url 'ShopListView' %}" class="mobile-nav-item {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="fas fa-shopping-cart"></i><span>Boutiques</span>
+      </a>
+      {% endif %}
+      <a href="{% url 'PokemonCenterListView' %}" class="mobile-nav-item {% if 'PokemonCenter' in request.resolver_match.url_name %}active{% endif %} {% if team_needs_healing %}mobile-nav-heal{% endif %}">
+        <i class="fas fa-hospital"></i><span>Centre{% if team_needs_healing %} !{% endif %}</span>
+      </a>
+    </nav>
+
+    <script>
+    (function() {
+      function relocateNav() {
+        var nav = document.getElementById('mobile-bottom-nav');
+        if (nav && nav.parentElement !== document.body) document.body.appendChild(nav);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', relocateNav);
+      else relocateNav();
+    })();
     </script>
 
-    {% endblock js %}
-  
-<style>
-/* ══ Mobile bottom nav ══════════════════════════════════════════════════════ */
-.mobile-bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  height: calc(56px + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: #fff;
-  border-top: 1px solid #e3e6f0;
-  display: flex;
-  align-items: stretch;
-  z-index: 1060;
-  box-shadow: 0 -2px 10px rgba(0,0,0,.08);
-}
-.mobile-nav-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: .6rem;
-  color: #858796;
-  text-decoration: none !important;
-  gap: 2px;
-  transition: color .15s, background .15s;
-  border-top: 3px solid transparent;
-}
-.mobile-nav-item i { font-size: 1.1rem; }
-.mobile-nav-item.active {
-  color: #e74a3b;
-  border-top-color: #e74a3b;
-}
-.mobile-nav-item:hover { color: #5a5c69; }
-.mobile-nav-battle {
-  color: #dc3545 !important;
-  animation: sidebar-pulse 1.2s infinite;
-}
-.mobile-nav-heal {
-  color: #f6c23e !important;
-  animation: sidebar-pulse 2s infinite;
-}
-/* Push page content above bottom nav on mobile */
-@media (max-width: 767.98px) {
-  #content-wrapper { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
-  .sticky-footer { margin-bottom: 56px; }
-}
-
-/* ══ Shiny shimmer on sprites ════════════════════════════════════════════ */
-@keyframes shiny-shimmer {
-  0%   { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
-  30%  { filter: brightness(1.25) drop-shadow(0 0 6px  #ffd700); }
-  60%  { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
-  100% { filter: brightness(1)  drop-shadow(0 0 0px   #ffd700); }
-}
-.shiny-sprite {
-  animation: shiny-shimmer 3s ease-in-out infinite;
-}
-</style>
-
-<script>
-// Relocate mobile-bottom-nav to <body> to escape overflow:hidden containers
-(function() {
-  function relocateNav() {
-    var nav = document.getElementById('mobile-bottom-nav');
-    if (nav && nav.parentElement !== document.body) {
-      document.body.appendChild(nav);
-    }
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', relocateNav);
-  } else {
-    relocateNav();
-  }
-})();
-
-// Auto-tag shiny sprites with CSS shimmer class
-(function() {
-  function tagShiny() {
-    document.querySelectorAll('img').forEach(img => {
-      if ((img.src.includes('/shiny/') || img.src.includes('/back-shiny/')) && !img.classList.contains('shiny-sprite')) {
-        img.classList.add('shiny-sprite');
-      }
-    });
-  }
-  // Run on load and after any dynamic content changes
-  document.addEventListener('DOMContentLoaded', tagShiny);
-  // Re-run periodically for dynamically loaded content (battle switches etc.)
-  setInterval(tagShiny, 2000);
-})();
-</script>
-
-<!-- ══ MOBILE BOTTOM NAV (d-md-none) ══════════════════════════════════════ -->
-<nav class="d-md-none mobile-bottom-nav" id="mobile-bottom-nav">
-  <a href="{% url 'home' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
-    <i class="fas fa-tachometer-alt"></i>
-    <span>Dashboard</span>
-  </a>
-  <a href="{% url 'MyTeamView' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}">
-    <i class="fas fa-users"></i>
-    <span>Équipe</span>
-  </a>
-  <a href="{% url 'map_view' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'map_view' %}active{% endif %}">
-    <i class="fas fa-map-location-dot"></i>
-    <span>Carte</span>
-  </a>
-  {% if active_battle %}
-  <a href="{% url 'BattleDetailView' active_battle.id %}" class="mobile-nav-item mobile-nav-battle">
-    <i class="fas fa-fist-raised"></i>
-    <span>Combat ⚔️</span>
-  </a>
-  {% else %}
-  <a href="{% url 'ShopListView' %}" class="mobile-nav-item {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}">
-    <i class="fas fa-shopping-cart"></i>
-    <span>Boutiques</span>
-  </a>
-  {% endif %}
-  <a href="{% url 'PokemonCenterListView' %}" class="mobile-nav-item {% if 'PokemonCenter' in request.resolver_match.url_name %}active{% endif %} {% if team_needs_healing %}mobile-nav-heal{% endif %}">
-    <i class="fas fa-hospital"></i>
-    <span>Centre{% if team_needs_healing %} !{% endif %}</span>
-  </a>
-</nav>
-
-</body>
+  </body>
 </html>

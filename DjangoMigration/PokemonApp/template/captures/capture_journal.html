@@ -118,16 +118,16 @@
             <tr>
               <td>
                 <img src="{% static 'img/sprites_gen5/' %}{% if entry.pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ entry.pokemon.species.name|lowerPokemonFileNames }}.png"
-                     width="40" class="mr-2"
+                     width="40" class="me-2"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">
                 <strong>{{ entry.pokemon.species.name }}</strong>
                 {% if entry.is_first_catch %}
-                <span class="badge badge-warning ml-2">
+                <span class="badge bg-warning ms-2">
                   <i class="fas fa-star"></i> Premier
                 </span>
                 {% endif %}
                 {% if entry.is_critical_catch %}
-                <span class="badge badge-danger ml-2">
+                <span class="badge bg-danger ms-2">
                   <i class="fas fa-bolt"></i> Critique
                 </span>
                 {% endif %}
@@ -135,13 +135,13 @@
               <td>Niv. {{ entry.level_at_capture }}</td>
               <td>
                 <img src="{% static 'img/pokeballSprites/' %}{{ entry.ball_used.name|lower }}_Sprite.png"
-                     width="25" class="mr-1"
+                     width="25" class="me-1"
                      onerror="this.src='{% static 'img/pokeball.png' %}'">
                 {{ entry.ball_used.name }}
               </td>
               <td>{{ entry.captured_at|date:"d/m/Y H:i" }}</td>
               <td>
-                <span class="badge badge-secondary">
+                <span class="badge bg-secondary">
                   {{ entry.attempts_before_success }} essai{{ entry.attempts_before_success|pluralize }}
                 </span>
               </td>

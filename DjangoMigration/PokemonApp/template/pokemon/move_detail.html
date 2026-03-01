@@ -75,9 +75,9 @@
             <span class="move-label">Priorité</span>
             <span class="move-value">
               {% if move.priority > 0 %}
-                <span class="badge badge-success font-weight-bold" style="font-size:.85rem;">+{{ move.priority }}</span>
+                <span class="badge bg-success fw-bold" style="font-size:.85rem;">+{{ move.priority }}</span>
               {% else %}
-                <span class="badge badge-danger font-weight-bold" style="font-size:.85rem;">{{ move.priority }}</span>
+                <span class="badge bg-danger fw-bold" style="font-size:.85rem;">{{ move.priority }}</span>
               {% endif %}
             </span>
           </div>
@@ -87,7 +87,7 @@
           {% if move.max_pp != move.pp %}
           <div class="move-info-row mt-2">
             <span class="move-label">PP Maximum</span>
-            <span class="move-value font-weight-bold">{{ move.max_pp }}</span>
+            <span class="move-value fw-bold">{{ move.max_pp }}</span>
           </div>
           {% endif %}
 
@@ -103,7 +103,7 @@
     {% if move.effect or move.inflicts_status or move.effect_chance %}
     <div class="card shadow mb-3">
       <div class="card-header py-2">
-        <h6 class="mb-0 font-weight-bold text-secondary">
+        <h6 class="mb-0 fw-bold text-secondary">
           <i class="fas fa-magic"></i> Effets
         </h6>
       </div>
@@ -112,7 +112,7 @@
         {% if move.inflicts_status %}
         <div class="d-flex align-items-center mb-2" style="gap:10px;">
           <span class="move-label">Statut infligé</span>
-          <span class="badge badge-danger px-3 py-1" style="font-size:.85rem;">
+          <span class="badge bg-danger px-3 py-1" style="font-size:.85rem;">
             {{ move.inflicts_status|upper }}
           </span>
           {% if move.effect_chance %}
@@ -123,7 +123,7 @@
 
         {% if move.effect %}
         <div class="effect-box {% if move.inflicts_status %}mt-2{% endif %}">
-          <i class="fas fa-info-circle text-info mr-2"></i>
+          <i class="fas fa-info-circle text-info me-2"></i>
           {{ move.effect }}
         </div>
         {% endif %}
@@ -148,7 +148,7 @@
     {% if move.stat_changes %}
     <div class="card shadow mb-3">
       <div class="card-header py-2">
-        <h6 class="mb-0 font-weight-bold text-secondary">
+        <h6 class="mb-0 fw-bold text-secondary">
           <i class="fas fa-chart-line"></i> Modificateurs de stats
         </h6>
       </div>
@@ -157,9 +157,9 @@
         <div class="d-flex align-items-center justify-content-between py-1 {% if not forloop.last %}border-bottom{% endif %}">
           <span class="text-capitalize">{{ stat|title }}</span>
           {% if val > 0 %}
-          <span class="badge badge-success px-3">+{{ val }}</span>
+          <span class="badge bg-success px-3">+{{ val }}</span>
           {% else %}
-          <span class="badge badge-danger px-3">{{ val }}</span>
+          <span class="badge bg-danger px-3">{{ val }}</span>
           {% endif %}
         </div>
         {% endfor %}
@@ -170,10 +170,10 @@
     {# Pokémon pouvant apprendre ce move #}
     <div class="card shadow">
       <div class="card-header py-2 d-flex align-items-center justify-content-between">
-        <h6 class="mb-0 font-weight-bold text-secondary">
+        <h6 class="mb-0 fw-bold text-secondary">
           <i class="fas fa-list text-primary"></i> Pokémon pouvant apprendre cette capacité
         </h6>
-        <span class="badge badge-primary">{{ learners|length }}</span>
+        <span class="badge bg-primary">{{ learners|length }}</span>
       </div>
       <div class="card-body py-3">
         {% if learners %}

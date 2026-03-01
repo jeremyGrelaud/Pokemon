@@ -9,8 +9,8 @@
     <i class="fas fa-scroll text-warning"></i> Journal de Quêtes
   </h1>
   <div>
-    <span class="badge badge-primary mr-1">{{ active_count }} en cours</span>
-    <span class="badge badge-success">{{ completed_count }} terminée{% if completed_count != 1 %}s{% endif %}</span>
+    <span class="badge bg-primary me-1">{{ active_count }} en cours</span>
+    <span class="badge bg-success">{{ completed_count }} terminée{% if completed_count != 1 %}s{% endif %}</span>
   </div>
 </div>
 
@@ -20,29 +20,29 @@
   <div class="col-lg-8 mb-4">
     <div class="card shadow">
       <div class="card-header py-3 d-flex align-items-center justify-content-between">
-        <h6 class="m-0 font-weight-bold text-primary">
+        <h6 class="m-0 fw-bold text-primary">
           <i class="fas fa-tasks"></i> En cours
         </h6>
-        <span class="badge badge-primary">{{ log.active|length }}</span>
+        <span class="badge bg-primary">{{ log.active|length }}</span>
       </div>
       <div class="card-body p-0">
         {% if log.active %}
           {% for progress in log.active %}
           <div class="quest-item quest-active d-flex align-items-start p-3 border-bottom">
-            <div class="quest-icon mr-3">
+            <div class="quest-icon me-3">
               <i class="fas {{ progress.quest.icon }} fa-lg text-warning"></i>
             </div>
             <div class="flex-grow-1">
               <div class="d-flex align-items-center justify-content-between">
                 <strong class="quest-title">{{ progress.quest.title }}</strong>
-                <span class="badge badge-{% if progress.quest.quest_type == 'main' %}warning{% elif progress.quest.quest_type == 'rival' %}danger{% else %}secondary{% endif %} ml-2">
+                <span class="badge badge-{% if progress.quest.quest_type == 'main' %}warning{% elif progress.quest.quest_type == 'rival' %}danger{% else %}secondary{% endif %} ms-2">
                   {{ progress.quest.get_quest_type_display }}
                 </span>
               </div>
               <p class="text-muted small mb-1 mt-1">{{ progress.quest.description }}</p>
               {% if progress.quest.objective_text %}
               <div class="objective-box mt-2">
-                <i class="fas fa-map-pin text-primary mr-1"></i>
+                <i class="fas fa-map-pin text-primary me-1"></i>
                 <strong>Objectif :</strong> {{ progress.quest.objective_text }}
               </div>
               {% endif %}
@@ -51,13 +51,13 @@
               <div class="mt-2 d-flex align-items-center" style="gap:8px;">
                 <small class="text-muted">Récompenses :</small>
                 {% if progress.quest.reward_money %}
-                <span class="badge badge-light border">
-                  <i class="fas fa-coins text-warning mr-1"></i>{{ progress.quest.reward_money }}₽
+                <span class="badge bg-light border">
+                  <i class="fas fa-coins text-warning me-1"></i>{{ progress.quest.reward_money }}₽
                 </span>
                 {% endif %}
                 {% if progress.quest.reward_item %}
-                <span class="badge badge-light border">
-                  <i class="fas fa-box text-info mr-1"></i>{{ progress.quest.reward_item.name }}
+                <span class="badge bg-light border">
+                  <i class="fas fa-box text-info me-1"></i>{{ progress.quest.reward_item.name }}
                 </span>
                 {% endif %}
               </div>
@@ -81,22 +81,22 @@
     {# Terminées #}
     <div class="card shadow mb-4">
       <div class="card-header py-2 d-flex align-items-center justify-content-between">
-        <h6 class="m-0 font-weight-bold text-success">
+        <h6 class="m-0 fw-bold text-success">
           <i class="fas fa-check-circle"></i> Terminées
         </h6>
-        <span class="badge badge-success">{{ log.completed|length }}</span>
+        <span class="badge bg-success">{{ log.completed|length }}</span>
       </div>
       <div class="card-body p-0">
         {% for progress in log.completed %}
         <div class="d-flex align-items-center p-2 border-bottom quest-done">
-          <i class="fas {{ progress.quest.icon }} text-success mr-2"></i>
+          <i class="fas {{ progress.quest.icon }} text-success me-2"></i>
           <div class="flex-grow-1">
             <strong class="small">{{ progress.quest.title }}</strong>
             {% if progress.completed_at %}
             <br><small class="text-muted">{{ progress.completed_at|date:"d/m/Y" }}</small>
             {% endif %}
           </div>
-          <i class="fas fa-check text-success ml-2"></i>
+          <i class="fas fa-check text-success ms-2"></i>
         </div>
         {% empty %}
         <p class="text-muted small text-center py-3 mb-0">Aucune quête terminée.</p>
@@ -108,14 +108,14 @@
     {% if log.locked %}
     <div class="card shadow">
       <div class="card-header py-2">
-        <h6 class="m-0 font-weight-bold text-secondary">
+        <h6 class="m-0 fw-bold text-secondary">
           <i class="fas fa-lock"></i> À venir
         </h6>
       </div>
       <div class="card-body p-0">
         {% for progress in log.locked %}
         <div class="d-flex align-items-center p-2 border-bottom" style="opacity:.55;">
-          <i class="fas {{ progress.quest.icon }} text-secondary mr-2"></i>
+          <i class="fas {{ progress.quest.icon }} text-secondary me-2"></i>
           <small class="text-muted">{{ progress.quest.title }}</small>
         </div>
         {% endfor %}

@@ -29,11 +29,11 @@
             <p class="lead mb-2">{{ center.location }}</p>
             <p class="mb-0">
               {% if center.healing_cost == 0 %}
-                <span class="badge badge-success p-2">
+                <span class="badge bg-success p-2">
                   <i class="fas fa-heart"></i> Soins Gratuits
                 </span>
               {% else %}
-                <span class="badge badge-warning p-2">
+                <span class="badge bg-warning p-2">
                   <i class="fas fa-coins"></i> {{ center.healing_cost }}₽ par soin
                 </span>
               {% endif %}
@@ -120,7 +120,7 @@
               <button id="heal-btn" class="btn btn-lg btn-success btn-heal-team" data-center-id="{{ center.id }}">
                 <i class="fas fa-plus-circle"></i> Soigner Mon Équipe
                 {% if center.healing_cost > 0 %}
-                  <span class="badge badge-light ml-2">{{ center.healing_cost }}₽</span>
+                  <span class="badge bg-light ms-2">{{ center.healing_cost }}₽</span>
                 {% endif %}
               </button>
             {% else %}
@@ -155,7 +155,7 @@
           <div class="team-pokemon-status mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <strong>{{ pokemon.species.name }}</strong>
-              <span class="badge badge-secondary">Niv. {{ pokemon.level }}</span>
+              <span class="badge bg-secondary">Niv. {{ pokemon.level }}</span>
             </div>
             
             <!-- HP Bar -->
@@ -178,7 +178,7 @@
             <!-- Status -->
             {% if pokemon.status_condition %}
             <div class="mt-1">
-              <span class="badge badge-danger">
+              <span class="badge bg-danger">
                 {{ pokemon.get_status_condition_display }}
               </span>
             </div>

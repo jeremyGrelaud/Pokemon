@@ -12,11 +12,11 @@
       <!-- Header -->
       <div class="text-center mb-5">
         <img src="{% static 'img/pokedex_transparent.png' %}" style="width:56px;" alt="Pokédex" class="mb-3">
-        <h1 class="h2 font-weight-bold text-gray-800">Bienvenue, {{ trainer.username }} !</h1>
+        <h1 class="h2 fw-bold text-gray-800">Bienvenue, {{ trainer.username }} !</h1>
         <p class="lead text-muted">
           Professeur Chen vous attend. Choisissez votre Pokémon de départ pour commencer votre aventure !
         </p>
-        <small class="text-muted"><i class="fas fa-sync-alt fa-xs mr-1"></i>Survolez une carte pour voir les stats</small>
+        <small class="text-muted"><i class="fas fa-sync-alt fa-xs me-1"></i>Survolez une carte pour voir les stats</small>
         <hr>
       </div>
 
@@ -35,7 +35,7 @@
               <div class="flip-card__face flip-card__face--front">
 
                 {% if is_shiny %}
-                <div class="shiny-ribbon"><i class="fas fa-star fa-xs mr-1"></i>Chromatique !</div>
+                <div class="shiny-ribbon"><i class="fas fa-star fa-xs me-1"></i>Chromatique !</div>
                 {% endif %}
 
                 <div class="pokemon-number">#{{ starter.pokedex_number|stringformat:"03d" }}</div>
@@ -83,7 +83,7 @@
                 </div>
 
                 <div class="flip-hint">
-                  <i class="fas fa-info-circle mr-1"></i>Survolez pour les stats complètes
+                  <i class="fas fa-info-circle me-1"></i>Survolez pour les stats complètes
                 </div>
               </div>
 
@@ -91,7 +91,7 @@
               <div class="flip-card__face flip-card__face--back">
 
                 {% if is_shiny %}
-                <div class="shiny-ribbon"><i class="fas fa-star fa-xs mr-1"></i>Chromatique !</div>
+                <div class="shiny-ribbon"><i class="fas fa-star fa-xs me-1"></i>Chromatique !</div>
                 {% endif %}
 
                 <div class="back-header">
@@ -183,7 +183,7 @@
                 <!-- Bouton de sélection -->
                 <button type="submit" name="starter_id" value="{{ starter.id }}"
                         class="btn-choose {% if is_shiny %}btn-choose-shiny{% endif %}">
-                  <i class="fas fa-hand-pointer mr-2"></i>
+                  <i class="fas fa-hand-pointer me-2"></i>
                   Choisir {{ starter.name }}{% if is_shiny %} ✨{% endif %}
                 </button>
               </div>

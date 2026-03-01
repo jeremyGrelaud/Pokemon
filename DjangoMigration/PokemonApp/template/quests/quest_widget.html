@@ -2,10 +2,10 @@
 {# Widget quêtes actives — inclus dans le dashboard ou la sidebar carte #}
 <div class="card shadow mb-4" id="quest-widget">
   <div class="card-header py-2 d-flex align-items-center justify-content-between">
-    <h6 class="m-0 font-weight-bold text-warning">
+    <h6 class="m-0 fw-bold text-warning">
       <i class="fas fa-scroll"></i> Quêtes actives
       {% if active_quests %}
-      <span class="badge badge-warning ml-1" style="font-size:.65rem;">{{ active_quests|length }}</span>
+      <span class="badge bg-warning ms-1" style="font-size:.65rem;">{{ active_quests|length }}</span>
       {% endif %}
     </h6>
     <a href="{% url 'quest_log' %}" class="btn btn-xs btn-outline-warning" style="font-size:.7rem;padding:2px 8px;">
@@ -19,20 +19,20 @@
 
         <!-- Row: icon + title + type badge -->
         <div class="d-flex align-items-start">
-          <div class="quest-icon-wrap mr-2">
+          <div class="quest-icon-wrap me-2">
             <i class="fas {{ progress.quest.icon|default:'fa-scroll' }} quest-icon"></i>
           </div>
           <div class="flex-grow-1 min-w-0">
             <div class="d-flex align-items-center justify-content-between">
-              <span class="font-weight-bold quest-title">{{ progress.quest.title }}</span>
-              <span class="badge quest-type-badge quest-type-{{ progress.quest.quest_type }} ml-1">
+              <span class="fw-bold quest-title">{{ progress.quest.title }}</span>
+              <span class="badge quest-type-badge quest-type-{{ progress.quest.quest_type }} ms-1">
                 {{ progress.quest.get_quest_type_display }}
               </span>
             </div>
 
             {% if progress.quest.objective_text %}
             <div class="text-muted quest-objective">
-              <i class="fas fa-map-pin mr-1" style="font-size:.65rem;"></i>{{ progress.quest.objective_text }}
+              <i class="fas fa-map-pin me-1" style="font-size:.65rem;"></i>{{ progress.quest.objective_text }}
             </div>
             {% endif %}
 
@@ -48,7 +48,7 @@
       {% endfor %}
     {% else %}
       <p class="text-muted text-center small mb-0 py-2">
-        <i class="fas fa-check-circle text-success mr-1"></i>
+        <i class="fas fa-check-circle text-success me-1"></i>
         Aucune quête active.
       </p>
     {% endif %}

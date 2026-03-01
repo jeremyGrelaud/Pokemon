@@ -42,7 +42,7 @@
             </h1>
             <p class="lead mb-2">{{ shop.location }}</p>
             <p class="mb-0">
-              <span class="badge badge-light text-dark p-2">
+              <span class="badge bg-light text-dark p-2">
                 {{ shop.get_shop_type_display }}
               </span>
             </p>
@@ -67,7 +67,7 @@
   <div class="col-12">
     <div class="alert alert-info border-left-info">
       <div class="d-flex align-items-center">
-        <i class="fas fa-user-tie fa-3x mr-3"></i>
+        <i class="fas fa-user-tie fa-3x me-3"></i>
         <div>
           <strong>Vendeur :</strong>
           <p class="mb-0 mt-1">"{{ shop.shopkeeper_greeting }}"</p>
@@ -81,12 +81,12 @@
 <!-- Tabs Navigation -->
 <ul class="nav nav-tabs nav-fill mb-4" id="shopTabs" role="tablist">
   <li class="nav-item">
-    <a class="nav-link active" id="buy-tab" data-toggle="tab" href="#buy" role="tab">
+    <a class="nav-link active" id="buy-tab" data-bs-toggle="tab" href="#buy" role="tab">
       <i class="fas fa-shopping-cart"></i> Acheter
     </a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" id="sell-tab" data-toggle="tab" href="#sell" role="tab">
+    <a class="nav-link" id="sell-tab" data-bs-toggle="tab" href="#sell" role="tab">
       <i class="fas fa-hand-holding-usd"></i> Vendre
     </a>
   </li>
@@ -189,8 +189,8 @@
             <h6 class="text-center mb-2">{{ trainer_inv.item.name }}</h6>
             
             <div class="text-center mb-2">
-              <span class="badge badge-secondary">{{ trainer_inv.item.get_item_type_display }}</span>
-              <span class="badge badge-info">x{{ trainer_inv.quantity }}</span>
+              <span class="badge bg-secondary">{{ trainer_inv.item.get_item_type_display }}</span>
+              <span class="badge bg-info">x{{ trainer_inv.quantity }}</span>
             </div>
 
             <p class="small text-muted text-center mb-3">
@@ -369,7 +369,7 @@ $(document).on('click', '.btn-sell', function() {
 
       // Update or remove item card
       const card = btn.closest('.col-lg-3, .col-md-4, .col-sm-6');
-      const qtyBadge = card.find('.badge-info');
+      const qtyBadge = card.find('.bg-info');
       const currentQty = parseInt(quantityInput.val()) || 1;
       const newQty = parseInt(qtyBadge.text().replace('x','')) - currentQty;
       if (newQty <= 0) {

@@ -36,11 +36,11 @@
           <p>{{ zone.description }}</p>
 
           <div class="mb-3">
-            <span class="badge badge-info">
+            <span class="badge bg-info">
               Niveau recommandé: {{ zone.recommended_level_min }}-{{ zone.recommended_level_max }}
             </span>
             {% if is_current %}
-            <span class="badge badge-success">
+            <span class="badge bg-success">
               <i class="fas fa-check"></i> Vous êtes ici
             </span>
             {% endif %}
@@ -71,8 +71,8 @@
                   </div>
                 </div>
                 <div class="action-card__cta">
-                  <i class="fas fa-search mr-2"></i>Chercher un Pokémon
-                  <i class="fas fa-arrow-right ml-2 action-card__arrow"></i>
+                  <i class="fas fa-search me-2"></i>Chercher un Pokémon
+                  <i class="fas fa-arrow-right ms-2 action-card__arrow"></i>
                 </div>
               </div>
             </a>
@@ -101,7 +101,7 @@
                     <div class="action-card__title">Centre Pokémon</div>
                     {% if team_needs_healing %}
                     <div class="action-card__alert">
-                      <i class="fas fa-exclamation-triangle mr-1"></i>Équipe affaiblie !
+                      <i class="fas fa-exclamation-triangle me-1"></i>Équipe affaiblie !
                     </div>
                     {% endif %}
                     <div class="action-card__subtitle">
@@ -109,7 +109,7 @@
                     </div>
                   </div>
                   <div class="action-card__cta">
-                    <i class="fas fa-heartbeat mr-2"></i>
+                    <i class="fas fa-heartbeat me-2"></i>
                     {% if team_needs_healing %}Soigner l'équipe !{% else %}Entrer au centre{% endif %}
                   </div>
                 </div>
@@ -137,7 +137,7 @@
                     </div>
                   </div>
                   <div class="action-card__cta">
-                    <i class="fas fa-store mr-2"></i>Entrer dans la boutique
+                    <i class="fas fa-store me-2"></i>Entrer dans la boutique
                   </div>
                 </div>
               </a>
@@ -162,15 +162,15 @@
                     </div>
                     {% if gym_leader_defeated %}
                     <span class="action-card__badge-won">
-                      <i class="fas fa-medal mr-1"></i>Badge obtenu
+                      <i class="fas fa-medal me-1"></i>Badge obtenu
                     </span>
                     {% endif %}
                   </div>
                   <div class="action-card__cta">
                     {% if gym_leader_defeated %}
-                    <i class="fas fa-check mr-2"></i>Déjà vaincu
+                    <i class="fas fa-check me-2"></i>Déjà vaincu
                     {% else %}
-                    <i class="fas fa-fist-raised mr-2"></i>Défier l'Arène
+                    <i class="fas fa-fist-raised me-2"></i>Défier l'Arène
                     {% endif %}
                   </div>
                 </div>
@@ -187,7 +187,7 @@
           {% if wild_spawns and not zone.has_floors %}
           <div class="wild-box mb-4">
             <div class="wild-box__header">
-              <i class="fas fa-paw mr-2"></i>Pokémon Sauvages
+              <i class="fas fa-paw me-2"></i>Pokémon Sauvages
             </div>
             <div class="wild-box__body">
               {% for spawn in wild_spawns %}
@@ -239,12 +239,12 @@
           <div class="card border-danger mb-4">
             <div class="card-header bg-danger text-white py-2 d-flex align-items-center justify-content-between">
               <h5 class="mb-0"><i class="fas fa-user-ninja"></i> Rival — {{ rival_encounter.rival.username }} !</h5>
-              <span class="badge badge-light text-danger">COMBAT REQUIS</span>
+              <span class="badge bg-light text-danger">COMBAT REQUIS</span>
             </div>
             <div class="card-body">
               {% if rival_encounter.pre_battle_text %}
               <blockquote class="blockquote mb-3">
-                <p class="mb-0 font-italic">"{{ rival_encounter.pre_battle_text }}"</p>
+                <p class="mb-0 fst-italic">"{{ rival_encounter.pre_battle_text }}"</p>
                 <footer class="blockquote-footer">{{ rival_encounter.rival.username }}</footer>
               </blockquote>
               {% endif %}
@@ -273,11 +273,11 @@
                 <div class="flex-grow-1">
                   <strong>{{ npc.get_full_title }}</strong>
                   {% if npc.is_battle_required %}
-                  <span class="badge badge-danger ml-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
+                  <span class="badge bg-danger ms-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
                   {% endif %}
                   <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
                 </div>
-                <span class="badge badge-secondary align-self-center"><i class="fas fa-check"></i> Vaincu</span>
+                <span class="badge bg-secondary align-self-center"><i class="fas fa-check"></i> Vaincu</span>
               </div>
             </div>
             {% elif is_defeated and can_rebattle %}
@@ -290,11 +290,11 @@
                 <div class="flex-grow-1">
                   <strong>{{ npc.get_full_title }}</strong>
                   {% if npc.is_battle_required %}
-                  <span class="badge badge-danger ml-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
+                  <span class="badge bg-danger ms-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
                   {% endif %}
                   <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
                 </div>
-                <span class="badge badge-warning align-self-center"><i class="fas fa-redo"></i> Revancher</span>
+                <span class="badge bg-warning align-self-center"><i class="fas fa-redo"></i> Revancher</span>
               </div>
             </a>
             {% else %}
@@ -307,11 +307,11 @@
                 <div class="flex-grow-1">
                   <strong>{{ npc.get_full_title }}</strong>
                   {% if npc.is_battle_required %}
-                  <span class="badge badge-warning ml-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
+                  <span class="badge bg-warning ms-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
                   {% endif %}
                   <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
                 </div>
-                <span class="badge badge-danger align-self-center"><i class="fas fa-fist-raised"></i> Combattre</span>
+                <span class="badge bg-danger align-self-center"><i class="fas fa-fist-raised"></i> Combattre</span>
               </div>
             </a>
             {% endif %}
@@ -328,7 +328,7 @@
             <div class="card-header d-flex align-items-center justify-content-between py-2
                         {% if fd.accessible %}bg-dark text-white{% else %}bg-secondary text-white{% endif %}">
               <span>
-                <i class="fas fa-layer-group mr-1"></i>
+                <i class="fas fa-layer-group me-1"></i>
                 {% if fd.floor.floor_number == 0 %}Rez-de-chaussée
                 {% elif fd.floor.floor_number > 0 %}Étage {{ fd.floor.floor_number }}
                 {% else %}Sous-sol {{ fd.floor.floor_number|stringformat:"d"|slice:"1:" }}
@@ -336,7 +336,7 @@
                 {% if fd.floor.name %} — {{ fd.floor.name }}{% endif %}
               </span>
               {% if not fd.accessible %}
-              <span class="badge badge-light text-dark"><i class="fas fa-lock mr-1"></i>{{ fd.reason }}</span>
+              <span class="badge bg-light text-dark"><i class="fas fa-lock me-1"></i>{{ fd.reason }}</span>
               {% elif is_current %}
               <a href="{% url 'floor_detail' zone.id fd.floor.floor_number %}" class="btn btn-sm btn-outline-light">
                 <i class="fas fa-arrow-right"></i> Explorer
@@ -356,7 +356,7 @@
                          style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;filter:grayscale(100%);"
                          onerror="this.style.display='none';">
                     <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
-                    <span class="badge badge-secondary"><i class="fas fa-check"></i> Vaincu</span>
+                    <span class="badge bg-secondary"><i class="fas fa-check"></i> Vaincu</span>
                   </div>
                 </div>
                 {% elif is_defeated and can_rebattle %}
@@ -366,7 +366,7 @@
                          style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
                          onerror="this.style.display='none';">
                     <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
-                    <span class="badge badge-warning"><i class="fas fa-redo"></i> Revancher</span>
+                    <span class="badge bg-warning"><i class="fas fa-redo"></i> Revancher</span>
                   </div>
                 </a>
                 {% else %}
@@ -376,7 +376,7 @@
                          style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
                          onerror="this.style.display='none';">
                     <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
-                    <span class="badge badge-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
+                    <span class="badge bg-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
                   </div>
                 </a>
                 {% endif %}
@@ -409,7 +409,7 @@
                      style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;filter:grayscale(100%);"
                      onerror="this.style.display='none';">
                 <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong></div>
-                <span class="badge badge-secondary"><i class="fas fa-check"></i> Vaincu</span>
+                <span class="badge bg-secondary"><i class="fas fa-check"></i> Vaincu</span>
               </div>
             </div>
             {% else %}
@@ -419,7 +419,7 @@
                      style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
                      onerror="this.style.display='none';">
                 <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong></div>
-                <span class="badge badge-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
+                <span class="badge bg-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
               </div>
             </a>
             {% endif %}
@@ -460,7 +460,7 @@
             <div class="d-flex align-items-start mb-2">
               <span style="width:8px;height:8px;border-radius:50%;background:#f6c23e;flex-shrink:0;margin-top:5px;margin-right:8px;display:inline-block;"></span>
               <div>
-                <div class="font-weight-bold" style="font-size:.8rem;">{{ progress.quest.title }}</div>
+                <div class="fw-bold" style="font-size:.8rem;">{{ progress.quest.title }}</div>
                 {% if progress.quest.objective_text %}
                 <div class="text-muted" style="font-size:.72rem;">{{ progress.quest.objective_text }}</div>
                 {% endif %}

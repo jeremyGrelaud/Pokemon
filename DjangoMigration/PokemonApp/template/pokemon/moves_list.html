@@ -12,15 +12,15 @@
 <div class="card shadow mb-4">
   <div class="card-body">
     <form method="GET" class="form-inline flex-wrap" style="gap:8px;">
-      <input type="text" class="form-control mr-2 mb-1" name="searchQuery"
+      <input type="text" class="form-control me-2 mb-1" name="searchQuery"
              placeholder="Rechercher..." value="{{ searchQuery }}">
-      <select class="form-control mr-2 mb-1" name="typeFilter" onchange="this.form.submit()">
+      <select class="form-control me-2 mb-1" name="typeFilter" onchange="this.form.submit()">
         <option value="">Tous les types</option>
         {% for type in types %}
         <option value="{{ type.name }}" {% if typeFilter == type.name %}selected{% endif %}>{{ type.name }}</option>
         {% endfor %}
       </select>
-      <select class="form-control mr-2 mb-1" name="categoryFilter" onchange="this.form.submit()">
+      <select class="form-control me-2 mb-1" name="categoryFilter" onchange="this.form.submit()">
         <option value="">Toutes catégories</option>
         <option value="physical" {% if categoryFilter == 'physical' %}selected{% endif %}>
           Physique
