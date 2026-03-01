@@ -6,9 +6,12 @@
 {% endblock title %}
 
 {% block content %}
-<!-- Page Heading -->
+
+<!-- ── Heading ───────────────────────────────────────────────────────────── -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-  <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+  <h1 class="h3 mb-0 text-gray-800">
+    Bonjour, <strong>{{ trainer.username }}</strong> !
+  </h1>
   {% if user.is_superuser %}
   <a href="/admin" target="_blank" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
     <i class="fas fa-cogs fa-sm text-white-50"></i> Admin
@@ -16,125 +19,266 @@
   {% endif %}
 </div>
 
-<!-- Healing / Active Battle CTAs -->
+<!-- ── Alertes urgentes ───────────────────────────────────────────────────── -->
 {% if team_needs_healing or active_battle %}
-<div class="row mb-2">
+<div class="row mb-3">
   {% if active_battle %}
   <div class="col-12 {% if team_needs_healing %}mb-2{% endif %}">
-    <div class="alert alert-danger d-flex align-items-center justify-content-between mb-0 shadow-sm" style="border-left:4px solid #e74a3b;animation:sidebar-pulse 2s infinite;">
-      <span><i class="fas fa-fist-raised fa-fw mr-2"></i> <strong>Combat en cours !</strong> Vous avez un combat actif non terminé.</span>
-      <a href="{% url 'BattleDetailView' active_battle.id %}" class="btn btn-danger btn-sm ml-3 text-nowrap">
+    <a href="{% url 'BattleDetailView' active_battle.id %}"
+       class="alert-cta alert-cta--danger">
+      <div class="alert-cta__icon"><i class="fas fa-fist-raised fa-lg"></i></div>
+      <div class="alert-cta__text">
+        <strong>Combat en cours !</strong>
+        <span>Vous avez un combat actif non terminé.</span>
+      </div>
+      <div class="alert-cta__btn">
         <i class="fas fa-play mr-1"></i> Reprendre
-      </a>
-    </div>
+        <i class="fas fa-chevron-right ml-1"></i>
+      </div>
+    </a>
   </div>
   {% endif %}
   {% if team_needs_healing %}
   <div class="col-12">
-    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-0 shadow-sm" style="border-left:4px solid #f6c23e;">
-      <span><i class="fas fa-heartbeat fa-fw mr-2"></i> <strong>Équipe blessée !</strong> Certains Pokémon ont besoin de soins.</span>
-      <a href="{% url 'PokemonCenterListView' %}" class="btn btn-warning btn-sm ml-3 text-nowrap">
+    {% if current_zone and current_zone.has_pokemon_center %}
+    <a href="{% url 'zone_detail' current_zone.id %}"
+    {% else %}
+    <a href="{% url 'PokemonCenterListView' %}"
+    {% endif %}
+       class="alert-cta alert-cta--warning">
+      <div class="alert-cta__icon"><i class="fas fa-heartbeat fa-lg"></i></div>
+      <div class="alert-cta__text">
+        <strong>Équipe blessée !</strong>
+        <span>Certains Pokémon ont besoin de soins.{% if current_zone %} Centre Pokémon disponible à {{ current_zone.name }}.{% endif %}</span>
+      </div>
+      <div class="alert-cta__btn">
         <i class="fas fa-hospital mr-1"></i> Soigner
-      </a>
-    </div>
+        <i class="fas fa-chevron-right ml-1"></i>
+      </div>
+    </a>
   </div>
   {% endif %}
 </div>
 {% endif %}
 
-<!-- Content Row -->
-<div class="row">
-  <!-- Total Pokémon -->
-  <div class="col-xl-3 col-md-6 mb-4">
-    <div class="card border-left-primary shadow h-100 py-2">
-      <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Pokémon Capturés</div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_caught }} / {{ total_pokemon }}</div>
-          </div>
-          <div class="col-auto">
-            <img src="{% static 'img/pokedex_transparent.png' %}" style="width:2rem;height:2rem;object-fit:contain;opacity:.4;">
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+<!-- ── Stats ─────────────────────────────────────────────────────────────── -->
+<div class="row mb-4">
 
-  <!-- Équipe Actuelle -->
-  <div class="col-xl-3 col-md-6 mb-4">
-    <div class="card border-left-success shadow h-100 py-2">
-      <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Équipe Actuelle</div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ team_size }} / 6</div>
-          </div>
-          <div class="col-auto">
-            {% if first_team_pokemon %}
-            <img src="{% static 'img/sprites_gen5/' %}{% if first_team_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ first_team_pokemon.species.name|lowerPokemonFileNames }}.png"
-                 style="width:2.4rem;height:2.4rem;object-fit:contain;opacity:.5;"
-                 onerror="this.src='{% static 'img/pokeball.png' %}'">
-            {% else %}
-            <img src="{% static 'img/pokeball.png' %}" style="width:2rem;height:2rem;object-fit:contain;opacity:.4;">
-            {% endif %}
-          </div>
-        </div>
+  <div class="col-xl-3 col-md-6 mb-3">
+    <a href="{% url 'PokemonOverView' %}" class="stat-card stat-card--blue">
+      <div class="stat-card__label">Pokédex</div>
+      <div class="stat-card__value">{{ total_caught }}<span class="stat-card__total"> / {{ total_pokemon }}</span></div>
+      <div class="stat-card__bar"><div style="width:{% widthratio total_caught total_pokemon 100 %}%"></div></div>
+      <div class="stat-card__icon">
+        <img src="{% static 'img/pokedex_transparent.png' %}" style="width:2.2rem;height:2.2rem;object-fit:contain;opacity:.35;">
       </div>
-    </div>
-  </div>
-
-  <!-- Badges -->
-  <div class="col-xl-3 col-md-6 mb-4">
-    <a href="{% url 'BadgeBoxView' %}" class="text-decoration-none">
-    <div class="card border-left-info shadow h-100 py-2" style="transition:transform .15s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-      <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Badges <i class="fas fa-external-link-alt fa-xs ml-1"></i></div>
-            <div class="row no-gutters align-items-center">
-              <div class="col-auto">
-                <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">{{ badges }} / 8</div>
-              </div>
-              <div class="col">
-                <div class="progress progress-sm mr-2">
-                  <div class="progress-bar bg-info" role="progressbar" 
-                       style="width: {{ badges|mul:12.5 }}%" 
-                       aria-valuenow="{{ badges }}" aria-valuemin="0" aria-valuemax="8"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-auto">
-            <i class="fas fa-trophy fa-2x text-gray-300"></i>
-          </div>
-        </div>
-      </div>
-    </div>
     </a>
   </div>
 
-  <!-- Argent -->
-  <div class="col-xl-3 col-md-6 mb-4">
-    <div class="card border-left-warning shadow h-100 py-2">
-      <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Argent</div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ trainer.money|default:0 }}₽</div>
-          </div>
-          <div class="col-auto">
-            <i class="fas fa-coins fa-2x text-gray-300"></i>
-          </div>
+  <div class="col-xl-3 col-md-6 mb-3">
+    <a href="{% url 'MyTeamView' %}" class="stat-card stat-card--green">
+      <div class="stat-card__label">Mon Équipe</div>
+      <div class="stat-card__value">{{ team_size }}<span class="stat-card__total"> / 6</span></div>
+      <div class="stat-card__bar"><div style="width:{% widthratio team_size 6 100 %}%"></div></div>
+      <div class="stat-card__icon">
+        {% if first_team_pokemon %}
+        <img src="{% static 'img/sprites_gen5/' %}{% if first_team_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ first_team_pokemon.species.name|lowerPokemonFileNames }}.png"
+             style="width:2.8rem;height:2.8rem;object-fit:contain;opacity:.5;"
+             onerror="this.src='{% static 'img/pokeball.png' %}'">
+        {% else %}
+        <img src="{% static 'img/pokeball.png' %}" style="width:2rem;height:2rem;object-fit:contain;opacity:.35;">
+        {% endif %}
+      </div>
+    </a>
+  </div>
+
+  <div class="col-xl-3 col-md-6 mb-3">
+    <a href="{% url 'BadgeBoxView' %}" class="stat-card stat-card--teal">
+      <div class="stat-card__label">Badges</div>
+      <div class="stat-card__value">{{ badges }}<span class="stat-card__total"> / 8</span></div>
+      <div class="stat-card__bar"><div style="width:{% widthratio badges 8 100 %}%"></div></div>
+      <div class="stat-card__icon"><i class="fas fa-trophy" style="font-size:2rem;opacity:.3;"></i></div>
+    </a>
+  </div>
+
+  <div class="col-xl-3 col-md-6 mb-3">
+    <div class="stat-card stat-card--yellow">
+      <div class="stat-card__label">Argent</div>
+      <div class="stat-card__value" style="font-size:1.5rem;">{{ trainer.money|default:0 }} ₽</div>
+      <div class="stat-card__icon"><i class="fas fa-coins" style="font-size:2rem;opacity:.3;"></i></div>
+    </div>
+  </div>
+
+</div>
+
+{% if current_zone %}
+<div class="mb-3">
+  <a href="{% url 'zone_detail' current_zone.id %}" class="zone-hero">
+    <img src="{% static 'img/mapSprites/Kanto/' %}{{ current_zone.name|zone_image_path }}"
+         class="zone-hero__bg"
+         onerror="this.style.display='none'">
+    <div class="zone-hero__overlay"></div>
+    <div class="zone-hero__inner">
+      <div class="zone-hero__badge">
+        <i class="fas fa-map-marker-alt mr-1"></i>Vous êtes ici
+      </div>
+      <div class="zone-hero__name">{{ current_zone.name }}</div>
+      <div class="zone-hero__sub">{{ current_zone.get_zone_type_display }}</div>
+      <div class="zone-hero__cta">
+        <i class="fas fa-arrow-right mr-2"></i>Explorer la zone
+      </div>
+    </div>
+  </a>
+</div>
+{% endif %}
+
+<!-- ── Actions rapides ────────────────────────────────────────────────────── -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Actions Rapides</h6>
+      </div>
+      <div class="card-body pb-2">
+        <!-- Actions globales -->
+        <div class="quick-grid">
+
+          <a href="{% url 'PokemonOverView' %}" class="quick-card quick-card--blue">
+            <div class="quick-card__img">
+              <img src="{% static 'img/pokedex_transparent.png'%}" alt="Pokédex">
+            </div>
+            <div class="quick-card__label">Pokédex</div>
+          </a>
+
+          <a href="{% url 'MyTeamView' %}" class="quick-card quick-card--green">
+            <div class="quick-card__img">
+              <img src="{% static 'img/pokeball.png' %}" alt="Équipe">
+            </div>
+            <div class="quick-card__label">Mon Équipe</div>
+          </a>
+
+          <a href="{% url 'map_view' %}" class="quick-card quick-card--teal">
+            <div class="quick-card__img">
+              <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <div class="quick-card__label">Carte</div>
+          </a>
+
+          <a href="{% url 'GymLeaderListView' %}" class="quick-card quick-card--orange">
+            <div class="quick-card__img">
+              <i class="fas fa-trophy"></i>
+            </div>
+            <div class="quick-card__label">Arènes</div>
+          </a>
+
+          <a href="{% url 'BadgeBoxView' %}" class="quick-card quick-card--yellow">
+            <div class="quick-card__img">
+              <i class="fas fa-star"></i>
+            </div>
+            <div class="quick-card__label">Mes Badges</div>
+          </a>
+
+          <a href="{% url 'ItemListView' %}" class="quick-card quick-card--purple">
+            <div class="quick-card__img">
+              <i class="fas fa-briefcase"></i>
+            </div>
+            <div class="quick-card__label">Sac</div>
+          </a>
+
+          <a href="{% url 'ShopListView' %}" class="quick-card quick-card--indigo">
+            <div class="quick-card__img">
+              <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}" alt="Boutique" onerror="this.outerHTML='<i class=\'fas fa-store\'></i>'">
+            </div>
+            <div class="quick-card__label">Boutiques</div>
+          </a>
+
+          {% if active_battle %}
+          <a href="{% url 'BattleDetailView' active_battle.id %}" class="quick-card quick-card--danger quick-card--pulse">
+            <div class="quick-card__img">
+              <i class="fas fa-fist-raised"></i>
+            </div>
+            <div class="quick-card__label">Combat !</div>
+          </a>
+          {% else %}
+          <a href="{% url 'BattleListView' %}" class="quick-card quick-card--red">
+            <div class="quick-card__img">
+              <i class="fas fa-fist-raised"></i>
+            </div>
+            <div class="quick-card__label">Combats</div>
+          </a>
+          {% endif %}
+
         </div>
+
+        <!-- Actions de la zone actuelle -->
+        {% if current_zone %}
+        <div class="quick-zone-divider">
+          <span class="quick-zone-divider__line"></span>
+          <span class="quick-zone-divider__label">
+            <i class="fas fa-map-marker-alt mr-1"></i>{{ current_zone.name }}
+            <span class="quick-zone-divider__type">— {{ current_zone.get_zone_type_display }}</span>
+          </span>
+          <span class="quick-zone-divider__line"></span>
+        </div>
+
+        <div class="quick-grid">
+
+        <div class="quick-grid">
+
+
+          <!-- Rencontre sauvage (zones non-sûres sans étages) -->
+          {% if not current_zone.is_safe_zone and not current_zone.has_floors %}
+          <a href="{% url 'wild_encounter' current_zone.id %}?type=grass" class="quick-card quick-card--zone">
+            <div class="quick-card__img">
+              <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}" alt="Chercher" onerror="this.outerHTML='<i class=\'fas fa-leaf\'></i>'">
+            </div>
+            <div class="quick-card__label">Explorer</div>
+          </a>
+          {% endif %}
+
+          <!-- Centre Pokémon si la zone en a un -->
+          {% if current_zone.has_pokemon_center %}
+          <a href="{% if pokemon_center %}{% url 'PokemonCenterDetailView' pokemon_center.id %}{% else %}{% url 'PokemonCenterListView' %}{% endif %}"
+             class="quick-card quick-card--zone {% if team_needs_healing %}quick-card--danger quick-card--pulse{% endif %}">
+            <div class="quick-card__img">
+              <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}" alt="Centre" onerror="this.outerHTML='<i class=\'fas fa-hospital\'></i>'">
+            </div>
+            <div class="quick-card__label">{% if team_needs_healing %}Soigner !{% else %}Centre{% endif %}</div>
+          </a>
+          {% endif %}
+
+          <!-- Boutique locale si la zone en a une -->
+          {% if current_zone.has_shop %}
+          <a href="{% if zone_shop %}{% url 'ShopDetailView' zone_shop.id %}{% else %}{% url 'ShopListView' %}{% endif %}"
+             class="quick-card quick-card--zone">
+            <div class="quick-card__img">
+              <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}" alt="Boutique" onerror="this.outerHTML='<i class=\'fas fa-store\'></i>'">
+            </div>
+            <div class="quick-card__label">Boutique</div>
+          </a>
+          {% endif %}
+
+          <!-- Arène si présente dans la zone -->
+          {% if gym_leader %}
+          <a href="{% url 'battle_challenge_gym' gym_leader.id %}" class="quick-card quick-card--zone">
+            <div class="quick-card__img">
+              <i class="fas fa-trophy"></i>
+            </div>
+            <div class="quick-card__label">Arène</div>
+          </a>
+          {% endif %}
+
+        </div>
+        {% endif %}{# /current_zone #}
+
       </div>
     </div>
   </div>
+  </div>
 </div>
 
-<!-- Content Row -->
+<!-- ── Prochain objectif + Combats ────────────────────────────────────────── -->
 <div class="row">
-  <!-- Prochain Objectif -->
   <div class="col-lg-6 mb-4">
     <div class="card shadow mb-4">
       <div class="card-header py-3">
@@ -144,15 +288,13 @@
         {% if next_gym %}
         <div class="text-center">
           <h4 class="mb-3">{{ next_gym.gym_name }}</h4>
-          <p class="mb-2"><strong>Champion:</strong> {{ next_gym.trainer.username }}</p>
+          <p class="mb-2"><strong>Champion :</strong> {{ next_gym.trainer.username }}</p>
           <p class="mb-2">
-            <strong>Type:</strong> 
-            <span class="badge badge-type-{{ next_gym.specialty_type.name }}">
-              {{ next_gym.specialty_type.name }}
-            </span>
+            <strong>Type :</strong>
+            <span class="badge badge-type-{{ next_gym.specialty_type.name }}">{{ next_gym.specialty_type.name }}</span>
           </p>
-          <p class="mb-2"><strong>Ville:</strong> {{ next_gym.gym_city }}</p>
-          <p class="mb-3"><strong>Badge:</strong> {{ next_gym.badge_name }}</p>
+          <p class="mb-2"><strong>Ville :</strong> {{ next_gym.gym_city }}</p>
+          <p class="mb-3"><strong>Badge :</strong> {{ next_gym.badge_name }}</p>
           <a href="{% url 'GymLeaderDetailView' next_gym.id %}" class="btn btn-primary">
             <i class="fas fa-info-circle"></i> Voir Détails
           </a>
@@ -160,21 +302,17 @@
         {% elif badges >= 8 %}
         <div class="text-center">
           <i class="fas fa-crown fa-3x text-warning mb-3"></i>
-          <h4>Tous les badges obtenus!</h4>
-          <p>Direction la Ligue Pokémon!</p>
+          <h4>Tous les badges obtenus !</h4>
+          <p>Direction la Ligue Pokémon !</p>
         </div>
         {% else %}
-        <div class="text-center">
-          <p>Commence ton aventure!</p>
-        </div>
+        <div class="text-center"><p>Commence ton aventure !</p></div>
         {% endif %}
       </div>
     </div>
-
     {% include 'quests/quest_widget.html' with active_quests=active_quests %}
   </div>
 
-  <!-- Derniers Combats -->
   <div class="col-lg-6 mb-4">
     <div class="card shadow mb-4">
       <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -192,7 +330,7 @@
                   <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}"
                        style="height:2em;object-fit:contain;vertical-align:middle;"
                        onerror="this.outerHTML='<i class=\'fas fa-leaf text-success\'></i>'">
-                    Pokémon Sauvage
+                  Pokémon Sauvage
                 {% elif battle.battle_type == 'trainer' %}
                   <img src="{% static 'img/trainer_sprites/' %}{{ battle.opponent_trainer|trainer_sprite_path }}"
                        style="height:3em;object-fit:contain;vertical-align:middle;"
@@ -227,77 +365,13 @@
   </div>
 </div>
 
-<!-- Quick Actions -->
-<div class="row">
-  <div class="col-12">
-    <div class="card shadow mb-4">
-      <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Actions Rapides</h6>
-      </div>
-      <div class="card-body">
-        <div class="row text-center">
-          <div class="col-md-2 mb-3">
-            <a href="{% url 'PokemonOverView' %}" class="btn btn-lg btn-block btn-outline-primary">
-              <img src="{% static 'img/pokedex_transparent.png'%}" class="mb-2" style="width: 40px; height: auto;"/><br>
-              Pokédex
-            </a>
-          </div>
-          <div class="col-md-2 mb-3">
-            <a href="{% url 'MyTeamView' %}" class="btn btn-lg btn-block btn-outline-success">
-              <img src="{% static 'img/pokeball.png' %}" class="mb-1" style="width:36px;height:36px;object-fit:contain;display:block;margin:0 auto;"><br>
-              Mon Équipe
-            </a>
-          </div>
-          <div class="col-md-2 mb-3">
-            <a href="{% url 'GymLeaderListView' %}" class="btn btn-lg btn-block btn-outline-warning">
-              <i class="fas fa-trophy fa-2x mb-2"></i><br>
-              Arènes
-            </a>
-          </div>
-          <div class="col-md-2 mb-3">
-            <a href="{% url 'BadgeBoxView' %}" class="btn btn-lg btn-block btn-outline-warning">
-              <i class="fas fa-star fa-2x mb-2"></i><br>
-              Mes Badges
-            </a>
-          </div>
-          <div class="col-md-2 mb-3">
-            <a href="{% url 'ItemListView' %}" class="btn btn-lg btn-block btn-outline-info">
-              <i class="fas fa-shopping-bag fa-2x mb-2"></i><br>
-              Objets
-            </a>
-          </div>
-          <div class="col-md-2 mb-3">
-            <a href="{% url 'map_view' %}" class="btn btn-lg btn-block btn-outline-secondary">
-              <i class="fas fa-map-location-dot fa-2x mb-2"></i><br>
-              Carte
-            </a>
-          </div>
-          {% if active_battle %}
-          <div class="col-md-2 mb-3">
-            <a href="{% url 'BattleDetailView' active_battle.id %}" class="btn btn-lg btn-block btn-danger" style="animation:sidebar-pulse 2s infinite;">
-              <i class="fas fa-fist-raised fa-2x mb-2"></i><br>
-              Combat
-            </a>
-          </div>
-          {% else %}
-          <div class="col-md-2 mb-3">
-            <a href="{% url 'BattleListView' %}" class="btn btn-lg btn-block btn-outline-danger">
-              <i class="fas fa-fist-raised fa-2x mb-2"></i><br>
-              Combats
-            </a>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock content %}
+
+{% block css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock css %}
 
 {% block js %}
 {{ block.super }}
-<script>
-  // Ajout d'un filtre pour multiplication dans les templates
-  // (déjà géré côté serveur dans ce cas)
-</script>
 {% endblock js %}
