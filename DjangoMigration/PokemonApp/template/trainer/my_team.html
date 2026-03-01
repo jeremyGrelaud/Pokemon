@@ -103,7 +103,7 @@
             <div class="mb-2">
               <div class="moves-mini-grid">
                 {% for mi in pokemon.pokemonmoveinstance_set.all %}
-                <div class="move-mini-chip type-bg-{{ mi.move.type.name|lower }}">
+                <div class="move-mini-chip badge-type-{{ mi.move.type.name|lower }}">
                   <span class="move-mini-name">{{ mi.move.name }}</span>
                   <span class="move-mini-pp {% if mi.current_pp == 0 %}pp-empty{% elif mi.current_pp <= mi.move.pp|divisibleby:3 %}pp-low{% endif %}">{{ mi.current_pp }}/{{ mi.move.pp }}</span>
                 </div>
@@ -662,7 +662,7 @@ function renderActiveMoves(moves) {
     const ppPct    = Math.round((m.current_pp / m.pp) * 100);
     const ppClass  = ppPct === 0 ? 'pp-bar-empty' : ppPct <= 33 ? 'pp-bar-low' : ppPct <= 66 ? 'pp-bar-mid' : 'pp-bar-full';
     return `
-      <div class="move-card-full type-bg-${m.type.toLowerCase()} mb-2" data-move-id="${m.id}" data-move-name="${m.name}">
+      <div class="move-card-full badge-type-${m.type.toLowerCase()} mb-2" data-move-id="${m.id}" data-move-name="${m.name}">
         <div class="d-flex justify-content-between align-items-start mb-1">
           <span class="move-card-name">${m.name}</span>
           <span class="move-type-pill">${m.type.toUpperCase()}</span>
@@ -696,7 +696,7 @@ function renderLearnableMoves(learnable) {
 
   container.innerHTML = learnable.map(m => {
     return `
-      <div class="move-card-full move-learnable type-bg-${m.type.toLowerCase()} mb-2"
+      <div class="move-card-full move-learnable badge-type-${m.type.toLowerCase()} mb-2"
            data-move-id="${m.id}" data-move-name="${m.name}"
            onclick="selectLearnableMove(${m.id}, '${m.name.replace(/'/g, "\\'")}')">
         <div class="d-flex justify-content-between align-items-start mb-1">
@@ -828,7 +828,7 @@ function updateCardMoves(pokemonId, moves) {
   grid.innerHTML = moves.map(m => {
     const ppPct   = Math.round((m.current_pp / m.pp) * 100);
     const ppClass = m.current_pp === 0 ? 'pp-empty' : ppPct <= 33 ? 'pp-low' : '';
-    return `<div class="move-mini-chip type-bg-${m.type.toLowerCase()}">
+    return `<div class="move-mini-chip badge-type-${m.type.toLowerCase()}">
       <span class="move-mini-name">${m.name}</span>
       <span class="move-mini-pp ${ppClass}">${m.current_pp}/${m.pp}</span>
     </div>`;

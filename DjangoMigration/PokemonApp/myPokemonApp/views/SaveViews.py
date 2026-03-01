@@ -72,6 +72,27 @@ def create_game_snapshot(trainer, save):
             'is_in_party':       pokemon.is_in_party,
             'current_exp':       pokemon.current_exp,
             'exp_for_next_level': pokemon.exp_for_next_level(),
+            # ── IVs ──────────────────────────────────────────────────────
+            'iv_hp':             pokemon.iv_hp,
+            'iv_attack':         pokemon.iv_attack,
+            'iv_defense':        pokemon.iv_defense,
+            'iv_special_attack': pokemon.iv_special_attack,
+            'iv_special_defense':pokemon.iv_special_defense,
+            'iv_speed':          pokemon.iv_speed,
+            # ── EVs ──────────────────────────────────────────────────────
+            'ev_hp':             pokemon.ev_hp,
+            'ev_attack':         pokemon.ev_attack,
+            'ev_defense':        pokemon.ev_defense,
+            'ev_special_attack': pokemon.ev_special_attack,
+            'ev_special_defense':pokemon.ev_special_defense,
+            'ev_speed':          pokemon.ev_speed,
+            # ── Misc ─────────────────────────────────────────────────────
+            'nature':            pokemon.nature,
+            'is_shiny':          pokemon.is_shiny,
+            'party_position':    pokemon.party_position,
+            'original_trainer':  pokemon.original_trainer,
+            'pokeball_used':     pokemon.pokeball_used,
+            'friendship':        pokemon.friendship,
             'moves':             [],
         }
         for mi in pokemon.pokemonmoveinstance_set.all():
@@ -167,6 +188,27 @@ def restore_game_snapshot(trainer, snapshot):
             status_condition=pd.get('status_condition'),
             is_in_party=pd['is_in_party'],
             current_exp=pd.get('current_exp', 0),
+            # ── IVs ──────────────────────────────────────────────────────
+            iv_hp=pd.get('iv_hp', 0),
+            iv_attack=pd.get('iv_attack', 0),
+            iv_defense=pd.get('iv_defense', 0),
+            iv_special_attack=pd.get('iv_special_attack', 0),
+            iv_special_defense=pd.get('iv_special_defense', 0),
+            iv_speed=pd.get('iv_speed', 0),
+            # ── EVs ──────────────────────────────────────────────────────
+            ev_hp=pd.get('ev_hp', 0),
+            ev_attack=pd.get('ev_attack', 0),
+            ev_defense=pd.get('ev_defense', 0),
+            ev_special_attack=pd.get('ev_special_attack', 0),
+            ev_special_defense=pd.get('ev_special_defense', 0),
+            ev_speed=pd.get('ev_speed', 0),
+            # ── Misc ─────────────────────────────────────────────────────
+            nature=pd.get('nature', 'Hardy'),
+            is_shiny=pd.get('is_shiny', False),
+            party_position=pd.get('party_position'),
+            original_trainer=pd.get('original_trainer'),
+            pokeball_used=pd.get('pokeball_used'),
+            friendship=pd.get('friendship', 70),
         )
 
         for md in pd.get('moves', []):
