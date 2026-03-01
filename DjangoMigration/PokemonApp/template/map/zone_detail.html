@@ -46,187 +46,191 @@
             {% endif %}
           </div>
 
-          <!-- Actions (uniquement si le joueur est dans cette zone) -->
+          <!-- ══════════════════════════════════════════════════════════════
+               ACTIONS — uniquement si le joueur est dans cette zone
+          ══════════════════════════════════════════════════════════════════ -->
           {% if is_current %}
-          <div class="row mb-4">
+          <div class="zone-actions mb-4">
 
-            <!-- Hautes herbes — masqué pour les zones à étages (rencontres gérées par étage) -->
+            <!-- ── Hautes Herbes (hero card pleine largeur) ──────────────── -->
             {% if not zone.is_safe_zone and not zone.has_floors %}
-            <div class="col-md-6 col-lg-3 mb-3">
-              <div class="card bg-success text-white h-100">
-                <div class="card-body text-center d-flex flex-column justify-content-between">
-                  <div>
-                    <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}"
-                        alt="Hautes herbes"
-                        style="width:48px;height:48px;object-fit:contain;"
-                        onerror="this.style.display='none';">
-                    <h5 class="mt-2"><i class="fas fa-leaf"></i> Hautes Herbes</h5>
-                    <p class="small mb-3 text-white-50">Rencontrez des Pokémon sauvages</p>
+            <a href="{% url 'wild_encounter' zone.id %}?type=grass"
+               class="action-card action-card--grass action-card--hero">
+              <div class="action-card__bg"></div>
+              <div class="action-card__inner">
+                <div class="action-card__icon-wrap">
+                  <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}"
+                       alt="Hautes herbes"
+                       class="action-card__img action-card__img--large"
+                       onerror="this.style.display='none';">
+                </div>
+                <div class="action-card__text">
+                  <div class="action-card__title">Hautes Herbes</div>
+                  <div class="action-card__subtitle">
+                    Partez à la rencontre de Pokémon sauvages dans la zone
                   </div>
-                  <a href="{% url 'wild_encounter' zone.id %}?type=grass" class="btn btn-light text-white-50 btn-sm">
-                    <i class="fas fa-search"></i> Chercher un Pokémon
-                  </a>
+                </div>
+                <div class="action-card__cta">
+                  <i class="fas fa-search mr-2"></i>Chercher un Pokémon
+                  <i class="fas fa-arrow-right ml-2 action-card__arrow"></i>
                 </div>
               </div>
-            </div>
+            </a>
             {% endif %}
 
-            <!-- Centre Pokémon -->
-            {% if zone.has_pokemon_center %}
-            <div class="col-md-6 col-lg-3 mb-3">
-              <div class="card text-white h-100"
-                   style="background-color: {% if team_needs_healing %}#c0392b{% else %}#e74c3c{% endif %};
-                          {% if team_needs_healing %}box-shadow: 0 0 0 3px #f39c12, 0 4px 16px rgba(231,76,60,.5);{% endif %}">
-                <div class="card-body text-center d-flex flex-column justify-content-between">
-                  <div>
+            <!-- ── Grille des autres actions ─────────────────────────────── -->
+            <div class="action-grid mt-3">
+
+              <!-- Centre Pokémon -->
+              {% if zone.has_pokemon_center %}
+              {% if pokemon_center %}
+              <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}"
+                 class="action-card action-card--center {% if team_needs_healing %}action-card--urgent{% endif %}">
+              {% else %}
+              <a href="{% url 'PokemonCenterListView' %}"
+                 class="action-card action-card--center">
+              {% endif %}
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
                     <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}"
-                        alt="Centre Pokémon"
-                        style="width:64px;height:64px;object-fit:contain;{% if team_needs_healing %}filter:drop-shadow(0 0 8px #f39c12);{% endif %}"
-                        onerror="this.style.display='none';">
-                    <h5 class="mt-2"><i class="fas fa-hospital"></i> Centre Pokémon</h5>
+                         alt="Centre Pokémon"
+                         class="action-card__img {% if team_needs_healing %}action-card__img--glow-warn{% endif %}"
+                         onerror="this.style.display='none';">
+                  </div>
+                  <div class="action-card__text">
+                    <div class="action-card__title">Centre Pokémon</div>
                     {% if team_needs_healing %}
-                    <p class="small mb-1 text-white font-weight-bold">
-                      <i class="fas fa-exclamation-triangle"></i> Équipe affaiblie !
-                    </p>
+                    <div class="action-card__alert">
+                      <i class="fas fa-exclamation-triangle mr-1"></i>Équipe affaiblie !
+                    </div>
                     {% endif %}
-                    {% if pokemon_center %}
-                    <p class="small mb-3 text-white-50">{{ pokemon_center.nurse_name }}</p>
-                    {% else %}
-                    <p class="small mb-3 text-white-50">Soignez votre équipe gratuitement</p>
-                    {% endif %}
+                    <div class="action-card__subtitle">
+                      {% if pokemon_center %}{{ pokemon_center.nurse_name }}{% else %}Soignez votre équipe gratuitement{% endif %}
+                    </div>
                   </div>
-                  {% if pokemon_center %}
-                  <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}"
-                     class="btn btn-sm {% if team_needs_healing %}btn-warning font-weight-bold{% else %}btn-light text-white-50{% endif %}">
-                    <i class="fas fa-heartbeat"></i> {% if team_needs_healing %}Soigner l'équipe !{% else %}Entrer au centre{% endif %}
-                  </a>
-                  {% else %}
-                  <a href="{% url 'PokemonCenterListView' %}" class="btn btn-light text-white-50 btn-sm">
-                    <i class="fas fa-heartbeat"></i> Soigner l'équipe
-                  </a>
-                  {% endif %}
+                  <div class="action-card__cta">
+                    <i class="fas fa-heartbeat mr-2"></i>
+                    {% if team_needs_healing %}Soigner l'équipe !{% else %}Entrer au centre{% endif %}
+                  </div>
                 </div>
-              </div>
-            </div>
-            {% endif %}
+              </a>
+              {% endif %}
 
-            <!-- Pokemart / Boutique -->
-            {% if zone.has_shop %}
-            <div class="col-md-6 col-lg-3 mb-3">
-              <div class="card text-white h-100" style="background-color: #764ba2;">
-                <div class="card-body text-center d-flex flex-column justify-content-between">
-                  <div>
+              <!-- Pokemart / Boutique -->
+              {% if zone.has_shop %}
+              {% if zone_shop %}
+              <a href="{% url 'ShopDetailView' zone_shop.id %}" class="action-card action-card--shop">
+              {% else %}
+              <a href="{% url 'ShopListView' %}" class="action-card action-card--shop">
+              {% endif %}
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
                     <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}"
-                        alt="Pokemart"
-                        style="width:64px;height:64px;object-fit:contain;"
-                        onerror="this.style.display='none';">
-                    <h5 class="mt-2"><i class="fas fa-shopping-bag"></i> Pokemart</h5>
-                    {% if zone_shop %}
-                    <p class="small mb-3 text-white-50">{{ zone_shop.name }}</p>
-                    {% else %}
-                    <p class="small mb-3 text-white-50">Achetez objets et équipements</p>
-                    {% endif %}
+                         alt="Pokemart"
+                         class="action-card__img"
+                         onerror="this.style.display='none';">
                   </div>
-                  {% if zone_shop %}
-                  <a href="{% url 'ShopDetailView' zone_shop.id %}" class="btn btn-light text-white-50 btn-sm">
-                    <i class="fas fa-store"></i> Entrer dans la boutique
-                  </a>
-                  {% else %}
-                  <a href="{% url 'ShopListView' %}" class="btn btn-light text-white-50 btn-sm">
-                    <i class="fas fa-store"></i> Voir les boutiques
-                  </a>
-                  {% endif %}
+                  <div class="action-card__text">
+                    <div class="action-card__title">Pokemart</div>
+                    <div class="action-card__subtitle">
+                      {% if zone_shop %}{{ zone_shop.name }}{% else %}Achetez objets et équipements{% endif %}
+                    </div>
+                  </div>
+                  <div class="action-card__cta">
+                    <i class="fas fa-store mr-2"></i>Entrer dans la boutique
+                  </div>
                 </div>
-              </div>
-            </div>
-            {% endif %}
+              </a>
+              {% endif %}
 
-            <!-- Arène / Gym Leader -->
-            {% if gym_leader %}
-            <div class="col-md-6 col-lg-3 mb-3">
-              <div class="card text-white h-100" style="background-color: {% if gym_leader_defeated %}#95a5a6{% else %}#e67e22{% endif %};">
-                <div class="card-body text-center d-flex flex-column justify-content-between">
-                  <div>
+              <!-- Arène / Gym Leader -->
+              {% if gym_leader %}
+              <a href="{% if gym_leader_defeated %}#{% else %}{% url 'battle_challenge_gym' gym_leader.id %}{% endif %}"
+                 class="action-card action-card--gym {% if gym_leader_defeated %}action-card--done{% endif %}"
+                 {% if gym_leader_defeated %}style="pointer-events:none;"{% endif %}>
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
                     <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}"
-                        alt="{{ gym_leader.trainer.username }}"
-                        style="width:64px;height:64px;object-fit:contain;{% if gym_leader_defeated %}filter:grayscale(60%);opacity:.7;{% endif %}"
-                        onerror="this.style.display='none';">
-                    <h5 class="mt-2"><i class="fas fa-trophy"></i> Arène</h5>
-                    <p class="small mb-1 text-white-50"><strong>{{ gym_leader.trainer.username }}</strong></p>
-                    <p class="small mb-1 text-white-50">Badge : {{ gym_leader.badge_name }}</p>
+                         alt="{{ gym_leader.trainer.username }}"
+                         class="action-card__img action-card__img--trainer {% if gym_leader_defeated %}action-card__img--defeated{% endif %}"
+                         onerror="this.style.display='none';">
+                  </div>
+                  <div class="action-card__text">
+                    <div class="action-card__title">Arène Pokémon</div>
+                    <div class="action-card__subtitle">
+                      <strong>{{ gym_leader.trainer.username }}</strong> — {{ gym_leader.badge_name }}
+                    </div>
                     {% if gym_leader_defeated %}
-                    <span class="badge badge-light text-secondary mt-1">
-                      <i class="fas fa-check mr-1"></i>Badge obtenu
+                    <span class="action-card__badge-won">
+                      <i class="fas fa-medal mr-1"></i>Badge obtenu
                     </span>
                     {% endif %}
                   </div>
-                  {% if gym_leader_defeated %}
-                  <button class="btn btn-light text-secondary btn-sm mt-2" disabled>
-                    <i class="fas fa-medal"></i> Badge déjà obtenu
-                  </button>
-                  {% else %}
-                  <a href="{% url 'battle_challenge_gym' gym_leader.id %}" class="btn btn-light text-white-50 btn-sm mt-2">
-                    <i class="fas fa-fist-raised"></i> Défier l'Arène
-                  </a>
-                  {% endif %}
+                  <div class="action-card__cta">
+                    {% if gym_leader_defeated %}
+                    <i class="fas fa-check mr-2"></i>Déjà vaincu
+                    {% else %}
+                    <i class="fas fa-fist-raised mr-2"></i>Défier l'Arène
+                    {% endif %}
+                  </div>
                 </div>
-              </div>
-            </div>
-            {% endif %}
+              </a>
+              {% endif %}
 
-          </div>
+            </div>{# /action-grid #}
+          </div>{# /zone-actions #}
           {% endif %}
 
-          <!-- Pokémon sauvages -->
+          <!-- ══════════════════════════════════════════════════════════════
+               POKÉMON SAUVAGES — box stylisée
+          ══════════════════════════════════════════════════════════════════ -->
           {% if wild_spawns and not zone.has_floors %}
-          <h4><i class="fas fa-paw"></i> Pokémon Sauvages</h4>
-          <div class="table-responsive mb-4">
-            <table class="table table-sm align-middle">
-              <thead>
-                <tr>
-                  <th style="width:56px;"></th>
-                  <th>Pokémon</th>
-                  <th>Niveau</th>
-                  <th>Taux</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for spawn in wild_spawns %}
-                <tr>
-                  <td class="text-center">
-                    <img src="{% static 'img/sprites_gen5/normal/' %}{{ spawn.pokemon.name|lowerPokemonFileNames }}.png"
-                        alt="{{ spawn.pokemon.name }}"
-                        style="width:64px;height:64px;object-fit:contain;"
-                        onerror="this.style.display='none';">
-                  </td>
-                  <td><strong>{{ spawn.pokemon.name }}</strong></td>
-                  <td>{{ spawn.level_min }}-{{ spawn.level_max }}</td>
-                  <td>
-                    <div style="display:flex; align-items:center; gap:8px; min-width:120px;">
-                      <div style="
-                        flex:1;
-                        height:8px;
-                        background:#e9ecef;
-                        border-radius:4px;
-                        overflow:hidden;
-                      ">
-                        <div style="
-                          height:100%;
-                          width:{{ spawn.spawn_rate }}%;
-                          background: {% if spawn.spawn_rate >= 50 %}#28a745{% elif spawn.spawn_rate >= 20 %}#ffc107{% else %}#dc3545{% endif %};
-                          border-radius:4px;
-                          transition: width 0.3s ease;
-                        "></div>
-                      </div>
-                      <small style="color:#6c757d; white-space:nowrap; font-size:0.75rem;">
-                        {{ spawn.spawn_rate }}%
-                      </small>
-                    </div>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+          <div class="wild-box mb-4">
+            <div class="wild-box__header">
+              <i class="fas fa-paw mr-2"></i>Pokémon Sauvages
+            </div>
+            <div class="wild-box__body">
+              {% for spawn in wild_spawns %}
+              <div class="wild-row">
+                <div class="wild-row__sprite">
+                  <img src="{% static 'img/sprites_gen5/normal/' %}{{ spawn.pokemon.name|lowerPokemonFileNames }}.png"
+                       alt="{{ spawn.pokemon.name }}"
+                       onerror="this.style.display='none';">
+                </div>
+                <div class="wild-row__info">
+                  <span class="wild-row__name">{{ spawn.pokemon.name }}</span>
+                  <span class="wild-row__types">
+                    <span class="type-chip type-{{ spawn.pokemon.primary_type.name|lower }}">
+                      {{ spawn.pokemon.primary_type.name|upper }}
+                    </span>
+                    {% if spawn.pokemon.secondary_type %}
+                    <span class="type-chip type-{{ spawn.pokemon.secondary_type.name|lower }}">
+                      {{ spawn.pokemon.secondary_type.name|upper }}
+                    </span>
+                    {% endif %}
+                  </span>
+                </div>
+                <div class="wild-row__level">
+                  Niv. {{ spawn.level_min }}–{{ spawn.level_max }}
+                </div>
+                <div class="wild-row__rate">
+                  <div class="wild-rate-bar">
+                    <div class="wild-rate-fill
+                      {% if spawn.spawn_rate >= 50 %}wild-rate--high
+                      {% elif spawn.spawn_rate >= 20 %}wild-rate--mid
+                      {% else %}wild-rate--low{% endif %}"
+                      style="width:{{ spawn.spawn_rate }}%"></div>
+                  </div>
+                  <span class="wild-rate-pct">{{ spawn.spawn_rate }}%</span>
+                </div>
+                {% if not zone.is_safe_zone and is_current %}
+                <div class="wild-row__cta">
+                  <i class="fas fa-chevron-right"></i>
+                </div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
           </div>
           {% endif %}
 
@@ -260,7 +264,6 @@
             {% for entry in trainers %}
             {% with npc=entry.npc is_defeated=entry.is_defeated can_rebattle=entry.can_rebattle %}
             {% if is_defeated and not can_rebattle %}
-            {# Dresseur vaincu non re-défiable : grisé #}
             <div class="list-group-item list-group-item-action disabled" style="opacity:.55;cursor:default;">
               <div class="d-flex align-items-center">
                 <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
@@ -270,20 +273,14 @@
                 <div class="flex-grow-1">
                   <strong>{{ npc.get_full_title }}</strong>
                   {% if npc.is_battle_required %}
-                  <span class="badge badge-danger ml-1" title="Combat obligatoire — impossible à éviter">
-                    <i class="fas fa-exclamation-triangle"></i> Obligatoire
-                  </span>
+                  <span class="badge badge-danger ml-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
                   {% endif %}
-                  <br>
-                  <small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
+                  <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
                 </div>
-                <span class="badge badge-secondary align-self-center">
-                  <i class="fas fa-check"></i> Vaincu
-                </span>
+                <span class="badge badge-secondary align-self-center"><i class="fas fa-check"></i> Vaincu</span>
               </div>
             </div>
             {% elif is_defeated and can_rebattle %}
-            {# Vaincu mais re-défiable #}
             <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action">
               <div class="d-flex align-items-center">
                 <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
@@ -293,20 +290,14 @@
                 <div class="flex-grow-1">
                   <strong>{{ npc.get_full_title }}</strong>
                   {% if npc.is_battle_required %}
-                  <span class="badge badge-danger ml-1" title="Combat obligatoire — impossible à éviter">
-                    <i class="fas fa-exclamation-triangle"></i> Obligatoire
-                  </span>
+                  <span class="badge badge-danger ml-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
                   {% endif %}
-                  <br>
-                  <small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
+                  <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
                 </div>
-                <span class="badge badge-warning align-self-center">
-                  <i class="fas fa-redo"></i> Revancher
-                </span>
+                <span class="badge badge-warning align-self-center"><i class="fas fa-redo"></i> Revancher</span>
               </div>
             </a>
             {% else %}
-            {# Non encore vaincu #}
             <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action">
               <div class="d-flex align-items-center">
                 <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
@@ -316,16 +307,11 @@
                 <div class="flex-grow-1">
                   <strong>{{ npc.get_full_title }}</strong>
                   {% if npc.is_battle_required %}
-                  <span class="badge badge-warning ml-1" title="Combat obligatoire — impossible à éviter">
-                    <i class="fas fa-exclamation-triangle"></i> Obligatoire
-                  </span>
+                  <span class="badge badge-warning ml-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
                   {% endif %}
-                  <br>
-                  <small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
+                  <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
                 </div>
-                <span class="badge badge-danger align-self-center">
-                  <i class="fas fa-fist-raised"></i> Combattre
-                </span>
+                <span class="badge badge-danger align-self-center"><i class="fas fa-fist-raised"></i> Combattre</span>
               </div>
             </a>
             {% endif %}
@@ -334,7 +320,7 @@
           </div>
           {% endif %}
 
-          <!-- Dresseurs par étage (bâtiments multi-étages) -->
+          <!-- Dresseurs par étage -->
           {% if floors_data %}
           <h4><i class="fas fa-building"></i> Étages & Dresseurs</h4>
           {% for fd in floors_data %}
@@ -369,10 +355,7 @@
                     <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
                          style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;filter:grayscale(100%);"
                          onerror="this.style.display='none';">
-                    <div class="flex-grow-1">
-                      <strong>{{ npc.get_full_title }}</strong>
-                      <br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small>
-                    </div>
+                    <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
                     <span class="badge badge-secondary"><i class="fas fa-check"></i> Vaincu</span>
                   </div>
                 </div>
@@ -382,10 +365,7 @@
                     <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
                          style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
                          onerror="this.style.display='none';">
-                    <div class="flex-grow-1">
-                      <strong>{{ npc.get_full_title }}</strong>
-                      <br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small>
-                    </div>
+                    <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
                     <span class="badge badge-warning"><i class="fas fa-redo"></i> Revancher</span>
                   </div>
                 </a>
@@ -395,10 +375,7 @@
                     <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
                          style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
                          onerror="this.style.display='none';">
-                    <div class="flex-grow-1">
-                      <strong>{{ npc.get_full_title }}</strong>
-                      <br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small>
-                    </div>
+                    <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
                     <span class="badge badge-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
                   </div>
                 </a>
@@ -415,7 +392,7 @@
           {% endfor %}
           {% endif %}
 
-          <!-- Dresseurs non assignés à un étage (fallback migration) -->
+          <!-- Dresseurs non assignés (fallback) -->
           {% if unassigned_trainers %}
           <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.85rem;">
             <i class="fas fa-exclamation-triangle"></i>
@@ -451,7 +428,7 @@
           </div>
           {% endif %}
 
-        </div>{# /card #}
+        </div>{# /card-body #}
       </div>{# /card #}
     </div>{# /col principal #}
 
@@ -474,30 +451,30 @@
             </p>
           </div>
 
-            <!-- Quêtes actives -->
-            {% if active_quests %}
-            <div class="card-header py-2 text-center">
-              <strong><i class="fas fa-scroll text-warning"></i> Quêtes en cours</strong>
-            </div>
-            <div class="p-2">
-              {% for progress in active_quests %}
-              <div class="d-flex align-items-start mb-2">
-                <span style="width:8px;height:8px;border-radius:50%;background:#f6c23e;flex-shrink:0;margin-top:5px;margin-right:8px;display:inline-block;"></span>
-                <div>
-                  <div class="font-weight-bold" style="font-size:.8rem;">{{ progress.quest.title }}</div>
-                  {% if progress.quest.objective_text %}
-                  <div class="text-muted" style="font-size:.72rem;">{{ progress.quest.objective_text }}</div>
-                  {% endif %}
-                </div>
-              </div>
-              {% endfor %}
-              <a href="{% url 'quest_log' %}" class="btn btn-outline-warning btn-block btn-sm mt-1">
-                Journal complet
-              </a>
-            </div>
-            {% endif %}
+          {% if active_quests %}
           <div class="card-header py-2 text-center">
-            <strong><i class="fas fa-route p-2"></i> Zones Adjacentes</h4>
+            <strong><i class="fas fa-scroll text-warning"></i> Quêtes en cours</strong>
+          </div>
+          <div class="p-2">
+            {% for progress in active_quests %}
+            <div class="d-flex align-items-start mb-2">
+              <span style="width:8px;height:8px;border-radius:50%;background:#f6c23e;flex-shrink:0;margin-top:5px;margin-right:8px;display:inline-block;"></span>
+              <div>
+                <div class="font-weight-bold" style="font-size:.8rem;">{{ progress.quest.title }}</div>
+                {% if progress.quest.objective_text %}
+                <div class="text-muted" style="font-size:.72rem;">{{ progress.quest.objective_text }}</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            <a href="{% url 'quest_log' %}" class="btn btn-outline-warning btn-block btn-sm mt-1">
+              Journal complet
+            </a>
+          </div>
+          {% endif %}
+
+          <div class="card-header py-2 text-center">
+            <strong><i class="fas fa-route p-2"></i> Zones Adjacentes</strong>
           </div>
           <div class="row p-2">
             {% for conn in connections %}
@@ -523,7 +500,6 @@
             {% endfor %}
           </div>
 
-
         </div>
       </div>
     </div>{# /col minimap #}
@@ -532,7 +508,6 @@
 </div>{# /container-fluid #}
 
 {% if zone.music %}
-<!-- ── Zone BGM Player ───────────────────────────────────────────────────── -->
 <div id="zone-bgm-player" class="zone-bgm-widget" title="Musique de zone">
   <button id="bgm-toggle" class="bgm-btn" aria-label="Lecture / Pause">
     <i class="fas fa-music" id="bgm-icon"></i>
@@ -548,108 +523,61 @@
 </div>
 {% endif %}
 
-<style>
-/* Minimap sticky */
-.zone-minimap-panel {
-  position: sticky;
-  top: 80px;
-}
-.minimap-gif {
-  max-height: 320px;
-  width: auto;
-  border-radius: 6px;
-}
-@media (max-width: 991px) {
-  .zone-minimap-panel {
-    position: static;
-    margin-bottom: 1.5rem;
-  }
-}
-</style>
-
 {% endblock %}
+
+{% block css %}
+  {{ block.super }}
+  <link href="{% static 'css/zone-detail.css'%}" rel="stylesheet" />
+{% endblock css %}
 
 {% block js %}
 {{ block.super }}
 {% if zone.music %}
 <script>
 (function() {
-  const TRACK    = '{% static "sounds/bgm/kanto/" %}{{ zone.music }}.mp3';
+  const TRACK = '{% static "sounds/bgm/kanto/" %}{{ zone.music }}.mp3';
   const STORAGE_KEY_VOL = 'zoneBgmVolume';
-
   const widget   = document.getElementById('zone-bgm-player');
   const toggleBtn= document.getElementById('bgm-toggle');
   const icon     = document.getElementById('bgm-icon');
   const progress = document.getElementById('bgm-progress-bar');
   const volumeEl = document.getElementById('bgm-volume');
-
-  let audio   = null;
-  let playing = false;
-
-  // Restore saved volume
+  let audio = null, playing = false;
   const savedVol = parseFloat(localStorage.getItem(STORAGE_KEY_VOL) ?? '30');
   volumeEl.value = savedVol;
-
   function buildAudio() {
-    if (audio) { audio.pause(); }
+    if (audio) audio.pause();
     audio = new Audio(TRACK);
-    audio.loop   = true;
+    audio.loop = true;
     audio.volume = volumeEl.value / 100;
     audio.addEventListener('timeupdate', () => {
-      if (audio.duration) {
-        progress.style.width = (audio.currentTime / audio.duration * 100) + '%';
-      }
+      if (audio.duration) progress.style.width = (audio.currentTime / audio.duration * 100) + '%';
     });
-    audio.addEventListener('error', () => {
-      console.warn('[ZoneBGM] Fichier introuvable :', TRACK);
-      widget.style.display = 'none';
-    });
+    audio.addEventListener('error', () => { widget.style.display = 'none'; });
   }
-
   function play() {
     if (!audio) buildAudio();
     audio.play().then(() => {
-      playing = true;
-      icon.className = 'fas fa-pause';
-      toggleBtn.classList.remove('paused');
-      widget.classList.remove('bgm-idle');
-    }).catch(err => {
-      // Autoplay bloqué — on reste en pause, l'utilisateur clique pour lancer
-      console.info('[ZoneBGM] Autoplay bloqué, clic requis :', err.message);
-    });
+      playing = true; icon.className = 'fas fa-pause';
+      toggleBtn.classList.remove('paused'); widget.classList.remove('bgm-idle');
+    }).catch(() => {});
   }
-
   function pause() {
     if (audio) audio.pause();
-    playing = false;
-    icon.className = 'fas fa-music';
-    toggleBtn.classList.add('paused');
-    widget.classList.add('bgm-idle');
+    playing = false; icon.className = 'fas fa-music';
+    toggleBtn.classList.add('paused'); widget.classList.add('bgm-idle');
   }
-
-  // Toggle play/pause
-  toggleBtn.addEventListener('click', () => {
-    playing ? pause() : play();
-  });
-
-  // Volume slider
+  toggleBtn.addEventListener('click', () => playing ? pause() : play());
   volumeEl.addEventListener('input', () => {
     const vol = volumeEl.value / 100;
     if (audio) audio.volume = vol;
     localStorage.setItem(STORAGE_KEY_VOL, volumeEl.value);
   });
-
-  // Autoplay tentative au chargement
-  buildAudio();
-  widget.classList.add('bgm-idle');
-  play();
-
-  // Pause si l'utilisateur quitte la page (navigation vers combat, etc.)
+  buildAudio(); widget.classList.add('bgm-idle'); play();
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && audio) audio.volume = Math.min(audio.volume, 0.1);
     else if (!document.hidden && audio && playing) audio.volume = volumeEl.value / 100;
   });
-
 })();
 </script>
 {% endif %}

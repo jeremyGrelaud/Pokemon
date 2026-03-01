@@ -870,7 +870,7 @@ function updateExpBar(expPercent) {
   // Détecter si l'XP a réellement augmenté :
   // - cas normal : expPercent > currentPercent
   // - cas level-up : expPercent < currentPercent (barre repart de 0)
-  const leveledUp = expPercent < currentPercent - 5;  // seuil de 5% pour éviter les faux positifs
+  const leveledUp = expPercent < currentPercent - 2;  // seuil de 2% pour éviter les faux positifs
   const gained    = expPercent > currentPercent + 0.5;
 
   if (gained || leveledUp) {

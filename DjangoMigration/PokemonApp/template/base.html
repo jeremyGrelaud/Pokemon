@@ -28,6 +28,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.4.1/jquery.easing.min.js"></script>
 
+    {% block css %}
+
+    {% endblock css %}
+
     <!-- Auto-save -->
     {% if has_active_save %}
       <script>
@@ -496,9 +500,6 @@
       });
     </script>
     {% endif %}
-
-    {% block css %}
-    {% endblock css %}
 
     {% block js %}
     <!-- Bootstrap core JavaScript -->

@@ -122,6 +122,10 @@ class ShopDetailView(generic.DetailView):
 
         player_inventory = trainer.inventory.filter(quantity__gt=0)
 
+        from myPokemonApp.gameUtils import get_player_location
+        location     = get_player_location(trainer, create_if_missing=False)
+        current_zone = location.current_zone if location else None
+
         context.update({
             'trainer':        trainer,
             'featured_items': featured_items,
@@ -129,6 +133,7 @@ class ShopDetailView(generic.DetailView):
             'regular_items':  regular_items,
             'player_inventory': player_inventory,
             'can_sell':       player_inventory.exists(),
+            'current_zone':   current_zone,
         })
         return context
 
