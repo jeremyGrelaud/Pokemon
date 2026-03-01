@@ -15,6 +15,18 @@
   </ol>
 </nav>
 
+<!-- Boutons de navigation -->
+<div class="mb-3">
+  <a href="{% url 'ShopListView' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Retour aux boutiques
+  </a>
+  {% if current_zone %}
+  <a href="{% url 'zone_detail' current_zone.id %}" class="btn btn-primary">
+    <i class="fas fa-map-marker-alt"></i> Retour à {{ current_zone.name }}
+  </a>
+  {% endif %}
+</div>
+
 <!-- Shop Header -->
 <div class="row mb-4">
   <div class="col-12">
