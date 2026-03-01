@@ -1159,8 +1159,12 @@ def battle_trainer_complete_view(request, battle_id):
     if player_won and opponent:
         try:
             # Tout combat contre un dresseur
+            # player_trainer= est requis pour la résolution per-player
+            # des quêtes rival (RivalTemplate/PlayerRival sans trigger_trainer fixe)
             quest_notifs = trigger_quest_event(
-                player_trainer, 'defeat_trainer', trainer_id=opponent.id
+                player_trainer, 'defeat_trainer',
+                trainer_id=opponent.id,
+                player_trainer=player_trainer,
             )
             for notif in quest_notifs:
                 msg = f"✅ Quête terminée : « {notif['title']} »"

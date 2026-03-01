@@ -296,7 +296,27 @@ def _event_matches_quest(quest, event: str, ctx: dict) -> bool:
 
     if event == 'defeat_trainer':
         trainer_id = ctx.get('trainer_id')
-        return quest.trigger_trainer_id and trainer_id and quest.trigger_trainer_id == trainer_id
+        # Cas normal : quête avec trigger_trainer explicite (NPC, Elite 4…)
+        if quest.trigger_trainer_id:
+            return trainer_id and quest.trigger_trainer_id == trainer_id
+        # Cas rival : quête de type 'rival' sans trigger_trainer (résolu per-player).
+        # On vérifie si le Trainer NPC battu est bien le PlayerRival de ce joueur
+        # pour cette quête.
+        if quest.quest_type == 'rival' and trainer_id:
+            player_trainer = ctx.get('player_trainer')
+            if player_trainer is None:
+                return False
+            try:
+                from myPokemonApp.models import PlayerRival
+                pr = PlayerRival.objects.filter(
+                    player=player_trainer,
+                    template__quest_id=quest.quest_id,
+                    trainer__id=trainer_id,
+                ).exists()
+                return pr
+            except Exception:
+                return False
+        return False
 
     if event == 'defeat_gym':
         gym_leader = ctx.get('gym_leader')   # objet GymLeader
