@@ -1,117 +1,392 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static %} {% load custom_filters %}
 
-{% block title %}<title>Succès</title>{% endblock %}
+{% block title %}<title>Succès & Stats</title>{% endblock %}
 
 {% block content %}
-<div class="container">
-  <h1 class="mb-4">
-    <i class="fas fa-trophy"></i> Succès
-  </h1>
-  
-  <!-- Progression globale -->
-  <div class="card mb-4">
-    <div class="card-body">
-      <h5>Progression Globale</h5>
-      <div style="display:flex; align-items:center; gap:8px; min-width:120px; height: 30px;">
-        <div style="flex:1; height:8px; background:#e9ecef; border-radius:4px; overflow:hidden;">
-          <div style="height:100%; width:{{ completion_percent }}%; border-radius:4px; transition: width 0.3s ease;" class="bg-success"></div>
+<div class="container-fluid px-4">
+
+  <!-- En-tête -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h1 class="mb-0">
+      <i class="fas fa-trophy text-warning"></i> Succès &amp; Statistiques
+    </h1>
+    <div class="text-muted small">
+      <i class="fas fa-clock"></i> Temps de jeu : <strong>{{ stats.play_time }}</strong>
+    </div>
+  </div>
+
+  <!-- Barre de progression globale -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+      <div class="d-flex align-items-center">
+
+        <!-- Pourcentage -->
+        <div class="text-center pr-4" style="min-width:100px; border-right:1px solid #dee2e6;">
+          <div style="font-size:2.4rem; font-weight:800; line-height:1; color:#28a745;">{{ completion_percent }}%</div>
+          <div class="text-muted small mt-1">complété</div>
         </div>
-        <small style="color:#6c757d; white-space:nowrap; font-size:0.75rem;">
-          {{ total_completed }} / {{ total_achievements }} ({{ completion_percent }}%)
-        </small>
+
+        <!-- Barre + texte -->
+        <div class="flex-grow-1 pl-4">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span style="font-weight:600;">Succès débloqués</span>
+            <span class="text-muted small">{{ total_completed }} / {{ total_achievements }}</span>
+          </div>
+          <div class="progress" style="height:16px; border-radius:10px;">
+            <div class="progress-bar bg-success"
+                 role="progressbar"
+                 style="width:{{ completion_percent }}%; border-radius:10px; background: linear-gradient(90deg, #28a745, #20c997) !important; min-width:0;"
+                 aria-valuenow="{{ completion_percent }}" aria-valuemin="0" aria-valuemax="100">
+            </div>
+          </div>
+          <div class="d-flex mt-2">
+            <small class="text-success mr-3"><i class="fas fa-check-circle"></i> {{ total_completed }} débloqués</small>
+            <small class="text-muted"><i class="fas fa-lock"></i> restants à débloquer</small>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
-  
-  <!-- Achievements par catégorie -->
-  {% for category, achievements in by_category.items %}
-  <div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-      <h4 class="mb-0">
-        {% if category == 'combat' %}<i class="fas fa-fist-raised"></i> Combat
-        {% elif category == 'capture' %}<i class="fas fa-network-wired"></i> Capture
-        {% elif category == 'collection' %}<i class="fas fa-book"></i> Collection
-        {% elif category == 'exploration' %}<i class="fas fa-map"></i> Exploration
-        {% elif category == 'progression' %}<i class="fas fa-trophy"></i> Progression
-        {% endif %}
-      </h4>
-    </div>
-    
-    <div class="card-body">
-      <div class="row">
-        {% for data in achievements %}
-        <div class="col-md-6 mb-3">
-          <div class="achievement-card {% if data.completed %}achievement-completed{% endif %}">
-            <div class="d-flex align-items-center">
-              <div class="achievement-icon">
-                {% if data.completed %}
-                <i class="fas fa-trophy text-warning fa-3x"></i>
-                {% else %}
-                <i class="fas fa-lock text-muted fa-3x"></i>
-                {% endif %}
-              </div>
-              
-              <div class="flex-grow-1 ml-3">
-                <h6 class="mb-1">{{ data.achievement.name }}</h6>
-                <p class="text-muted small mb-2">{{ data.achievement.description }}</p>
-                
-                <!-- Progress bar -->
-                <div style="display:flex; align-items:center; gap:8px; min-width:120px; height: 20px;" class="mb-2">
-                  <div style="flex:1; height:8px; background:#e9ecef; border-radius:4px; overflow:hidden;">
-                    <div style="height:100%; width:{% widthratio data.current data.required 100 %}%; border-radius:4px; transition: width 0.3s ease;" class="{% if data.completed %}bg-success{% else %}bg-info{% endif %}"></div>
+
+  <!-- Onglets Bootstrap 4 -->
+  <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" id="tab-achievements-link" data-toggle="tab" href="#tab-achievements" role="tab">
+        <i class="fas fa-trophy"></i> Succès
+        <span class="badge badge-success ml-1">{{ total_completed }}</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" id="tab-stats-link" data-toggle="tab" href="#tab-stats" role="tab">
+        <i class="fas fa-chart-bar"></i> Statistiques
+      </a>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ═══════════════════ TAB SUCCÈS ═══════════════════ -->
+    <div class="tab-pane fade show active" id="tab-achievements" role="tabpanel">
+
+      {% for category, achievements in by_category.items %}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex align-items-center" style="padding:0.85rem 1.25rem;">
+          {% if category == 'combat' %}
+            <i class="fas fa-fist-raised text-danger mr-2"></i><span style="font-weight:600;">Combat</span>
+          {% elif category == 'capture' %}
+            <i class="fas fa-network-wired text-primary mr-2"></i><span style="font-weight:600;">Capture</span>
+          {% elif category == 'collection' %}
+            <i class="fas fa-book text-info mr-2"></i><span style="font-weight:600;">Collection</span>
+          {% elif category == 'exploration' %}
+            <i class="fas fa-map text-success mr-2"></i><span style="font-weight:600;">Exploration</span>
+          {% elif category == 'progression' %}
+            <i class="fas fa-star text-warning mr-2"></i><span style="font-weight:600;">Progression</span>
+          {% endif %}
+          <span class="ml-auto text-muted small">
+            <i class="fas fa-trophy"></i> {{ achievements|length }} succès
+          </span>
+        </div>
+
+        <div class="card-body p-4">
+          <div class="row">
+            {% for data in achievements %}
+            <div class="col-md-6 mb-4">
+              <div class="ach-card {% if data.completed %}ach-done{% endif %} p-4 rounded border h-100">
+                <div class="d-flex align-items-start">
+
+                  <!-- Icône -->
+                  <div class="ach-icon-wrap rounded d-flex align-items-center justify-content-center mr-3
+                               {% if data.completed %}bg-icon-done{% else %}bg-icon-locked{% endif %}"
+                       style="width:56px; height:56px; min-width:56px; flex-shrink:0;">
+                    {% if data.completed %}
+                      <i class="fas fa-{{ data.achievement.icon|default:'trophy' }} text-warning fa-lg"></i>
+                    {% else %}
+                      <i class="fas fa-lock text-secondary fa-lg"></i>
+                    {% endif %}
                   </div>
-                  <small style="color:#6c757d; white-space:nowrap; font-size:0.75rem;">
-                    {{ data.current }} / {{ data.required }}
-                  </small>
+
+                  <!-- Contenu -->
+                  <div style="flex:1; min-width:0; overflow:hidden;">
+                    <div style="font-weight:600; font-size:1rem; margin-bottom:4px;">{{ data.achievement.name }}</div>
+                    <div class="text-muted mb-3" style="font-size:0.82rem;">{{ data.achievement.description }}</div>
+
+                    <!-- Barre de progression -->
+                    <div class="d-flex align-items-center mb-2">
+                      <div class="progress mr-2" style="height:8px; border-radius:6px; flex:1; min-width:0; overflow:hidden;">
+                        <div class="progress-bar {% if data.completed %}bg-success{% else %}bg-info{% endif %}"
+                             role="progressbar"
+                             style="width:{{ data.progress_percent }}%; border-radius:6px;"
+                             aria-valuenow="{{ data.current }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ data.required }}">
+                        </div>
+                      </div>
+                      <span class="text-muted" style="font-size:0.78rem; white-space:nowrap; font-weight:600; flex-shrink:0;">
+                        {{ data.current }}&nbsp;/&nbsp;{{ data.required }}
+                      </span>
+                    </div>
+
+                    <!-- Récompense & date -->
+                    <div class="d-flex align-items-center justify-content-between flex-wrap">
+                      <small class="text-muted">
+                        <i class="fas fa-gift text-warning"></i>
+                        {{ data.achievement.reward_money }}₽{% if data.achievement.reward_item %} + {{ data.achievement.reward_item.name }}{% endif %}
+                      </small>
+                      {% if data.completed %}
+                      <small class="text-success" style="font-weight:600;">
+                        <i class="fas fa-check-circle"></i>
+                        {{ data.completed_at|date:"d/m/Y" }}
+                      </small>
+                      {% endif %}
+                    </div>
+                  </div>
+
                 </div>
-                
-                <!-- Récompense -->
-                <small class="text-muted">
-                  <i class="fas fa-gift"></i> 
-                  {{ data.achievement.reward_money }}₽
-                  {% if data.achievement.reward_item %}
-                  + {{ data.achievement.reward_item.name }}
-                  {% endif %}
-                </small>
-                
-                {% if data.completed %}
-                <p class="text-success small mb-0 mt-1">
-                  <i class="fas fa-check"></i> Complété {{ data.completed_at|timesince }} ago
-                </p>
-                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+    </div><!-- /tab-achievements -->
+
+
+    <!-- ═══════════════════ TAB STATS ═══════════════════ -->
+    <div class="tab-pane fade" id="tab-stats" role="tabpanel">
+
+      <!-- Combat -->
+      <h5 class="text-danger mb-3 mt-2"><i class="fas fa-fist-raised"></i> Combat</h5>
+      <div class="row mb-2">
+        <div class="col-6 col-md-3 mb-3">
+          <div class="stat-card text-center p-3 rounded border">
+            <div class="stat-num text-success">{{ stats.total_wins }}</div>
+            <div class="stat-label">Victoires</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+          <div class="stat-card text-center p-3 rounded border">
+            <div class="stat-num text-danger">{{ stats.total_losses }}</div>
+            <div class="stat-label">Défaites</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+          <div class="stat-card text-center p-3 rounded border">
+            <div class="stat-num text-primary">{{ stats.total_battles }}</div>
+            <div class="stat-label">Total combats</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+          <div class="stat-card text-center p-3 rounded border">
+            <div class="stat-num {% if stats.win_rate >= 60 %}text-success{% elif stats.win_rate >= 40 %}text-warning{% else %}text-danger{% endif %}">
+              {{ stats.win_rate }}%
+            </div>
+            <div class="stat-label">Taux de victoire</div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <!-- Capture -->
+      <h5 class="text-primary mb-3"><i class="fas fa-network-wired"></i> Capture</h5>
+      <div class="row mb-3">
+        <div class="col-6 col-md-3 mb-3">
+          <div class="stat-card text-center p-3 rounded border">
+            <div class="stat-num text-primary">{{ stats.total_captures }}</div>
+            <div class="stat-label">Pokémon capturés</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+          <div class="stat-card text-center p-3 rounded border">
+            <div class="stat-num text-info">{{ stats.unique_species }}</div>
+            <div class="stat-label">Espèces uniques</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+          <div class="stat-card text-center p-3 rounded border">
+            <div class="stat-num text-warning">{{ stats.critical_catches }}</div>
+            <div class="stat-label">Captures critiques</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+          <div class="stat-card text-center p-3 rounded border">
+            <div class="stat-num text-success">{{ stats.capture_rate_pct }}%</div>
+            <div class="stat-label">Taux de capture</div>
+            <div class="text-muted" style="font-size:0.7rem;">{{ stats.total_attempts }} tentatives</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pokédex progress -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span style="font-weight:600;"><i class="fas fa-book text-danger"></i> Pokédex Kanto</span>
+            <span class="text-muted small">{{ stats.unique_species }} / 151</span>
+          </div>
+          <div class="progress" style="height:12px; border-radius:8px;">
+            <div class="progress-bar bg-danger"
+                 role="progressbar"
+                 style="width:{% widthratio stats.unique_species 151 100 %}%; border-radius:8px;"
+                 aria-valuenow="{{ stats.unique_species }}" aria-valuemin="0" aria-valuemax="151">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <!-- Progression & Exploration -->
+      <div class="row">
+
+        <div class="col-md-6 mb-4">
+          <h5 class="text-warning mb-3"><i class="fas fa-star"></i> Progression</h5>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <div class="stat-card text-center p-3 rounded border">
+                <div class="stat-num text-warning">{{ stats.badges }}</div>
+                <div class="stat-label">Badges</div>
+                <div class="d-flex justify-content-center mt-1">
+                  {% for i in "12345678" %}
+                  <span style="font-size:0.65rem; margin:0 1px; color:{% if stats.badges >= forloop.counter %}#ffc107{% else %}#ced4da{% endif %};">●</span>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            <div class="col-6 mb-3">
+              <div class="stat-card text-center p-3 rounded border">
+                <div class="stat-num text-success">{{ stats.money }}</div>
+                <div class="stat-label">Pokédollars</div>
+              </div>
+            </div>
+            <div class="col-6 mb-3">
+              <div class="stat-card text-center p-3 rounded border">
+                <div class="stat-num text-info">{{ stats.quests_completed }}</div>
+                <div class="stat-label">Quêtes terminées</div>
+              </div>
+            </div>
+            <div class="col-6 mb-3">
+              <div class="stat-card text-center p-3 rounded border">
+                <div class="stat-num text-secondary">{{ stats.quests_active }}</div>
+                <div class="stat-label">En cours</div>
               </div>
             </div>
           </div>
         </div>
-        {% endfor %}
+
+        <div class="col-md-6 mb-4">
+          <h5 class="text-success mb-3"><i class="fas fa-map"></i> Exploration &amp; Équipe</h5>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <div class="stat-card text-center p-3 rounded border">
+                <div class="stat-num text-success">{{ stats.zones_visited }}</div>
+                <div class="stat-label">Zones visitées</div>
+                <div class="text-muted" style="font-size:0.7rem;">sur {{ stats.zones_total }}</div>
+              </div>
+            </div>
+            <div class="col-6 mb-3">
+              <div class="stat-card text-center p-3 rounded border">
+                <div class="stat-num text-primary">{{ stats.party_count }}/6</div>
+                <div class="stat-label">Équipe active</div>
+              </div>
+            </div>
+            <div class="col-12 mb-3">
+              {% if stats.best_pokemon %}
+              <div class="p-3 rounded border d-flex align-items-center">
+                <img src="{% static 'img/sprites_gen5/' %}{% if stats.best_pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ stats.best_pokemon.species.name|lowerPokemonFileNames }}.png"
+                     class="mr-3"
+                     style="width:52px; height:52px; image-rendering:pixelated;"
+                     onerror="this.style.display='none'">
+                <div>
+                  <div style="font-weight:600;">Pokémon le plus fort</div>
+                  <div class="text-muted small">
+                    {{ stats.best_pokemon.species.name }}
+                    {% if stats.best_pokemon.nickname %}« {{ stats.best_pokemon.nickname }} »{% endif %}
+                  </div>
+                  <span class="badge badge-warning">Niv. {{ stats.best_pokemon.level }}</span>
+                </div>
+              </div>
+              {% else %}
+              <div class="p-3 rounded border text-muted text-center">Aucun Pokémon</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
       </div>
-    </div>
-  </div>
-  {% endfor %}
-</div>
+
+    </div><!-- /tab-stats -->
+
+  </div><!-- /tab-content -->
+
+</div><!-- /container -->
+
 
 <style>
-.achievement-card {
-  border: 2px solid #ddd;
-  border-radius: 10px;
-  padding: 15px;
-  transition: all 0.3s ease;
+/* ══════════════════════════════════════════
+   PROGRESS BAR — Bootstrap 4 non chargé,
+   on redéfinit les classes ici
+   ══════════════════════════════════════════ */
+.progress {
+  display: flex;
+  overflow: hidden;
+  background-color: #e9ecef;
+  border-radius: 0.25rem;
 }
-
-.achievement-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transform: translateY(-2px);
-}
-
-.achievement-completed {
-  border-color: #28a745;
-  background-color: #f0fff0;
-}
-
-.achievement-icon {
-  width: 60px;
+.progress-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  color: #fff;
   text-align: center;
+  white-space: nowrap;
+  background-color: #4e73df;
+  transition: width 0.6s ease;
 }
+.progress-bar.bg-success { background-color: #1cc88a !important; }
+.progress-bar.bg-info    { background-color: #36b9cc !important; }
+.progress-bar.bg-danger  { background-color: #e74a3b !important; }
+.progress-bar.bg-warning { background-color: #f6c23e !important; }
+
+/* ── Icônes achievement ── */
+.bg-icon-done   { background-color: #fff8e1; }
+.bg-icon-locked { background-color: #f1f3f4; }
+
+/* ── Achievement cards ── */
+.ach-card {
+  transition: box-shadow 0.2s, transform 0.15s;
+  background: #fff;
+}
+.ach-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  transform: translateY(-3px);
+}
+.ach-done {
+  border-color: #28a745 !important;
+  background: #f0fff4 !important;
+}
+
+/* ── Stat cards ── */
+.stat-card {
+  background: #fff;
+  transition: box-shadow 0.15s;
+}
+.stat-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.stat-num  { font-size:2rem; font-weight:700; line-height:1; }
+.stat-label{ font-size:0.78rem; color:#6c757d; margin-top:4px; }
+
+/* ── Tabs ── */
+.nav-tabs .nav-link        { color: #495057; }
+.nav-tabs .nav-link.active { font-weight: 600; }
+
+/* ── Fix barres dans conteneur flex ── */
+.d-flex > .progress,
+.d-flex .progress { min-width: 0; }
 </style>
+
 {% endblock %}

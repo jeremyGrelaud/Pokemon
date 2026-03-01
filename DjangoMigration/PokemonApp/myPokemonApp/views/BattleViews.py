@@ -22,6 +22,7 @@ from myPokemonApp.questEngine import trigger_quest_event
 from myPokemonApp.views.AchievementViews import (
     trigger_achievements_after_battle,
     trigger_achievements_after_gym_win,
+    trigger_achievements_after_level_up,
 )
 from myPokemonApp.gameUtils import (
     # Pokemon / trainer
@@ -307,6 +308,12 @@ def _handle_attack(request, battle, trainer, response_data):
         response_data['log'].append(f"+{exp_amount} EXP")
         if exp_result['level_up']:
             response_data['log'].append(f"Level {exp_result['new_level']} !")
+            # Achievements Niveau 50 / Niveau 100
+            lv_notifs = trigger_achievements_after_level_up(
+                battle.player_trainer, exp_result['new_level']
+            )
+            for notif in lv_notifs:
+                response_data['log'].append(f"🏆 {notif['title']}")
         for move_name in exp_result.get('learned_moves', []):
             response_data['log'].append(
                 f"{battle.player_pokemon.species.name} apprend {move_name} !"
@@ -1180,58 +1187,47 @@ def battle_trainer_complete_view(request, battle_id):
             logger.warning("Erreur déclenchement quêtes post-combat : %s", exc)
 
     # =========================================================
-    # DÉFAITE → soigner et téléporter au dernier Centre Pokémon visité
+    # DÉFAITE → soigner et rediriger vers le Centre Pokémon le plus proche
     # =========================================================
     if not player_won:
         try:
+            # Trouver la zone avec Centre Pokémon
             player_location = PlayerLocation.objects.get(trainer=player_trainer)
+            current_zone    = player_location.current_zone
 
-            # Priorité 1 : dernier centre utilisé (tracké dans PlayerLocation)
-            center_zone = player_location.last_pokemon_center
+            # Chercher le centre le plus proche : d'abord la zone actuelle, sinon
+            # la première zone connectée avec un centre
+            if current_zone.has_pokemon_center:
+                center_zone = current_zone
+            else:
+                # Chercher parmi les connexions directes
+                connected_ids = ZoneConnection.objects.filter(
+                    from_zone=current_zone
+                ).values_list('to_zone_id', flat=True)
+                reverse_ids  = ZoneConnection.objects.filter(
+                    to_zone=current_zone, is_bidirectional=True
+                ).values_list('from_zone_id', flat=True)
+                all_ids      = list(connected_ids) + list(reverse_ids)
 
-            # Priorité 2 : zone actuelle si elle a un centre (rare mais possible)
-            if not center_zone:
-                current_zone = player_location.current_zone
-                if current_zone.has_pokemon_center:
-                    center_zone = current_zone
+                center_zone = Zone.objects.filter(
+                    id__in=all_ids, has_pokemon_center=True
+                ).first()
 
-            # Priorité 3 : BFS sur les connexions (cherche le centre le plus proche)
-            if not center_zone:
-                from collections import deque
-                visited  = {player_location.current_zone.id}
-                queue    = deque([player_location.current_zone])
-                found    = None
-                while queue and not found:
-                    zone_node = queue.popleft()
-                    # Voisins directs
-                    neighbor_ids = set(
-                        ZoneConnection.objects.filter(from_zone=zone_node)
-                        .values_list('to_zone_id', flat=True)
-                    ) | set(
-                        ZoneConnection.objects.filter(
-                            to_zone=zone_node, is_bidirectional=True
-                        ).values_list('from_zone_id', flat=True)
-                    )
-                    for nid in neighbor_ids:
-                        if nid not in visited:
-                            visited.add(nid)
-                            neighbor = Zone.objects.get(pk=nid)
-                            if neighbor.has_pokemon_center:
-                                found = neighbor
-                                break
-                            queue.append(neighbor)
-                center_zone = found
+                if not center_zone:
+                    # Fallback: premier centre disponible
+                    center_zone = Zone.objects.filter(has_pokemon_center=True).first()
 
             if center_zone:
                 player_location.current_zone = center_zone
-                player_location.last_pokemon_center = center_zone
+                if center_zone.has_pokemon_center:
+                    player_location.last_pokemon_center = center_zone
                 player_location.save()
 
+                # Sauvegarder la location dans la save active
                 save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
                 if save:
-                    save.current_location    = center_zone.name
-                    save.last_pokemon_center = center_zone.name
-                    save.save(update_fields=['current_location', 'last_pokemon_center'])
+                    save.current_location = center_zone.name
+                    save.save()
 
                 messages.warning(
                     request,
