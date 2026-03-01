@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from myPokemonApp.gameUtils import get_or_create_player_trainer, create_starter_pokemon, give_item_to_trainer, grant_pokedex
+from myPokemonApp.gameUtils import get_or_create_player_trainer, create_starter_pokemon, give_item_to_trainer, grant_pokedex, get_player_location, ZONE_TRANSLATIONS, get_defeated_trainer_ids
 from myPokemonApp.models import GameSave
 from myPokemonApp.questEngine import get_active_quests, complete_quest, get_quest_progress
 from ..models import *
@@ -57,7 +57,7 @@ class DashboardView(generic.TemplateView):
         recent_battles = Battle.objects.filter(
             player_trainer=trainer
         ).order_by('-created_at')[:5]
-        
+        from myPokemonApp.models import GymLeader
         # Prochains gym leaders
         next_gym = GymLeader.objects.filter(
             badge_order__gt=badges
@@ -65,6 +65,23 @@ class DashboardView(generic.TemplateView):
 
         context['active_quests'] = get_active_quests(trainer)[:3]
         
+        # Raccourcis zone courante (pour la hero card du dashboard)
+        location = get_player_location(trainer, create_if_missing=False)
+        current_zone = location.current_zone if location else None
+        pokemon_center = None
+        zone_shop = None
+        gym_leader = None
+        if current_zone:
+            from myPokemonApp.models import PokemonCenter, Shop
+            if current_zone.has_pokemon_center:
+                pokemon_center = PokemonCenter.objects.filter(
+                    location__icontains=current_zone.name, is_available=True
+                ).first()
+            if current_zone.has_shop:
+                zone_shop = Shop.objects.filter(location__icontains=current_zone.name).first()
+            english_zone = ZONE_TRANSLATIONS.get(current_zone.name, current_zone.name).strip()
+            gym_leader = GymLeader.objects.filter(gym_city__icontains=english_zone).first()
+
         context.update({
             'trainer': trainer,
             'total_pokemon': total_pokemon,
@@ -74,6 +91,9 @@ class DashboardView(generic.TemplateView):
             'recent_battles': recent_battles,
             'next_gym': next_gym,
             'first_team_pokemon': trainer.pokemon_team.filter(is_in_party=True).order_by('party_position').first(),
+            'pokemon_center': pokemon_center,
+            'zone_shop': zone_shop,
+            'gym_leader': gym_leader,
         })
         
         return context
