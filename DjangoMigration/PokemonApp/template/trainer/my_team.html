@@ -117,11 +117,11 @@
             <div>
               <div class="d-flex justify-content-between" style="font-size:.7rem;color:#6c757d;">
                 <span>EXP</span>
-                <span>{{ pokemon.current_exp }}/{{ pokemon.exp_for_next_level }}</span>
+                <span>{{ pokemon.exp_current_level }} / {{ pokemon.exp_to_next_level }}</span>
               </div>
               <div class="progress" style="height:5px;">
                 {% widthratio pokemon.current_exp pokemon.exp_for_next_level 100 as exp_pct %}
-                <div class="progress-bar bg-info" style="width:{{ exp_pct }}%"></div>
+                <div class="progress-bar bg-info" style="width:{{ pokemon.exp_percent  }}%"></div>
               </div>
             </div>
           </div>

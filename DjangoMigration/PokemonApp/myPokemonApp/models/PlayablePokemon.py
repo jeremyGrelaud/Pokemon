@@ -135,6 +135,24 @@ class PlayablePokemon(models.Model):
     is_in_party = models.BooleanField(default=True)
 
     is_shiny = models.BooleanField(default=False)
+
+    @property
+    def exp_current_level(self) -> int:
+        """XP gagnée depuis le début du niveau actuel (affiché dans my_team)."""
+        return self.current_exp - self.exp_at_level(self.level)
+
+    @property
+    def exp_to_next_level(self) -> int:
+        """XP totale nécessaire pour passer au niveau suivant."""
+        return self.exp_at_level(self.level + 1) - self.exp_at_level(self.level)
+
+    @property
+    def exp_percent(self) -> float:
+        """Pourcentage de progression dans le niveau actuel (0.0 – 100.0)."""
+        needed = self.exp_to_next_level
+        if needed <= 0:
+            return 100.0
+        return round(self.exp_current_level / needed * 100, 1)
     
     class Meta:
         verbose_name = "Pokémon (Jouable)"
