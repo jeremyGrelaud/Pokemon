@@ -1594,6 +1594,13 @@ async function initiateCaptureSequence(itemId) {
 }
 
 function showCaptureSuccessModal(captureData) {
+  // Désactiver la garde beforeunload — le combat est terminé (capture réussie)
+  window.__battleInProgress = false;
+
+  // Arrêter la musique
+  if (audioManager) {
+    audioManager.stopBGM();
+  }
   const modal = `
     <div class="modal fade" id="capture-success-modal" tabindex="-1" data-backdrop="static">
       <div class="modal-dialog modal-dialog-centered">

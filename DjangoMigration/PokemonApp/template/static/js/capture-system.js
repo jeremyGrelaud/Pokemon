@@ -59,10 +59,7 @@ class CaptureSystem {
     const folder = pokemonData.is_shiny ? 'shiny' : 'normal';
     
     this.overlay.innerHTML = `
-    <div class="capture-container">
-        <!-- Barre de probabilité -->
-        <div class="capture-probability">${probability} %</div>
-        
+    <div class="capture-container">       
         <!-- Pokémon -->
         <img class="capture-pokemon" src='/static/img/sprites_gen5/${folder}/${lowerPokemonFileNames(pokemonData.species_name)}.png'  onerror="this.src='/static/img/pokeball.png'">
         
