@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/floor-detail.css' %}" rel="stylesheet" />
+{% endblock css %}
 {% load custom_filters %}
 
 {% block title %}<title>{{ zone.name }} — {{ floor.floor_name }}</title>{% endblock %}
@@ -243,15 +247,6 @@
   </div>
 
 </div>
-
-<style>
-.current-floor-indicator {
-  background: linear-gradient(135deg, #4e73df, #2e59d9);
-  color: #fff;
-  border-radius: 8px;
-  padding: 10px;
-}
-</style>
 
 {% if zone.music %}
 <!-- ── Zone BGM Player (hérité de la zone parente) ───────────────────────── -->

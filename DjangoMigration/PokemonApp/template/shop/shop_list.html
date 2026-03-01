@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %} {% load custom_filters %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/shop-list.css' %}" rel="stylesheet" />
+{% endblock css %}
 
 {% block title %}
 <title>Boutiques - Pokémon Gen 1</title>
@@ -175,46 +179,3 @@
 </div>
 
 {% endblock content %}
-
-{% block css %}
-{{ block.super }}
-<style>
-/* ── Header local ────────────────────────────────────────────────────────── */
-.shop-header-local {
-  background: linear-gradient(135deg, #4a5568 0%, #553c9a 60%, #6b46c1 100%);
-}
-
-/* ── Cards ───────────────────────────────────────────────────────────────── */
-.shop-card {
-  border: 2px solid transparent;
-  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
-}
-.shop-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 32px rgba(0,0,0,.15) !important;
-  border-color: #6b46c1;
-}
-.shop-card-greyed {
-  opacity: .6;
-  border: 2px dashed #bbb !important;
-}
-
-/* ── Animation d'apparition CSS (remplace jQuery animate) ────────────────── */
-.shop-card,
-.shop-card-greyed {
-  animation: fadeInUp .4s ease both;
-}
-{% for i in "12345678910" %}
-.col-lg-4:nth-child({{ forloop.counter }}) .shop-card,
-.col-lg-4:nth-child({{ forloop.counter }}) .shop-card-greyed {
-  animation-delay: {{ forloop.counter0 }}00ms;
-}
-{% endfor %}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-/* Neutralise l'animation pour les cartes grisées au hover */
-.shop-card-greyed:hover { transform: none !important; }
-</style>
-{% endblock %}

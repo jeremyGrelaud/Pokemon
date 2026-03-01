@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %} {% load custom_filters %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/shop-detail.css' %}" rel="stylesheet" />
+{% endblock css %}
 
 {% block title %}
 <title>{{ shop.name }} - Boutique</title>
@@ -246,41 +250,6 @@
 <div id="toast-container" style="position:fixed; top:20px; right:20px; z-index:9999;"></div>
 
 {% endblock content %}
-
-{% block css %}
-{{ block.super }}
-<style>
-/* ── Header boutique ─────────────────────────────────────────────────────── */
-.shop-header-card {
-  background: linear-gradient(135deg, #4a5568 0%, #553c9a 60%, #6b46c1 100%);
-}
-
-/* ── Cards articles (vente) ──────────────────────────────────────────────── */
-.item-sell-card {
-  border-left: 4px solid transparent;
-  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-}
-.item-sell-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0,0,0,.12) !important;
-  border-left-color: #6b46c1;
-}
-
-/* ── Onglets ─────────────────────────────────────────────────────────────── */
-.nav-tabs .nav-link {
-  font-weight: 500;
-  color: #553c9a;
-}
-.nav-tabs .nav-link.active {
-  background-color: #553c9a;
-  color: white;
-  border-color: #553c9a;
-}
-
-/* ── Affichage argent ────────────────────────────────────────────────────── */
-.money-display { font-size: 1.3rem; }
-</style>
-{% endblock %}
 
 {% block js %}
 {{ block.super }}

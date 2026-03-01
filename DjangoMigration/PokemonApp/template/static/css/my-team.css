@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   my-team.css  –  Page équipe du joueur
+   Note : .hp-bar / .hp-bar-fill / .hp-high/medium/low dans components.css
+          .type-bg-* dans pokemon-types.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Bouton Stats ────────────────────────────────────────────────────────── */
+.stats-btn       { border-color: #17a2b8; color: #17a2b8; }
+.stats-btn:hover { background: #17a2b8; color: #fff; }
+#stats-modal .table td,
+#stats-modal .table th       { vertical-align: middle; padding: .4rem .5rem; }
+#stats-modal .nav-tabs .nav-link              { border-radius: 0; font-size: .85rem; }
+#stats-modal .nav-tabs .nav-link.active       { background: #fff; border-bottom-color: #fff; }
+
+/* ── Sprites ─────────────────────────────────────────────────────────────── */
+.pokemon-sprite-sm { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
+.pokemon-sprite-pc { width: 56px; height: 56px; object-fit: contain; }
+
+/* ── Cards équipe ────────────────────────────────────────────────────────── */
+.pokemon-card       { transition: transform .2s, box-shadow .2s; }
+.pokemon-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,.15); }
+
+/* ── Drag & Drop ─────────────────────────────────────────────────────────── */
+.drag-handle        { cursor: grab; user-select: none; }
+.drag-handle:active { cursor: grabbing; }
+.sortable-ghost     { opacity: .3; }
+.sortable-chosen    { box-shadow: 0 0 0 3px #28a745 !important; border-radius: .35rem; }
+
+/* ── Cards PC ────────────────────────────────────────────────────────────── */
+.pc-card {
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+  border: 2px solid transparent;
+}
+.pc-card:hover:not(.pc-card-disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(40,167,69,.4);
+  border-color: #28a745;
+}
+.pc-card-disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Moves mini chips (cards équipe) ─────────────────────────────────────── */
+.moves-mini-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.move-mini-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: .68rem;
+  color: #fff;
+  background: #6c757d;
+  min-width: 0;
+}
+.move-mini-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.move-mini-pp {
+  font-size: .62rem;
+  margin-left: 4px;
+  white-space: nowrap;
+  opacity: .9;
+  flex-shrink: 0;
+}
+.move-mini-pp.pp-low   { color: #ff6b35; font-weight: 700; }
+.move-mini-pp.pp-empty { color: #ff0000; font-weight: 700; }
+
+/* ── Move cards (modal) ──────────────────────────────────────────────────── */
+.move-card-full {
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #6c757d;
+  color: #fff;
+  transition: transform .15s, box-shadow .15s;
+}
+.move-learnable {
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.move-learnable:hover {
+  transform: translateX(3px);
+  box-shadow: 0 3px 8px rgba(0,0,0,.2);
+}
+.move-learnable-selected {
+  border-color: #ffc107 !important;
+  box-shadow: 0 0 0 3px rgba(255,193,7,.4) !important;
+}
+.move-card-name { font-weight: 700; font-size: .9rem; }
+.move-type-pill {
+  font-size: .65rem;
+  font-weight: 700;
+  background: rgba(255,255,255,.25);
+  border-radius: 20px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+/* ── PP bar (modal) ──────────────────────────────────────────────────────── */
+.pp-bar-track { height: 6px; background: rgba(255,255,255,.3); border-radius: 3px; overflow: hidden; min-width: 40px; }
+.pp-bar-fill  { height: 100%; border-radius: 3px; transition: width .3s; }
+.pp-bar-full  { background: #28a745; }
+.pp-bar-mid   { background: #ffc107; }
+.pp-bar-low   { background: #fd7e14; }
+.pp-bar-empty { background: #dc3545; }

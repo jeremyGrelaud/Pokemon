@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/center-list.css' %}" rel="stylesheet" />
+{% endblock css %}
 
 {% block title %}
 <title>Centres Pokémon - Pokémon Gen 1</title>
@@ -191,30 +195,6 @@
 
 {% block js %}
 {{ block.super }}
-<style>
-.center-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
-  border: 2px solid transparent;
-}
-.center-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
-  border-color: #e74c3c;
-}
-.center-card-greyed {
-  opacity: 0.6;
-  border: 2px dashed #bbb;
-  cursor: not-allowed;
-}
-.bg-gradient-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
-.border-left-info { border-left: 4px solid #17a2b8; }
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
-}
-.pulse-animation { animation: pulse 2s infinite ease-in-out; }
-</style>
 <script>
 $(document).ready(function() {
   $('.center-card').on('click', function(e) {

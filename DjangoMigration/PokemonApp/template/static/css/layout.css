@@ -1,0 +1,108 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   layout.css  –  Styles globaux du shell (sidebar, topbar, mobile nav)
+   Chargé via base.html pour toutes les pages.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Animations globales ─────────────────────────────────────────────────── */
+@keyframes sidebar-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .55; }
+}
+
+/* ── Sidebar – couleur rouge Pokémon ─────────────────────────────────────── */
+#layoutSidenav #layoutSidenav_nav .sb-sidenav {
+  background: linear-gradient(180deg, #c0392b 0%, #96281b 100%);
+}
+#layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link {
+  color: rgba(255,255,255,.75);
+}
+#layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link .sb-nav-link-icon {
+  color: rgba(255,255,255,.5);
+}
+#layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link:hover,
+#layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link.active {
+  color: #fff;
+}
+#layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .nav-link.active .sb-nav-link-icon {
+  color: #fff;
+}
+#layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-menu .sb-sidenav-menu-heading {
+  color: rgba(255,255,255,.4);
+}
+#layoutSidenav #layoutSidenav_nav .sb-sidenav .sb-sidenav-footer {
+  background: rgba(0,0,0,.2);
+}
+.sidebar-divider {
+  border-top: 1px solid rgba(255,255,255,.15);
+  margin: .5rem 1rem;
+}
+
+/* ── Topbar ──────────────────────────────────────────────────────────────── */
+.sb-topnav {
+  background: linear-gradient(90deg, #f8f8f8 0%, #f0f0f0 50%, #f5f5f5 100%) !important;
+  border-bottom: 1px solid #e3e3e3;
+  box-shadow: 0 .15rem 1.75rem 0 rgba(58,59,69,.08);
+}
+.sb-topnav .navbar-brand {
+  color: #e74a3b !important;
+  font-weight: 700;
+}
+#sidebarToggle { color: #858796; }
+
+.navbar-brand-icon {
+  width:28px;
+  height:28px;
+}
+
+/* ── Avatar topbar ───────────────────────────────────────────────────────── */
+.img-profile {
+  height: 2rem;
+  width: 2rem;
+  object-fit: contain;
+  background: #f8f9fc;
+}
+
+/* ── Mobile bottom nav ───────────────────────────────────────────────────── */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #fff;
+  border-top: 1px solid #e3e6f0;
+  display: flex;
+  align-items: stretch;
+  z-index: 1060;
+  box-shadow: 0 -2px 10px rgba(0,0,0,.08);
+}
+.mobile-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: .6rem;
+  color: #858796;
+  text-decoration: none !important;
+  gap: 2px;
+  transition: color .15s, background .15s;
+  border-top: 3px solid transparent;
+}
+.mobile-nav-item i { font-size: 1.1rem; }
+.mobile-nav-item.active { color: #e74a3b; border-top-color: #e74a3b; }
+.mobile-nav-item:hover  { color: #5a5c69; }
+.mobile-nav-battle { color: #dc3545 !important; animation: sidebar-pulse 1.2s infinite; }
+.mobile-nav-heal   { color: #f6c23e !important; animation: sidebar-pulse 2s infinite; }
+
+@media (max-width: 991.98px) {
+  #layoutSidenav_content { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ── Shiny shimmer (Pokémon brillant) ────────────────────────────────────── */
+@keyframes shiny-shimmer {
+  0%   { filter: brightness(1)    drop-shadow(0 0 0px   #ffd700); }
+  30%  { filter: brightness(1.25) drop-shadow(0 0 6px   #ffd700); }
+  60%  { filter: brightness(1)    drop-shadow(0 0 0px   #ffd700); }
+  100% { filter: brightness(1)    drop-shadow(0 0 0px   #ffd700); }
+}
+.shiny-sprite { animation: shiny-shimmer 3s ease-in-out infinite; }

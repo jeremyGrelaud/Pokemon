@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/transaction-history.css' %}" rel="stylesheet" />
+{% endblock css %}
 
 {% block title %}
 <title>Historique des Achats - Pokémon Gen 1</title>
@@ -190,26 +194,4 @@ $(document).ready(function() {
   {% endif %}
 });
 </script>
-
-<style>
-.border-left-danger {
-  border-left: 4px solid #dc3545;
-}
-
-.border-left-success {
-  border-left: 4px solid #28a745;
-}
-
-.border-left-info {
-  border-left: 4px solid #17a2b8;
-}
-
-.table-danger {
-  background-color: rgba(220, 53, 69, 0.05);
-}
-
-.table-success {
-  background-color: rgba(40, 167, 69, 0.05);
-}
-</style>
 {% endblock js %}
