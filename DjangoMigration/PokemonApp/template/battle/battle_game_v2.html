@@ -444,9 +444,7 @@
   </div>
 </div>
 
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║          MODAL D'ÉVOLUTION                          ║
-     ╚══════════════════════════════════════════════════════╝ -->
+<!-- MODAL D'ÉVOLUTION -->
 <div class="modal fade" id="evolution-modal" tabindex="-1" role="dialog"
      data-backdrop="static" data-keyboard="false">
   <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
@@ -795,7 +793,7 @@ window.__battleInProgress = true;
 })();
 </script>
 
-{% endblock js %}
+
 <script>
 /* ════════════════════════════════════════════════════════════════
    WEATHER VIDEO LOADER — Pokemon Showdown assets
@@ -851,43 +849,4 @@ window.__battleInProgress = true;
 })();
 </script>
 
-<script>
-/* ════════════════════════════════════════════════════════════════════
-   BATTLE SCENE SCALER
-   - Canvas fixe 1280×540px, scaled uniformément
-   - Sous 1280px : scale < 1, letterbox noire
-   - Classes CSS ajoutées selon la largeur réelle pour adapter
-     le panel d'action hors-scène (log + menus)
-   ════════════════════════════════════════════════════════════════════ */
-(function () {
-  const SCENE_W = 1280;
-  const SCENE_H = 540;
-
-  function scaleBattle() {
-    const wrapper = document.getElementById('battle-wrapper');
-    const scene   = wrapper ? wrapper.querySelector('.battle-scene') : null;
-    if (!wrapper || !scene) return;
-
-    const availW  = wrapper.clientWidth;
-    const scale   = availW / SCENE_W;
-    const scaledH = Math.round(SCENE_H * scale);
-
-    scene.style.transform = `scale(${scale})`;
-    wrapper.style.height  = scaledH + 'px';
-
-    // Classes responsive sur le body selon largeur réelle disponible
-    const body = document.body;
-    body.classList.toggle('battle-sm',  availW < 768);
-    body.classList.toggle('battle-md',  availW >= 768 && availW < 1280);
-    body.classList.toggle('battle-lg',  availW >= 1280);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', scaleBattle);
-  } else {
-    scaleBattle();
-  }
-  window.addEventListener('resize', scaleBattle);
-  setTimeout(scaleBattle, 200);
-})();
-</script>
+{% endblock js %}
