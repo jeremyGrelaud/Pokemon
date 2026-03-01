@@ -18,7 +18,7 @@ from myPokemonApp.gameUtils import (
     cleanup_orphan_wild_pokemon,
 )
 from myPokemonApp.questEngine import trigger_quest_event, check_rival_encounter, get_active_quests, can_access_floor
-from myPokemonApp.views.AchievementViews import check_achievement
+from myPokemonApp.views.AchievementViews import trigger_achievements_after_zone_visit
 
 logger = logging.getLogger(__name__)
 
@@ -192,28 +192,24 @@ def travel_to_zone_view(request, zone_id):
     if not current_zone.is_safe_zone:
         defeated_ids = get_defeated_trainer_ids(trainer)
 
-        # Dresseurs obligatoires dans la zone (sans étage)
+        # Chercher uniquement les dresseurs marqués is_battle_required
         required_qs = Trainer.objects.filter(
             is_npc=True,
             is_battle_required=True,
             location=current_zone.name,
         ).exclude(id__in=defeated_ids)
 
-        # Même logique pour les étages ACCESSIBLES de la zone actuelle.
-        # On utilise un union explicite pour éviter les doublons de queryset.
+        # Même logique pour les étages accessibles
         if current_zone.has_floors:
-            accessible_floor_keys = []
-            for floor in current_zone.floors.order_by('floor_number'):
+            for floor in current_zone.floors.all():
                 accessible, _ = can_access_floor(trainer, floor)
                 if accessible:
-                    accessible_floor_keys.append(f"{current_zone.name}-{floor.floor_number}")
-
-            if accessible_floor_keys:
-                required_qs = required_qs | Trainer.objects.filter(
-                    is_npc=True,
-                    is_battle_required=True,
-                    location__in=accessible_floor_keys,
-                ).exclude(id__in=defeated_ids)
+                    floor_key = f"{current_zone.name}-{floor.floor_number}"
+                    required_qs = required_qs | Trainer.objects.filter(
+                        is_npc=True,
+                        is_battle_required=True,
+                        location=floor_key,
+                    ).exclude(id__in=defeated_ids)
 
         blocker = required_qs.first()
         if blocker:
@@ -227,10 +223,9 @@ def travel_to_zone_view(request, zone_id):
     if success:
         messages.success(request, message)
 
-        if player_location.visited_zones.count() >= 10:
-            result = check_achievement(trainer, 'Explorateur')
-            if result.get('newly_completed'):
-                messages.success(request, f"🏆 Explorateur débloqué ! +{result['reward_money']}₽")
+        # Achievements exploration (Explorateur 10 zones, Globe-Trotter 30 zones)
+        for notif in trigger_achievements_after_zone_visit(trainer):
+            messages.success(request, f"🏆 {notif['title']} : {notif['message']}")
 
         # ── Déclencher quêtes visit_zone ──────────────────────────────────
         quest_notifications = trigger_quest_event(trainer, 'visit_zone', zone=zone)
