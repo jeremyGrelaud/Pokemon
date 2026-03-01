@@ -6,14 +6,6 @@ from django.db import models
 from .Pokemon import Pokemon
 from .Item import Item
 
-
-class PokemonEvolution(models.Model):
-    pokemon = models.ForeignKey(Pokemon, on_delete=models.CASCADE, related_name='evolutions')
-    evolutionLevel = models.IntegerField()
-    evolvesTo = models.ForeignKey(Pokemon, on_delete=models.CASCADE, related_name='evolved_from')
-
-
-
 class PokemonEvolution(models.Model):
     """Définit les évolutions possibles"""
     
