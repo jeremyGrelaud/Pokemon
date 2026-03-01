@@ -1,0 +1,60 @@
+/* ── Colonne sprite : largeur fixe et centrée ──────────────────────── */
+.pokedex-table th:nth-child(2),
+.pokedex-table td:nth-child(2) {
+  width: 52px;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+/* ── Liens dans le tableau : pas de soulignement ───────────────────── */
+.pokedex-table a {
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+}
+.pokedex-table a:hover {
+  color: #c0392b;
+}
+
+/* En-têtes triables */
+.pokedex-table thead a {
+  color: #5a5c69;
+  font-weight: 600;
+  text-decoration: none;
+}
+.pokedex-table thead a:hover {
+  color: #c0392b;
+}
+
+/* Badge "Capturé" — fond vert foncé, texte blanc */
+.badge-captured {
+  display: inline-block;
+  background-color: #1e8e5a;
+  color: #fff;
+  font-size: .72rem;
+  padding: .3em .6em;
+  border-radius: .35rem;
+  white-space: nowrap;
+}
+
+/* Badge "—" non capturé — fond gris clair, texte gris */
+.badge-not-captured {
+  display: inline-block;
+  background-color: #e9ecef;
+  color: #6c757d;
+  font-size: .72rem;
+  padding: .3em .5em;
+  border-radius: .35rem;
+}
+
+/* Pagination rouge */
+.pagination .page-item.active .page-link {
+  background-color: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+.pagination .page-link { color: #c0392b; }
+.pagination .page-link:hover { color: #96281b; }
+
+/* Titre section */
+.section-title { color: #c0392b; font-weight: 700; }

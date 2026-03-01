@@ -25,10 +25,29 @@ class PokemonOverView(GenericOverview):
 
     class PokedexTable(tables.Table):
         pokedex_number = tables.Column(verbose_name="#")
+        sprite = tables.Column(
+            verbose_name="",
+            orderable=False,
+            empty_values=(),
+        )
         name = tables.TemplateColumn(
             '<a href="{% url \'PokemonDetailView\' record.id %}">{{ record.name }}</a>',
             verbose_name="Nom"
         )
+
+        def render_sprite(self, record):
+            import re
+            from django.utils.html import format_html
+            name = record.name.replace('\u2642', 'm').replace('\u2640', 'f').lower()
+            name = re.sub(r'[^a-z0-9]', '', name)
+            url = f"/static/img/sprites_gen5/normal/{name}.png"
+            fallback = "/static/img/pokeball.png"
+            return format_html(
+                '<img src="{}" alt="{}" '
+                'style="width:40px;height:40px;object-fit:contain;" '
+                'onerror="this.src=\'{}\'">',
+                url, record.name, fallback
+            )
         primary_type = tables.TemplateColumn(
             '<span class="badge badge-type-{{record.primary_type.name}}">{{record.primary_type.name}}</span>',
             verbose_name="Type 1"
@@ -38,7 +57,7 @@ class PokemonOverView(GenericOverview):
             verbose_name="Type 2"
         )
         caught = tables.TemplateColumn(
-            '{% if record.id in caught_ids %}<span class="badge badge-success"><i class="fas fa-check"></i> Capturé</span>{% else %}<span class="badge badge-secondary">—</span>{% endif %}',
+            '{% if record.id in caught_ids %}<span class="badge-captured"><i class="fas fa-check"></i> Capturé</span>{% else %}<span class="badge-not-captured">—</span>{% endif %}',
             verbose_name="Capturé",
             orderable=False,
         )
@@ -56,7 +75,7 @@ class PokemonOverView(GenericOverview):
 
         class Meta:
             model = Pokemon
-            fields = ('pokedex_number', 'name', 'caught', 'primary_type', 'secondary_type',
+            fields = ('pokedex_number', 'sprite', 'name', 'caught', 'primary_type', 'secondary_type',
                       'base_hp', 'base_attack', 'base_defense', 'base_special_attack',
                       'base_special_defense', 'base_speed', 'total_stats')
             attrs = {'class': 'table table-striped table-hover'}
