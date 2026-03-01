@@ -276,13 +276,11 @@
               </a>
               {% endif %}
 
-              {% if user.is_superuser %}
               <a class="nav-link {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}"
                  href="{% url 'BattleListView' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-fist-raised"></i></div>
                 Combats (admin)
               </a>
-              {% endif %}
 
               <a class="nav-link {% if 'Shop' in request.resolver_match.url_name %}active{% endif %}"
                  href="{% url 'ShopListView' %}">

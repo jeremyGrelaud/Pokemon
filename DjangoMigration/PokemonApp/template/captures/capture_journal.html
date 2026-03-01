@@ -4,248 +4,316 @@
 {% block title %}<title>Journal de Captures</title>{% endblock title %}
 
 {% block content %}
-<div class="container mt-4">
-  
-  <!-- Header -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <h1>
-        <i class="fas fa-book"></i> Journal de Captures
-      </h1>
-      <p class="text-muted">Historique complet de vos captures</p>
-    </div>
-  </div>
 
-  <!-- Statistiques -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card text-center">
-        <div class="card-body">
-          <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
-          <h3>{{ stats.total_captures }}</h3>
-          <small class="text-muted">Captures Totales</small>
-        </div>
-      </div>
-    </div>
-    
-    <div class="col-md-3">
-      <div class="card text-center">
-        <div class="card-body">
-          <i class="fas fa-star fa-2x text-info mb-2"></i>
-          <h3>{{ stats.unique_species }}</h3>
-          <small class="text-muted">Espèces Uniques</small>
-        </div>
-      </div>
-    </div>
-    
-    <div class="col-md-3">
-      <div class="card text-center">
-        <div class="card-body">
-          <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
-          <h3>{{ stats.success_rate }}%</h3>
-          <small class="text-muted">Taux de Réussite</small>
-        </div>
-      </div>
-    </div>
-    
-    <div class="col-md-3">
-      <div class="card text-center">
-        <div class="card-body">
-          <i class="fas fa-fire fa-2x text-danger mb-2"></i>
-          <h3>{{ stats.critical_catches }}</h3>
-          <small class="text-muted">Captures Critiques</small>
+<!-- Header -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h3 mb-1">
+      <i class="fas fa-book me-2 text-success"></i>Journal de Captures
+    </h1>
+    <p class="text-muted mb-0 small">Historique complet de vos captures</p>
+  </div>
+</div>
+
+<!-- Statistiques -->
+<div class="row mb-4">
+
+  <div class="col-6 col-md-3 mb-3">
+    <div class="card shadow-sm h-100 stat-card-captures">
+      <div class="card-body py-3 px-4">
+        <div class="stat-label-sm fw-bold text-warning text-uppercase mb-1">Captures totales</div>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="h3 mb-0 fw-bold">{{ stats.total_captures }}</span>
+          <i class="fas fa-trophy fa-2x text-warning opacity-25"></i>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Filtres live -->
-  <div class="card mb-4">
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-5 mb-2">
-          <div class="input-group">
-            <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-search"></i></span></div>
-            <input type="text" id="live-search" class="form-control" placeholder="Rechercher un Pokémon..." autocomplete="off">
-          </div>
+  <div class="col-6 col-md-3 mb-3">
+    <div class="card shadow-sm h-100 stat-card-species">
+      <div class="card-body py-3 px-4">
+        <div class="stat-label-sm fw-bold text-info text-uppercase mb-1">Espèces uniques</div>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="h3 mb-0 fw-bold">{{ stats.unique_species }}</span>
+          <i class="fas fa-star fa-2x text-info opacity-25"></i>
         </div>
-        <div class="col-md-3 mb-2">
-          <select id="filter-badge" class="form-control">
-            <option value="">Toutes les badges</option>
-            <option value="premier">⭐ Premier capturé</option>
-            <option value="critique">⚡ Capture critique</option>
-            <option value="shiny">💎 Shiny</option>
-          </select>
-        </div>
-        <div class="col-md-2 mb-2">
-          <select id="filter-sort" class="form-control">
-            <option value="date-desc">Plus récent</option>
-            <option value="date-asc">Plus ancien</option>
-            <option value="level-desc">Niveau ↓</option>
-            <option value="level-asc">Niveau ↑</option>
-          </select>
-        </div>
-        <div class="col-md-2 mb-2">
-          <button id="clear-filters" class="btn btn-light w-100">
-            <i class="fas fa-times"></i> Réinitialiser
-          </button>
-        </div>
-      </div>
-      <div class="mt-1"><small class="text-muted" id="filter-count-label"></small></div>
-    </div>
-  </div>
-
-  <!-- Liste des captures -->
-  <div class="card">
-    <div class="card-header">
-      <h5 class="mb-0">Captures Récentes</h5>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover mb-0">
-          <thead class="thead-light">
-            <tr>
-              <th>Pokémon</th>
-              <th>Niveau</th>
-              <th>Ball Utilisée</th>
-              <th>Date</th>
-              <th>Tentatives</th>
-              <th>Badges</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for entry in captures %}
-            <tr>
-              <td>
-                <img src="{% static 'img/sprites_gen5/' %}{% if entry.pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ entry.pokemon.species.name|lowerPokemonFileNames }}.png"
-                     width="40" class="me-2"
-                     onerror="this.src='{% static 'img/pokeball.png' %}'">
-                <strong>{{ entry.pokemon.species.name }}</strong>
-                {% if entry.is_first_catch %}
-                <span class="badge bg-warning ms-2">
-                  <i class="fas fa-star"></i> Premier
-                </span>
-                {% endif %}
-                {% if entry.is_critical_catch %}
-                <span class="badge bg-danger ms-2">
-                  <i class="fas fa-bolt"></i> Critique
-                </span>
-                {% endif %}
-              </td>
-              <td>Niv. {{ entry.level_at_capture }}</td>
-              <td>
-                <img src="{% static 'img/pokeballSprites/' %}{{ entry.ball_used.name|lower }}_Sprite.png"
-                     width="25" class="me-1"
-                     onerror="this.src='{% static 'img/pokeball.png' %}'">
-                {{ entry.ball_used.name }}
-              </td>
-              <td>{{ entry.captured_at|date:"d/m/Y H:i" }}</td>
-              <td>
-                <span class="badge bg-secondary">
-                  {{ entry.attempts_before_success }} essai{{ entry.attempts_before_success|pluralize }}
-                </span>
-              </td>
-              <td>
-                {% if entry.is_first_catch %}
-                <i class="fas fa-star text-warning" title="Premier capturé"></i>
-                {% endif %}
-                {% if entry.is_critical_catch %}
-                <i class="fas fa-bolt text-danger" title="Capture critique"></i>
-                {% endif %}
-                {% if entry.is_shiny %}
-                <i class="fas fa-gem text-info" title="Shiny"></i>
-                {% endif %}
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="6" class="text-center text-muted">
-                Aucune capture pour le moment
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
       </div>
     </div>
   </div>
 
-  <!-- Graphique -->
-  <div class="card mt-4">
-    <div class="card-header">
-      <h5 class="mb-0">Évolution des Captures</h5>
+  <div class="col-6 col-md-3 mb-3">
+    <div class="card shadow-sm h-100 stat-card-rate">
+      <div class="card-body py-3 px-4">
+        <div class="stat-label-sm fw-bold text-success text-uppercase mb-1">Taux de réussite</div>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="h3 mb-0 fw-bold">{{ stats.success_rate }}<span class="fs-6 fw-normal">%</span></span>
+          <i class="fas fa-chart-line fa-2x text-success opacity-25"></i>
+        </div>
+        <!-- Mini barre de progression -->
+        <div class="progress mt-2" style="height:4px;">
+          <div class="progress-bar bg-success" style="width:{{ stats.success_rate }}%;"></div>
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      <canvas id="capturesChart" height="80"></canvas>
+  </div>
+
+  <div class="col-6 col-md-3 mb-3">
+    <div class="card shadow-sm h-100 stat-card-critical">
+      <div class="card-body py-3 px-4">
+        <div class="stat-label-sm fw-bold text-danger text-uppercase mb-1">Captures critiques</div>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="h3 mb-0 fw-bold">{{ stats.critical_catches }}</span>
+          <i class="fas fa-fire fa-2x text-danger opacity-25"></i>
+        </div>
+      </div>
     </div>
   </div>
 
 </div>
 
+<!-- Filtres live -->
+<div class="card shadow mb-4">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-center">
+
+      <!-- Recherche -->
+      <div class="col-md-5">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+          <input type="text" id="live-search" class="form-control"
+                 placeholder="Rechercher un Pokémon…" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Filtre badge -->
+      <div class="col-md-3">
+        <select id="filter-badge" class="form-select form-select-sm">
+          <option value="">Tous les types</option>
+          <option value="premier">⭐ Premier capturé</option>
+          <option value="critique">⚡ Capture critique</option>
+          <option value="shiny">💎 Shiny</option>
+        </select>
+      </div>
+
+      <!-- Tri -->
+      <div class="col-md-2">
+        <select id="filter-sort" class="form-select form-select-sm">
+          <option value="date-desc">Plus récent</option>
+          <option value="date-asc">Plus ancien</option>
+          <option value="level-desc">Niveau ↓</option>
+          <option value="level-asc">Niveau ↑</option>
+        </select>
+      </div>
+
+      <!-- Reset -->
+      <div class="col-md-2">
+        <button id="clear-filters" class="btn btn-sm btn-light w-100">
+          <i class="fas fa-times me-1"></i>Réinitialiser
+        </button>
+      </div>
+
+    </div>
+    <div class="mt-2">
+      <small class="text-muted" id="filter-count-label"></small>
+    </div>
+  </div>
+</div>
+
+<!-- Tableau des captures -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3 d-flex align-items-center justify-content-between">
+    <h6 class="m-0 fw-bold text-success">
+      <i class="fas fa-list me-2"></i>Captures récentes
+    </h6>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="captureTable">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Pokémon</th>
+            <th>Niveau</th>
+            <th>Ball utilisée</th>
+            <th>Date</th>
+            <th>Tentatives</th>
+            <th class="text-center">Distinctions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in captures %}
+          <tr class="capture-row">
+            <td class="ps-3">
+              <div class="d-flex align-items-center gap-2">
+                <img src="{% static 'img/sprites_gen5/' %}{% if entry.pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ entry.pokemon.species.name|lowerPokemonFileNames }}.png"
+                     style="width:40px;height:40px;object-fit:contain;"
+                     onerror="this.src='{% static 'img/pokeball.png' %}'">
+                <div>
+                  <span class="fw-semibold">{{ entry.pokemon.species.name }}</span>
+                  <div class="d-flex gap-1 mt-1 flex-wrap">
+                    {% if entry.is_first_catch %}
+                    <span class="badge bg-warning text-dark" style="font-size:.65rem;">
+                      <i class="fas fa-star me-1"></i>Premier
+                    </span>
+                    {% endif %}
+                    {% if entry.is_critical_catch %}
+                    <span class="badge bg-danger" style="font-size:.65rem;">
+                      <i class="fas fa-bolt me-1"></i>Critique
+                    </span>
+                    {% endif %}
+                    {% if entry.pokemon.is_shiny %}
+                    <span class="badge bg-info text-dark" style="font-size:.65rem;">
+                      <i class="fas fa-gem me-1"></i>Shiny
+                    </span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge bg-secondary">Niv. {{ entry.level_at_capture }}</span>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <img src="{% static 'img/items_sprites/ball/' %}{{ entry.ball_used.name|lower|cut:' ball' }}.png"
+                     style="width:28px;height:28px;object-fit:contain;"
+                     onerror="this.src='{% static 'img/pokeball.png' %}'">
+                <small>{{ entry.ball_used.name }}</small>
+              </div>
+            </td>
+            <td class="text-nowrap text-muted small">{{ entry.captured_at|date:"d/m/Y H:i" }}</td>
+            <td>
+              <span class="badge {% if entry.attempts_before_success <= 1 %}bg-success{% elif entry.attempts_before_success <= 3 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                {{ entry.attempts_before_success }} essai{{ entry.attempts_before_success|pluralize }}
+              </span>
+            </td>
+            <td class="text-center" style="font-size:1.1rem; letter-spacing:4px;">
+              {% if entry.is_first_catch %}<i class="fas fa-star text-warning" title="Premier capturé"></i>{% endif %}
+              {% if entry.is_critical_catch %}<i class="fas fa-bolt text-danger" title="Capture critique"></i>{% endif %}
+              {% if entry.pokemon.is_shiny %}<i class="fas fa-gem text-info" title="Shiny"></i>{% endif %}
+              {% if not entry.is_first_catch and not entry.is_critical_catch and not entry.pokemon.is_shiny %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-5">
+              <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
+              Aucune capture pour le moment.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Graphique évolution -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3">
+    <h6 class="m-0 fw-bold text-primary">
+      <i class="fas fa-chart-line me-2"></i>Évolution des captures
+    </h6>
+  </div>
+  <div class="card-body">
+    <canvas id="capturesChart" height="80"></canvas>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+/* Bordures colorées gauche sur les cartes stats */
+.stat-card-captures,
+.stat-card-species,
+.stat-card-rate,
+.stat-card-critical {
+  border-left: 4px solid transparent;
+  transition: transform .15s, box-shadow .15s;
+}
+.stat-card-captures { border-left-color: #ffc107; }
+.stat-card-species  { border-left-color: #0dcaf0; }
+.stat-card-rate     { border-left-color: #198754; }
+.stat-card-critical { border-left-color: #dc3545; }
+
+.stat-card-captures:hover,
+.stat-card-species:hover,
+.stat-card-rate:hover,
+.stat-card-critical:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.1) !important;
+}
+
+/* Label de stat */
+.stat-label-sm { font-size: .7rem; letter-spacing: .04em; }
+
+/* Ligne de capture */
+.capture-row:hover td { background-color: #f8f9fc !important; }
+</style>
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3"></script>
 <script>
-// Graphique des captures
+// ── Graphique ─────────────────────────────────────────────────────────────
 const ctx = document.getElementById('capturesChart').getContext('2d');
 new Chart(ctx, {
   type: 'line',
   data: {
-    labels: {{ chart_labels|safe }},
+    labels:   {{ chart_labels|safe }},
     datasets: [{
       label: 'Captures',
-      data: {{ chart_data|safe }},
-      borderColor: '#4CAF50',
-      backgroundColor: 'rgba(76, 175, 80, 0.1)',
-      tension: 0.4
+      data:  {{ chart_data|safe }},
+      borderColor: '#198754',
+      backgroundColor: 'rgba(25,135,84,.08)',
+      tension: 0.4,
+      pointBackgroundColor: '#198754',
+      pointRadius: 4,
     }]
   },
   options: {
     responsive: true,
-    plugins: {
-      legend: {
-        display: false
-      }
-    },
+    plugins: { legend: { display: false } },
     scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1
-        }
-      }
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
     }
   }
 });
 
-// ── Tag rows with data attributes for filtering ───────────────────────────
+// ── Tag rows pour filtre ──────────────────────────────────────────────────
 (function() {
-  const rows = document.querySelectorAll('tbody tr');
+  const rows = document.querySelectorAll('.capture-row');
   rows.forEach((row, i) => {
     const cells = row.querySelectorAll('td');
     if (cells.length < 4) return;
     const name  = cells[0] ? cells[0].textContent.trim().toLowerCase() : '';
     const level = cells[1] ? parseInt(cells[1].textContent.replace(/\D/g,'')) || 0 : 0;
-    const ts    = row.dataset.ts || (rows.length - i); // fallback order
     let badges  = '';
-    if (cells[0] && cells[0].textContent.includes('Premier'))  badges += 'premier ';
-    if (cells[0] && cells[0].textContent.includes('Critique')) badges += 'critique ';
-    if (cells[5] && cells[5].querySelector('.fa-gem'))         badges += 'shiny ';
+    if (cells[0].textContent.includes('Premier'))  badges += 'premier ';
+    if (cells[0].textContent.includes('Critique')) badges += 'critique ';
+    if (cells[5] && cells[5].querySelector('.fa-gem')) badges += 'shiny ';
     row.dataset.name   = name;
     row.dataset.level  = level;
-    row.dataset.ts     = ts;
+    row.dataset.ts     = rows.length - i;
     row.dataset.badges = badges;
   });
 })();
 
-// ── Live search & filter ───────────────────────────────────────────────────
+// ── Live search & filter ──────────────────────────────────────────────────
 (function() {
-  const tbody       = document.querySelector('tbody');
+  const tbody        = document.querySelector('#captureTable tbody');
   if (!tbody) return;
-  const rows        = Array.from(tbody.querySelectorAll('tr[data-name]'));
-  const searchInput = document.getElementById('live-search');
-  const badgeSel    = document.getElementById('filter-badge');
-  const sortSel     = document.getElementById('filter-sort');
-  const clearBtn    = document.getElementById('clear-filters');
-  const countLabel  = document.getElementById('filter-count-label');
+  const rows         = Array.from(tbody.querySelectorAll('.capture-row'));
+  const searchInput  = document.getElementById('live-search');
+  const badgeSel     = document.getElementById('filter-badge');
+  const sortSel      = document.getElementById('filter-sort');
+  const clearBtn     = document.getElementById('clear-filters');
+  const countLabel   = document.getElementById('filter-count-label');
 
   function applyFilters() {
     const q     = searchInput.value.toLowerCase().trim();
@@ -253,16 +321,13 @@ new Chart(ctx, {
     let visible = [];
 
     rows.forEach(row => {
-      const name     = (row.dataset.name || '').toLowerCase();
-      const badges   = (row.dataset.badges || '');
-      const matchQ   = !q || name.includes(q);
-      const matchB   = !badge || badges.includes(badge);
-      const show     = matchQ && matchB;
-      row.style.display = show ? '' : 'none';
-      if (show) visible.push(row);
+      const matchQ = !q     || (row.dataset.name || '').includes(q);
+      const matchB = !badge || (row.dataset.badges || '').includes(badge);
+      row.style.display = (matchQ && matchB) ? '' : 'none';
+      if (matchQ && matchB) visible.push(row);
     });
 
-    // Sort
+    // Tri
     const sort = sortSel.value;
     if (sort !== 'date-desc') {
       visible.sort((a, b) => {
@@ -280,9 +345,9 @@ new Chart(ctx, {
       : `${total} captures`;
   }
 
-  searchInput.addEventListener('input', applyFilters);
-  badgeSel.addEventListener('change', applyFilters);
-  sortSel.addEventListener('change', applyFilters);
+  searchInput.addEventListener('input',  applyFilters);
+  badgeSel.addEventListener('change',    applyFilters);
+  sortSel.addEventListener('change',     applyFilters);
   clearBtn.addEventListener('click', () => {
     searchInput.value = '';
     badgeSel.value    = '';
@@ -290,8 +355,7 @@ new Chart(ctx, {
     applyFilters();
   });
 
-  applyFilters(); // init count
+  applyFilters();
 })();
-
 </script>
 {% endblock %}
