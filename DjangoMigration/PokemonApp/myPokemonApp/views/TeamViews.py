@@ -263,3 +263,50 @@ def reorder_party_api(request):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+@login_required
+@require_POST
+def reorder_moves_api(request):
+    """
+    API pour réordonner les capacités d'un Pokémon.
+    Stratégie : supprime toutes les instances et les recrée dans le nouvel ordre,
+    en préservant les PP actuels. Aucune migration nécessaire.
+    Body JSON : { "pokemon_id": int, "order": [move_id1, move_id2, ...] }
+    """
+    from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+    from django.db import transaction
+
+    try:
+        data       = json.loads(request.body)
+        pokemon_id = data.get('pokemon_id')
+        order      = data.get('order', [])
+
+        trainer = get_or_create_player_trainer(request.user)
+        pokemon = get_object_or_404(PlayablePokemon, pk=pokemon_id, trainer=trainer)
+
+        # Récupérer les instances actuelles et indexer par move_id
+        instances = PokemonMoveInstance.objects.filter(pokemon=pokemon).select_related('move')
+        pp_map = {inst.move_id: inst.current_pp for inst in instances}
+
+        # Vérifier que les IDs envoyés correspondent exactement au deck actuel
+        current_ids = set(pp_map.keys())
+        if set(order) != current_ids or len(order) != len(current_ids):
+            return JsonResponse({'success': False, 'error': 'IDs de capacités invalides.'}, status=400)
+
+        # Supprimer et recréer dans l'ordre en une transaction atomique
+        with transaction.atomic():
+            instances.delete()
+            for move_id in order:
+                from myPokemonApp.models.PokemonMove import PokemonMove
+                move = PokemonMove.objects.get(pk=move_id)
+                PokemonMoveInstance.objects.create(
+                    pokemon=pokemon,
+                    move=move,
+                    current_pp=pp_map[move_id]
+                )
+
+        from myPokemonApp.gameUtils import serialize_pokemon_moves
+        return JsonResponse({'success': True, 'moves': serialize_pokemon_moves(pokemon)})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)

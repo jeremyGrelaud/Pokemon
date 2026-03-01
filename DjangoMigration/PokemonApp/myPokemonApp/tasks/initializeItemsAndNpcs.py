@@ -434,8 +434,8 @@ def initialize_rival_battles():
 
     logging.info("[*] Initialisation des RivalTemplate (combats Rival)...")
 
-    FIXED_IVS_LV5  = {"iv_hp":10,"iv_attack":10,"iv_defense":10,
-                       "iv_special_attack":10,"iv_special_defense":10,"iv_speed":10}
+    FIXED_IVS_LV5  = {"iv_hp":5,"iv_attack":5,"iv_defense":5,
+                       "iv_special_attack":5,"iv_special_defense":5,"iv_speed":5}
     FIXED_IVS_MID  = {"iv_hp":15,"iv_attack":15,"iv_defense":15,
                        "iv_special_attack":15,"iv_special_defense":15,"iv_speed":15}
 
