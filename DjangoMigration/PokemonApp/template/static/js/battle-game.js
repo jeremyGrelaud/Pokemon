@@ -597,6 +597,16 @@ function updateBattleState(data, skipHpUpdates = false) {
   // pokemon just fainted — trigger death animation on old sprite first, then swap.
   if (data.opponent_pokemon) {
     const isNewOpponent = data.opponent_pokemon.id !== currentOpponentPokemonId;
+
+    // FIX Bug 3 : mettre à jour currentOpponentPokemonId IMMÉDIATEMENT,
+    // avant le setTimeout(1400ms), pour éviter qu'un clic rapide du joueur
+    // déclenche une deuxième détection isNewOpponent=true sur la même réponse.
+    // Sans ce fix, la prochaine réponse serveur arrive pendant le setTimeout
+    // et lit encore l'ancien ID → fausse animation faint sur le nouveau pokémon.
+    if (isNewOpponent && data.opponent_pokemon.id) {
+      currentOpponentPokemonId = data.opponent_pokemon.id;
+    }
+
     if (isNewOpponent) {
       const oldSprite = $('#opponent-sprite');
       oldSprite.addClass('fainted');
@@ -659,7 +669,14 @@ function updatePokemonDisplay(side, pokemonData) {
   const sprite = $(`#${side}-sprite`);
   const name = $(`#${side}-name`);
   const level = $(`#${side}-level`);
-  
+
+  // Détecter si le pokémon du joueur a changé AVANT de mettre à jour l'ID.
+  // Si oui, la barre d'EXP doit être réinitialisée sans animation pour éviter
+  // une fausse détection de level-up (le data-exp-percent appartenait à l'ancien pokémon).
+  const playerPokemonChanged = (side === 'player' && pokemonData.id &&
+                                 pokemonData.id !== currentPlayerPokemonId &&
+                                 currentPlayerPokemonId !== 0);
+
   // Mettre à jour l'ID du Pokémon actif si c'est le joueur
   if (side === 'player' && pokemonData.id) {
     currentPlayerPokemonId = pokemonData.id;
@@ -709,8 +726,10 @@ function updatePokemonDisplay(side, pokemonData) {
   }
   
   // Update exp bar
+  // forceReset=true si on vient de changer de pokémon actif : évite une fausse
+  // détection de level-up causée par le data-exp-percent de l'ancien pokémon.
   if (side === 'player' && pokemonData.exp_percent !== undefined) {
-    updateExpBar(pokemonData.exp_percent);
+    updateExpBar(pokemonData.exp_percent, playerPokemonChanged);
   }
 
   // Update status badge
@@ -861,17 +880,30 @@ function updateMovesMenu(moves) {
 
 
 // Mettre à jour EXP bar
-function updateExpBar(expPercent) {
+// expPercent : nouvelle valeur 0–100
+// forceReset : true quand on change de pokémon actif (évite les fausses détections)
+function updateExpBar(expPercent, forceReset = false) {
   const bar = $('.exp-bar-fill');
 
-  // Récupère le pourcentage actuel depuis le style (ou data-percent)
-  const currentPercent = parseFloat(bar.data('exp-percent') ?? bar.css('width')) || 0;
+  // Lire la valeur courante depuis le data-store jQuery (toujours un entier 0–100).
+  // On N'utilise PAS bar.css('width') car jQuery retourne des px ("63.4px"), pas des %.
+  let currentPercent = parseFloat(bar.data('exp-percent'));
+  if (isNaN(currentPercent)) currentPercent = 0;
+
+  // Changement de pokémon actif : on réinitialise sans animation pour éviter
+  // une fausse détection de level-up (le bar affichait le % du précédent pokémon).
+  if (forceReset) {
+    bar.css('transition', 'none');
+    bar.css('width', expPercent + '%');
+    bar.data('exp-percent', expPercent);
+    return;
+  }
 
   // Détecter si l'XP a réellement augmenté :
-  // - cas normal : expPercent > currentPercent
-  // - cas level-up : expPercent < currentPercent (barre repart de 0)
-  const leveledUp = expPercent < currentPercent - 2;  // seuil de 2% pour éviter les faux positifs
-  const gained    = expPercent > currentPercent + 0.5;
+  // - cas normal  : expPercent > currentPercent (entiers, donc ≥ currentPercent + 1)
+  // - cas level-up: expPercent < currentPercent  (barre repart de 0 après montée de niveau)
+  const leveledUp = expPercent < currentPercent - 2;  // seuil de 2 pour éviter les faux positifs
+  const gained    = expPercent > currentPercent;       // tout gain entier
 
   if (gained || leveledUp) {
     try { audioManager.playSFX('ui/exp_gain'); } catch(e) {}
@@ -916,6 +948,7 @@ function updateExpBar(expPercent) {
       setTimeout(() => bar.css('transition', ''), 1200);
     }
   } else {
+    // Aucun changement visible — mise à jour silencieuse
     bar.css('width', expPercent + '%');
     bar.data('exp-percent', expPercent);
   }

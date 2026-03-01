@@ -117,11 +117,11 @@
             <div>
               <div class="d-flex justify-content-between" style="font-size:.7rem;color:#6c757d;">
                 <span>EXP</span>
-                <span>{{ pokemon.current_exp }}/{{ pokemon.exp_for_next_level }}</span>
+                <span>{{ pokemon.exp_current_level }} / {{ pokemon.exp_to_next_level }}</span>
               </div>
               <div class="progress" style="height:5px;">
                 {% widthratio pokemon.current_exp pokemon.exp_for_next_level 100 as exp_pct %}
-                <div class="progress-bar bg-info" style="width:{{ exp_pct }}%"></div>
+                <div class="progress-bar bg-info" style="width:{{ pokemon.exp_percent  }}%"></div>
               </div>
             </div>
           </div>
@@ -300,11 +300,14 @@
 
           <!-- ── DECK ACTIF (gauche) ────────────────────────── -->
           <div class="col-md-5 border-right" style="background:#f8f9fa;">
-            <div class="p-3 border-bottom" style="background:#e9ecef;">
-              <h6 class="mb-0 fw-bold">
+            <div class="p-3 border-bottom" style="background:linear-gradient(135deg,#1a1a2e,#16213e);">
+              <h6 class="mb-0 fw-bold text-white">
                 <i class="fas fa-shield-alt text-success"></i> Deck actif
-                <small class="text-muted fw-normal ms-1">(max 4)</small>
+                <small class="fw-normal ms-1" style="opacity:.7;">(max 4)</small>
               </h6>
+              <small style="opacity:.55;color:#fff;font-size:.72rem;">
+                <i class="fas fa-grip-vertical me-1"></i>Glisser pour réordonner les slots
+              </small>
             </div>
             <div class="p-3" id="active-moves-list">
               <div class="text-center text-muted py-4">
@@ -316,19 +319,24 @@
           <!-- ── FLÈCHE séparateur ─────────────────────────── -->
           <div class="col-md-2 d-flex flex-column align-items-center justify-content-center"
                style="background:#f0f4ff; border-right:1px solid #dee2e6;">
-            <div class="text-center text-muted px-2">
-              <i class="fas fa-exchange-alt fa-2x mb-2 text-primary"></i>
-              <p class="small mb-0" id="modal-middle-hint">Cliquez sur un move apprenable pour l'ajouter ou le substituer</p>
+            <div class="text-center px-2">
+              <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">
+                <i class="fas fa-exchange-alt fa-lg text-white"></i>
+              </div>
+              <p class="small text-muted mb-0" id="modal-middle-hint" style="font-size:.72rem;line-height:1.3;">Cliquez sur un move apprenable pour l'ajouter ou le substituer</p>
             </div>
           </div>
 
           <!-- ── MOVES APPRENABLES (droite) ────────────────── -->
           <div class="col-md-5" style="background:#fff;">
-            <div class="p-3 border-bottom" style="background:#e9ecef;">
-              <h6 class="mb-0 fw-bold">
+            <div class="p-3 border-bottom" style="background:linear-gradient(135deg,#0f3460,#16213e);">
+              <h6 class="mb-0 fw-bold text-white">
                 <i class="fas fa-book text-info"></i> Moves apprenables
-                <small class="text-muted fw-normal ms-1">(jusqu'au niveau actuel)</small>
+                <small class="fw-normal ms-1" style="opacity:.7;">(jusqu'au niveau actuel)</small>
               </h6>
+              <small style="opacity:.55;color:#fff;font-size:.72rem;">
+                <i class="fas fa-mouse-pointer me-1"></i>Cliquez pour sélectionner
+              </small>
             </div>
             <div class="p-3" id="learnable-moves-list">
               <div class="text-center text-muted py-4">
@@ -341,17 +349,17 @@
       </div>
 
       <!-- Sous-modal de confirmation de swap (inline) -->
-      <div id="swap-confirm-panel" class="d-none border-top p-3" style="background:#fff8e1;">
+      <div id="swap-confirm-panel" class="d-none border-top p-3" style="background:linear-gradient(135deg,#fff8e1,#fff3cd);">
         <p class="mb-2 fw-bold text-center">
           <i class="fas fa-exchange-alt text-warning"></i>
           Remplacer <strong id="swap-remove-name" class="text-danger"></strong>
           par <strong id="swap-add-name" class="text-success"></strong> ?
         </p>
         <div class="d-flex justify-content-center gap-2">
-          <button class="btn btn-success btn-sm" id="swap-confirm-btn">
+          <button class="btn btn-success btn-sm px-4" id="swap-confirm-btn">
             <i class="fas fa-check"></i> Confirmer
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="cancelSwap()">
+          <button class="btn btn-outline-secondary btn-sm px-3" onclick="cancelSwap()">
             <i class="fas fa-times"></i> Annuler
           </button>
         </div>
@@ -648,6 +656,8 @@ function categorySprite(cat) {
               title="${cat}">`;
 }
 
+let moveSortable = null;
+
 function renderActiveMoves(moves) {
   const container = document.getElementById('active-moves-list');
   if (!moves.length) {
@@ -655,36 +665,81 @@ function renderActiveMoves(moves) {
     return;
   }
 
-  // Si deck < 4 et qu'un move learnable est sélectionné, ne pas afficher les boutons "Remplacer"
   const deckFull = moves.length >= 4;
+  const slotIcons = ['1','2','3','4'];
 
-  container.innerHTML = moves.map(m => {
+  container.innerHTML = moves.map((m, idx) => {
     const ppPct    = Math.round((m.current_pp / m.pp) * 100);
     const ppClass  = ppPct === 0 ? 'pp-bar-empty' : ppPct <= 33 ? 'pp-bar-low' : ppPct <= 66 ? 'pp-bar-mid' : 'pp-bar-full';
     return `
-      <div class="move-card-full badge-type-${m.type.toLowerCase()} mb-2" data-move-id="${m.id}" data-move-name="${m.name}">
-        <div class="d-flex justify-content-between align-items-start mb-1">
-          <span class="move-card-name">${m.name}</span>
+      <div class="move-card-full badge-type-${m.type.toLowerCase()} mb-2 move-active-item"
+           data-move-id="${m.id}" data-move-name="${m.name}" data-index="${idx}">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="move-drag-handle" title="Glisser pour réordonner"><i class="fas fa-grip-vertical"></i></span>
+          <span class="move-slot-badge">${slotIcons[idx] || (idx+1)}</span>
+          <span class="move-card-name flex-grow-1">${m.name}</span>
           <span class="move-type-pill">${m.type.toUpperCase()}</span>
         </div>
-        <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
+        <div class="d-flex justify-content-between align-items-center small text-muted mb-1" style="padding-left:2rem;">
           <span>${categorySprite(m.category)}${m.category}</span>
           <span>${m.power ? '💥 ' + m.power : '—'}</span>
           <span>🎯 ${m.accuracy}%</span>
         </div>
-        <div class="d-flex align-items-center gap-1">
+        <div class="d-flex align-items-center gap-1" style="padding-left:2rem;">
           <small class="text-muted me-1" style="white-space:nowrap;">PP</small>
           <div class="pp-bar-track flex-grow-1">
             <div class="pp-bar-fill ${ppClass}" style="width:${ppPct}%"></div>
           </div>
           <small class="ms-1 fw-bold ${m.current_pp === 0 ? 'text-danger' : ''}">${m.current_pp}/${m.pp}</small>
         </div>
-        ${(pendingAddMoveId && deckFull) ? `<button class="btn btn-danger btn-sm btn-block mt-2 choose-remove-btn" data-remove-id="${m.id}" data-remove-name="${m.name}">
+        ${(pendingAddMoveId && deckFull) ? `<button class="btn btn-danger btn-sm mt-2 choose-remove-btn w-100"
+          data-remove-id="${m.id}" data-remove-name="${m.name}">
           <i class="fas fa-trash-alt"></i> Remplacer par ${pendingAddMoveName}
         </button>` : ''}
       </div>
     `;
   }).join('');
+
+  // Initialiser / réinitialiser le Sortable
+  if (moveSortable) { moveSortable.destroy(); moveSortable = null; }
+  moveSortable = Sortable.create(container, {
+    handle: '.move-drag-handle',
+    animation: 120,
+    ghostClass: 'move-sort-ghost',
+    chosenClass: 'move-sort-chosen',
+    onEnd() {
+      const slotIcons2 = ['1','2','3','4'];
+      const items = [...container.querySelectorAll('.move-active-item')];
+      const newOrder = items.map(el => parseInt(el.dataset.moveId));
+      const moveMap = {};
+      currentMovesData.forEach(m => { moveMap[m.id] = m; });
+      currentMovesData = newOrder.map(id => moveMap[id]).filter(Boolean);
+      items.forEach((el, i) => {
+        el.dataset.index = i;
+        const slotBadge = el.querySelector('.move-slot-badge');
+        if (slotBadge) slotBadge.textContent = slotIcons2[i] || (i+1);
+      });
+      updateCardMoves(currentPokemonId, currentMovesData);
+
+      // Persister l'ordre en base
+      post('/api/pokemon/reorder-moves/', {
+        pokemon_id: currentPokemonId,
+        order: newOrder
+      }).then(data => {
+        if (data.success) {
+          showModalStatus('✅ Ordre sauvegardé', 'success');
+          currentMovesData = data.moves;
+        } else {
+          showModalStatus('Erreur réordonnement : ' + data.error, 'danger');
+          // Recharger pour revenir à l'état serveur en cas d'erreur
+          loadMovesModal(currentPokemonId);
+        }
+      }).catch(() => {
+        showModalStatus('Erreur réseau.', 'danger');
+        loadMovesModal(currentPokemonId);
+      });
+    }
+  });
 }
 
 function renderLearnableMoves(learnable) {
@@ -798,7 +853,15 @@ function confirmSwap(removeId, addId) {
       currentMovesData = data.moves;
       pendingAddMoveId   = null;
       pendingAddMoveName = '';
-      document.getElementById('swap-confirm-panel').classList.add('d-none');
+      // Réinitialiser le panneau de confirmation (restaurer les IDs détruits par innerHTML)
+      const panelAfter = document.getElementById('swap-confirm-panel');
+      panelAfter.classList.add('d-none');
+      panelAfter.querySelector('p').innerHTML = `
+        <i class="fas fa-exchange-alt text-warning"></i>
+        Remplacer <strong id="swap-remove-name" class="text-danger"></strong>
+        par <strong id="swap-add-name" class="text-success"></strong> ?
+      `;
+      document.querySelectorAll('.move-learnable-selected').forEach(el => el.classList.remove('move-learnable-selected'));
       // Recharger les deux colonnes
       loadMovesModal(currentPokemonId);
       // Mettre à jour les chips sur la card équipe
