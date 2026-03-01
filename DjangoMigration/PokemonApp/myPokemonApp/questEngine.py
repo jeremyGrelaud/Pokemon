@@ -296,7 +296,27 @@ def _event_matches_quest(quest, event: str, ctx: dict) -> bool:
 
     if event == 'defeat_trainer':
         trainer_id = ctx.get('trainer_id')
-        return quest.trigger_trainer_id and trainer_id and quest.trigger_trainer_id == trainer_id
+        # Cas normal : quête avec trigger_trainer explicite (NPC, Elite 4…)
+        if quest.trigger_trainer_id:
+            return trainer_id and quest.trigger_trainer_id == trainer_id
+        # Cas rival : quête de type 'rival' sans trigger_trainer (résolu per-player).
+        # On vérifie si le Trainer NPC battu est bien le PlayerRival de ce joueur
+        # pour cette quête.
+        if quest.quest_type == 'rival' and trainer_id:
+            player_trainer = ctx.get('player_trainer')
+            if player_trainer is None:
+                return False
+            try:
+                from myPokemonApp.models import PlayerRival
+                pr = PlayerRival.objects.filter(
+                    player=player_trainer,
+                    template__quest_id=quest.quest_id,
+                    trainer__id=trainer_id,
+                ).exists()
+                return pr
+            except Exception:
+                return False
+        return False
 
     if event == 'defeat_gym':
         gym_leader = ctx.get('gym_leader')   # objet GymLeader
@@ -429,10 +449,18 @@ def get_active_quests(trainer):
 
 def check_rival_encounter(trainer, zone, floor=None):
     """
-    Retourne le RivalEncounter actif dans cette zone/étage, si non encore
-    battu par ce joueur, sinon None.
+    Retourne le RivalEncounter actif dans cette zone/étage pour CE joueur.
+
+    Résolution per-player :
+      1. On cherche les RivalEncounter actifs dans la zone.
+      2. Pour chaque encounter, on résout le Trainer NPC via PlayerRival
+         (instance spécifique à ce joueur) plutôt que via enc.rival directement.
+      3. Si le PlayerRival n'existe pas encore (rare), on retourne None silencieusement.
+
+    Retourne un objet "encounter proxy" avec l'attribut .rival pointant vers
+    le Trainer NPC spécifique au joueur, ou None si rien de disponible.
     """
-    from myPokemonApp.models import RivalEncounter, QuestProgress
+    from myPokemonApp.models import RivalEncounter, PlayerRival, RivalTemplate
 
     encounters = RivalEncounter.objects.filter(zone=zone).select_related(
         'quest', 'rival', 'floor'
@@ -443,9 +471,53 @@ def check_rival_encounter(trainer, zone, floor=None):
     for enc in encounters:
         # La quête associée doit être active (non complétée)
         progress = get_quest_progress(trainer, enc.quest.quest_id)
-        if progress and progress.state in ('available', 'active'):
-            # Le rival ne doit pas encore être vaincu par ce joueur
-            if not enc.rival.is_defeated_by_player(trainer):
-                return enc
+        if not progress or progress.state not in ('available', 'active'):
+            continue
+
+        # Résolution per-player via PlayerRival.
+        # On cherche directement le PlayerRival de ce joueur pour ce quest_id
+        # (sans passer par le template : PlayerRival.template.quest_id suffit).
+        try:
+            pr = PlayerRival.objects.filter(
+                player=trainer,
+                template__quest_id=enc.quest.quest_id,
+            ).select_related('trainer', 'template').first()
+        except Exception:
+            pr = None
+
+        if pr is not None:
+            rival_trainer = pr.trainer
+            if rival_trainer is None:
+                # Spawn tardif si manquant (sécurité)
+                rival_trainer = pr.spawn_for_player()
+        else:
+            # Aucun PlayerRival → fallback enc.rival (retro-compat)
+            rival_trainer = enc.rival
+
+        if rival_trainer and not rival_trainer.is_defeated_by_player(trainer):
+            # Retourner un proxy léger avec .rival résolu pour ce joueur
+            enc._resolved_rival = rival_trainer
+            return _RivalEncounterProxy(enc, rival_trainer)
 
     return None
+
+
+class _RivalEncounterProxy:
+    """
+    Proxy léger autour de RivalEncounter qui expose .rival résolu per-player.
+    Compatible avec les templates existants (rival_encounter.rival.username,
+    rival_encounter.pre_battle_text, rival_encounter.rival.id, etc.).
+    """
+    def __init__(self, encounter, rival_trainer):
+        self._enc    = encounter
+        self.rival   = rival_trainer
+        # Délégation des attributs de RivalEncounter
+        self.id               = encounter.id
+        self.quest            = encounter.quest
+        self.zone             = encounter.zone
+        self.floor            = encounter.floor
+        self.pre_battle_text  = encounter.pre_battle_text
+        self.post_battle_text = encounter.post_battle_text
+
+    def __repr__(self):
+        return f"<RivalEncounterProxy quest={self.quest.quest_id} rival={self.rival.username}>"

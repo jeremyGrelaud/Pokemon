@@ -198,12 +198,22 @@ def create_starter_pokemon(species, trainer, nickname=None, is_shiny=False):
 # =============================================================================
 
 def _create_npc_pokemon(species, trainer, level, username, party_position,
-                        iv_min=0, iv_max=20):
+                        iv_min=0, iv_max=20,
+                        fixed_ivs=None, fixed_nature=None):
     """
     Cree et sauvegarde un PlayablePokemon pour un NPC avec ses stats calculees.
     Helper interne partage entre create_gym_leader et create_npc_trainer.
+
+    Args:
+        fixed_ivs   : dict optionnel {'iv_hp':10, 'iv_attack':10, ...} — bypasse iv_min/iv_max.
+                      Pour les combats scriptés (ex: rival lv5) afin de garantir
+                      des stats prévisibles indépendamment du RNG.
+        fixed_nature: str optionnel (ex: 'Hardy') — bypasse generate_random_nature().
     """
     from .models import PlayablePokemon
+
+    ivs    = fixed_ivs if fixed_ivs is not None else _build_ivs(iv_min, iv_max)
+    nature = fixed_nature if fixed_nature is not None else generate_random_nature()
 
     pokemon = PlayablePokemon(
         species=species,
@@ -212,8 +222,8 @@ def _create_npc_pokemon(species, trainer, level, username, party_position,
         original_trainer=username,
         is_in_party=True,
         party_position=party_position,
-        nature=generate_random_nature(),
-        **_build_ivs(iv_min, iv_max)
+        nature=nature,
+        **ivs
     )
     pokemon.calculate_stats()
     pokemon.current_hp = pokemon.max_hp
@@ -301,12 +311,22 @@ def create_npc_trainer(username, trainer_type, location, team_data,
                        intro_text=None, npc_class='Gamin', sprite_name='',
                        can_rebattle=False, money=None,
                        defeat_text=None, victory_text=None,
-                       is_battle_required=False):
+                       is_battle_required=False,
+                       fixed_ivs=None, fixed_nature=None,
+                       iv_min=0, iv_max=20):
     """
     Cree un dresseur NPC generique avec son equipe. Idempotent (get_or_create).
     La cle d'idempotence est (username, location) — deux dresseurs au meme nom
     dans des zones differentes (ex: plusieurs "Team Rocket Grunt") sont bien
     des entrees distinctes en base.
+
+    Args additionnels pour les combats scriptés :
+        fixed_ivs    : dict IVs fixes appliqués à TOUS les Pokémon de l'équipe.
+                       Ex: {'iv_hp':10,'iv_attack':10,'iv_defense':10,
+                            'iv_special_attack':10,'iv_special_defense':10,'iv_speed':10}
+                       Bypasse iv_min/iv_max — garantit des stats prévisibles.
+        fixed_nature : str nature fixée (ex: 'Hardy') — bypasse le tirage aléatoire.
+        iv_min/iv_max: plage IVs aléatoires si fixed_ivs est None (défaut 0-20).
     """
     from .models import Trainer
 
@@ -336,10 +356,12 @@ def create_npc_trainer(username, trainer_type, location, team_data,
         return trainer
 
     for i, poke_data in enumerate(team_data, 1):
-        # IVs moyens pour les dresseurs normaux (0-20)
         pokemon = _create_npc_pokemon(
             poke_data['species'], trainer, poke_data['level'],
-            username, i, iv_min=0, iv_max=20
+            username, i,
+            iv_min=iv_min, iv_max=iv_max,
+            fixed_ivs=fixed_ivs,
+            fixed_nature=fixed_nature,
         )
         _assign_npc_moves(pokemon, poke_data.get('moves', []))
 

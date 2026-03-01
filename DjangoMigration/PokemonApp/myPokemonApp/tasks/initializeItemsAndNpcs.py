@@ -411,354 +411,353 @@ def initialize_gym_leaders():
     
     logging.info("[+] 8 Champions d'Arène créés")
 
-def initialize_rival_battles(player_starter_choice='Bulbasaur'):
+def initialize_rival_battles():
     """
-    Initialise les différentes versions du Rival au cours de l'aventure
-    
-    Args:
-        player_starter_choice: 'Bulbasaur', 'Charmander', ou 'Squirtle'
+    Peuple les RivalTemplate — templates statiques des combats de rival.
+
+    NE crée PLUS de Trainer directement.  Les Trainer NPC sont générés
+    à la demande par PlayerRival.spawn_for_player() lors du choix du starter
+    (choose_starter_view), ce qui garantit :
+      - Un Trainer unique par joueur (pas de collision de username).
+      - Des équipes adaptées au starter choisi par chaque joueur.
+      - Compatibilité multi-joueurs complète.
+
+    Un RivalTemplate par (quest_id × player_starter_match) est créé,
+    soit 3 templates pour le combat 1 (un par starter joueur) et un seul
+    template "any" pour les combats 2-8 (le starter est inclus dans team_data
+    via le champ "species" résolu dynamiquement au spawn).
+
+    La colonne team_data est un JSON pur (noms de Pokémon et de moves en string)
+    — les objets Django sont résolus dans spawn_for_player().
     """
-    
-    logging.info("[*] Initialisation des combats contre le Rival...")
-    
-    # Fonctions helper
-    def get_pokemon(name):
-        return Pokemon.objects.get(name=name)
-    
-    def get_moves(move_names):
-        return [PokemonMove.objects.get(name=name) for name in move_names]
-    
-    # Déterminer le starter du rival
-    rival_starter_map = {
-        'Bulbasaur': 'Charmander',    # Si joueur a Bulbasaur, rival a Charmander
-        'Charmander': 'Squirtle',      # Si joueur a Charmander, rival a Squirtle
-        'Squirtle': 'Bulbasaur'        # Si joueur a Squirtle, rival a Bulbasaur
+    from myPokemonApp.models import RivalTemplate
+
+    logging.info("[*] Initialisation des RivalTemplate (combats Rival)...")
+
+    FIXED_IVS_LV5  = {"iv_hp":10,"iv_attack":10,"iv_defense":10,
+                       "iv_special_attack":10,"iv_special_defense":10,"iv_speed":10}
+    FIXED_IVS_MID  = {"iv_hp":15,"iv_attack":15,"iv_defense":15,
+                       "iv_special_attack":15,"iv_special_defense":15,"iv_speed":15}
+
+    # Mapping : starter joueur → starter rival → ligne d'évolution
+    RIVAL_STARTER_MAP = {
+        'Bulbasaur':  'Charmander',
+        'Charmander': 'Squirtle',
+        'Squirtle':   'Bulbasaur',
     }
-    rival_starter = rival_starter_map.get(player_starter_choice, 'Squirtle')
-    
-    # Évolutions du starter du rival
-    starter_evolutions = {
+    EVOLUTIONS = {
         'Charmander': ['Charmander', 'Charmeleon', 'Charizard'],
-        'Squirtle': ['Squirtle', 'Wartortle', 'Blastoise'],
-        'Bulbasaur': ['Bulbasaur', 'Ivysaur', 'Venusaur']
+        'Squirtle':   ['Squirtle',   'Wartortle',  'Blastoise'],
+        'Bulbasaur':  ['Bulbasaur',  'Ivysaur',    'Venusaur'],
     }
-    rival_line = starter_evolutions[rival_starter]
-    
-    # ============================================================================
-    # COMBAT 1: PALLET TOWN (Niveau 5)
-    # ============================================================================
-    
-    create_npc_trainer(
-        username='Rival - Pallet Town',
-        trainer_type='rival',
-        location='Bourg Palette',
-        team_data=[
-            {
-                'species': get_pokemon(rival_line[0]),
-                'level': 5,
-                'moves': get_moves(['Scratch', 'Growl'] if rival_starter == 'Charmander' else 
-                                 ['Tackle', 'Tail Whip'] if rival_starter == 'Squirtle' else
-                                 ['Tackle', 'Growl'])
-            }
-        ],
-        intro_text=f"Allez {rival_line[0]}! On va leur montrer!"
-    )
-    
-    # ============================================================================
-    # COMBAT 2: ROUTE 22 (Niveau 9)
-    # ============================================================================
-    
-    pidgey_team = {
-        'species': get_pokemon('Pidgey'),
-        'level': 9,
-        'moves': get_moves(['Tackle', 'Gust'])
+    # Moves de base par starter rival au lv5
+    STARTER_MOVES_LV5 = {
+        'Charmander': ['Scratch', 'Growl'],
+        'Squirtle':   ['Tackle',  'Tail Whip'],
+        'Bulbasaur':  ['Tackle',  'Growl'],
     }
-    
-    create_npc_trainer(
-        username='Rival - Route 22 (1)',
-        trainer_type='rival',
-        location='Route 22',
-        team_data=[
-            pidgey_team,
-            {
-                'species': get_pokemon(rival_line[0]),
-                'level': 9,
-                'moves': get_moves(['Scratch', 'Growl', 'Ember'] if rival_starter == 'Charmander' else 
-                                 ['Tackle', 'Tail Whip', 'Bubble'] if rival_starter == 'Squirtle' else
-                                 ['Tackle', 'Growl', 'Leech Seed'])
-            }
-        ],
-        intro_text="Tu crois être fort? Voyons voir!"
-    )
-    
-    # ============================================================================
-    # COMBAT 3: CERULEAN CITY (Niveau 18)
-    # ============================================================================
-    
-    create_npc_trainer(
-        username='Rival - Cerulean City',
-        trainer_type='rival',
-        location='Route 24',
-        team_data=[
-            {
-                'species': get_pokemon('Pidgeotto'),
-                'level': 17,
-                'moves': get_moves(['Tackle', 'Gust', 'Sand Attack'])
-            },
-            {
-                'species': get_pokemon('Abra'),
-                'level': 16,
-                'moves': get_moves(['Teleport'])
-            },
-            {
-                'species': get_pokemon('Rattata'),
-                'level': 15,
-                'moves': get_moves(['Tackle', 'Tail Whip', 'Quick Attack'])
-            },
-            {
-                'species': get_pokemon(rival_line[1]),  # Évolution 1
-                'level': 18,
-                'moves': get_moves(['Scratch', 'Growl', 'Ember', 'Leer'] if rival_starter == 'Charmander' else 
-                                 ['Tackle', 'Tail Whip', 'Bubble', 'Water Gun'] if rival_starter == 'Squirtle' else
-                                 ['Tackle', 'Growl', 'Leech Seed', 'Vine Whip'])
-            }
-        ],
-        intro_text="Je t'attendais! Prépare-toi!"
-    )
-    
-    # ============================================================================
-    # COMBAT 4: S.S. ANNE (Niveau 20)
-    # ============================================================================
-    
-    create_npc_trainer(
-        username='Rival - S.S. Anne',
-        trainer_type='rival',
-        location='Carmin sur Mer',
-        team_data=[
-            {
-                'species': get_pokemon('Pidgeotto'),
-                'level': 19,
-                'moves': get_moves(['Gust', 'Sand Attack', 'Quick Attack'])
-            },
-            {
-                'species': get_pokemon('Raticate'),
-                'level': 16,
-                'moves': get_moves(['Tackle', 'Tail Whip', 'Hyper Fang'])
-            },
-            {
-                'species': get_pokemon('Kadabra'),
-                'level': 18,
-                'moves': get_moves(['Teleport', 'Kinesis', 'Confusion'])
-            },
-            {
-                'species': get_pokemon(rival_line[1]),
-                'level': 20,
-                'moves': get_moves(['Scratch', 'Ember', 'Leer', 'Rage'] if rival_starter == 'Charmander' else 
-                                 ['Tackle', 'Bubble', 'Water Gun', 'Bite'] if rival_starter == 'Squirtle' else
-                                 ['Tackle', 'Leech Seed', 'Vine Whip', 'Poison Powder'])
-            }
-        ],
-        intro_text="Toi ici?! On va régler ça maintenant!"
-    )
-    
-    # ============================================================================
-    # COMBAT 5: POKEMON TOWER (Niveau 25)
-    # ============================================================================
-    
-    create_npc_trainer(
-        username='Rival - Pokemon Tower',
-        trainer_type='rival',
-        location='Tour Pokémon',
-        team_data=[
-            {
-                'species': get_pokemon('Pidgeotto'),
-                'level': 25,
-                'moves': get_moves(['Gust', 'Sand Attack', 'Quick Attack', 'Wing Attack'])
-            },
-            {
-                'species': get_pokemon('Growlithe') if rival_starter != 'Charmander' else get_pokemon('Gyarados'),
-                'level': 23,
-                'moves': get_moves(['Bite', 'Roar', 'Ember'] if rival_starter != 'Charmander' else
-                                 ['Bite', 'Dragon Rage', 'Leer'])
-            },
-            {
-                'species': get_pokemon('Exeggcute') if rival_starter != 'Bulbasaur' else get_pokemon('Meowth'),
-                'level': 22,
-                'moves': get_moves(['Barrage', 'Hypnosis'] if rival_starter != 'Bulbasaur' else
-                                 ['Scratch', 'Growl', 'Bite'])
-            },
-            {
-                'species': get_pokemon('Kadabra'),
-                'level': 20,
-                'moves': get_moves(['Teleport', 'Kinesis', 'Confusion', 'Psybeam'])
-            },
-            {
-                'species': get_pokemon(rival_line[1]),
-                'level': 25,
-                'moves': get_moves(['Ember', 'Leer', 'Rage', 'Slash'] if rival_starter == 'Charmander' else 
-                                 ['Water Gun', 'Bite', 'Withdraw', 'Skull Bash'] if rival_starter == 'Squirtle' else
-                                 ['Vine Whip', 'Poison Powder', 'Sleep Powder', 'Razor Leaf'])
-            }
-        ],
-        intro_text="Qu'est-ce que tu fais ici? Ton Pokémon est-il mort?"
-    )
-    
-    # ============================================================================
-    # COMBAT 6: SILPH CO. (Niveau 37)
-    # ============================================================================
-    
-    create_npc_trainer(
-        username='Rival - Silph Co.',
-        trainer_type='rival',
-        location='Safrania',
-        team_data=[
-            {
-                'species': get_pokemon('Pidgeot'),
-                'level': 37,
-                'moves': get_moves(['Wing Attack', 'Sand Attack', 'Quick Attack', 'Mirror Move'])
-            },
-            {
-                'species': get_pokemon('Growlithe') if rival_starter == 'Bulbasaur' else 
-                          get_pokemon('Exeggcute') if rival_starter == 'Squirtle' else
-                          get_pokemon('Gyarados'),
-                'level': 35,
-                'moves': get_moves(['Bite', 'Roar', 'Ember', 'Take Down'] if rival_starter == 'Bulbasaur' else
-                                 ['Barrage', 'Hypnosis', 'Reflect'] if rival_starter == 'Squirtle' else
-                                 ['Bite', 'Dragon Rage', 'Leer', 'Hydro Pump'])
-            },
-            {
-                'species': get_pokemon('Alakazam'),
-                'level': 35,
-                'moves': get_moves(['Teleport', 'Kinesis', 'Psybeam', 'Recover'])
-            },
-            {
-                'species': get_pokemon('Exeggcute') if rival_starter == 'Charmander' else
-                          get_pokemon('Gyarados') if rival_starter == 'Bulbasaur' else
-                          get_pokemon('Growlithe'),
-                'level': 35,
-                'moves': get_moves(['Barrage', 'Hypnosis', 'Reflect'] if rival_starter == 'Charmander' else
-                                 ['Bite', 'Dragon Rage', 'Leer', 'Hydro Pump'] if rival_starter == 'Bulbasaur' else
-                                 ['Bite', 'Roar', 'Ember', 'Take Down'])
-            },
-            {
-                'species': get_pokemon(rival_line[2]),  # Évolution finale
-                'level': 40,
-                'moves': get_moves(['Ember', 'Leer', 'Rage', 'Slash'] if rival_starter == 'Charmander' else 
-                                 ['Water Gun', 'Bite', 'Withdraw', 'Hydro Pump'] if rival_starter == 'Squirtle' else
-                                 ['Vine Whip', 'Poison Powder', 'Razor Leaf', 'Solar Beam'])
-            }
-        ],
-        intro_text="Je vais te montrer qui est le meilleur!"
-    )
-    
-    # ============================================================================
-    # COMBAT 7: ROUTE 22 AVANT LA LIGUE (Niveau 47)
-    # ============================================================================
-    
-    create_npc_trainer(
-        username='Rival - Route 22 (2)',
-        trainer_type='rival',
-        location='Route 22',
-        team_data=[
-            {
-                'species': get_pokemon('Pidgeot'),
-                'level': 47,
-                'moves': get_moves(['Wing Attack', 'Mirror Move', 'Sky Attack', 'Quick Attack'])
-            },
-            {
-                'species': get_pokemon('Rhyhorn'),
-                'level': 45,
-                'moves': get_moves(['Horn Attack', 'Stomp', 'Tail Whip', 'Fury Attack'])
-            },
-            {
-                'species': get_pokemon('Growlithe') if rival_starter == 'Bulbasaur' else 
-                          get_pokemon('Exeggcute') if rival_starter == 'Squirtle' else
-                          get_pokemon('Gyarados'),
-                'level': 45,
-                'moves': get_moves(['Bite', 'Roar', 'Flamethrower', 'Take Down'] if rival_starter == 'Bulbasaur' else
-                                 ['Barrage', 'Hypnosis', 'Solar Beam', 'Reflect'] if rival_starter == 'Squirtle' else
-                                 ['Bite', 'Dragon Rage', 'Leer', 'Hydro Pump'])
-            },
-            {
-                'species': get_pokemon('Alakazam'),
-                'level': 47,
-                'moves': get_moves(['Psychic', 'Recover', 'Psybeam', 'Reflect'])
-            },
-            {
-                'species': get_pokemon('Exeggutor') if rival_starter == 'Charmander' else
-                          get_pokemon('Gyarados') if rival_starter == 'Bulbasaur' else
-                          get_pokemon('Arcanine'),
-                'level': 45,
-                'moves': get_moves(['Barrage', 'Hypnosis', 'Solar Beam', 'Stomp'] if rival_starter == 'Charmander' else
-                                 ['Bite', 'Dragon Rage', 'Leer', 'Hydro Pump'] if rival_starter == 'Bulbasaur' else
-                                 ['Bite', 'Roar', 'Flamethrower', 'Take Down'])
-            },
-            {
-                'species': get_pokemon(rival_line[2]),
-                'level': 53,
-                'moves': get_moves(['Flamethrower', 'Fire Spin', 'Slash', 'Fire Blast'] if rival_starter == 'Charmander' else 
-                                 ['Hydro Pump', 'Bite', 'Ice Beam', 'Skull Bash'] if rival_starter == 'Squirtle' else
-                                 ['Razor Leaf', 'Poison Powder', 'Solar Beam', 'Sleep Powder'])
-            }
-        ],
-        intro_text="Tu n'iras pas plus loin! Je vais te prouver ma supériorité!"
-    )
-    
-    # ============================================================================
-    # COMBAT 8: CHAMPION (Niveau 61-65)
-    # ============================================================================
-    
-    create_npc_trainer(
-        username='Champion Blue',
-        trainer_type='champion',
-        location='Plateau Indigo',
-        team_data=[
-            {
-                'species': get_pokemon('Pidgeot'),
-                'level': 61,
-                'moves': get_moves(['Wing Attack', 'Mirror Move', 'Sky Attack', 'Whirlwind'])
-            },
-            {
-                'species': get_pokemon('Alakazam'),
-                'level': 59,
-                'moves': get_moves(['Psychic', 'Recover', 'Psybeam', 'Reflect'])
-            },
-            {
-                'species': get_pokemon('Rhydon'),
-                'level': 61,
-                'moves': get_moves(['Horn Attack', 'Stomp', 'Earthquake', 'Horn Drill'])
-            },
-            {
-                'species': get_pokemon('Arcanine') if rival_starter == 'Bulbasaur' else 
-                          get_pokemon('Exeggutor') if rival_starter == 'Squirtle' else
-                          get_pokemon('Gyarados'),
-                'level': 61,
-                'moves': get_moves(['Bite', 'Roar', 'Flamethrower', 'Take Down'] if rival_starter == 'Bulbasaur' else
-                                 ['Barrage', 'Hypnosis', 'Solar Beam', 'Stomp'] if rival_starter == 'Squirtle' else
-                                 ['Bite', 'Dragon Rage', 'Hydro Pump', 'Hyper Beam'])
-            },
-            {
-                'species': get_pokemon('Exeggutor') if rival_starter == 'Charmander' else
-                          get_pokemon('Gyarados') if rival_starter == 'Bulbasaur' else
-                          get_pokemon('Arcanine'),
-                'level': 61,
-                'moves': get_moves(['Barrage', 'Hypnosis', 'Solar Beam', 'Stomp'] if rival_starter == 'Charmander' else
-                                 ['Bite', 'Dragon Rage', 'Hydro Pump', 'Hyper Beam'] if rival_starter == 'Bulbasaur' else
-                                 ['Bite', 'Roar', 'Flamethrower', 'Take Down'])
-            },
-            {
-                'species': get_pokemon(rival_line[2]),
-                'level': 65,
-                'moves': get_moves(['Flamethrower', 'Fire Spin', 'Slash', 'Fire Blast'] if rival_starter == 'Charmander' else 
-                                 ['Hydro Pump', 'Bite', 'Ice Beam', 'Blizzard'] if rival_starter == 'Squirtle' else
-                                 ['Razor Leaf', 'Poison Powder', 'Solar Beam', 'Sleep Powder'])
-            }
-        ],
-        intro_text="J'ai battu la Ligue et je t'attendais! Je suis devenu le Champion grâce au Prof. Chen! Voyons si tu es à la hauteur!"
-    )
-    
-    rival_count = Trainer.objects.filter(trainer_type__in=['rival', 'champion']).count()
-    logging.info(f"[+] {rival_count} versions du Rival créées (starter adverse: {rival_starter})")
+    # Moves évol. 1 par combat
+    STARTER_MOVES_LV9 = {
+        'Charmander': ['Scratch', 'Growl', 'Ember'],
+        'Squirtle':   ['Tackle',  'Tail Whip', 'Bubble'],
+        'Bulbasaur':  ['Tackle',  'Growl', 'Leech Seed'],
+    }
+    STARTER_MOVES_LV18 = {
+        'Charmander': ['Scratch', 'Growl', 'Ember', 'Leer'],
+        'Squirtle':   ['Tackle',  'Tail Whip', 'Bubble', 'Water Gun'],
+        'Bulbasaur':  ['Tackle',  'Growl', 'Leech Seed', 'Vine Whip'],
+    }
+
+    templates_data = []
+
+    # =========================================================================
+    # COMBAT 1 : BOURG PALETTE (lv5) — 3 versions per-starter joueur
+    # IVs fixes 10 + nature Hardy → stats prévisibles, combat équilibré.
+    # =========================================================================
+    COMBAT1_DIALOGUES = {
+        # player_starter → (intro, defeat, victory, pre_battle, post_battle)
+        'Bulbasaur': (
+            "Hé ! Le Prof. Chen m'a donné Salamèche ! Il bat le type Plante — vas-y !",
+            "Quoi ?! J'ai perdu ?! Salamèche, on va s'entraîner encore plus fort !",
+            "Haha ! Salamèche est trop fort pour ton Bulbizarre !",
+            "Attends ! Vérifions nos Pokémon ! Allez, je te défie !",
+            "Hein ?! Incroyable... Je dois m'entraîner plus dur.",
+        ),
+        'Charmander': (
+            "Ha ! Le Prof. Chen m'a confié Carapuce ! L'Eau contre le Feu, bonne chance !",
+            "Incroyable... Carapuce a perdu. L'entraînement va tout changer !",
+            "Trop facile ! L'Eau écrase le Feu, c'est la loi de la nature !",
+            "Attends ! Vérifions nos Pokémon ! Allez, je te défie !",
+            "Carapuce... on a perdu. Mais je reviendrai plus fort !",
+        ),
+        'Squirtle': (
+            "J'ai pris Bulbizarre — la Plante bat l'Eau ! Prouve-moi que Carapuce vaut quelque chose !",
+            "Bulbizarre... on a perdu. C'est promis, la prochaine fois sera différente !",
+            "Oui ! La Plante domine l'Eau ! Bulbizarre est imbattable !",
+            "Attends ! Vérifions nos Pokémon ! Allez, je te défie !",
+            "Bulbizarre... on a vraiment perdu. Je dois travailler plus dur !",
+        ),
+    }
+    for player_starter, rival_starter in RIVAL_STARTER_MAP.items():
+        intro, defeat, victory, pre, post = COMBAT1_DIALOGUES[player_starter]
+        templates_data.append({
+            'quest_id':            'rival_pallet_town',
+            'combat_order':        1,
+            'rival_starter':       rival_starter,
+            'player_starter_match': player_starter,
+            'intro_text':          intro,
+            'defeat_text':         defeat,
+            'victory_text':        victory,
+            'pre_battle_text':     pre,
+            'post_battle_text':    post,
+            'money_reward':        175,
+            'team_data': [{
+                'species':       rival_starter,
+                'level':         5,
+                'moves':         STARTER_MOVES_LV5[rival_starter],
+                'fixed_ivs':     FIXED_IVS_LV5,
+                'fixed_nature':  'Hardy',
+            }],
+        })
+
+    # =========================================================================
+    # COMBATS 2–8 : 3 versions par starter joueur
+    # =========================================================================
+
+    for player_starter, rival_starter in RIVAL_STARTER_MAP.items():
+        evo = EVOLUTIONS[rival_starter]   # [base, evo1, evo2]
+
+        # Pokémon variable selon starter rival
+        third_pokemon = {
+            'Charmander': {'Bulbasaur': 'Growlithe', 'Squirtle': 'Exeggcute'},
+            'Squirtle':   {'Bulbasaur': 'Gyarados',  'Charmander': 'Exeggcute'},
+            'Bulbasaur':  {'Charmander': 'Gyarados', 'Squirtle': 'Growlithe'},
+        }
+
+        # ─── COMBAT 2 : ROUTE 22 (lv9) ────────────────────────────────────
+        templates_data.append({
+            'quest_id':            'rival_route_22',
+            'combat_order':        2,
+            'rival_starter':       rival_starter,
+            'player_starter_match': player_starter,
+            'intro_text':          "Tu crois être fort? Voyons voir!",
+            'defeat_text':         "Grrr... Tu t'améliores. Mais ça ne durera pas !",
+            'victory_text':        "Comme d'habitude, je suis le meilleur !",
+            'pre_battle_text':     "Hé ! Attends un peu ! Je savais que tu viendrais ici. Allez !",
+            'post_battle_text':    "Quoi ?! Tu as gagné ?! Peu importe. La prochaine fois ce sera différent.",
+            'money_reward':        280,
+            'team_data': [
+                {'species': 'Pidgey', 'level': 9, 'moves': ['Tackle', 'Gust']},
+                {'species': evo[0],   'level': 9, 'moves': STARTER_MOVES_LV9[rival_starter]},
+            ],
+        })
+
+        # ─── COMBAT 3 : CERULEAN CITY (lv18) ──────────────────────────────
+        templates_data.append({
+            'quest_id':            'rival_cerulean',
+            'combat_order':        3,
+            'rival_starter':       rival_starter,
+            'player_starter_match': player_starter,
+            'intro_text':          "Je t'attendais! Prépare-toi!",
+            'defeat_text':         "Encore ?! Bah... La prochaine fois je te battrai facilement.",
+            'victory_text':        "Mes Pokémon s'améliorent de jour en jour !",
+            'pre_battle_text':     "Encore toi ! Mes Pokémon ont grandi depuis la dernière fois. Prépare-toi !",
+            'post_battle_text':    "Encore ?! Bah... La prochaine fois je te battrai facilement.",
+            'money_reward':        640,
+            'team_data': [
+                {'species': 'Pidgeotto', 'level': 17, 'moves': ['Tackle', 'Gust', 'Sand Attack']},
+                {'species': 'Abra',      'level': 16, 'moves': ['Teleport']},
+                {'species': 'Rattata',   'level': 15, 'moves': ['Tackle', 'Tail Whip', 'Quick Attack']},
+                {'species': evo[1],      'level': 18, 'moves': STARTER_MOVES_LV18[rival_starter]},
+            ],
+        })
+
+        # ─── COMBAT 4 : S.S. ANNE (lv20) ──────────────────────────────────
+        starter_moves_lv20 = {
+            'Charmander': ['Scratch', 'Ember', 'Leer', 'Rage'],
+            'Squirtle':   ['Tackle',  'Bubble', 'Water Gun', 'Bite'],
+            'Bulbasaur':  ['Tackle',  'Leech Seed', 'Vine Whip', 'Poison Powder'],
+        }
+        templates_data.append({
+            'quest_id':            'rival_ss_anne',
+            'combat_order':        4,
+            'rival_starter':       rival_starter,
+            'player_starter_match': player_starter,
+            'intro_text':          "Toi ici?! On va régler ça maintenant!",
+            'defeat_text':         "Comment... Tu me bats encore !",
+            'victory_text':        "Haha ! Je savais que j'étais plus fort !",
+            'pre_battle_text':     "Encore toi ! Sur ce bateau, c'est moi le maître !",
+            'post_battle_text':    "Pfff... La chance était de ton côté. C'est tout.",
+            'money_reward':        720,
+            'team_data': [
+                {'species': 'Pidgeotto', 'level': 19, 'moves': ['Gust', 'Sand Attack', 'Quick Attack']},
+                {'species': 'Raticate',  'level': 16, 'moves': ['Tackle', 'Tail Whip', 'Hyper Fang']},
+                {'species': 'Kadabra',   'level': 18, 'moves': ['Teleport', 'Kinesis', 'Confusion']},
+                {'species': evo[1],      'level': 20, 'moves': starter_moves_lv20[rival_starter]},
+            ],
+        })
+
+        # ─── COMBAT 5 : TOUR POKÉMON (lv25) ───────────────────────────────
+        companion3 = 'Gyarados' if rival_starter == 'Charmander' else 'Growlithe'
+        companion4 = 'Exeggcute' if rival_starter != 'Bulbasaur' else 'Meowth'
+        companion3_moves = (
+            ['Bite', 'Dragon Rage', 'Leer'] if rival_starter == 'Charmander'
+            else ['Bite', 'Roar', 'Ember']
+        )
+        companion4_moves = (
+            ['Barrage', 'Hypnosis'] if rival_starter != 'Bulbasaur'
+            else ['Scratch', 'Growl', 'Bite']
+        )
+        starter_moves_lv25 = {
+            'Charmander': ['Ember', 'Leer', 'Rage', 'Slash'],
+            'Squirtle':   ['Water Gun', 'Bite', 'Withdraw', 'Skull Bash'],
+            'Bulbasaur':  ['Vine Whip', 'Poison Powder', 'Sleep Powder', 'Razor Leaf'],
+        }
+        templates_data.append({
+            'quest_id':            'rival_pokemon_tower',
+            'combat_order':        5,
+            'rival_starter':       rival_starter,
+            'player_starter_match': player_starter,
+            'intro_text':          "Qu'est-ce que tu fais ici? Ton Pokémon est-il mort?",
+            'defeat_text':         "Tu m'as encore battu... Je dois revoir ma stratégie.",
+            'victory_text':        "Cette tour est à moi ! Retourne d'où tu viens !",
+            'pre_battle_text':     "Tu es venu chercher la même chose que moi ? Montre-moi si tu le mérites !",
+            'post_battle_text':    "J'aurais dû mieux m'entraîner avant de venir ici.",
+            'money_reward':        1000,
+            'team_data': [
+                {'species': 'Pidgeotto',  'level': 25, 'moves': ['Gust', 'Sand Attack', 'Quick Attack', 'Wing Attack']},
+                {'species': companion3,   'level': 23, 'moves': companion3_moves},
+                {'species': companion4,   'level': 22, 'moves': companion4_moves},
+                {'species': 'Kadabra',    'level': 20, 'moves': ['Teleport', 'Kinesis', 'Confusion', 'Psybeam']},
+                {'species': evo[1],       'level': 25, 'moves': starter_moves_lv25[rival_starter]},
+            ],
+        })
+
+        # ─── COMBAT 6 : SILPH CO. (lv37) ──────────────────────────────────
+        if rival_starter == 'Bulbasaur':
+            spe3, spe3m = 'Growlithe',  ['Bite', 'Roar', 'Ember', 'Take Down']
+            spe4, spe4m = 'Gyarados',   ['Bite', 'Dragon Rage', 'Leer', 'Hydro Pump']
+        elif rival_starter == 'Squirtle':
+            spe3, spe3m = 'Exeggcute',  ['Barrage', 'Hypnosis', 'Reflect']
+            spe4, spe4m = 'Growlithe',  ['Bite', 'Roar', 'Ember', 'Take Down']
+        else:  # Charmander
+            spe3, spe3m = 'Gyarados',   ['Bite', 'Dragon Rage', 'Leer', 'Hydro Pump']
+            spe4, spe4m = 'Exeggcute',  ['Barrage', 'Hypnosis', 'Reflect']
+        starter_moves_lv40 = {
+            'Charmander': ['Ember', 'Leer', 'Rage', 'Slash'],
+            'Squirtle':   ['Water Gun', 'Bite', 'Withdraw', 'Hydro Pump'],
+            'Bulbasaur':  ['Vine Whip', 'Poison Powder', 'Razor Leaf', 'Solar Beam'],
+        }
+        templates_data.append({
+            'quest_id':            'rival_silph_co',
+            'combat_order':        6,
+            'rival_starter':       rival_starter,
+            'player_starter_match': player_starter,
+            'intro_text':          "Je vais te montrer qui est le meilleur!",
+            'defeat_text':         "Encore toi... C'est agaçant !",
+            'victory_text':        "Bien sûr que j'ai gagné ! Je suis le futur Champion !",
+            'pre_battle_text':     "Tu as du culot de venir jusqu'ici. Mais tu ne passeras pas !",
+            'post_battle_text':    "Tch... tu as encore gagné. Va, monte voir le Président.",
+            'money_reward':        2800,
+            'team_data': [
+                {'species': 'Pidgeot',   'level': 37, 'moves': ['Wing Attack', 'Sand Attack', 'Quick Attack', 'Mirror Move']},
+                {'species': spe3,        'level': 35, 'moves': spe3m},
+                {'species': 'Alakazam',  'level': 35, 'moves': ['Teleport', 'Kinesis', 'Psybeam', 'Recover']},
+                {'species': spe4,        'level': 35, 'moves': spe4m},
+                {'species': evo[2],      'level': 40, 'moves': starter_moves_lv40[rival_starter]},
+            ],
+        })
+
+        # ─── COMBAT 7 : ROUTE 22 AVANT LA LIGUE (lv47) ────────────────────
+        if rival_starter == 'Bulbasaur':
+            spe5, spe5m = 'Growlithe',  ['Bite', 'Roar', 'Flamethrower', 'Take Down']
+            spe6, spe6m = 'Gyarados',   ['Bite', 'Dragon Rage', 'Leer', 'Hydro Pump']
+        elif rival_starter == 'Squirtle':
+            spe5, spe5m = 'Exeggcute',  ['Barrage', 'Hypnosis', 'Solar Beam', 'Reflect']
+            spe6, spe6m = 'Arcanine',   ['Bite', 'Roar', 'Flamethrower', 'Take Down']
+        else:  # Charmander
+            spe5, spe5m = 'Gyarados',   ['Bite', 'Dragon Rage', 'Leer', 'Hydro Pump']
+            spe6, spe6m = 'Exeggutor',  ['Barrage', 'Hypnosis', 'Solar Beam', 'Stomp']
+        starter_moves_lv53 = {
+            'Charmander': ['Flamethrower', 'Fire Spin', 'Slash', 'Fire Blast'],
+            'Squirtle':   ['Hydro Pump', 'Bite', 'Ice Beam', 'Skull Bash'],
+            'Bulbasaur':  ['Razor Leaf', 'Poison Powder', 'Solar Beam', 'Sleep Powder'],
+        }
+        templates_data.append({
+            'quest_id':            'rival_route_22_final',
+            'combat_order':        7,
+            'rival_starter':       rival_starter,
+            'player_starter_match': player_starter,
+            'intro_text':          "Tu n'iras pas plus loin! Je vais te prouver ma supériorité!",
+            'defeat_text':         "Pfff... Vas-y alors. Mais ne crois pas que tu vas gagner facilement là-haut.",
+            'victory_text':        "Je savais que tu n'étais pas prêt pour la Ligue !",
+            'pre_battle_text':     "Tu veux affronter la Ligue ? Tu devras d'abord passer par moi.",
+            'post_battle_text':    "Pfff... Vas-y alors. Mais ne crois pas que tu vas gagner facilement là-haut.",
+            'money_reward':        4700,
+            'team_data': [
+                {'species': 'Pidgeot',   'level': 47, 'moves': ['Wing Attack', 'Mirror Move', 'Sky Attack', 'Quick Attack']},
+                {'species': 'Rhyhorn',   'level': 45, 'moves': ['Horn Attack', 'Stomp', 'Tail Whip', 'Fury Attack']},
+                {'species': spe5,        'level': 45, 'moves': spe5m},
+                {'species': 'Alakazam',  'level': 47, 'moves': ['Psychic', 'Recover', 'Psybeam', 'Reflect']},
+                {'species': spe6,        'level': 45, 'moves': spe6m},
+                {'species': evo[2],      'level': 53, 'moves': starter_moves_lv53[rival_starter]},
+            ],
+        })
+
+        # ─── COMBAT 8 : CHAMPION (lv61-65) ────────────────────────────────
+        if rival_starter == 'Bulbasaur':
+            champ5, champ5m = 'Arcanine',  ['Bite', 'Roar', 'Flamethrower', 'Take Down']
+            champ6, champ6m = 'Gyarados',  ['Bite', 'Dragon Rage', 'Hydro Pump', 'Hyper Beam']
+        elif rival_starter == 'Squirtle':
+            champ5, champ5m = 'Exeggutor', ['Barrage', 'Hypnosis', 'Solar Beam', 'Stomp']
+            champ6, champ6m = 'Arcanine',  ['Bite', 'Roar', 'Flamethrower', 'Take Down']
+        else:  # Charmander
+            champ5, champ5m = 'Gyarados',  ['Bite', 'Dragon Rage', 'Hydro Pump', 'Hyper Beam']
+            champ6, champ6m = 'Exeggutor', ['Barrage', 'Hypnosis', 'Solar Beam', 'Stomp']
+        starter_moves_lv65 = {
+            'Charmander': ['Flamethrower', 'Fire Spin', 'Slash', 'Fire Blast'],
+            'Squirtle':   ['Hydro Pump', 'Bite', 'Ice Beam', 'Blizzard'],
+            'Bulbasaur':  ['Razor Leaf', 'Poison Powder', 'Solar Beam', 'Sleep Powder'],
+        }
+        templates_data.append({
+            'quest_id':            'rival_champion',
+            'combat_order':        8,
+            'rival_starter':       rival_starter,
+            'player_starter_match': player_starter,
+            'intro_text':          "J'ai battu la Ligue et je t'attendais! Voyons si tu es à la hauteur!",
+            'defeat_text':         "Perdu... contre toi... Je dois revoir toute ma façon de dresser.",
+            'victory_text':        "Je suis et resterai le meilleur Dresseur du monde !",
+            'pre_battle_text':     "J'ai battu les 4 As en premier. Je suis le Champion ! Tu n'as aucune chance.",
+            'post_battle_text':    "Perdu... contre toi... Je dois revoir toute ma façon de dresser. Tu mérites vraiment ce titre.",
+            'money_reward':        10000,
+            'team_data': [
+                {'species': 'Pidgeot',   'level': 61, 'moves': ['Wing Attack', 'Mirror Move', 'Sky Attack', 'Whirlwind']},
+                {'species': 'Alakazam',  'level': 59, 'moves': ['Psychic', 'Recover', 'Psybeam', 'Reflect']},
+                {'species': 'Rhydon',    'level': 61, 'moves': ['Horn Attack', 'Stomp', 'Earthquake', 'Horn Drill']},
+                {'species': champ5,      'level': 61, 'moves': champ5m},
+                {'species': champ6,      'level': 61, 'moves': champ6m},
+                {'species': evo[2],      'level': 65, 'moves': starter_moves_lv65[rival_starter]},
+            ],
+        })
+
+    # ── Persistance idempotente (get_or_create sur quest_id + player_starter) ─
+    created_count = 0
+    for tdata in templates_data:
+        quest_id_val            = tdata['quest_id']
+        player_starter_match_val = tdata['player_starter_match']
+        defaults = {k: v for k, v in tdata.items()
+                    if k not in ('quest_id', 'player_starter_match')}
+        _, created = RivalTemplate.objects.update_or_create(
+            quest_id=quest_id_val,
+            player_starter_match=player_starter_match_val,
+            defaults=defaults,
+        )
+        if created:
+            created_count += 1
+
+    total = RivalTemplate.objects.count()
+    logging.info(f"[+] RivalTemplate : {created_count} créés, {total} au total")
+
 
 
 def initialize_elite_four():

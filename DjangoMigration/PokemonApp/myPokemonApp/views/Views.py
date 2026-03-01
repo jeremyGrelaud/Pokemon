@@ -179,6 +179,32 @@ def choose_starter_view(request):
             }
         )
 
+        # ── Spawn des instances de rival pour CE joueur ─────────────────────
+        # On matérialise un Trainer NPC unique par joueur à partir des
+        # RivalTemplate dont player_starter_match == starter choisi.
+        # Chaque joueur obtient ses propres Trainer NPC rival isolés.
+        try:
+            from myPokemonApp.models import RivalTemplate, PlayerRival
+            starter_name = starter_species.name  # 'Bulbasaur', 'Charmander' ou 'Squirtle'
+            templates = RivalTemplate.objects.filter(
+                player_starter_match=starter_name
+            )
+            for tmpl in templates:
+                pr, pr_created = PlayerRival.objects.get_or_create(
+                    player=trainer, template=tmpl
+                )
+                if not pr.trainer_id:
+                    pr.spawn_for_player()
+            logger.info(
+                "Rival spawné pour %s (%s) — %d instances créées",
+                trainer.username, starter_name, templates.count()
+            )
+        except Exception as exc:   # noqa: BLE001
+            logger.warning(
+                "Erreur lors du spawn rival pour %s : %s",
+                trainer.username, exc,
+            )
+
         # ── Quêtes du prologue ────────────────────────────────────────────────
         # 'start_journey' est la quête racine (aucun prérequis).
         # On la complète ici pour débloquer automatiquement la chaîne suivante
