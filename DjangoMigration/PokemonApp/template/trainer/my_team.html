@@ -851,12 +851,12 @@ const NATURE_FR = {
 };
 
 const STAT_ROWS = [
-  { key:'hp',  label:'PV',  color:'#e74c3c', natKey:'hp'              },
-  { key:'atk', label:'ATK', color:'#e67e22', natKey:'attack'          },
-  { key:'def', label:'DEF', color:'#f1c40f', natKey:'defense'         },
-  { key:'spa', label:'SpA', color:'#3498db', natKey:'special_attack'  },
-  { key:'spd', label:'SpD', color:'#2ecc71', natKey:'special_defense' },
-  { key:'spe', label:'VIT', color:'#9b59b6', natKey:'speed'           },
+  { key:'hp',  label:'PV',  natKey:'hp'              },
+  { key:'atk', label:'ATK', natKey:'attack'          },
+  { key:'def', label:'DEF', natKey:'defense'         },
+  { key:'spa', label:'SpA', natKey:'special_attack'  },
+  { key:'spd', label:'SpD', natKey:'special_defense' },
+  { key:'spe', label:'VIT', natKey:'speed'           },
 ];
 
 /**
@@ -914,29 +914,39 @@ document.addEventListener('click', function(e) {
     const iv  = ivs[row.key];
     const ev  = evs[row.key];
     const val = stats[row.key];
-    const ivPct = Math.round((iv/31)*100);
-    const evPct = Math.round((ev/252)*100);
-    const ivStars = iv===31 ? '<span style="color:#f39c12">★★★</span>'
-                  : iv>=28  ? '<span style="color:#27ae60">★★</span>'
-                  : iv>=20  ? '<span style="color:#3498db">★</span>' : '';
+    const ivPct = Math.round((iv / 31)  * 100);
+    const evPct = Math.round((ev / 252) * 100);
+
+    // Couleur de la barre IV selon la qualité (neutre → vert progressif)
+    const ivBarColor = iv === 31 ? '#f59e0b'   // max : or
+                     : iv >= 28  ? '#22c55e'   // excellent : vert
+                     : iv >= 20  ? '#3b82f6'   // bon : bleu
+                     : iv >= 10  ? '#94a3b8'   // moyen : gris ardoise
+                     :             '#ef4444';  // faible : rouge
+
+    // Étoiles IV
+    const ivStars = iv === 31 ? '<span style="color:#f59e0b;font-size:.8rem;">★★★</span>'
+                  : iv >= 28  ? '<span style="color:#22c55e;font-size:.8rem;">★★</span>'
+                  : iv >= 20  ? '<span style="color:#3b82f6;font-size:.8rem;">★</span>' : '';
+
     const isUp   = nat.up   === row.natKey;
     const isDown = nat.down === row.natKey;
-    const cls    = isUp ? 'text-success fw-bold' : isDown ? 'text-danger' : '';
+    const lblCls = isUp ? 'text-success fw-bold' : isDown ? 'text-danger' : '';
+
     tbody.innerHTML += `
       <tr>
         <td>
-          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${row.color};margin-right:4px;"></span>
-          <strong class="${cls}">${row.label}</strong>
-          ${isUp   ? '<small class="text-success ms-1">▲</small>' : ''}
-          ${isDown ? '<small class="text-danger ms-1">▼</small>'  : ''}
+          <strong class="${lblCls}">${row.label}</strong>
+          ${isUp   ? '<small class="text-success ms-1" style="font-size:.75rem;">▲</small>' : ''}
+          ${isDown ? '<small class="text-danger ms-1"  style="font-size:.75rem;">▼</small>' : ''}
         </td>
-        <td class="text-center fw-bold ${cls}">${val}</td>
+        <td class="text-center fw-bold ${lblCls}">${val}</td>
         <td>
           <div class="d-flex align-items-center" style="gap:6px;">
             <span style="min-width:22px;font-weight:700;">${iv}</span>
             ${ivStars}
             <div style="flex:1;height:6px;background:#e9ecef;border-radius:3px;overflow:hidden;min-width:60px;">
-              <div style="height:100%;width:${ivPct}%;background:${row.color};border-radius:3px;transition:width .4s;"></div>
+              <div style="height:100%;width:${ivPct}%;background:${ivBarColor};border-radius:3px;transition:width .4s;"></div>
             </div>
           </div>
         </td>
@@ -944,7 +954,7 @@ document.addEventListener('click', function(e) {
           <div class="d-flex align-items-center" style="gap:6px;">
             <span style="min-width:26px;font-weight:700;">${ev}</span>
             <div style="flex:1;height:6px;background:#e9ecef;border-radius:3px;overflow:hidden;min-width:60px;">
-              <div style="height:100%;width:${evPct}%;background:${row.color};opacity:.75;border-radius:3px;transition:width .4s;"></div>
+              <div style="height:100%;width:${evPct}%;background:#6366f1;border-radius:3px;transition:width .4s;"></div>
             </div>
           </div>
         </td>
