@@ -399,6 +399,89 @@ class Battle(models.Model):
         self.save(update_fields=['battle_log'])
 
     # =========================================================================
+    # HELPERS — ABILITY SYSTEM
+    # =========================================================================
+
+    def _get_ability(self, pokemon):
+        """Retourne l'ability du Pokémon si elle est implémentée (effect_tag présent)."""
+        ability = getattr(pokemon, 'ability', None)
+        if ability and ability.effect_tag:
+            return ability
+        return None
+
+    def _get_opponent(self, pokemon):
+        """Retourne le Pokémon adverse."""
+        if pokemon == self.player_pokemon:
+            return self.opponent_pokemon
+        return self.player_pokemon
+
+    def _try_apply_status(self, target, status, attacker=None):
+        """
+        Tente d'appliquer un statut en vérifiant d'abord le talent du Pokémon cible.
+        Retourne True si le statut a bien été appliqué.
+        """
+        ability = self._get_ability(target)
+        if ability:
+            result = ability.on_status(self, target, status)
+            if result:
+                if result.get('message'):
+                    self.add_to_log(result['message'])
+                if result.get('prevent_status'):
+                    return False
+                if result.get('transmit_status_to_opponent') and attacker:
+                    transmitted = result['transmit_status_to_opponent']
+                    if attacker.apply_status(transmitted):
+                        self.add_to_log(f"{attacker} est aussi touché ({transmitted}) !")
+        return target.apply_status(status)
+
+    def _fire_switch_in_ability(self, pokemon):
+        """Active le talent on_switch_in du Pokémon entrant en combat."""
+        ability = self._get_ability(pokemon)
+        if not ability:
+            return
+        result = ability.on_switch_in(self, pokemon)
+        if not result:
+            return
+        if result.get('message'):
+            self.add_to_log(result['message'])
+        if result.get('set_weather'):
+            self.set_weather(result['set_weather'])
+        if result.get('lower_opponent_attack'):
+            opp = self._get_opponent(pokemon)
+            if opp:
+                self.modify_stat(opp, 'attack', -result['lower_opponent_attack'])
+        if result.get('raise_attack'):
+            self.modify_stat(pokemon, 'attack', result['raise_attack'])
+        if result.get('raise_special_attack'):
+            self.modify_stat(pokemon, 'special_attack', result['raise_special_attack'])
+        if result.get('copy_ability_from_opponent'):
+            opp = self._get_opponent(pokemon)
+            if opp and opp.ability:
+                pokemon.ability = opp.ability
+                pokemon.save(update_fields=['ability'])
+                self.add_to_log(f"{pokemon} a maintenant le talent {opp.ability.name} !")
+
+    def _fire_switch_out_ability(self, pokemon):
+        """Active le talent on_switch_out du Pokémon qui sort du combat."""
+        ability = self._get_ability(pokemon)
+        if not ability:
+            return
+        result = ability.on_switch_out(self, pokemon)
+        if not result:
+            return
+        if result.get('message'):
+            self.add_to_log(result['message'])
+        if result.get('clear_status'):
+            pokemon.cure_status()
+            pokemon.save()
+        if result.get('heal'):
+            healed = min(pokemon.max_hp - pokemon.current_hp, result['heal'])
+            if healed > 0:
+                pokemon.current_hp += healed
+                pokemon.save()
+                self.add_to_log(f"{pokemon} récupère {healed} PV !")
+
+    # =========================================================================
     # TOUR DE COMBAT PRINCIPAL
     # =========================================================================
 
@@ -1126,7 +1209,7 @@ class Battle(models.Model):
             self._apply_damage_to_defender(attacker, defender, move, damage)
             if not defender.is_fainted() and random.randint(1, 100) <= 20:
                 status = random.choice(['paralysis', 'burn', 'freeze'])
-                if defender.apply_status(status):
+                if self._try_apply_status(defender, status, attacker):
                     self.add_to_log(f"{defender} est {status} !")
             return
 
@@ -1161,10 +1244,13 @@ class Battle(models.Model):
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
             if damage > 0:
-                recoil = max(1, damage // 3)
-                attacker.current_hp = max(0, attacker.current_hp - recoil)
-                attacker.save()
-                self.add_to_log(f"{attacker} est blessé par le contrecoup ! (-{recoil} PV)")
+                attk_ability = self._get_ability(attacker)
+                rock_head = (attk_ability and attk_ability.effect_tag in ('rock_head', 'magic_guard'))
+                if not rock_head:
+                    recoil = max(1, damage // 3)
+                    attacker.current_hp = max(0, attacker.current_hp - recoil)
+                    attacker.save()
+                    self.add_to_log(f"{attacker} est blessé par le contrecoup ! (-{recoil} PV)")
             return
 
         # ─── Self-Destruct / Explosion ────────────────────────────────────────
@@ -1240,7 +1326,7 @@ class Battle(models.Model):
             self.add_to_log(f"Touche 2 fois pour {total_damage} dégâts !")
             # Poison pour Twineedle
             if move.inflicts_status and random.randint(1, 100) <= move.effect_chance:
-                if defender.apply_status(move.inflicts_status):
+                if self._try_apply_status(defender, move.inflicts_status, attacker):
                     self.add_to_log(f"{defender} est {move.inflicts_status} !")
             return
 
@@ -1356,25 +1442,35 @@ class Battle(models.Model):
             self._apply_damage_to_defender(attacker, defender, move, damage)
 
             if not defender.is_fainted():
-                # Statut secondaire
-                if move.inflicts_status and random.randint(1, 100) <= move.effect_chance:
-                    if defender.apply_status(move.inflicts_status):
-                        self.add_to_log(f"{defender} est {move.inflicts_status} !")
+                # Vérifier Sheer Force (supprime effets secondaires)
+                sheer_force = self._pstate(attacker).get('sheer_force_active', False)
+                serene_grace = self._pstate(attacker).get('serene_grace_active', False)
 
-                # Flinch secondaire
-                if effect == 'flinch' and random.randint(1, 100) <= move.effect_chance:
-                    self.set_flinched(defender)
+                if not sheer_force:
+                    # Statut secondaire
+                    if move.inflicts_status and random.randint(1, 100) <= move.effect_chance:
+                        eff_chance = move.effect_chance * (2 if serene_grace else 1)
+                        if random.randint(1, 100) <= eff_chance:
+                            if self._try_apply_status(defender, move.inflicts_status, attacker):
+                                self.add_to_log(f"{defender} est {move.inflicts_status} !")
 
-                # Modificateurs de stats du move (via stat_changes JSON)
-                if move.stat_changes:
-                    for stat, change in move.stat_changes.items():
-                        self.modify_stat(attacker if change > 0 else defender, stat, change)
+                    # Flinch secondaire
+                    if effect == 'flinch' and random.randint(1, 100) <= move.effect_chance:
+                        # Inner Focus bloque le flinch
+                        if not (self._get_ability(defender) and
+                                self._get_ability(defender).effect_tag == 'inner_focus'):
+                            self.set_flinched(defender)
 
-                # Effets secondaires via le champ effect
-                if effect in STAT_EFFECTS and move.power > 0:
-                    for stat_name, stages, target in STAT_EFFECTS[effect]:
-                        if random.randint(1, 100) <= move.effect_chance:
-                            self.modify_stat(target, stat_name, stages)
+                    # Modificateurs de stats du move (via stat_changes JSON)
+                    if move.stat_changes:
+                        for stat, change in move.stat_changes.items():
+                            self.modify_stat(attacker if change > 0 else defender, stat, change)
+
+                    # Effets secondaires via le champ effect
+                    if effect in STAT_EFFECTS and move.power > 0:
+                        for stat_name, stages, target in STAT_EFFECTS[effect]:
+                            if random.randint(1, 100) <= move.effect_chance:
+                                self.modify_stat(target, stat_name, stages)
 
                 # always_crit (Frost Breath) — géré dans calculate_damage via flag
                 if effect == 'always_crit':
@@ -1383,7 +1479,7 @@ class Battle(models.Model):
         else:
             # Move de statut sans puissance ni effet reconnu
             if move.inflicts_status and random.randint(1, 100) <= move.effect_chance:
-                if defender.apply_status(move.inflicts_status):
+                if self._try_apply_status(defender, move.inflicts_status, attacker):
                     self.add_to_log(f"{defender} est {move.inflicts_status} !")
             if move.stat_changes:
                 for stat, change in move.stat_changes.items():
@@ -1401,13 +1497,43 @@ class Battle(models.Model):
         self.add_to_log(f"{target} subit {amount} points de dégâts !")
 
     def _apply_damage_to_defender(self, attacker, defender, move, damage):
-        """Applique les dégâts au défenseur avec gestion Endure et efficacité."""
+        """Applique les dégâts au défenseur avec gestion Endure, talent et efficacité."""
         if damage <= 0:
             damage = 1 if move.power > 0 else 0
         if damage == 0:
             return
 
-        # Endure : survivre avec 1 PV
+        # ── Ability: on_damage_taken (pré-dégâts) ────────────────────────────
+        ignore_ability = self._pstate(attacker).get('ignore_opponent_ability', False)
+        def_ability    = self._get_ability(defender) if not ignore_ability else None
+        ab_result      = None
+
+        if def_ability:
+            ab_result = def_ability.on_damage_taken(self, defender, damage, move)
+            if ab_result:
+                # --- Blocage total (Levitate, Flash Fire, Volt/Water Absorb…) ---
+                if ab_result.get('block'):
+                    if ab_result.get('message'):
+                        self.add_to_log(ab_result['message'])
+                    heal = ab_result.get('heal', 0)
+                    if heal:
+                        healed = min(defender.max_hp - defender.current_hp, heal)
+                        if healed > 0:
+                            defender.current_hp += healed
+                            defender.save()
+                            self.add_to_log(f"{defender} récupère {healed} PV !")
+                    if ab_result.get('boost_fire'):
+                        self._pstate(defender)['flash_fire_active'] = True
+                        self._save_state()
+                    return  # dégâts bloqués
+
+                # --- Réduction de dégâts (Thick Fat, Filter, Solid Rock…) ---
+                if ab_result.get('power_multiplier'):
+                    damage = max(1, int(damage * ab_result['power_multiplier']))
+                    if ab_result.get('message'):
+                        self.add_to_log(ab_result['message'])
+
+        # ── Endure : survivre avec 1 PV ─────────────────────────────────────
         if self.is_enduring(defender) and defender.current_hp <= damage:
             damage = defender.current_hp - 1
             self.add_to_log(f"{defender} tient le coup !")
@@ -1416,7 +1542,7 @@ class Battle(models.Model):
         defender.save()
         self.add_to_log(f"{defender} subit {damage} points de dégâts !")
 
-        # Efficacité des types
+        # ── Efficacité des types ─────────────────────────────────────────────
         effectiveness = self.get_type_effectiveness(move.type, defender)
         if effectiveness > 1:
             self.add_to_log("C'est super efficace !")
@@ -1425,9 +1551,26 @@ class Battle(models.Model):
         elif effectiveness == 0:
             self.add_to_log("Ça n'a aucun effet !")
 
-        # Marquer que le défenseur a été touché ce tour
+        # ── Marquer que le défenseur a été touché ce tour ───────────────────
         self._pstate(defender)['was_hit_this_turn'] = True
         self._save_state()
+
+        # ── Ability: effets de contact post-dégâts ───────────────────────────
+        if ab_result and move is not None and not defender.is_fainted():
+            if ab_result.get('inflict_status_on_attacker') and not attacker.is_fainted():
+                status = ab_result['inflict_status_on_attacker']
+                if self._try_apply_status(attacker, status):
+                    self.add_to_log(f"{attacker} est affecté ({status}) par le contact !")
+            if ab_result.get('confuse_attacker') and not attacker.is_fainted():
+                if self.confuse(attacker):
+                    self.add_to_log(f"{attacker} est troublé par le charme de {defender} !")
+            if ab_result.get('damage_to_attacker') and not attacker.is_fainted():
+                rebound = ab_result['damage_to_attacker']
+                magic_guard_attacker = self._get_ability(attacker)
+                if not (magic_guard_attacker and magic_guard_attacker.effect_tag == 'magic_guard'):
+                    attacker.current_hp = max(0, attacker.current_hp - rebound)
+                    attacker.save()
+                    self.add_to_log(f"{attacker} est blessé par le contact ! (-{rebound} PV)")
 
     def _calculate_damage_with_power(self, attacker, defender, move, power):
         """Calcule les dégâts en surchargeant la puissance du move."""
@@ -1461,29 +1604,94 @@ class Battle(models.Model):
             attack_stat  = attacker.get_effective_special_attack()
             defense_stat = defender.get_effective_special_defense()
 
+        # ── Ability: modify_stat (Guts, Huge Power, Swift Swim, Marvel Scale…) ──
+        attk_ability = self._get_ability(attacker)
+        if attk_ability:
+            stat_name = 'attack' if move.category == 'physical' else 'special_attack'
+            atk_mult  = attk_ability.modify_stat(stat_name, attacker, self)
+            if atk_mult != 1.0:
+                attack_stat = int(attack_stat * atk_mult)
+
+        def_ability = self._get_ability(defender)
+        if def_ability:
+            stat_name = 'defense' if move.category == 'physical' else 'special_defense'
+            def_mult  = def_ability.modify_stat(stat_name, defender, self)
+            if def_mult != 1.0:
+                defense_stat = int(defense_stat * def_mult)
+            # Marvel Scale: boost défense si statut
+            if def_ability.effect_tag == 'marvel_scale' and defender.status_condition:
+                defense_stat = int(defense_stat * 1.5)
+
         # ── Dégâts de base ────────────────────────────────────────────────────
         damage = (((2 * level / 5 + 2) * move.power * attack_stat / max(1, defense_stat)) / 50) + 2
 
-        # ── STAB ──────────────────────────────────────────────────────────────
-        if (move.type == attacker.species.primary_type or
-                move.type == attacker.species.secondary_type):
+        # ── Ability: on_attack (Blaze, Torrent, Technician, Sheer Force…) ──────
+        power_mult      = 1.0
+        stab_override   = None
+        ignore_opp_ab   = False
+        suppress_second = False
+        double_eff_ch   = False
+
+        if attk_ability:
+            atk_result = attk_ability.on_attack(self, attacker, move, move.power)
+            if atk_result:
+                if atk_result.get('message'):
+                    self.add_to_log(atk_result['message'])
+                power_mult      = atk_result.get('power_multiplier', 1.0)
+                stab_override   = atk_result.get('stab_override')
+                ignore_opp_ab   = atk_result.get('ignore_opponent_ability', False)
+                suppress_second = atk_result.get('suppress_secondary_effect', False)
+                double_eff_ch   = atk_result.get('double_effect_chance', False)
+                # Store flags for _apply_move_effect
+                pst = self._pstate(attacker)
+                pst['sheer_force_active']     = suppress_second
+                pst['serene_grace_active']    = double_eff_ch
+                pst['ignore_opponent_ability'] = ignore_opp_ab
+                self._save_state()
+
+        if power_mult != 1.0:
+            damage *= power_mult
+
+        # ── Flash Fire: boost attaque Feu si actif ────────────────────────────
+        if (attk_ability and attk_ability.effect_tag == 'flash_fire' and
+                hasattr(move.type, 'name') and move.type.name == 'fire' and
+                self._pstate(attacker).get('flash_fire_active')):
             damage *= 1.5
+            self.add_to_log(f"Le talent Feu Intérieur de {attacker} enflamme l'attaque !")
+
+        # ── Solar Power: boost Atq Spé au soleil ──────────────────────────────
+        if (attk_ability and attk_ability.effect_tag == 'solar_power' and
+                move.category == 'special' and self.weather == 'sunny'):
+            damage *= 1.5
+
+        # ── STAB ──────────────────────────────────────────────────────────────
+        if stab_override is not None:
+            if (move.type == attacker.species.primary_type or
+                    move.type == attacker.species.secondary_type):
+                damage *= stab_override
+        else:
+            if (move.type == attacker.species.primary_type or
+                    move.type == attacker.species.secondary_type):
+                damage *= 1.5
 
         # ── Efficacité des types ───────────────────────────────────────────────
         effectiveness = self.get_type_effectiveness(move.type, defender)
-        damage *= effectiveness
+        damage       *= effectiveness
+        self.last_effectiveness = effectiveness  # pour Tinted Lens / Filter
 
         if effectiveness == 0:
             return 0
 
         # ── Coup critique ─────────────────────────────────────────────────────
-        crit_rate = 1 / 16
-        if self.has_focus_energy(attacker):
-            crit_rate = 1 / 4
-        if getattr(move, 'effect', '') in ('high_crit',):
-            crit_rate = min(1.0, crit_rate * 4)
-        if getattr(move, 'effect', '') == 'always_crit':
-            crit_rate = 1.0
+        crit_blocked = (def_ability and def_ability.effect_tag in ('shell_armor', 'battle_armor'))
+        crit_rate    = 0.0 if crit_blocked else 1 / 16
+        if not crit_blocked:
+            if self.has_focus_energy(attacker):
+                crit_rate = 1 / 4
+            if getattr(move, 'effect', '') in ('high_crit',):
+                crit_rate = min(1.0, crit_rate * 4)
+            if getattr(move, 'effect', '') == 'always_crit':
+                crit_rate = 1.0
 
         is_critical = random.random() < crit_rate
         if is_critical:
@@ -1495,7 +1703,9 @@ class Battle(models.Model):
 
         # ── Brûlure : ×0.5 sur physique ───────────────────────────────────────
         if attacker.status_condition == 'burn' and move.category == 'physical':
-            damage *= 0.5
+            # Guts annule le malus de brûlure sur l'Attaque
+            if not (attk_ability and attk_ability.effect_tag == 'guts'):
+                damage *= 0.5
 
         # ── Écrans (Light Screen / Reflect) ────────────────────────────────────
         side = 'opponent' if attacker == self.player_pokemon else 'player'
@@ -1535,6 +1745,10 @@ class Battle(models.Model):
     # =========================================================================
 
     def switch_pokemon(self, trainer_pokemon, new_pokemon):
+        # ── Talent on_switch_out pour le Pokémon sortant ────────────────────────
+        self._fire_switch_out_ability(trainer_pokemon)
+
+        # ── Effectuer le changement ─────────────────────────────────────────────
         if trainer_pokemon == self.player_pokemon:
             self.player_pokemon = new_pokemon
         else:
@@ -1542,12 +1756,15 @@ class Battle(models.Model):
         self.save()
         self.add_to_log(f"{new_pokemon} entre en combat !")
 
+        # ── Talent on_switch_in pour le Pokémon entrant ─────────────────────────
+        self._fire_switch_in_ability(new_pokemon)
+
     # =========================================================================
     # EFFETS DE FIN DE TOUR
     # =========================================================================
 
     def _apply_end_of_turn_effects(self):
-        """Applique tous les effets de fin de tour (météo, statuts, Vampigraine…)."""
+        """Applique tous les effets de fin de tour (météo, statuts, Vampigraine, talents…)."""
         for pkmn in [self.player_pokemon, self.opponent_pokemon]:
             if not pkmn or pkmn.is_fainted():
                 continue
@@ -1555,8 +1772,34 @@ class Battle(models.Model):
             other = (self.opponent_pokemon if pkmn == self.player_pokemon
                      else self.player_pokemon)
 
+            # ── Ability: end_of_turn (Speed Boost, Rain Dish, Poison Heal…) ───
+            pkmn_ability   = self._get_ability(pkmn)
+            has_magic_guard = (pkmn_ability and pkmn_ability.effect_tag == 'magic_guard')
+            has_poison_heal = (pkmn_ability and pkmn_ability.effect_tag == 'poison_heal')
+            block_poison    = False
+
+            if pkmn_ability:
+                eot_result = pkmn_ability.end_of_turn(self, pkmn)
+                if eot_result:
+                    if eot_result.get('message'):
+                        self.add_to_log(eot_result['message'])
+                    if eot_result.get('heal'):
+                        healed = min(pkmn.max_hp - pkmn.current_hp, eot_result['heal'])
+                        if healed > 0:
+                            pkmn.current_hp += healed
+                            pkmn.save()
+                    if eot_result.get('damage') and not has_magic_guard:
+                        pkmn.current_hp = max(0, pkmn.current_hp - eot_result['damage'])
+                        pkmn.save()
+                    if eot_result.get('raise_speed'):
+                        self.modify_stat(pkmn, 'speed', eot_result['raise_speed'])
+                    if eot_result.get('clear_status'):
+                        pkmn.cure_status()
+                        pkmn.save()
+                    block_poison = eot_result.get('block_poison_damage', False)
+
             # ── Leech Seed ────────────────────────────────────────────────────
-            if self.has_leech_seed(pkmn):
+            if self.has_leech_seed(pkmn) and not has_magic_guard:
                 drain_hp = max(1, pkmn.max_hp // 8)
                 pkmn.current_hp = max(0, pkmn.current_hp - drain_hp)
                 pkmn.save()
@@ -1568,7 +1811,7 @@ class Battle(models.Model):
             # ── Trap ──────────────────────────────────────────────────────────
             pst = self._pstate(pkmn)
             trap_turns = pst.get('trap_turns', 0)
-            if trap_turns > 0:
+            if trap_turns > 0 and not has_magic_guard:
                 trap_dmg = max(1, pkmn.max_hp // 8)
                 pkmn.current_hp = max(0, pkmn.current_hp - trap_dmg)
                 pkmn.save()
@@ -1580,14 +1823,14 @@ class Battle(models.Model):
                 self._save_state()
 
             # ── Brûlure ───────────────────────────────────────────────────────
-            if pkmn.status_condition == 'burn':
+            if pkmn.status_condition == 'burn' and not has_magic_guard:
                 burn_dmg = max(1, pkmn.max_hp // 8)
                 pkmn.current_hp = max(0, pkmn.current_hp - burn_dmg)
                 pkmn.save()
                 self.add_to_log(f"{pkmn} souffre de brûlures ! (-{burn_dmg} PV)")
 
             # ── Poison / Poison sévère ─────────────────────────────────────────
-            elif pkmn.status_condition == 'poison':
+            elif pkmn.status_condition == 'poison' and not has_magic_guard and not block_poison:
                 if self.is_badly_poisoned(pkmn):
                     counter = self.get_toxic_counter(pkmn)
                     poison_dmg = max(1, pkmn.max_hp * counter // 16)
