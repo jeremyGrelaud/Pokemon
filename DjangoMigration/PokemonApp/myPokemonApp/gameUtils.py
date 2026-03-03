@@ -106,6 +106,42 @@ def ensure_has_moves(pokemon):
 # 3. CREATION DE POKEMON
 # =============================================================================
 
+def exp_at_level_for_species(species, level):
+    """
+    Retourne l'XP totale cumulee requise pour ATTEINDRE `level`.
+
+    Standalone — utilisable avant que l'instance PlayablePokemon soit
+    sauvegardee en base. Duplique PlayablePokemon.exp_at_level().
+
+    Exemples (medium_fast = n³) :
+        level 3  →    27
+        level 5  →   125
+        level 10 →  1000
+    """
+    n = max(1, min(level, 100))
+    if n <= 1:
+        return 0
+
+    rate = getattr(species, 'growth_rate', 'medium_fast')
+
+    if rate == 'fast':
+        return int(4 * n ** 3 / 5)
+    elif rate == 'medium_slow':
+        return max(0, int(6 * n ** 3 / 5) - 15 * n ** 2 + 100 * n - 140)
+    elif rate == 'slow':
+        return int(5 * n ** 3 / 4)
+    elif rate == 'erratic':
+        if n <= 50:   return int(n ** 3 * (100 - n) / 50)
+        elif n <= 68: return int(n ** 3 * (150 - n) / 100)
+        elif n <= 98: return int(n ** 3 * ((1911 - 10 * n) // 3) / 500)
+        else:         return int(n ** 3 * (160 - n) / 100)
+    elif rate == 'fluctuating':
+        if n <= 15:   return int(n ** 3 * ((n + 1) // 3 + 24) / 50)
+        elif n <= 36: return int(n ** 3 * (n + 14) / 50)
+        else:         return int(n ** 3 * ((n // 2) + 32) / 50)
+    else:  # medium_fast (défaut)
+        return n ** 3
+
 def assign_ability(pokemon, allow_hidden=True):
     """
     Assigne un talent (Ability) a un PlayablePokemon en tirant au sort
@@ -186,7 +222,7 @@ def create_wild_pokemon(species, level, location=None):
         species=species,
         trainer=get_or_create_wild_trainer(),
         level=level,
-        current_exp=0,
+        current_exp=exp_at_level_for_species(species, level),
         original_trainer='Wild',
         caught_location=location,
         is_in_party=True,
@@ -212,7 +248,7 @@ def create_starter_pokemon(species, trainer, nickname=None, is_shiny=False):
         trainer=trainer,
         nickname=nickname,
         level=5,
-        current_exp=0,
+        current_exp=exp_at_level_for_species(species, 5),
         original_trainer=trainer.username,
         caught_location='Pallet Town',
         party_position=1,
