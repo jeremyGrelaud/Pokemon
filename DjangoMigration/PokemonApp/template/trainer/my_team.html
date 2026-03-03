@@ -99,7 +99,20 @@
             </div>
             {% endif %}
 
-            <!-- Moves actifs -->
+            <!-- Talent -->
+            {% if pokemon.ability %}
+            <div class="ability-chip mb-2 {% if pokemon.is_hidden_ability %}ability-hidden{% endif %}">
+              <span class="ability-icon">
+                {% if pokemon.is_hidden_ability %}★{% else %}◆{% endif %}
+              </span>
+              <span class="ability-name">{{ pokemon.ability.name }}</span>
+              <span class="ability-trigger-dot ability-trigger-{{ pokemon.ability.trigger }}"
+                    title="{{ pokemon.ability.get_trigger_label }}"></span>
+              {% if pokemon.ability.description %}
+              <span class="ability-tooltip">{{ pokemon.ability.description }}</span>
+              {% endif %}
+            </div>
+            {% endif %}
             <div class="mb-2">
               <div class="moves-mini-grid">
                 {% for mi in pokemon.pokemonmoveinstance_set.all %}
@@ -167,7 +180,11 @@
                       data-base-spd="{{ pokemon.species.base_special_defense }}"
                       data-base-spe="{{ pokemon.species.base_speed }}"
                       data-shiny="{{ pokemon.is_shiny|yesno:'1,0' }}"
-                      data-species="{{ pokemon.species.name|lowerPokemonFileNames }}">
+                      data-species="{{ pokemon.species.name|lowerPokemonFileNames }}"
+                      data-ability-name="{{ pokemon.ability.name|default:'' }}"
+                      data-ability-hidden="{{ pokemon.is_hidden_ability|yesno:'1,0' }}"
+                      data-ability-trigger="{{ pokemon.ability.get_trigger_label|default:'' }}"
+                      data-ability-desc="{{ pokemon.ability.description|default:'' }}">
                 <i class="fas fa-chart-bar"></i> Stats
               </button>
             </div>
@@ -441,6 +458,16 @@
               <strong>Nature :</strong>
               <span id="smodal-nature" class="fw-bold"></span>
               <span id="smodal-nature-effect" class="text-muted ms-2"></span>
+            </div>
+
+            <!-- Talent -->
+            <div class="mt-2 p-2 rounded" id="smodal-ability-block" style="background:#f5f0ff;font-size:.82rem;display:none;">
+              <i class="fas fa-star text-purple" style="color:#7c3aed;"></i>
+              <strong>Talent :</strong>
+              <span id="smodal-ability-name" class="fw-bold" style="color:#4c1d95;"></span>
+              <span id="smodal-ability-hidden" class="badge ms-1" style="background:#7c3aed;font-size:.65rem;display:none;">CACHÉ</span>
+              <span class="text-muted ms-2" style="font-size:.78rem;" id="smodal-ability-trigger"></span>
+              <div id="smodal-ability-desc" class="text-muted mt-1" style="font-size:.77rem;font-style:italic;"></div>
             </div>
           </div>
 
@@ -974,6 +1001,23 @@ document.addEventListener('click', function(e) {
   document.getElementById('smodal-nature-effect').innerHTML = nat.up
     ? `<span style="color:#27ae60">▲ ${NATURE_FR[nat.up]}</span> / <span style="color:#e74c3c">▼ ${NATURE_FR[nat.down]}</span>`
     : '(neutre)';
+
+  // Talent
+  const abilityName    = btn.dataset.abilityName    || '';
+  const abilityHidden  = btn.dataset.abilityHidden  === '1';
+  const abilityTrigger = btn.dataset.abilityTrigger || '';
+  const abilityDesc    = btn.dataset.abilityDesc    || '';
+  const abilityBlock   = document.getElementById('smodal-ability-block');
+  if (abilityName) {
+    document.getElementById('smodal-ability-name').textContent    = abilityName;
+    document.getElementById('smodal-ability-trigger').textContent = abilityTrigger ? `(${abilityTrigger})` : '';
+    document.getElementById('smodal-ability-desc').textContent    = abilityDesc;
+    const hiddenBadge = document.getElementById('smodal-ability-hidden');
+    hiddenBadge.style.display = abilityHidden ? 'inline-block' : 'none';
+    abilityBlock.style.display = 'block';
+  } else {
+    abilityBlock.style.display = 'none';
+  }
 
   // Tableau IV/EV
   const tbody = document.getElementById('smodal-stats-body');

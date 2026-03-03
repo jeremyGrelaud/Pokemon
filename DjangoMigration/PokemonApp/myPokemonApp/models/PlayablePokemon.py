@@ -136,6 +136,23 @@ class PlayablePokemon(models.Model):
 
     is_shiny = models.BooleanField(default=False)
 
+    # -------------------------------------------------------------------------
+    # Talent individuel
+    # Assigné à la création via assign_ability() dans gameUtils.py.
+    # FK vers Ability pour pouvoir appeler ability.on_switch_in(battle, self), etc.
+    # is_hidden_ability permet à l'UI et au moteur de combat de le signaler
+    # distinctement, et sert de garde-fou pour les effets exclusifs aux talents cachés.
+    # -------------------------------------------------------------------------
+    ability = models.ForeignKey(
+        'Ability',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pokemon_instances',
+        verbose_name='Talent',
+    )
+    is_hidden_ability = models.BooleanField(default=False, verbose_name='Talent caché ?')
+
     @property
     def exp_current_level(self) -> int:
         """XP gagnée depuis le début du niveau actuel (affiché dans my_team)."""

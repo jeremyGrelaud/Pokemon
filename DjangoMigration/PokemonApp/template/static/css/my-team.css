@@ -135,3 +135,97 @@
 
 .move-sort-ghost  { opacity: .25; border: 2px dashed rgba(255,255,255,.6) !important; }
 .move-sort-chosen { box-shadow: 0 4px 16px rgba(0,0,0,.35) !important; transform: scale(1.02); }
+/* ── Talent chip (cartes équipe) ─────────────────────────────────────────── */
+.ability-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  border: 1px solid #c4b5fd;
+  font-size: .72rem;
+  position: relative;
+  cursor: default;
+}
+
+.ability-chip.ability-hidden {
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  border-color: #4338ca;
+  color: #e0e7ff;
+}
+
+.ability-icon {
+  font-size: .7rem;
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+.ability-hidden .ability-icon {
+  color: #a5b4fc;
+}
+
+.ability-name {
+  font-weight: 700;
+  color: #4c1d95;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ability-hidden .ability-name {
+  color: #e0e7ff;
+}
+
+/* Dot coloré selon le trigger */
+.ability-trigger-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ability-trigger-on_switch_in    { background: #f59e0b; }
+.ability-trigger-on_switch_out   { background: #10b981; }
+.ability-trigger-on_damage_taken { background: #ef4444; }
+.ability-trigger-on_attack       { background: #3b82f6; }
+.ability-trigger-on_status       { background: #8b5cf6; }
+.ability-trigger-modify_stat     { background: #6366f1; }
+.ability-trigger-end_of_turn     { background: #14b8a6; }
+.ability-trigger-passive         { background: #94a3b8; }
+.ability-trigger-on_capture      { background: #f97316; }
+
+/* Tooltip au hover */
+.ability-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e1b4b;
+  color: #e0e7ff;
+  font-size: .7rem;
+  padding: 5px 9px;
+  border-radius: 6px;
+  white-space: normal;
+  max-width: 220px;
+  text-align: center;
+  line-height: 1.3;
+  z-index: 100;
+  pointer-events: none;
+  transition: opacity .15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.ability-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1e1b4b;
+}
+.ability-chip:hover .ability-tooltip {
+  visibility: visible;
+  opacity: 1;
+}

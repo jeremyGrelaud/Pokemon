@@ -106,6 +106,35 @@ def ensure_has_moves(pokemon):
 # 3. CREATION DE POKEMON
 # =============================================================================
 
+def assign_ability(pokemon, allow_hidden=True):
+    """
+    Assigne un talent (Ability) a un PlayablePokemon en tirant au sort
+    parmi les slots definis sur son espece.
+
+    Poids de tirage (voir Pokemon.get_ability_pool) :
+      - Talent 1 seul                -> 100 %
+      - Talent 1 + Talent 2          -> 50 % / 50 %
+      - Talent 1 + Talent 2 + Cache  -> 45 % / 45 % / 10 %
+      - Talent 1 + Cache             -> 90 % / 10 %
+
+    Args:
+        pokemon      : PlayablePokemon (non encore sauvegarde ou deja en base)
+        allow_hidden : False pour les starters / creations sans talent cache
+    """
+    pool = pokemon.species.get_ability_pool(allow_hidden=allow_hidden)
+    if not pool:
+        return  # espece sans talent defini, on ne touche a rien
+
+    total = sum(weight for _, weight in pool)
+    roll  = random.uniform(0, total)
+    cumul = 0
+    for ability, weight in pool:
+        cumul += weight
+        if roll <= cumul:
+            pokemon.ability           = ability
+            pokemon.is_hidden_ability = (ability == pokemon.species.hidden_ability)
+            return
+
 def generate_random_nature():
     """Genere une nature aleatoire parmi les 25 natures."""
     return random.choice([
@@ -165,6 +194,7 @@ def create_wild_pokemon(species, level, location=None):
         nature=generate_random_nature(),
         **_build_ivs(0, 31)
     )
+    assign_ability(pokemon, allow_hidden=True)  # les sauvages peuvent avoir le talent cache
     _finalize_pokemon(pokemon, level)
     ensure_has_moves(pokemon)
     return pokemon
@@ -190,6 +220,7 @@ def create_starter_pokemon(species, trainer, nickname=None, is_shiny=False):
         nature=generate_random_nature(),
         **_build_ivs(10, 31)
     )
+    assign_ability(pokemon, allow_hidden=False)  # starters : talents normaux seulement
     return _finalize_pokemon(pokemon, 5)
 
 
@@ -227,6 +258,7 @@ def _create_npc_pokemon(species, trainer, level, username, party_position,
     )
     pokemon.calculate_stats()
     pokemon.current_hp = pokemon.max_hp
+    assign_ability(pokemon, allow_hidden=False)  # NPCs : talents normaux seulement
     pokemon.save()
     return pokemon
 

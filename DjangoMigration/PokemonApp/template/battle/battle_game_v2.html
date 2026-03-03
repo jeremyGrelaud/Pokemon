@@ -132,6 +132,11 @@
               </span>
               {% endif %}
             </div>
+            <!-- Talent adverse (révélé seulement si le talent s'est déclenché — géré en JS) -->
+            <div id="opponent-ability-badge" class="ability-battle-badge d-none"
+                 data-ability="{{ battle.opponent_pokemon.ability.name|default:'' }}"
+                 data-hidden="{{ battle.opponent_pokemon.is_hidden_ability|yesno:'1,0' }}">
+            </div>
           </div>
       </div>
 
@@ -224,6 +229,15 @@
               {% endif %}
             </div>
 
+            <!-- Talent joueur (toujours visible) -->
+            {% if battle.player_pokemon.ability %}
+            <div class="ability-battle-badge {% if battle.player_pokemon.is_hidden_ability %}ability-battle-hidden{% endif %}"
+                 id="player-ability-badge"
+                 title="{{ battle.player_pokemon.ability.description }}">
+              <span>{% if battle.player_pokemon.is_hidden_ability %}★{% else %}◆{% endif %}</span>
+              <span id="player-ability-name">{{ battle.player_pokemon.ability.name }}</span>
+            </div>
+            {% endif %}
 
           </div>
       </div>
@@ -847,6 +861,66 @@ window.__battleInProgress = true;
     if (w) loadWeatherVideo(w);
   });
 })();
+</script>
+
+<script>
+/* ── Talent adverse : révélation au log ─────────────────────────────────
+   Appelé par battle-game.js quand un message de talent arrive dans le log.
+   Affiche le badge talent de l'adversaire et fait clignoter les deux badges.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Révèle le talent de l'adversaire dans l'info-bar.
+ * Appelé par battle-game.js dès qu'un message contient le mot "talent".
+ */
+function revealOpponentAbility() {
+  const badge = document.getElementById('opponent-ability-badge');
+  if (!badge) return;
+
+  const abilityName = badge.dataset.ability;
+  if (!abilityName || badge._revealed) return;
+
+  const isHidden = badge.dataset.hidden === '1';
+  badge.innerHTML =
+    `<span>${isHidden ? '★' : '◆'}</span><span>${abilityName}</span>`;
+  badge.classList.remove('d-none');
+  if (isHidden) badge.classList.add('ability-battle-hidden');
+  badge._revealed = true;
+}
+
+/**
+ * Fait clignoter le badge talent du camp indiqué ('player' ou 'opponent').
+ * Appelé par battle-game.js quand on reçoit un event d'activation de talent.
+ */
+function flashAbilityBadge(side) {
+  const badge = document.getElementById(side + '-ability-badge');
+  if (!badge) return;
+  badge.classList.remove('ability-flash');
+  // Force le reflow pour rejouer l'animation
+  void badge.offsetWidth;
+  badge.classList.add('ability-flash');
+  badge.addEventListener('animationend', () => badge.classList.remove('ability-flash'), { once: true });
+}
+
+/**
+ * Met à jour le talent affiché (après Trace ou Skill Swap).
+ * @param {string} side   - 'player' ou 'opponent'
+ * @param {string} name   - Nouveau nom du talent
+ * @param {boolean} hidden - Talent caché ?
+ */
+function updateAbilityBadge(side, name, hidden = false) {
+  const badge = document.getElementById(side + '-ability-badge');
+  if (!badge) return;
+  badge.innerHTML = `<span>${hidden ? '★' : '◆'}</span><span>${name}</span>`;
+  badge.classList.remove('d-none', 'ability-battle-hidden');
+  if (hidden) badge.classList.add('ability-battle-hidden');
+  flashAbilityBadge(side);
+}
+
+// Expose globalement pour battle-game.js
+window.revealOpponentAbility = revealOpponentAbility;
+window.flashAbilityBadge     = flashAbilityBadge;
+window.updateAbilityBadge    = updateAbilityBadge;
 </script>
 
 {% endblock js %}
