@@ -495,8 +495,6 @@ function _tmrFillMoves(moves) {
     return;
   }
 
-  const CAT_ICON = { physical: '⚔️', special: '✨', status: '💫' };
-
   grid.innerHTML = moves.map(m => `
     <div class="tm-replace-move-card badge-type-${(m.type || 'normal').toLowerCase()}"
          data-move-id="${m.id}" data-move-name="${_esc(m.name)}"
@@ -504,8 +502,8 @@ function _tmrFillMoves(moves) {
       <div class="mc-forget-icon"><i class="fas fa-times"></i></div>
       <div class="mc-name">${m.name}</div>
       <div class="mc-meta">
-        <span>${CAT_ICON[m.category] || ''} ${m.category}</span>
-        ${m.power ? `<span>💥 ${m.power}</span>` : ''}
+        <span><img src="/static/img/movesTypesSprites/move-${m.category}.png" alt="${m.category}" title="${m.category}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:3px;"> ${m.category}</span>
+        ${m.power ? `<span> ${m.power}</span>` : ''}
         <span style="margin-left:auto;opacity:.7;">${m.current_pp}/${m.pp} PP</span>
       </div>
     </div>`).join('');
