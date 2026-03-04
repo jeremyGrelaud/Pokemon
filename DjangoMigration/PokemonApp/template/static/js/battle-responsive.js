@@ -3,13 +3,6 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Gère le passage entre le canvas 1280×540 (full) et 960×540 (compact)
  * selon la largeur disponible, en conservant sprites & UI parfaitement centrés.
- *
- * USAGE : inclure ce fichier APRÈS battle-animations.css et battle-responsive.css
- *   <script src="{% static 'js/battle-responsive.js' %}"></script>
- *
- * Ce script REMPLACE (ou wrape) toute fonction de scaling existante dans
- * battle-game.js. Si battle-game.js définit déjà une fonction scaleBattleScene(),
- * renommez-la en _scaleBattleScene_legacy() et appelez scaleBattleScene() ici.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -25,7 +18,6 @@
    * Seuil en pixels en dessous duquel on bascule en mode compact.
    * 1100px = on active le compact dès que l'écran n'a pas la place
    * d'afficher 1280px à scale ≥ 0.86 environ.
-   * Ajustez cette valeur selon vos préférences UI.
    */
   const COMPACT_THRESHOLD = 1100;
 
@@ -58,17 +50,6 @@
     const scale = Math.min(availableW / referenceW, 1);
 
     /* ── 4. Application du transform sur la scène ───────────────────────── */
-    //
-    //  POURQUOI "top center" et pas "top left" ?
-    //  ─────────────────────────────────────────
-    //  Le wrapper est un flex-container (justify-content: center).
-    //  Flex centre la boîte CSS de la scène, qui mesure toujours referenceW px
-    //  en layout (le scale ne change pas la boîte). Avec "top left" le point
-    //  d'origine du scale est le coin haut-gauche de cette boîte centrée, ce
-    //  qui décale tout le contenu visuel vers la droite.
-    //  Avec "top center" l'origine est l'axe central de la boîte :
-    //  la scène se réduit symétriquement de chaque côté → centrage parfait.
-    //
     scene.style.transform       = `scale(${scale})`;
     scene.style.transformOrigin = 'top center';
     scene.style.marginLeft      = '';   // reset tout marginLeft manuel
@@ -80,7 +61,6 @@
     wrapper.style.height = renderedH + 'px';
 
     /* ── 6. Classes body pour le panel d'action (existantes) ────────────── */
-    //  On conserve la logique battle-lg / battle-md / battle-sm sur <body>
     document.body.classList.remove('battle-lg', 'battle-md', 'battle-sm');
     if (availableW >= 1280) {
       document.body.classList.add('battle-lg');
