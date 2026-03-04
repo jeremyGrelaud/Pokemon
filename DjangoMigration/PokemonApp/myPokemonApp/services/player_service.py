@@ -40,37 +40,27 @@ ZONE_TRANSLATIONS = {
 
 def get_player_trainer(user):
     """
-    Récupère le Trainer du joueur connecté (404 si inexistant).
-
-    À utiliser dans les vues où le Trainer est garanti d'exister déjà
-    (après le flow choose_starter). Pour les nouveaux joueurs, préférer
-    get_or_create_player_trainer().
-
-    Usage :
-        trainer = get_player_trainer(request.user)
+    Récupère le Trainer du joueur connecté via sa FK User (404 si inexistant).
+    Utilise user.pk (stable) et non user.username (mutable/réutilisable).
     """
     from django.shortcuts import get_object_or_404
     from myPokemonApp.models import Trainer
-    return get_object_or_404(Trainer, username=user.username)
+    return get_object_or_404(Trainer, user=user, trainer_type='player')
 
 
 def get_or_create_player_trainer(user):
     """
     Récupère ou crée le Trainer associé à un utilisateur Django.
-
-    Centralise le pattern répété dans chaque vue :
-        trainer, _ = Trainer.objects.get_or_create(
-            username=request.user.username,
-            defaults={'trainer_type': 'player'}
-        )
-
-    Usage :
-        trainer = get_or_create_player_trainer(request.user)
+    Lie le Trainer au User via FK — garantit qu'un nouveau compte
+    avec un username recyclé ne récupère pas l'ancienne progression.
     """
     from myPokemonApp.models import Trainer
     trainer, _ = Trainer.objects.get_or_create(
-        username=user.username,
-        defaults={'trainer_type': 'player'}
+        user=user,
+        defaults={
+            'trainer_type': 'player',
+            'username': user.username,   # conservé pour l'affichage / __str__
+        }
     )
     return trainer
 

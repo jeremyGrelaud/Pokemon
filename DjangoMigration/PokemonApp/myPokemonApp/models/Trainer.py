@@ -6,6 +6,7 @@ from django.db import models
 from .Item import Item
 from .PokemonMove import PokemonMove
 from .PokemonType import PokemonType
+from django.conf import settings
 class Trainer(models.Model):
     """Dresseur de base"""
     
@@ -19,6 +20,15 @@ class Trainer(models.Model):
         ('wild', 'Sauvage'),
     ]
     
+    # Lien vers le compte Django — uniquement pour trainer_type='player'.
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='player_trainer',
+    )
+
     username = models.CharField(max_length=50)
     trainer_type = models.CharField(max_length=20, choices=TRAINER_TYPES)
     
