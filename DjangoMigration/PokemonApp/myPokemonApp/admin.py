@@ -235,13 +235,13 @@ class PokemonMoveInstanceAdmin(QuietModelAdmin):
 
 @admin.register(Trainer)
 class TrainerAdmin(QuietModelAdmin):
-    list_display  = ('username', 'trainer_type', 'npc_class', 'money', 'badges', 'pokemon_count', 'location', 'is_npc')
+    list_display  = ('username', 'user', 'trainer_type', 'npc_class', 'money', 'badges', 'pokemon_count', 'location', 'is_npc')
     list_filter   = ('trainer_type', 'is_npc', 'is_defeated', 'can_rebattle')
     search_fields = ('username', 'location', 'npc_class')
     inlines       = [PlayablePokemonInline, TrainerInventoryInline]
 
     fieldsets = (
-        ('Identité',    {'fields': ('username', 'trainer_type', 'location', 'sprite_name')}),
+        ('Identité',    {'fields': ('username', 'user', 'trainer_type', 'location', 'sprite_name')}),
         ('Progression', {'fields': ('money', 'badges')}),
         ('NPC', {'fields': ('is_npc', 'npc_class', 'is_defeated', 'can_rebattle', 'intro_text', 'defeat_text', 'victory_text'), 'classes': ('collapse',)}),
     )
