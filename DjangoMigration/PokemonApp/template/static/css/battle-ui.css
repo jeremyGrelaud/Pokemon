@@ -488,3 +488,38 @@
   color: black;
   font-weight: 500;
 }
+/* ── Talent badge en combat ──────────────────────────────────────────────── */
+.ability-battle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.18);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  color: #ddd6fe;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 130px;
+  text-overflow: ellipsis;
+}
+
+.ability-battle-badge.ability-battle-hidden {
+  background: rgba(67, 56, 202, 0.35);
+  border-color: #818cf8;
+  color: #e0e7ff;
+}
+
+/* Clignotement quand le talent vient de s'activer */
+@keyframes abilityActivate {
+  0%   { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.8); }
+  50%  { box-shadow: 0 0 8px 4px rgba(124, 58, 237, 0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+}
+.ability-battle-badge.ability-flash {
+  animation: abilityActivate 0.6s ease-out;
+}
