@@ -1073,7 +1073,7 @@ function getElementCenter(element) {
   const elRect    = el.getBoundingClientRect();
 
   // scale effectif de la scène (sceneRect.width / 1280)
-  const scale = sceneRect.width / 1280;
+  const scale = sceneRect.width / scene.offsetWidth;
 
   // Coordonnées viewport centrées sur l'élément, relatives au coin haut-gauche de la scène
   const viewX = elRect.left + elRect.width  / 2 - sceneRect.left;

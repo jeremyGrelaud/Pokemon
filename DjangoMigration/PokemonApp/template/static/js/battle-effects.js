@@ -154,7 +154,7 @@ class BattleEffects {
     if (!scene) return { x: 0, y: 0 };
     const sceneRect = scene.getBoundingClientRect();
     const r = el.getBoundingClientRect();
-    const scale = sceneRect.width / 1280;
+    const scale = sceneRect.width / scene.offsetWidth;
     return {
       x: (r.left + r.width  / 2 - sceneRect.left) / scale,
       y: (r.top  + r.height / 2 - sceneRect.top)  / scale,
