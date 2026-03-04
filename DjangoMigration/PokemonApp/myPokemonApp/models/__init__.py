@@ -23,3 +23,4 @@ from .Zone import *
 from .Achievements import *
 from .Quest import *
 from .Ability import Ability
+from .MoveEffects import *
