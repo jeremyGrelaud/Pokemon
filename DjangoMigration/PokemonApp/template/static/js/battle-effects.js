@@ -161,6 +161,11 @@ class BattleEffects {
     };
   }
 
+  // Exposer pour usage externe
+  getCenter(el) {
+    return this._getCenter(el);
+  }
+
   /**
    * Convertit une position {x, y} en coordonnées CSS pour un sprite
    * (positionne le centre de l'image au point x, y)
