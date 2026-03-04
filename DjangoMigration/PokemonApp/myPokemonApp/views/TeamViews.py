@@ -34,7 +34,7 @@ class MyTeamView(generic.ListView):
     model = PlayablePokemon
     template_name = "trainer/my_team.html"
     context_object_name = 'team'
-    
+
     def get_queryset(self):
         trainer = get_or_create_player_trainer(self.request.user)
         return trainer.party   # Trainer.party property
@@ -43,10 +43,23 @@ class MyTeamView(generic.ListView):
         context = super().get_context_data(**kwargs)
         trainer = get_or_create_player_trainer(self.request.user)
 
+        # Inventaire complet, pré-chargé
+        full_inventory = (
+            trainer.inventory
+            .all()
+            .select_related('item', 'item__tm_move', 'item__tm_move__type')
+            .order_by('item__item_type', 'item__tm_number', 'item__name')
+        )
+
+        # Séparer objets normaux et CT/CS
+        regular_inventory = full_inventory.exclude(item__item_type__in=('tm', 'cs'))
+        tm_inventory      = full_inventory.filter(item__item_type__in=('tm', 'cs'))
+
         context.update({
             'trainer':    trainer,
-            'pc_pokemon': trainer.pc.order_by('species__pokedex_number'),  # Trainer.pc property
-            'inventory':  trainer.inventory.all().select_related('item'),
+            'pc_pokemon': trainer.pc.order_by('species__pokedex_number'),
+            'inventory':  regular_inventory,
+            'tm_inventory': tm_inventory,
         })
         return context
 
@@ -160,9 +173,10 @@ def swap_move_api(request):
         trainer = get_or_create_player_trainer(request.user)
         pokemon = get_object_or_404(PlayablePokemon, pk=pokemon_id, trainer=trainer)
 
-        # Vérifier que le move est apprenable
+        # Vérifier que le move est apprenable PAR NIVEAU (pas via TM)
         learnable = pokemon.species.learnable_moves.filter(
             move_id=add_id,
+            learn_method='level',
             level_learned__lte=pokemon.level
         ).first()
         if not learnable:
@@ -211,6 +225,7 @@ def get_pokemon_moves_api(request):
     moves = serialize_pokemon_moves(pokemon)
 
     learnable_qs = pokemon.species.learnable_moves.filter(
+        learn_method='level',
         level_learned__lte=pokemon.level
     ).select_related('move', 'move__type').order_by('level_learned')
 
