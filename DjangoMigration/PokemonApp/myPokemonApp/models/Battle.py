@@ -26,6 +26,7 @@ from .PokemonMove import PokemonMove
 from .Trainer import Trainer
 from .PlayablePokemon import PlayablePokemon
 from .Trainer import TrainerInventory
+from .MoveEffects import EFFECT_REGISTRY, SECONDARY_STAT_EFFECTS
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -582,22 +583,36 @@ class Battle(models.Model):
             first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
             second = (self.player_pokemon, player_action, self.opponent_pokemon)
             player_first = False
-        elif player_speed > opponent_speed:
-            first  = (self.player_pokemon, player_action, self.opponent_pokemon)
-            second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
-            player_first = True
-        elif opponent_speed > player_speed:
-            first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
-            second = (self.player_pokemon, player_action, self.opponent_pokemon)
-            player_first = False
         else:
-            player_first = random.choice([True, False])
-            if player_first:
+            # ── Salle Bizarre : inverser la comparaison de vitesse ──────────
+            trick_room = self._bstate().get('trick_room_turns', 0) > 0
+            p_speed    = self.player_pokemon.get_effective_speed()
+            o_speed    = self.opponent_pokemon.get_effective_speed()
+            # Tailwind : ×2 sur la vitesse effective du côté concerné
+            if self._bstate().get('player_tailwind', 0) > 0:
+                p_speed *= 2
+            if self._bstate().get('opponent_tailwind', 0) > 0:
+                o_speed *= 2
+
+            player_faster = (p_speed < o_speed) if trick_room else (p_speed > o_speed)
+            opponent_faster = (o_speed < p_speed) if trick_room else (o_speed > p_speed)
+
+            if player_faster:
                 first  = (self.player_pokemon, player_action, self.opponent_pokemon)
                 second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
-            else:
+                player_first = True
+            elif opponent_faster:
                 first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
                 second = (self.player_pokemon, player_action, self.opponent_pokemon)
+                player_first = False
+            else:
+                player_first = random.choice([True, False])
+                if player_first:
+                    first  = (self.player_pokemon, player_action, self.opponent_pokemon)
+                    second = (self.opponent_pokemon, opponent_action, self.player_pokemon)
+                else:
+                    first  = (self.opponent_pokemon, opponent_action, self.player_pokemon)
+                    second = (self.player_pokemon, player_action, self.opponent_pokemon)
 
         # Helper pour extraire infos du move depuis une action
         def _move_info(action):
@@ -706,6 +721,38 @@ class Battle(models.Model):
         if self.is_move_disabled(attacker, move):
             self.add_to_log(f"{move.name} de {attacker} est neutralisé !")
             return
+
+        # ── Encore : forcer le move encored ──────────────────────────────────
+        pst_attacker = self._pstate(attacker)
+        encore_turns = pst_attacker.get('encore_turns', 0)
+        if encore_turns > 0:
+            encored_name = pst_attacker.get('encore_move')
+            if encored_name and move.name != encored_name:
+                try:
+                    move = PokemonMove.objects.get(name=encored_name)
+                    move_instance = PokemonMoveInstance.objects.get(
+                        pokemon=attacker, move=move
+                    )
+                    self.add_to_log(f"{attacker} est forcé d'utiliser {move.name} (Encore) !")
+                except (PokemonMove.DoesNotExist, PokemonMoveInstance.DoesNotExist):
+                    pass
+
+        # ── Raillerie (Taunt) : interdit les moves de statut ─────────────────
+        if pst_attacker.get('taunt_turns', 0) > 0:
+            if not move.power or move.power == 0:
+                self.add_to_log(
+                    f"{attacker} est raillé et ne peut pas utiliser {move.name} !"
+                )
+                return
+
+        # ── Tourment (Torment) : interdit de répéter le même move ────────────
+        if pst_attacker.get('torment'):
+            last = pst_attacker.get('last_move_used')
+            if last and last == move.name:
+                self.add_to_log(
+                    f"{attacker} est sous Tourment et ne peut pas répéter {move.name} !"
+                )
+                return
 
         # ── Vérifier le rechargement (Hyper Beam…) ────────────────────────────
         if self.needs_recharge(attacker):
@@ -821,6 +868,15 @@ class Battle(models.Model):
         move_instance.use()
         self.add_to_log(f"{attacker} utilise {move.name} !")
 
+        # ── Tracker le dernier move utilisé (pour Encore / Tourment) ─────────
+        self._pstate(attacker)['last_move_used'] = move.name
+        if encore_turns > 0:
+            self._pstate(attacker)['encore_turns'] = encore_turns - 1
+            if self._pstate(attacker)['encore_turns'] == 0:
+                self._pstate(attacker).pop('encore_move', None)
+                self.add_to_log(f"{attacker} n'est plus sous l'effet d'Encore !")
+        self._save_state()
+
         # ── Métronome ─────────────────────────────────────────────────────────
         if move.effect == 'metronome' or move.effect == 'random_move':
             all_moves = list(PokemonMove.objects.exclude(name__in=['Metronome', 'Struggle']))
@@ -860,296 +916,46 @@ class Battle(models.Model):
     # =========================================================================
 
     def _apply_move_effect(self, attacker, defender, move, move_instance=None):
-        """Dispatcher central de tous les effets de moves."""
+        """Dispatcher central : délègue à EFFECT_REGISTRY, puis gère les effets de dégâts."""
 
         effect = move.effect or ''
 
-        # ─── Moves de statut purs (pas de dégâts) ─────────────────────────────
-
-        if effect == 'leech_seed':
-            if 'grass' in (
-                getattr(defender.species.primary_type, 'name', ''),
-                getattr(defender.species.secondary_type, 'name', '') if defender.species.secondary_type else ''
-            ):
-                self.add_to_log(f"Ça n'a aucun effet sur {defender} !")
-            elif self.has_leech_seed(defender):
-                self.add_to_log(f"{defender} est déjà sous Vampigraine !")
+        # ═════════════════════════════════════════════════════════════════════
+        # 1. REGISTRE — effets purs et pré-traitements (protect, météo, etc.)
+        # ═════════════════════════════════════════════════════════════════════
+        handler = EFFECT_REGISTRY.get(effect)
+        if handler is not None:
+            # Pour les StatBoostEffect : ne s'applique qu'en move pur (power==0)
+            from .MoveEffects import StatBoostEffect
+            if isinstance(handler, StatBoostEffect) and (move.power or 0) > 0:
+                pass   # Effet secondaire → géré plus bas avec effect_chance
             else:
-                if self.apply_leech_seed(defender):
-                    self.add_to_log(f"{defender} est planté avec Vampigraine !")
-            return
+                handled = handler.apply(self, attacker, defender, move)
+                if handled:
+                    return
+                # handled=False → pré-traitement fait (break_barrier…), on continue
 
-        if effect == 'confuse':
-            if self.is_confused(defender):
-                self.add_to_log(f"{defender} est déjà confus !")
-            elif self.confuse(defender):
-                self.add_to_log(f"{defender} est maintenant confus !")
-            return
+        # ═════════════════════════════════════════════════════════════════════
+        # 2. EFFETS DE DÉGÂTS SPÉCIAUX
+        # ═════════════════════════════════════════════════════════════════════
 
-        if effect == 'confuse_raise_spatk':
-            self.modify_stat(attacker, 'special_attack', 1)
-            if not self.is_confused(defender):
-                self.confuse(defender)
-                self.add_to_log(f"{defender} est maintenant confus !")
-            return
-
-        if effect == 'heal_half':
-            healed = min(attacker.max_hp - attacker.current_hp, attacker.max_hp // 2)
-            attacker.current_hp += healed
-            attacker.save()
-            self.add_to_log(f"{attacker} récupère {healed} PV !")
-            return
-
-        if effect == 'heal_sleep':   # Rest
-            attacker.current_hp       = attacker.max_hp
-            attacker.status_condition = 'sleep'
-            attacker.sleep_turns      = 2
-            attacker.save()
-            self.add_to_log(f"{attacker} se repose et récupère tous ses PV !")
-            return
-
-        if effect == 'ingrain':
-            self.set_ingrain(attacker)
-            self.add_to_log(f"{attacker} s'enracine dans le sol !")
-            return
-
-        if effect == 'focus_energy':
-            self.set_focus_energy(attacker)
-            self.add_to_log(f"{attacker} se concentre pour viser les points vitaux !")
-            return
-
-        if effect == 'destiny_bond':
-            self.set_destiny_bond(attacker)
-            self.add_to_log(f"{attacker} veut emporter son adversaire avec lui !")
-            return
-
-        if effect == 'nightmare':
-            if defender.status_condition == 'sleep':
-                self.set_nightmare(defender)
-                self.add_to_log(f"{defender} est plongé dans des cauchemars !")
-            else:
-                self.add_to_log(f"Ça n'a aucun effet !")
-            return
-
-        if effect == 'pain_split':
-            avg = (attacker.current_hp + defender.current_hp) // 2
-            attacker.current_hp = min(attacker.max_hp, avg)
-            defender.current_hp = min(defender.max_hp, avg)
-            attacker.save()
-            defender.save()
-            self.add_to_log(f"Les deux Pokémon partagent leurs PV !")
-            return
-
-        if effect == 'reset_stats':  # Brume
-            for pkmn in [attacker, defender]:
-                pkmn.attack_stage = pkmn.defense_stage = 0
-                pkmn.special_attack_stage = pkmn.special_defense_stage = 0
-                pkmn.speed_stage = pkmn.accuracy_stage = pkmn.evasion_stage = 0
-                pkmn.save()
-            self.add_to_log("Les modifications de stats ont été annulées !")
-            return
-
-        if effect == 'copy_stat_changes':  # Psych Up
-            attacker.attack_stage         = defender.attack_stage
-            attacker.defense_stage        = defender.defense_stage
-            attacker.special_attack_stage = defender.special_attack_stage
-            attacker.special_defense_stage= defender.special_defense_stage
-            attacker.speed_stage          = defender.speed_stage
-            attacker.save()
-            self.add_to_log(f"{attacker} copie les modifications de stats de {defender} !")
-            return
-
-        if effect == 'force_switch':
-            if self.battle_type == 'wild':
-                defender.current_hp = 0
-                defender.save()
-                self.add_to_log(f"{defender} est repoussé !")
-            else:
-                self.add_to_log(f"Ça n'a aucun effet en combat de dresseur !")
-            return
-
-        if effect == 'disable':
-            self.disable_move(defender)
-            return
-
-        if effect == 'transform':
-            # Copier les stats de base (simplifié)
-            self.add_to_log(f"{attacker} se transforme en {defender.species.name} !")
-            return
-
-        if effect == 'prevent_stat_lower':  # Brume
-            self._pstate(attacker)['mist'] = 5
-            self._save_state()
-            self.add_to_log(f"{attacker} est enveloppé de Brume !")
-            return
-
-        # ─── Météo ─────────────────────────────────────────────────────────────
-
-        if effect == 'sunny_day':
-            self.set_weather('sunny')
-            self.add_to_log("Le soleil brille intensément !")
-            return
-
-        if effect == 'rain_dance':
-            self.set_weather('rain')
-            self.add_to_log("Une pluie torrentielle s'abat sur le terrain !")
-            return
-
-        if effect == 'sandstorm':
-            self.set_weather('sandstorm')
-            self.add_to_log("Une tempête de sable se déclenche !")
-            return
-
-        if effect == 'hail':
-            self.set_weather('hail')
-            self.add_to_log("Il commence à grêler !")
-            return
-
-        # ─── Écrans ────────────────────────────────────────────────────────────
-
-        if effect == 'light_screen':
-            side = 'player' if attacker == self.player_pokemon else 'opponent'
-            self.set_screen(side, 'light_screen')
-            self.add_to_log(f"{attacker} érige un Écran Lumière !")
-            return
-
-        if effect == 'reflect':
-            side = 'player' if attacker == self.player_pokemon else 'opponent'
-            self.set_screen(side, 'reflect')
-            self.add_to_log(f"{attacker} érige un Mur !")
-            return
-
-        # ─── Break barrières ───────────────────────────────────────────────────
-
-        if effect == 'break_barrier':
-            side = 'opponent' if attacker == self.player_pokemon else 'player'
-            self._bstate().pop(f'{side}_light_screen', None)
-            self._bstate().pop(f'{side}_reflect', None)
-            self._save_state()
-            # Puis dégâts normaux
-
-        # ─── Moves de stat purs ────────────────────────────────────────────────
-
-        # Dictionnaire des effets stat pour éviter le code répété
-        STAT_EFFECTS = {
-            'raise_attack':                 [('attack', 1, attacker)],
-            'raise_defense':                [('defense', 1, attacker)],
-            'raise_special_attack':         [('special_attack', 1, attacker)],
-            'raise_special_defense':        [('special_defense', 1, attacker)],
-            'raise_speed':                  [('speed', 1, attacker)],
-            'raise_evasion':                [('evasion', 1, attacker)],
-            'raise_accuracy':               [('accuracy', 1, attacker)],
-            'raise_attack_defense':         [('attack', 1, attacker), ('defense', 1, attacker)],
-            'raise_attack_speed':           [('attack', 1, attacker), ('speed', 1, attacker)],
-            'raise_attack_accuracy':        [('attack', 1, attacker), ('accuracy', 1, attacker)],
-            'raise_special_attack_special_defense': [('special_attack', 1, attacker), ('special_defense', 1, attacker)],
-            'raise_defense_special_defense': [('defense', 1, attacker), ('special_defense', 1, attacker)],
-            'raise_all_stats':              [('attack', 1, attacker), ('defense', 1, attacker),
-                                             ('special_attack', 1, attacker), ('special_defense', 1, attacker),
-                                             ('speed', 1, attacker)],
-            'sharply_raise_attack':         [('attack', 2, attacker)],
-            'sharply_raise_defense':        [('defense', 2, attacker)],
-            'sharply_raise_special_attack': [('special_attack', 2, attacker)],
-            'sharply_raise_special_defense':[('special_defense', 2, attacker)],
-            'sharply_raise_speed':          [('speed', 2, attacker)],
-            'raise_attack_speed_sharply':   [('attack', 1, attacker), ('speed', 2, attacker)],
-            'raise_attack_special_attack_speed_sharply_lower_defense_special_defense':
-                                            [('attack', 2, attacker), ('special_attack', 2, attacker),
-                                             ('speed', 2, attacker), ('defense', -1, attacker),
-                                             ('special_defense', -1, attacker)],
-
-            'lower_attack':                 [('attack', -1, defender)],
-            'lower_defense':                [('defense', -1, defender)],
-            'lower_special_defense':        [('special_defense', -1, defender)],
-            'lower_speed':                  [('speed', -1, defender)],
-            'lower_accuracy':               [('accuracy', -1, defender)],
-            'lower_evasion':                [('evasion', -1, defender)],
-            'lower_sp_atk':                 [('special_attack', -1, defender)],
-            'lower_special_attack':         [('special_attack', -1, defender)],
-            'lower_attack_defense':         [('attack', -1, attacker), ('defense', -1, attacker)],
-            'lower_defense_special_defense':[('defense', -1, attacker), ('special_defense', -1, attacker)],
-            'sharply_lower_attack':         [('attack', -2, defender)],
-            'sharply_lower_defense':        [('defense', -2, defender)],
-            'sharply_lower_special_attack': [('special_attack', -2, attacker)],
-            'sharply_lower_special_defense':[('special_defense', -2, defender)],
-            'lower_special_attack_opponent':[('special_attack', -2, defender)],
-        }
-
-        if effect in STAT_EFFECTS and move.power == 0:
-            for stat_name, stages, target in STAT_EFFECTS[effect]:
-                self.modify_stat(target, stat_name, stages)
-            return
-
-        # ─── max_attack_half_hp (Belly Drum) ────────────────────────────────────
-
-        if effect == 'max_attack_half_hp':
-            cost = attacker.max_hp // 2
-            if attacker.current_hp <= cost:
-                self.add_to_log(f"{attacker} n'a pas assez de PV !")
-                return
-            attacker.current_hp -= cost
-            attacker.attack_stage = 6
-            attacker.save()
-            self.add_to_log(f"{attacker} se sacrifie pour maximiser son Attaque !")
-            return
-
-        # ─── Refresh ──────────────────────────────────────────────────────────
-
-        if effect == 'refresh':
-            if attacker.status_condition:
-                attacker.cure_status()
-                self.add_to_log(f"{attacker} guérit son statut !")
-            else:
-                self.add_to_log(f"Ça n'a aucun effet !")
-            return
-
-        # ─── Cure team status (Heal Bell, Aromatherapy) ───────────────────────
-
-        if effect == 'cure_team_status':
-            team = attacker.trainer.pokemon_team.filter(is_in_party=True)
-            for pkmn in team:
-                pkmn.cure_status()
-            self.add_to_log("Tous les Pokémon de l'équipe sont guéris !")
-            return
-
-        # ─── Random power (Magnitude) ─────────────────────────────────────────
-
-        if effect == 'random_power':
-            magnitudes = [(10, 4), (20, 8), (30, 14), (50, 19), (70, 24),
-                          (90, 29), (110, 34), (150, 39), (80, 44), (120, 49)]
-            r = random.randint(0, 50)
-            power = 70  # default Mag7
-            mag_level = 7
-            for p, threshold in magnitudes:
-                if r <= threshold:
-                    power     = p
-                    mag_level = magnitudes.index((p, threshold)) + 1
-                    break
-            self.add_to_log(f"Magnitude {mag_level} !")
-            move._temp_power = power
-            # Calculer les dégâts avec la puissance aléatoire
-            damage = self._calculate_damage_with_power(attacker, defender, move, power)
-            self._apply_damage_to_defender(attacker, defender, move, damage)
-            return
-
-        # ─── Superpower (lower_attack_defense sur soi) ──────────────────────────
-
-        if effect == 'lower_attack_defense' and move.power > 0:
+        # ─── Superpower (lower_attack_defense sur soi + dégâts) ─────────────
+        if effect == 'lower_attack_defense' and (move.power or 0) > 0:
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
             self.modify_stat(attacker, 'attack', -1)
             self.modify_stat(attacker, 'defense', -1)
             return
 
-        if effect == 'lower_defense_special_defense' and move.power > 0:   # Close Combat
+        # ─── Close Combat (lower_defense_special_defense + dégâts) ──────────
+        if effect == 'lower_defense_special_defense' and (move.power or 0) > 0:
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
             self.modify_stat(attacker, 'defense', -1)
             self.modify_stat(attacker, 'special_defense', -1)
             return
 
-        # ─── Fissure / Horn Drill / Guillotine (OHKO) ────────────────────────
-
+        # ─── OHKO (Fissure, Guillotine, Horn Drill) ──────────────────────────
         if effect == 'ohko':
             if attacker.level < defender.level:
                 self.add_to_log("L'attaque a raté !")
@@ -1158,52 +964,59 @@ class Battle(models.Model):
             if random.randint(1, 100) <= ohko_acc:
                 defender.current_hp = 0
                 defender.save()
-                self.add_to_log(f"Victoire par KO instantané !")
+                self.add_to_log("Victoire par KO instantané !")
             else:
                 self.add_to_log("L'attaque a raté !")
             return
 
-        # ─── Sonic Boom (fixed_damage_20) ─────────────────────────────────────
-
+        # ─── Dégâts fixes ────────────────────────────────────────────────────
         if effect == 'fixed_damage_20':
             self._apply_fixed_damage(defender, 20)
             return
 
-        if effect == 'fixed_40':  # Dragon Rage
+        if effect == 'fixed_40':
             self._apply_fixed_damage(defender, 40)
             return
-
-        # ─── Seismic Toss / Night Shade (level_damage) ────────────────────────
 
         if effect == 'level_damage':
             self._apply_fixed_damage(defender, attacker.level)
             return
 
-        # ─── Super Fang (half_hp) ─────────────────────────────────────────────
-
         if effect == 'half_hp':
-            dmg = max(1, defender.current_hp // 2)
-            self._apply_fixed_damage(defender, dmg)
+            self._apply_fixed_damage(defender, max(1, defender.current_hp // 2))
             return
 
-        # ─── Eruption / Water Spout (more_damage_if_hp) ───────────────────────
-
+        # ─── Puissance variable (Eruption, Magnitude) ────────────────────────
         if effect == 'more_damage_if_hp':
-            real_power = max(1, int(move.power * attacker.current_hp / attacker.max_hp))
-            damage = self._calculate_damage_with_power(attacker, defender, move, real_power)
+            power  = max(1, int(move.power * attacker.current_hp / attacker.max_hp))
+            damage = self._calculate_damage_with_power(attacker, defender, move, power)
             self._apply_damage_to_defender(attacker, defender, move, damage)
             return
 
-        # ─── Future Sight ─────────────────────────────────────────────────────
+        if effect == 'random_power':
+            magnitudes = [
+                (10, 4), (20, 8), (30, 14), (50, 19), (70, 24),
+                (90, 29), (110, 34), (150, 39), (80, 44), (120, 49),
+            ]
+            r = random.randint(0, 50)
+            power, mag_level = 70, 7
+            for idx, (p, threshold) in enumerate(magnitudes, 1):
+                if r <= threshold:
+                    power, mag_level = p, idx
+                    break
+            self.add_to_log(f"Magnitude {mag_level} !")
+            damage = self._calculate_damage_with_power(attacker, defender, move, power)
+            self._apply_damage_to_defender(attacker, defender, move, damage)
+            return
 
+        # ─── Prescience (Future Sight) ───────────────────────────────────────
         if effect == 'future_sight':
             damage = self.calculate_damage(attacker, defender, move)
             self.set_future_sight(defender, damage)
             self.add_to_log(f"{attacker} prédit l'avenir…")
             return
 
-        # ─── Tri-Attack ───────────────────────────────────────────────────────
-
+        # ─── Tri-Attaque ──────────────────────────────────────────────────────
         if effect == 'tri_attack':
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
@@ -1213,8 +1026,7 @@ class Battle(models.Model):
                     self.add_to_log(f"{defender} est {status} !")
             return
 
-        # ─── Drain (Absorb, Mega Drain, Giga Drain, Drain Punch, Leech Life) ──
-
+        # ─── Drain (Absorb, Giga Drain, Drain Punch…) ───────────────────────
         if effect == 'drain':
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
@@ -1225,7 +1037,7 @@ class Battle(models.Model):
                 self.add_to_log(f"{attacker} récupère {healed} PV !")
             return
 
-        if effect == 'drain_sleep':  # Dream Eater
+        if effect == 'drain_sleep':   # Dream Eater
             if defender.status_condition != 'sleep':
                 self.add_to_log(f"{defender} ne dort pas !")
                 return
@@ -1238,39 +1050,41 @@ class Battle(models.Model):
                 self.add_to_log(f"{attacker} récupère {healed} PV !")
             return
 
-        # ─── Recoil (Double-Edge, Take Down, Flare Blitz…) ───────────────────
-
+        # ─── Recoil (Double-Edge, Flare Blitz…) ─────────────────────────────
         if effect == 'recoil':
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
             if damage > 0:
                 attk_ability = self._get_ability(attacker)
-                rock_head = (attk_ability and attk_ability.effect_tag in ('rock_head', 'magic_guard'))
+                rock_head = (
+                    attk_ability and
+                    attk_ability.effect_tag in ('rock_head', 'magic_guard')
+                )
                 if not rock_head:
                     recoil = max(1, damage // 3)
                     attacker.current_hp = max(0, attacker.current_hp - recoil)
                     attacker.save()
-                    self.add_to_log(f"{attacker} est blessé par le contrecoup ! (-{recoil} PV)")
+                    self.add_to_log(
+                        f"{attacker} est blessé par le contrecoup ! (-{recoil} PV)"
+                    )
             return
 
         # ─── Self-Destruct / Explosion ────────────────────────────────────────
-
         if effect in ('faint_user', 'self_destruct'):
-            damage = self.calculate_damage(attacker, defender, move)
-            # Explosion réduit la défense de moitié (Gen 1-4)
             if effect == 'self_destruct':
                 orig_def = defender.defense
                 defender.defense = max(1, defender.defense // 2)
                 damage = self.calculate_damage(attacker, defender, move)
                 defender.defense = orig_def
+            else:
+                damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
             attacker.current_hp = 0
             attacker.save()
             self.add_to_log(f"{attacker} s'est sacrifié !")
             return
 
-        # ─── Rampage (Thrash, Petal Dance, Outrage) ──────────────────────────
-
+        # ─── Rampage (Outrage, Thrash, Petal Dance) ──────────────────────────
         if effect in ('rampage', 'confusion_after'):
             if not self.is_rampaging(attacker):
                 self.set_rampage(attacker, move.name)
@@ -1280,7 +1094,6 @@ class Battle(models.Model):
             return
 
         # ─── Rollout ──────────────────────────────────────────────────────────
-
         if effect == 'rollout':
             count  = self.get_rollout_count(attacker)
             power  = move.power * (2 ** count)
@@ -1294,44 +1107,41 @@ class Battle(models.Model):
                 self.reset_rollout(attacker)
             return
 
-        # ─── Multi-hit (Bullet Seed, Pin Missile, Fury Attack…) ───────────────
-
+        # ─── Multi-hit ────────────────────────────────────────────────────────
         if effect == 'multi_hit':
-            # 2-5 coups selon distribution Gen 3+: 35%/35%/15%/15%
             r = random.random()
             if   r < 0.35: hits = 2
             elif r < 0.70: hits = 3
             elif r < 0.85: hits = 4
             else:           hits = 5
-            total_damage = 0
-            for i in range(hits):
+            total = 0
+            for _ in range(hits):
                 if defender.is_fainted():
                     break
-                damage = self.calculate_damage(attacker, defender, move)
-                defender.current_hp = max(0, defender.current_hp - damage)
-                total_damage += damage
+                dmg = self.calculate_damage(attacker, defender, move)
+                defender.current_hp = max(0, defender.current_hp - dmg)
+                total += dmg
             defender.save()
-            self.add_to_log(f"Touche {hits} fois pour {total_damage} dégâts totaux !")
+            self.add_to_log(f"Touche {hits} fois pour {total} dégâts totaux !")
             return
 
-        if effect == 'two_hit':  # Double Kick, Twineedle
-            total_damage = 0
+        if effect == 'two_hit':    # Double Kick, Twineedle
+            total = 0
             for _ in range(2):
                 if defender.is_fainted():
                     break
-                damage = self.calculate_damage(attacker, defender, move)
-                defender.current_hp = max(0, defender.current_hp - damage)
-                total_damage += damage
+                dmg = self.calculate_damage(attacker, defender, move)
+                defender.current_hp = max(0, defender.current_hp - dmg)
+                total += dmg
             defender.save()
-            self.add_to_log(f"Touche 2 fois pour {total_damage} dégâts !")
-            # Poison pour Twineedle
-            if move.inflicts_status and random.randint(1, 100) <= move.effect_chance:
+            self.add_to_log(f"Touche 2 fois pour {total} dégâts !")
+            if (move.inflicts_status and
+                    random.randint(1, 100) <= move.effect_chance):
                 if self._try_apply_status(defender, move.inflicts_status, attacker):
                     self.add_to_log(f"{defender} est {move.inflicts_status} !")
             return
 
-        # ─── Trap (Bind, Clamp, Fire Spin…) ──────────────────────────────────
-
+        # ─── Trap ────────────────────────────────────────────────────────────
         if effect == 'trap':
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
@@ -1340,8 +1150,7 @@ class Battle(models.Model):
                 self.add_to_log(f"{defender} est pris au piège !")
             return
 
-        # ─── Recharge (Hyper Beam, Giga Impact, Blast Burn…) ─────────────────
-
+        # ─── Recharge (Hyper Beam, Giga Impact…) ────────────────────────────
         if effect == 'recharge':
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
@@ -1349,8 +1158,7 @@ class Battle(models.Model):
             self.add_to_log(f"{attacker} doit se recharger au prochain tour !")
             return
 
-        # ─── Smelling Salts (double if paralyzed) ─────────────────────────────
-
+        # ─── Smelling Salts (double si paralysé) ────────────────────────────
         if effect == 'double_if_paralyzed':
             power  = move.power * (2 if defender.status_condition == 'paralysis' else 1)
             damage = self._calculate_damage_with_power(attacker, defender, move, power)
@@ -1361,16 +1169,14 @@ class Battle(models.Model):
             self._apply_damage_to_defender(attacker, defender, move, damage)
             return
 
-        # ─── Facade (double if statused) ──────────────────────────────────────
-
+        # ─── Façade (double si statut) ───────────────────────────────────────
         if effect == 'double_power_if_statused':
             power  = move.power * (2 if attacker.status_condition else 1)
             damage = self._calculate_damage_with_power(attacker, defender, move, power)
             self._apply_damage_to_defender(attacker, defender, move, damage)
             return
 
-        # ─── Assurance / Revenge (double if hit this turn) ────────────────────
-
+        # ─── Assurance / Revanche ────────────────────────────────────────────
         if effect in ('double_if_hit', 'double_power_if_hit'):
             was_hit = self._pstate(attacker).get('was_hit_this_turn', False)
             power   = move.power * (2 if was_hit else 1)
@@ -1378,42 +1184,39 @@ class Battle(models.Model):
             self._apply_damage_to_defender(attacker, defender, move, damage)
             return
 
-        # ─── Badly poison (Poison Fang, Toxic) ───────────────────────────────
-
+        # ─── Poison sévère (Toxic pur ou secondaire comme Poison Fang) ───────
         if effect == 'badly_poison':
-            if move.power == 0:  # Toxic pur
-                if random.randint(1, 100) <= move.effect_chance:
+            if (move.power or 0) == 0:
+                if random.randint(1, 100) <= (move.effect_chance or 100):
                     if not defender.status_condition:
                         defender.status_condition = 'poison'
                         defender.save()
                         self.set_badly_poisoned(defender)
                         self.add_to_log(f"{defender} est gravement empoisonné !")
-                return
             else:
                 damage = self.calculate_damage(attacker, defender, move)
                 self._apply_damage_to_defender(attacker, defender, move, damage)
-                if random.randint(1, 100) <= move.effect_chance:
-                    if not defender.status_condition:
-                        defender.status_condition = 'poison'
-                        defender.save()
-                        self.set_badly_poisoned(defender)
-                        self.add_to_log(f"{defender} est gravement empoisonné !")
+                if (not defender.is_fainted() and
+                        random.randint(1, 100) <= (move.effect_chance or 100) and
+                        not defender.status_condition):
+                    defender.status_condition = 'poison'
+                    defender.save()
+                    self.set_badly_poisoned(defender)
+                    self.add_to_log(f"{defender} est gravement empoisonné !")
             return
 
         # ─── Knock Off ────────────────────────────────────────────────────────
-
         if effect == 'remove_item':
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
-            if defender.held_item:
+            if getattr(defender, 'held_item', None):
                 item_name = defender.held_item.name
                 defender.held_item = None
                 defender.save()
                 self.add_to_log(f"{defender} perd son {item_name} !")
             return
 
-        # ─── Struggle (recoil 25% max HP) ────────────────────────────────────
-
+        # ─── Struggle ─────────────────────────────────────────────────────────
         if move.name == 'Struggle':
             damage = self.calculate_damage(attacker, defender, move)
             self._apply_damage_to_defender(attacker, defender, move, damage)
@@ -1423,16 +1226,16 @@ class Battle(models.Model):
             self.add_to_log(f"{attacker} souffre du contrecoup ! (-{recoil} PV)")
             return
 
-        # ─── Stat changes en accompagnement d'une attaque ────────────────────
-
-        if move.power > 0:
-            # Dégâts de base
+        # ═════════════════════════════════════════════════════════════════════
+        # 3. ATTAQUE GÉNÉRIQUE (power > 0) + effets secondaires
+        # ═════════════════════════════════════════════════════════════════════
+        if (move.power or 0) > 0:
             damage = self.calculate_damage(attacker, defender, move)
 
-            # Modificateurs de météo
+            # Modificateurs météo
             if self.weather == 'sunny':
                 if hasattr(move.type, 'name'):
-                    if move.type.name == 'fire':   damage = int(damage * 1.5)
+                    if move.type.name == 'fire':    damage = int(damage * 1.5)
                     elif move.type.name == 'water': damage = int(damage * 0.5)
             elif self.weather == 'rain':
                 if hasattr(move.type, 'name'):
@@ -1442,48 +1245,54 @@ class Battle(models.Model):
             self._apply_damage_to_defender(attacker, defender, move, damage)
 
             if not defender.is_fainted():
-                # Vérifier Sheer Force (supprime effets secondaires)
-                sheer_force = self._pstate(attacker).get('sheer_force_active', False)
+                sheer_force  = self._pstate(attacker).get('sheer_force_active', False)
                 serene_grace = self._pstate(attacker).get('serene_grace_active', False)
 
                 if not sheer_force:
                     # Statut secondaire
-                    if move.inflicts_status and random.randint(1, 100) <= move.effect_chance:
-                        eff_chance = move.effect_chance * (2 if serene_grace else 1)
+                    if move.inflicts_status:
+                        eff_chance = (move.effect_chance or 0) * (2 if serene_grace else 1)
                         if random.randint(1, 100) <= eff_chance:
-                            if self._try_apply_status(defender, move.inflicts_status, attacker):
+                            if self._try_apply_status(
+                                defender, move.inflicts_status, attacker
+                            ):
                                 self.add_to_log(f"{defender} est {move.inflicts_status} !")
 
                     # Flinch secondaire
-                    if effect == 'flinch' and random.randint(1, 100) <= move.effect_chance:
-                        # Inner Focus bloque le flinch
-                        if not (self._get_ability(defender) and
-                                self._get_ability(defender).effect_tag == 'inner_focus'):
-                            self.set_flinched(defender)
+                    if effect == 'flinch':
+                        flinch_chance = (move.effect_chance or 0) * (2 if serene_grace else 1)
+                        if random.randint(1, 100) <= flinch_chance:
+                            def_ability = self._get_ability(defender)
+                            if not (def_ability and
+                                    def_ability.effect_tag == 'inner_focus'):
+                                self.set_flinched(defender)
 
-                    # Modificateurs de stats du move (via stat_changes JSON)
+                    # Effets de stat secondaires (via move.stat_changes JSON)
                     if move.stat_changes:
                         for stat, change in move.stat_changes.items():
-                            self.modify_stat(attacker if change > 0 else defender, stat, change)
+                            self.modify_stat(
+                                attacker if change > 0 else defender, stat, change
+                            )
 
-                    # Effets secondaires via le champ effect
-                    if effect in STAT_EFFECTS and move.power > 0:
-                        for stat_name, stages, target in STAT_EFFECTS[effect]:
-                            if random.randint(1, 100) <= move.effect_chance:
+                    # Effets de stat secondaires via le champ effect
+                    if effect in SECONDARY_STAT_EFFECTS:
+                        for stat_name, stages, who in SECONDARY_STAT_EFFECTS[effect]:
+                            chance = (move.effect_chance or 0) * (2 if serene_grace else 1)
+                            if random.randint(1, 100) <= chance:
+                                target = attacker if who == 'self' else defender
                                 self.modify_stat(target, stat_name, stages)
 
-                # always_crit (Frost Breath) — géré dans calculate_damage via flag
-                if effect == 'always_crit':
-                    pass  # Déjà géré dans calculate_damage
-
         else:
-            # Move de statut sans puissance ni effet reconnu
-            if move.inflicts_status and random.randint(1, 100) <= move.effect_chance:
-                if self._try_apply_status(defender, move.inflicts_status, attacker):
-                    self.add_to_log(f"{defender} est {move.inflicts_status} !")
+            # ── Move de statut sans handler reconnu (fallback) ────────────────
+            if move.inflicts_status:
+                if random.randint(1, 100) <= (move.effect_chance or 100):
+                    if self._try_apply_status(defender, move.inflicts_status, attacker):
+                        self.add_to_log(f"{defender} est {move.inflicts_status} !")
             if move.stat_changes:
                 for stat, change in move.stat_changes.items():
-                    self.modify_stat(attacker if change > 0 else defender, stat, change)
+                    self.modify_stat(
+                        attacker if change > 0 else defender, stat, change
+                    )
 
     # =========================================================================
     # HELPERS DÉGÂTS
@@ -1497,10 +1306,31 @@ class Battle(models.Model):
         self.add_to_log(f"{target} subit {amount} points de dégâts !")
 
     def _apply_damage_to_defender(self, attacker, defender, move, damage):
-        """Applique les dégâts au défenseur avec gestion Endure, talent et efficacité."""
+        """Applique les dégâts au défenseur avec gestion Substitut, Endure, talent et efficacité."""
         if damage <= 0:
-            damage = 1 if move.power > 0 else 0
+            damage = 1 if (move.power or 0) > 0 else 0
         if damage == 0:
+            return
+
+        # ── Substitut : encaisse les dégâts à la place du Pokémon ───────────
+        sub_hp = self._pstate(defender).get('substitute_hp', 0)
+        if sub_hp > 0:
+            remaining = sub_hp - damage
+            if remaining <= 0:
+                self._pstate(defender)['substitute_hp'] = 0
+                self._save_state()
+                self.add_to_log(
+                    f"Le Substitut de {defender} est détruit ! "
+                    f"({damage} dégâts absorbés)"
+                )
+            else:
+                self._pstate(defender)['substitute_hp'] = remaining
+                self._save_state()
+                self.add_to_log(
+                    f"Le Substitut de {defender} absorbe {damage} dégâts ! "
+                    f"(PV restants : {remaining})"
+                )
+            # Les dégâts ne touchent pas le Pokémon lui-même
             return
 
         # ── Ability: on_damage_taken (pré-dégâts) ────────────────────────────
@@ -1731,14 +1561,28 @@ class Battle(models.Model):
     # =========================================================================
 
     def modify_stat(self, pokemon, stat_name, stages):
+        # ── Brume : bloque les baisses de stats ──────────────────────────────
+        if stages < 0:
+            side = 'player' if pokemon == self.player_pokemon else 'opponent'
+            if self._bstate().get(f'{side}_mist', 0) > 0:
+                self.add_to_log(
+                    f"La Brume protège {pokemon} contre la baisse de {stat_name} !"
+                )
+                return
+
         current = getattr(pokemon, f"{stat_name}_stage", 0)
         new     = max(-6, min(6, current + stages))
+        if new == current:
+            msg = "ne peut plus monter" if stages > 0 else "ne peut plus descendre"
+            self.add_to_log(f"L'{stat_name} de {pokemon} {msg} !")
+            return
         setattr(pokemon, f"{stat_name}_stage", new)
         pokemon.save()
+        intensite = " fortement" if abs(stages) >= 2 else ""
         if stages > 0:
-            self.add_to_log(f"L'{stat_name} de {pokemon} augmente{'fortement' if abs(stages) >= 2 else ''} !")
+            self.add_to_log(f"L'{stat_name} de {pokemon} augmente{intensite} !")
         else:
-            self.add_to_log(f"L'{stat_name} de {pokemon} diminue{'fortement' if abs(stages) >= 2 else ''} !")
+            self.add_to_log(f"L'{stat_name} de {pokemon} diminue{intensite} !")
 
     # =========================================================================
     # SWITCH
@@ -1755,6 +1599,62 @@ class Battle(models.Model):
             self.opponent_pokemon = new_pokemon
         self.save()
         self.add_to_log(f"{new_pokemon} entre en combat !")
+
+        # ── Dégâts d'entrée (Picots, Toxipics, Roc Furtif) ─────────────────────
+        entering_side = 'player' if new_pokemon == self.player_pokemon else 'opponent'
+
+        # Roc Furtif (Stealth Rock)
+        if self._bstate().get(f'{entering_side}_stealth_rock'):
+            rock_type_name = 'rock'
+            from .PokemonType import PokemonType
+            rock_type = PokemonType.objects.filter(name__iexact=rock_type_name).first()
+            if rock_type:
+                eff = rock_type.get_effectiveness(new_pokemon.species.primary_type)
+                if new_pokemon.species.secondary_type:
+                    eff *= rock_type.get_effectiveness(new_pokemon.species.secondary_type)
+            else:
+                eff = 1.0
+            sr_dmg = max(1, int(new_pokemon.max_hp * eff / 8))
+            new_pokemon.current_hp = max(0, new_pokemon.current_hp - sr_dmg)
+            new_pokemon.save()
+            self.add_to_log(
+                f"Le Roc Furtif blesse {new_pokemon} à l'entrée ! (-{sr_dmg} PV)"
+            )
+
+        # Picots (Spikes) — pas d'effet sur les types Vol ou Lévitation
+        spikes = self._bstate().get(f'{entering_side}_spikes', 0)
+        if spikes > 0:
+            ptype = getattr(new_pokemon.species.primary_type, 'name', '')
+            stype = getattr(new_pokemon.species.secondary_type, 'name', '') \
+                if new_pokemon.species.secondary_type else ''
+            if 'flying' not in (ptype, stype):
+                ratios = {1: 8, 2: 6, 3: 4}
+                denom  = ratios.get(spikes, 8)
+                sp_dmg = max(1, new_pokemon.max_hp // denom)
+                new_pokemon.current_hp = max(0, new_pokemon.current_hp - sp_dmg)
+                new_pokemon.save()
+                self.add_to_log(
+                    f"Les Picots blessent {new_pokemon} à l'entrée ! (-{sp_dmg} PV)"
+                )
+
+        # Toxipics (Toxic Spikes)
+        tspikes = self._bstate().get(f'{entering_side}_toxic_spikes', 0)
+        if tspikes > 0:
+            ptype = getattr(new_pokemon.species.primary_type, 'name', '')
+            stype = getattr(new_pokemon.species.secondary_type, 'name', '') \
+                if new_pokemon.species.secondary_type else ''
+            if 'flying' not in (ptype, stype) and not new_pokemon.status_condition:
+                if tspikes == 1:
+                    new_pokemon.status_condition = 'poison'
+                    new_pokemon.save()
+                    self.add_to_log(f"Les Toxipics empoisonnent {new_pokemon} !")
+                else:
+                    new_pokemon.status_condition = 'poison'
+                    new_pokemon.save()
+                    self.set_badly_poisoned(new_pokemon)
+                    self.add_to_log(
+                        f"Les Toxipics empoisonnent gravement {new_pokemon} !"
+                    )
 
         # ── Talent on_switch_in pour le Pokémon entrant ─────────────────────────
         self._fire_switch_in_ability(new_pokemon)
@@ -1857,6 +1757,52 @@ class Battle(models.Model):
                     self.add_to_log(f"{pkmn} peut à nouveau utiliser tous ses moves !")
                 self._save_state()
 
+            # ── Encore countdown ──────────────────────────────────────────────
+            enc_turns = pst.get('encore_turns', 0)
+            if enc_turns > 0:
+                pst['encore_turns'] = enc_turns - 1
+                if pst['encore_turns'] == 0:
+                    pst.pop('encore_move', None)
+                    self.add_to_log(f"{pkmn} n'est plus sous l'effet d'Encore !")
+                self._save_state()
+
+            # ── Taunt countdown ───────────────────────────────────────────────
+            tnt_turns = pst.get('taunt_turns', 0)
+            if tnt_turns > 0:
+                pst['taunt_turns'] = tnt_turns - 1
+                if pst['taunt_turns'] == 0:
+                    self.add_to_log(f"{pkmn} n'est plus sous l'effet de Raillerie !")
+                self._save_state()
+
+            # ── Vœu (Wish) ────────────────────────────────────────────────────
+            wish_turns = pst.get('wish_turns', 0)
+            if wish_turns > 0:
+                pst['wish_turns'] = wish_turns - 1
+                if pst['wish_turns'] == 0:
+                    wish_hp = pst.pop('wish_amount', 0)
+                    if wish_hp > 0 and not pkmn.is_fainted():
+                        healed = min(pkmn.max_hp - pkmn.current_hp, wish_hp)
+                        if healed > 0:
+                            pkmn.current_hp += healed
+                            pkmn.save()
+                            self.add_to_log(
+                                f"Le Vœu se réalise ! {pkmn} récupère {healed} PV !"
+                            )
+                self._save_state()
+
+            # ── Chant du Destin (Perish Song) ─────────────────────────────────
+            perish = pst.get('perish_turns', 0)
+            if perish > 0:
+                pst['perish_turns'] = perish - 1
+                self.add_to_log(
+                    f"Chant du Destin : {pkmn} a encore {pst['perish_turns']} tour(s) !"
+                )
+                if pst['perish_turns'] == 0:
+                    pkmn.current_hp = 0
+                    pkmn.save()
+                    self.add_to_log(f"{pkmn} tombe sous l'effet du Chant du Destin !")
+                self._save_state()
+
             # ── Décranement screens ───────────────────────────────────────────
             side = 'player' if pkmn == self.player_pokemon else 'opponent'
             for screen in ('light_screen', 'reflect'):
@@ -1864,7 +1810,22 @@ class Battle(models.Model):
                 if self._bstate().get(key, 0) > 0:
                     self._bstate()[key] -= 1
                     if self._bstate()[key] == 0:
-                        self.add_to_log(f"L'{'Écran Lumière' if screen == 'light_screen' else 'Mur'} se dissipe !")
+                        self.add_to_log(
+                            f"L'{'Écran Lumière' if screen == 'light_screen' else 'Mur'} "
+                            f"se dissipe !"
+                        )
+            # ── Brume countdown ───────────────────────────────────────────────
+            mist_key = f'{side}_mist'
+            if self._bstate().get(mist_key, 0) > 0:
+                self._bstate()[mist_key] -= 1
+                if self._bstate()[mist_key] == 0:
+                    self.add_to_log(f"La Brume se dissipe du côté de {pkmn} !")
+            # ── Vent Arrière countdown ────────────────────────────────────────
+            tw_key = f'{side}_tailwind'
+            if self._bstate().get(tw_key, 0) > 0:
+                self._bstate()[tw_key] -= 1
+                if self._bstate()[tw_key] == 0:
+                    self.add_to_log(f"Le Vent Arrière retombe du côté de {pkmn} !")
             self._save_state()
 
             # ── Future Sight ──────────────────────────────────────────────────
@@ -1926,6 +1887,14 @@ class Battle(models.Model):
                 self.weather = None
             self._save_state()
             self.save()
+
+        # ── Salle Bizarre countdown ────────────────────────────────────────────
+        tr = self._bstate().get('trick_room_turns', 0)
+        if tr > 0:
+            self._bstate()['trick_room_turns'] = tr - 1
+            if self._bstate()['trick_room_turns'] == 0:
+                self.add_to_log("La Salle Bizarre retrouve son état normal !")
+            self._save_state()
 
     # =========================================================================
     # ITEM
