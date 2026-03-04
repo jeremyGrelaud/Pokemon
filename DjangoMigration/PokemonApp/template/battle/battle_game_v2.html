@@ -599,6 +599,7 @@
 {% block css %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/battle-animations.css' %}">
+<link rel="stylesheet" href="{% static 'css/battle-responsive.css' %}">
 <link rel="stylesheet" href="{% static 'css/capture-animation.css' %}">
 <link rel="stylesheet" href="{% static 'css/battle-ui.css' %}">
 {% endblock css %}
@@ -606,6 +607,7 @@
 {% block js %}
 {{ block.super }}
 <script src="{% static 'js/battle-effects.js' %}"></script>
+<script src="{% static 'js/battle-responsive.js' %}"></script>
 <script src="{% static 'js/audio-manager.js' %}"></script>
 <script src="{% static 'js/capture-system.js' %}"></script>
 <script src="{% static 'js/battle-volatile-states.js' %}"></script>

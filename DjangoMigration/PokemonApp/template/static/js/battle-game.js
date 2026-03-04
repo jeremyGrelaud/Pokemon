@@ -1066,23 +1066,21 @@ function addBattleLog(message) {
  */
 function getElementCenter(element) {
   const el = element instanceof jQuery ? element[0] : element;
+
+  // Déléguer à BattleEffects si disponible (source unique de vérité)
+  if (window.battleEffects?.getCenter) {
+    return window.battleEffects.getCenter(el);
+  }
+
+  // Fallback inline (même logique) si appelé avant init
   const scene = document.querySelector('.battle-scene');
   if (!scene || !el) return { x: 0, y: 0 };
-
   const sceneRect = scene.getBoundingClientRect();
   const elRect    = el.getBoundingClientRect();
-
-  // scale effectif de la scène (sceneRect.width / 1280)
-  const scale = sceneRect.width / 1280;
-
-  // Coordonnées viewport centrées sur l'élément, relatives au coin haut-gauche de la scène
-  const viewX = elRect.left + elRect.width  / 2 - sceneRect.left;
-  const viewY = elRect.top  + elRect.height / 2 - sceneRect.top;
-
-  // Division par le scale → coordonnées dans l'espace non-scalé (1280×540)
+  const scale     = sceneRect.width / scene.offsetWidth;
   return {
-    x: viewX / scale,
-    y: viewY / scale,
+    x: (elRect.left + elRect.width  / 2 - sceneRect.left) / scale,
+    y: (elRect.top  + elRect.height / 2 - sceneRect.top)  / scale,
   };
 }
 
