@@ -1,0 +1,117 @@
+/* ============================================================================
+   CORRECTIF CENTRAGE — override battle-animations.css
+   ============================================================================
+   battle-animations.css force transform-origin: top left sur .battle-scene,
+   ce qui décale tout le contenu vers la droite quand le scale < 1.
+   Le wrapper étant un flex (justify-content: center), l'origine doit être
+   "top center" pour que la scène se réduise symétriquement des deux côtés.
+   ============================================================================ */
+
+.battle-scene {
+  transform-origin: top center !important;
+}
+
+/* Le wrapper ne doit PAS clipper la scène pendant un scale < 1 */
+.battle-wrapper {
+  overflow: visible;
+}
+
+/* ============================================================================
+   BATTLE SCENE — MODE COMPACT 960×540
+   Activé dynamiquement via JS : .battle-scene.scene-compact
+   Toutes les valeurs en px, proportionnelles au ratio 960/1280 = 0.75
+   ============================================================================ */
+
+/* ── Canvas 960px ─────────────────────────────────────────────────────────── */
+.battle-scene.scene-compact {
+  width: 960px;
+  /* height reste 540px — on conserve le ratio 16:9 */
+}
+
+/* ── Sprites Pokémon ──────────────────────────────────────────────────────── */
+
+/* Réduction légère des sprites pour laisser respirer les info-bars */
+.battle-scene.scene-compact .pokemon-sprite {
+  width: 170px;
+  height: 170px;
+}
+
+/* Décalage horizontal des sides : moins d'espace entre sprite et bord */
+.battle-scene.scene-compact .opponent-side {
+  margin-right: 140px;   /* 240 → 140 : retrait proportionnel -100px */
+  margin-top: 70px;      /* 90 → 70  : légèrement plus haut */
+}
+
+.battle-scene.scene-compact .player-side {
+  margin-left: 120px;    /* 200 → 120 */
+}
+
+/* Ombres recalculées */
+.battle-scene.scene-compact .pokemon-shadow {
+  width: 80px;
+  height: 16px;
+}
+
+/* ── Info bars ────────────────────────────────────────────────────────────── */
+.battle-scene.scene-compact .info-bar {
+  width: 260px;          /* 320 → 260 */
+}
+
+/* ── Plateformes ──────────────────────────────────────────────────────────── */
+.battle-scene.scene-compact .pokemon-platform {
+  width: 140px;          /* si défini ailleurs, override ici */
+}
+
+/* ── Entrées scène : ajustement du translateX pour le canvas 960px ────────── */
+/* Les keyframes originaux translateX(±300px) restent valides :               */
+/* à 960px le slide est simplement proportionnellement plus visible,          */
+/* mais on peut les réduire pour une animation moins "large"                  */
+
+.battle-scene.scene-compact .slide-in-opponent {
+  animation: slide-in-opponent-compact 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.battle-scene.scene-compact .slide-in-player {
+  animation: slide-in-player-compact 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes slide-in-opponent-compact {
+  from {
+    transform: translateX(220px) translateY(-80px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-player-compact {
+  from {
+    transform: translateX(-220px) translateY(80px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ── Attack lunge : course réduite sur 960px ──────────────────────────────── */
+.battle-scene.scene-compact .attack-lunge-anim {
+  animation: attack-lunge-compact 0.5s ease-in-out forwards;
+}
+
+@keyframes attack-lunge-compact {
+  0%   { transform: translateX(0) scale(1); }
+  40%  { transform: translateX(60px) scale(1.12); }
+  60%  { transform: translateX(60px) scale(1.12); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes attack-lunge-player-compact {
+  0%   { transform: translateX(0) scale(1); }
+  40%  { transform: translateX(-60px) scale(1.12); }
+  60%  { transform: translateX(-60px) scale(1.12); }
+  100% { transform: translateX(0) scale(1); }
+}
