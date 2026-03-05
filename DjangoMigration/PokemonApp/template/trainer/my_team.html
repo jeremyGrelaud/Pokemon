@@ -258,12 +258,22 @@
 
 <!-- ═══ INVENTAIRE ═══════════════════════════════════════════════════════ -->
 <div class="card shadow mb-4">
-  <div class="card-header py-3">
+  <div class="card-header py-3 d-flex align-items-center justify-content-between">
     <h6 class="m-0 fw-bold text-primary">
       <i class="fas fa-shopping-bag"></i> Inventaire
     </h6>
+    <div class="btn-group btn-group-sm" id="inv-tab-group">
+      <button class="btn btn-outline-primary active" id="inv-tab-btn-items" onclick="switchInvTab('items')">
+        <i class="fas fa-capsules"></i> Objets
+      </button>
+      <button class="btn btn-outline-primary" id="inv-tab-btn-tm" onclick="switchInvTab('tm')">
+        <i class="fas fa-compact-disc"></i> CT / CS
+      </button>
+    </div>
   </div>
   <div class="card-body">
+    <!-- Onglet Objets normaux -->
+    <div id="inv-panel-items">
     {% if inventory %}
     <div class="table-responsive">
       <table class="table table-sm table-hover">
@@ -293,6 +303,142 @@
     {% else %}
     <p class="text-center text-muted mb-0">Votre inventaire est vide.</p>
     {% endif %}
+    </div>
+
+    <!-- Onglet CT / CS -->
+    <div id="inv-panel-tm" class="d-none">
+      {% if tm_inventory %}
+      <p class="text-muted small mb-3">
+        <i class="fas fa-info-circle"></i>
+        Les CT sont <strong>réutilisables</strong> à l'infini (Gen 9). Sélectionnez un Pokémon de votre équipe pour lui enseigner une CT/CS.
+      </p>
+      <div class="row" id="tm-inventory-grid">
+        {% for inv_item in tm_inventory %}
+        <div class="col-lg-4 col-md-6 mb-2">
+          <div class="card tm-inv-card border h-100"
+               data-item-id="{{ inv_item.item.id }}"
+               data-item-name="{{ inv_item.item }}"
+               data-move-name="{{ inv_item.item.tm_move.name }}"
+               data-move-type="{{ inv_item.item.tm_move.type.name|lower }}"
+               data-item-type="{{ inv_item.item.item_type }}"
+               onclick="selectTMItem(this)">
+            <div class="card-body py-2 px-3">
+              <div class="d-flex align-items-center gap-2">
+                <img src="{% static 'img/items_sprites/tm/' %}{{inv_item.item.tm_move.type.name}}.png" />
+                <div class="min-w-0 flex-grow-1">
+                  <div class="fw-bold" style="font-size:.85rem;">{{ inv_item.item }}</div>
+                  <div class="d-flex gap-1 align-items-center">
+                    <span class="badge badge-type-{{ inv_item.item.tm_move.type.name|lower }}" style="font-size:.62rem;">
+                      {{ inv_item.item.tm_move.type.name }}
+                    </span>
+                    <small class="text-muted" style="font-size:.7rem;">{{ inv_item.item.tm_move.get_category_display }}</small>
+                    {% if inv_item.item.tm_move.power %}
+                    <small class="text-muted" style="font-size:.7rem;">💥{{ inv_item.item.tm_move.power }}</small>
+                    {% endif %}
+                  </div>
+                </div>
+                {% if not inv_item.item.is_consumable %}
+                <span class="badge bg-success" style="font-size:.6rem;" title="Réutilisable">∞</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Panel : choisir un Pokémon de l'équipe à qui enseigner -->
+      <div id="tm-teach-panel" class="d-none mt-3 p-3 rounded border" style="background:linear-gradient(135deg,#f0f4ff,#e8f5e9);">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h6 class="mb-0 fw-bold">
+            <i class="fas fa-compact-disc text-primary"></i>
+            Enseigner <strong id="tm-teach-name" class="text-primary">—</strong>
+          </h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="cancelTMTeach()">
+            <i class="fas fa-times"></i> Annuler
+          </button>
+        </div>
+        <p class="text-muted small mb-2">Choisissez le Pokémon qui doit apprendre cette CT/CS :</p>
+        <div class="row" id="tm-pokemon-picker">
+          {% for pokemon in team %}
+          <div class="col-4 col-md-2 mb-2">
+            <div class="card text-center tm-poke-pick"
+                 data-pokemon-id="{{ pokemon.id }}"
+                 data-pokemon-name="{{ pokemon.nickname|default:pokemon.species.name }}"
+                 onclick="teachTMToPokemon({{ pokemon.id }}, '{{ pokemon.nickname|default:pokemon.species.name }}')">
+              <div class="card-body p-2">
+                <img src="{% static 'img/sprites_gen5/' %}{% if pokemon.is_shiny %}shiny{% else %}normal{% endif %}/{{ pokemon.species.name|lowerPokemonFileNames }}.png"
+                     style="width:44px;height:44px;object-fit:contain;"
+                     onerror="this.src='{% static 'img/pokeball.png' %}'">
+                <div style="font-size:.7rem;font-weight:600;" class="text-truncate">{{ pokemon.nickname|default:pokemon.species.name }}</div>
+                <small class="text-muted" style="font-size:.65rem;">Niv.{{ pokemon.level }}</small>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% else %}
+      <div class="text-center py-4 text-muted">
+        <i class="fas fa-compact-disc fa-3x mb-2 d-block" style="opacity:.3;"></i>
+        <p class="mb-1">Vous n'avez aucune CT ni CS.</p>
+        <small>Achetez-en dans les boutiques ou trouvez-en dans le monde.</small>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL REMPLACEMENT CT/CS ══════════════════════════════════════════ -->
+<div class="modal fade" id="tm-replace-modal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
+    <div class="modal-content tm-replace-content">
+
+      <!-- Header -->
+      <div class="tm-replace-header">
+        <div class="tm-replace-disc-wrap">
+          <div class="tm-replace-disc" id="tmr-disc-label">CT</div>
+        </div>
+        <div>
+          <div class="tm-replace-title">Apprendre</div>
+          <div class="tm-replace-move-name" id="tmr-move-name">—</div>
+        </div>
+        <button type="button" class="tm-replace-close" id="tmr-close-btn" aria-label="Annuler">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- Corps -->
+      <div class="tm-replace-body">
+        <div class="tm-replace-pokemon-row">
+          <img id="tmr-sprite" src="" alt="" class="tm-replace-sprite">
+          <div>
+            <div class="tm-replace-poke-name" id="tmr-poke-name">—</div>
+            <div class="tm-replace-hint">Quel move oublier&nbsp;?</div>
+          </div>
+        </div>
+
+        <!-- 4 cartes moves -->
+        <div class="tm-replace-moves" id="tmr-moves-grid">
+          <!-- rempli dynamiquement -->
+        </div>
+
+        <!-- Confirmation inline -->
+        <div class="tm-replace-confirm d-none" id="tmr-confirm-zone">
+          <div class="tm-replace-confirm-text" id="tmr-confirm-text"></div>
+          <div class="d-flex gap-2 justify-content-center mt-3">
+            <button class="tm-replace-btn-confirm" id="tmr-confirm-btn">
+              <i class="fas fa-check me-1"></i> Confirmer
+            </button>
+            <button class="tm-replace-btn-cancel" onclick="tmrCancelConfirm()">
+              <i class="fas fa-arrow-left me-1"></i> Retour
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -347,15 +493,36 @@
           <!-- ── MOVES APPRENABLES (droite) ────────────────── -->
           <div class="col-md-5" style="background:#fff;">
             <div class="p-3 border-bottom" style="background:linear-gradient(135deg,#0f3460,#16213e);">
-              <h6 class="mb-0 fw-bold text-white">
-                <i class="fas fa-book text-info"></i> Moves apprenables
-                <small class="fw-normal ms-1" style="opacity:.7;">(jusqu'au niveau actuel)</small>
-              </h6>
-              <small style="opacity:.55;color:#fff;font-size:.72rem;">
+              <!-- Onglets Niveau / CT-CS -->
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <h6 class="mb-0 fw-bold text-white">
+                  <i class="fas fa-book text-info"></i> Moves apprenables
+                </h6>
+                <div class="btn-group btn-group-sm" id="learn-tab-group">
+                  <button class="btn btn-sm learn-tab-btn active" id="tab-btn-level"
+                          onclick="switchLearnTab('level')"
+                          style="background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);color:#fff;font-size:.72rem;padding:2px 8px;">
+                    <i class="fas fa-arrow-up"></i> Niveau
+                  </button>
+                  <button class="btn btn-sm learn-tab-btn" id="tab-btn-tm"
+                          onclick="switchLearnTab('tm')"
+                          style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.65);font-size:.72rem;padding:2px 8px;">
+                    <i class="fas fa-compact-disc"></i> CT/CS
+                  </button>
+                </div>
+              </div>
+              <small style="opacity:.55;color:#fff;font-size:.72rem;" id="learn-tab-hint">
                 <i class="fas fa-mouse-pointer me-1"></i>Cliquez pour sélectionner
               </small>
             </div>
+            <!-- Panneau Niveau -->
             <div class="p-3" id="learnable-moves-list">
+              <div class="text-center text-muted py-4">
+                <i class="fas fa-spinner fa-spin"></i> Chargement...
+              </div>
+            </div>
+            <!-- Panneau CT/CS (masqué par défaut) -->
+            <div class="p-3 d-none" id="tm-moves-list">
               <div class="text-center text-muted py-4">
                 <i class="fas fa-spinner fa-spin"></i> Chargement...
               </div>
@@ -500,6 +667,7 @@
 {% block css %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/my-team.css' %}">
+<link rel="stylesheet" href="{% static 'css/tm-teach.css' %}">
 {% endblock css %}
 
 {% block js %}
@@ -650,7 +818,7 @@ document.addEventListener('click', function(e) {
   loadMovesModal(currentPokemonId);
 });
 
-function loadMovesModal(pokemonId) {
+function loadMovesModal(pokemonId, onReady) {
   document.getElementById('active-moves-list').innerHTML   = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i></div>';
   document.getElementById('learnable-moves-list').innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i></div>';
 
@@ -671,6 +839,7 @@ function loadMovesModal(pokemonId) {
           ? 'Cliquez sur un move apprenable pour l\'ajouter directement'
           : 'Cliquez sur un move apprenable, puis choisissez lequel remplacer';
       }
+      if (typeof onReady === 'function') onReady();
     })
     .catch(() => showModalStatus('Erreur réseau.', 'danger'));
 }
@@ -1193,6 +1362,10 @@ function drawRadar(stats, bases, level, nat) {
 }
 
 syncUI();
+
+
 </script>
+<script src="{% static 'js/tm-teach.js' %}"></script>
+
 
 {% endblock js %}

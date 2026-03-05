@@ -36,6 +36,8 @@ urlpatterns = [
     path('api/pokemon/moves/',     views.get_pokemon_moves_api,      name='get_pokemon_moves'),
     path('api/pokemon/swap-move/',    views.swap_move_api,           name='swap_move'),
     path('api/pokemon/reorder-moves/', views.reorder_moves_api,     name='reorder_moves'),
+    path('api/items/tm/<int:item_id>/use/',          views.UseTMView.as_view(),         name='use_tm'),
+    path('api/items/tm/compatible/<int:pokemon_id>/', views.TMCompatibilityView.as_view(), name='tm_compatible'),
 
     # Combats — liste et détail
     path('battles/',         views.BattleListView.as_view(),   name='BattleListView'),

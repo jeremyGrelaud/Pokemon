@@ -420,6 +420,8 @@ _ITEM_TYPE_FALLBACK = {
     'status':    ('medicine', 'full-heal.png'),
     'held':      ('hold-item', 'leftovers.png'),
     'battle':    ('battle-item', 'x-attack.png'),
+    'tm':        ('tm', 'fire.png'),
+    'cs':        ('hm', 'normal.png'),
     'other':     ('other-item', 'escape-rope.png'),
 }
 
@@ -449,6 +451,14 @@ def item_sprite_path(item):
     item_type = getattr(item, 'item_type', '')
     if item_type in _ITEM_TYPE_FALLBACK:
         folder, filename = _ITEM_TYPE_FALLBACK[item_type]
+        if item_type == "tm":
+            filename = str(item.tm_move.type.name).strip() + ".png"
+        elif item_type == "cs":
+            if item.tm_move:
+                filename = str(item.tm_move.type.name).strip() + ".png"
+            else:
+                filename = "normal.png"
+
         return f"{folder}/{filename}"
 
     return None
