@@ -53,6 +53,8 @@ def learn_moves_up_to_level(pokemon, level):
     Synchronise les PokemonMoveInstance avec les 4 dernieres capacites
     apprises jusqu'au niveau donne.
 
+    - Filtre UNIQUEMENT les moves par montee de niveau (learn_method='level',
+      level_learned > 0) pour exclure les TM/CS (level_learned=0).
     - Deduplique (si un move apparait a plusieurs niveaux, garde le plus recent).
     - Supprime les moves hors du set final (utile apres level-up ou relance).
     - Ajoute les moves manquants via get_or_create (idempotent).
@@ -61,7 +63,9 @@ def learn_moves_up_to_level(pokemon, level):
     from .models.PlayablePokemon import PokemonMoveInstance
 
     learnable = pokemon.species.learnable_moves.filter(
-        level_learned__lte=level
+        learn_method='level',
+        level_learned__gt=0,
+        level_learned__lte=level,
     ).order_by('level_learned')
 
     seen_moves = {}
@@ -623,9 +627,10 @@ def apply_exp_gain(pokemon, exp_amount):
             pokemon.max_hp
         )
 
-        # Trouver les moves apprenables exactement à ce niveau
+        # Trouver les moves apprenables exactement à ce niveau (par montée de niveau uniquement)
         new_learnable = pokemon.species.learnable_moves.filter(
-            level_learned=pokemon.level
+            learn_method='level',
+            level_learned=pokemon.level,
         ).select_related('move', 'move__type')
 
         for lm in new_learnable:
