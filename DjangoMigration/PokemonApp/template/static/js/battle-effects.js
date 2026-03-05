@@ -2,16 +2,21 @@
  * BattleEffects — Moteur d'animations basé sur PokémonShowdown
  *
  * Architecture :
- *   - showEffect(sprite, start, end, transition, after)  → anime un PNG de PS depuis le CDN
+ *   - showEffect(sprite, start, end, transition, after)  → anime un PNG depuis le dossier static local
  *   - backgroundEffect(color, duration, opacity, delay)  → flash de fond coloré
  *   - Sprite animations (attacker bounce / defender shake) via CSS class
  *   - playMoveAnimation(moveName, from, to, isPlayer)    → animation nommée
  *   - specialAttack / physicalAttack                     → compatibilité legacy
  *
- * Sprites PNG chargés depuis : https://play.pokemonshowdown.com/fx/
+ * Sprites PNG chargés depuis : window.PS_FX_BASE (injecté par Django via {% static 'img/fx/' %})
+ * Fallback CDN (dev sans Django) : https://play.pokemonshowdown.com/fx/
  */
 
-const PS_FX_BASE = 'https://play.pokemonshowdown.com/fx/';
+// window.PS_FX_BASE est défini dans le template Django AVANT ce script :
+//   <script>window.PS_FX_BASE = "{% static 'img/fx/' %}";</script>
+const PS_FX_BASE = (typeof window !== 'undefined' && window.PS_FX_BASE)
+  ? window.PS_FX_BASE
+  : 'https://play.pokemonshowdown.com/fx/';
 
 // ─── Catalogue des sprites disponibles (w/h en px natifs) ────────────────────
 const PS_SPRITES = {
