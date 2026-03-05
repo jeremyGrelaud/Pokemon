@@ -1127,8 +1127,7 @@ def create_cs_items():
             item_type='cs',
             tm_number=num,
             defaults={
-                'name': f"CS{num:02d} {move.name}",
-                'description': f"CS qui enseigne {move.name}. Indispensable pour l'aventure.",
+                'name': f"{name}",
                 'price': price,
                 'tm_move': move,
                 'is_consumable': False,
@@ -1161,9 +1160,16 @@ def create_tm_learnsets():
                     for item in Item.objects.filter(item_type__in=('tm', 'cs'))
                     .select_related('tm_move') if item.tm_move}
 
+    # Normalisation des noms Pokémon (noms du script → noms en base)
+    POKEMON_NAME_MAP = {
+        'Nidoran-F': 'Nidoran♀',
+        'Nidoran-M': 'Nidoran♂',
+    }
+
     for pokemon_name, move_names in TM_LEARNSETS_GEN9.items():
+        db_name = POKEMON_NAME_MAP.get(pokemon_name, pokemon_name)
         try:
-            pokemon = Pokemon.objects.get(name=pokemon_name)
+            pokemon = Pokemon.objects.get(name=db_name)
         except Pokemon.DoesNotExist:
             logger.warning(f"  [!] Pokémon introuvable : '{pokemon_name}'")
             pokemon_errors.append(pokemon_name)

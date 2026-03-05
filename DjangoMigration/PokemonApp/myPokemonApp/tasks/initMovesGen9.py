@@ -444,6 +444,65 @@ def add_missing_gen9_moves():
         ("Trump Card",        "normal",    "special",  1,   100, 5,   0,  "power_low_pp",                100, None),
         ("Muddy Water",       "water",     "special",  90,  85,  10,  0,  "lower_accuracy",               30, None),
         ("Snore",             "normal",    "special",  50,  100, 15,  0,  "only_asleep_flinch",           30, None),
+        # ── CT manquantes ──────────────────────────────────────────────────
+        # Cut (CS01 / CT006) — Normal, Physique
+        ('Cut',             'normal',   'physical', 50,  95,  30, 0, None,                  0,    None),
+        # Thief (CT013) — Dark, Physique
+        ('Thief',           'dark',     'physical', 60,  100, 25, 0,'steal_item',          100,  None),
+        # Fling (CT043) — Dark, Physique (puissance variable selon l'objet tenu)
+        ('Fling',           'dark',     'physical', 0,   100, 10, 0,'fling',               100,  None),
+        # Avalanche (CT046) — Ice, Physique
+        ('Avalanche',       'ice',      'physical', 60,  100, 10, -4, 'double_if_hit',       100,  None),
+        # Flash (CT070 / CS05) — Normal, Statut
+        ('Flash',           'normal',   'status',   0,   100, 20, 0,'lower_accuracy',      100,  None),
+        # Body Press (CT089) — Fighting, Physique (utilise la Défense)
+        ('Body Press',      'fighting', 'physical', 80,  100, 10, 0,'uses_defense',        100,  None),
+        # Sleep Talk (CT090) — Normal, Statut
+        ('Sleep Talk',      'normal',   'status',   0,   100, 10, 0,'sleep_talk',          100,  None),
+        # Eerie Impulse (CT096) — Electric, Statut
+        ('Eerie Impulse',   'electric', 'status',   0,   100, 15, 0,'sharply_lower_special_attack', 100, None),
+        # Fly (CT097 / CT145 / CS02) — Flying, Physique (charge turn)
+        ('Fly',             'flying',   'physical', 90,  95,  15, 0,'charge_turn',         100,  None),
+        # Hyper Drill (CT137 / CT196) — Normal, Physique (perce Abri/Détection)
+        ('Hyper Drill',     'normal',   'physical', 100, 100, 5,  0,'bypass_protection',   100,  None),
+        # Grass Knot (CT159) — Grass, Spécial (puissance selon poids cible)
+        ('Grass Knot',      'grass',    'special',  0,   100, 20, 0,'weight_based',        100,  None),
+        # Steamroller (CT166) — Bug, Physique
+        ('Steamroller',     'bug',      'physical', 65,  100, 20, 0,'flinch',              30,   None),
+        # Lunge (CT180) — Bug, Physique
+        ('Lunge',           'bug',      'physical', 80,  100, 15, 0,'lower_attack',        100,  None),
+        # Mud Bomb (CT183) — Ground, Spécial
+        ('Mud Bomb',        'ground',   'special',  65,  85,  10, 0,'lower_accuracy',      30,   None),
+        # Chilling Water (CT185) — Water, Spécial
+        ('Chilling Water',  'water',    'special',  50,  100, 20, 0,'lower_attack',        100,  None),
+        # Mystical Fire (CT195) — Fire, Spécial
+        ('Mystical Fire',   'fire',     'special',  75,  100, 10, 0,'lower_special_attack', 100, None),
+        # Meteor Mash (CT199) — Steel, Physique
+        ('Meteor Mash',     'steel',    'physical', 90,  90,  10, 0,'raise_attack',        20,   None),
+        # Strength (CS04) — Normal, Physique
+        ('Strength',        'normal',   'physical', 80,  100, 15, 0,None,                  0,    None),
+        # ── Moves manquants pour les compatibilités ────────────────────────
+        # Final Gambit — Fighting, Spécial
+        ('Final Gambit',    'fighting', 'special',  0,   100, 5,  0,'final_gambit',        100,  None),
+        # Morning Sun — Normal, Statut (soin)
+        ('Morning Sun',     'normal',   'status',   0,   100, 5,  0,'heal_weather',        100,  None),
+        # Smart Strike — Steel, Physique (jamais manque)
+        ('Smart Strike',    'steel',    'physical', 70,  100, 10, 0,'never_miss',          100,  None),
+        # Future Sight — Psychic, Spécial (frappe 2 tours plus tard)
+        ('Future Sight',    'psychic',  'special',  120, 100, 10, 0, 'future_sight',        100,  None),
+        # Mirror Shot — Steel, Spécial
+        ('Mirror Shot',     'steel',    'special',  65,  85,  10, 0,'lower_accuracy',      30,   None),
+        # Shadow Bone — Ghost, Physique
+        ('Shadow Bone',     'ghost',    'physical', 85,  100, 10, 0,'lower_defense',       20,   None),
+        # Hammer Arm — Fighting, Physique (baisse Vitesse utilisateur)
+        ('Hammer Arm',      'fighting', 'physical', 100, 90,  10, 0,'lower_speed_self',    100,  None),
+        # Aurora Veil — Ice, Statut (nécessite grêle)
+        ('Aurora Veil',     'ice',      'status',   0,   100, 20, 0,'aurora_veil',         100,  None),
+        # Burn Up — Fire, Spécial (retire le type Feu)
+        ('Burn Up',         'fire',     'special',  130, 100, 5,  0,'burn_up',             100,  None),
+        # Steel Wing — Steel, Physique
+        ('Steel Wing',      'steel',    'physical', 70,  90,  25, 0,'raise_defense',       10,   None),
+        ('Future Sight',    'psychic',  'special',  120, 100, 10, 0,'future_sight',        100,  None),
     ]
 
     created_count = 0

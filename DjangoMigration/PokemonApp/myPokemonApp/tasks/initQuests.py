@@ -32,11 +32,6 @@ KEY_ITEMS = [
     ("Colis de Chen",    "Un colis à remettre au Professeur Chen de Bourg Palette."),
     ("Pokedex",          "Encyclopédie recensant toutes les espèces Pokémon connues."),
     ("Carte de Kanto",   "Une carte détaillée de la région de Kanto."),
-    ("CS01 Coupe",       "CS. Permet de couper les arbres bloquant le passage. Nécessite le Badge Pierre."),
-    ("CS02 Vol",         "CS. Permet de voler jusqu'aux villes déjà visitées. Nécessite le Badge Arc-en-Ciel."),
-    ("CS03 Surf",        "CS. Permet de surfer sur l'eau. Nécessite le Badge Âme."),
-    ("CS04 Force",       "CS. Permet de pousser les rochers. Nécessite le Badge Arc-en-Ciel."),
-    ("CS05 Flash",       "CS. Permet d'éclairer les grottes sombres. Nécessite le Badge Pierre."),
     ("Ticket SS",        "Billet pour monter à bord du navire SS Anne ancré à Carmin sur Mer."),
     ("Lunette Silph",    "Lunette permettant de voir à travers le brouillard de spectres de la Tour Pokémon."),
     ("Poké Flûte",       "Flûte qui réveille les Pokémon endormis. Indispensable sur les Routes 12 et 16."),
@@ -45,20 +40,49 @@ KEY_ITEMS = [
     ("Bicyclette",       "Vélo rapide offert par la boutique d'Azuria contre un Bon de Réduction."),
     ("Bon de Réduction", "Coupon offert par le Fan-Club Pokémon de Carmin. Échangeable contre une Bicyclette."),
     ("Dent en Or",       "Dent trouvée dans la Zone Safari. Le Gardien donne CS04 Force en échange."),
+    # Les CS (CS01–CS06) sont créées par InitTMsandCS.py (item_type='cs').
+    # Elles ne sont PAS listées ici pour éviter les doublons.
 ]
 
 
 def init_key_items():
     from myPokemonApp.models import Item
     created = 0
+
+    # Items clés purs (non CS)
     for name, desc in KEY_ITEMS:
         _, is_new = Item.objects.get_or_create(
             name=name,
-            defaults={'description': desc, 'item_type': 'key', 'price': 0, 'is_consumable': False},
+            item_type='key',
+            defaults={'description': desc, 'price': 0, 'is_consumable': False},
         )
         if is_new:
             created += 1
-    print(f"  Objets clés : {created} créés, {len(KEY_ITEMS) - created} déjà présents")
+
+    # Les CS sont créées par InitTMsandCS.py (item_type='cs').
+    # On les crée ici en fallback uniquement si elles sont absentes,
+    # pour garantir que les récompenses de quêtes fonctionnent même si
+    # InitTMsandCS n'a pas encore été lancé.
+    CS_FALLBACKS = [
+        (1, "CS01 Coupe",   "CS. Permet de couper les arbres bloquant le passage."),
+        (2, "CS02 Vol",     "CS. Permet de voler jusqu'aux villes déjà visitées."),
+        (3, "CS03 Surf",    "CS. Permet de surfer sur l'eau."),
+        (4, "CS04 Force",   "CS. Permet de pousser les rochers."),
+        (5, "CS05 Flash",   "CS. Permet d'éclairer les grottes sombres."),
+        (6, "CS06 Cascade", "CS. Permet de nager sous les cascades."),
+    ]
+
+    for num, name, desc in CS_FALLBACKS:
+        if not Item.objects.filter(name=name).exists():
+            Item.objects.create(
+                name=name, description=desc,
+                item_type='cs', price=0, is_consumable=False,
+                tm_number=num,
+            )
+            created += 1
+            logger.info(f"  [fallback] CS créée : {name}")
+
+    print(f"  Objets clés : {created} créés, {len(KEY_ITEMS) - (created - 0)} déjà présents")
 
 
 
