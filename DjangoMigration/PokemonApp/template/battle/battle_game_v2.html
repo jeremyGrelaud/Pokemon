@@ -606,6 +606,10 @@
 
 {% block js %}
 {{ block.super }}
+<script>
+  // Chemin local vers les sprites FX locaux
+  window.PS_FX_BASE = "{% static 'img/fx/' %}";
+</script>
 <script src="{% static 'js/battle-effects.js' %}"></script>
 <script src="{% static 'js/battle-responsive.js' %}"></script>
 <script src="{% static 'js/audio-manager.js' %}"></script>
