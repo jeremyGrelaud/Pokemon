@@ -463,6 +463,39 @@ def create_rival(username, player_trainer):
 
 # --- Demarrage ---
 
+def _snapshot_pokemon(p):
+    """Sérialise un PlayablePokemon en dict JSON-safe pour battle_state."""
+    return {
+        'id':               p.id,
+        'nickname':         p.nickname,
+        'species_name':     p.species.name,
+        'species_id':       p.species.id,
+        'primary_type':     p.species.primary_type.name  if p.species.primary_type  else 'normal',
+        'secondary_type':   p.species.secondary_type.name if p.species.secondary_type else None,
+        'level':            p.level,
+        'is_shiny':         p.is_shiny,
+        'attack':           p.attack,
+        'defense':          p.defense,
+        'speed':            p.speed,
+        'status_condition': p.status_condition,
+        'max_hp':           p.max_hp,
+        'current_hp':       p.current_hp,
+    }
+
+
+def _snapshot_team(trainer, wild_pokemon=None):
+    """Snapshot de l'équipe active d'un dresseur au moment T."""
+    if wild_pokemon:
+        return [_snapshot_pokemon(wild_pokemon)]
+    return [
+        _snapshot_pokemon(p)
+        for p in trainer.pokemon_team
+            .filter(is_in_party=True)
+            .order_by('party_position')
+            .select_related('species', 'species__primary_type', 'species__secondary_type')
+    ]
+
+
 def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
                  battle_type='trainer'):
     """
@@ -500,8 +533,13 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
         opponent_pokemon=opponent_pokemon,
         is_active=True,
         battle_state={
-            'player_used_ids':   [player_pokemon.id],
-            'opponent_used_ids': [opponent_pokemon.id],
+            'player_used_ids':        [player_pokemon.id],
+            'opponent_used_ids':      [opponent_pokemon.id],
+            'player_team_snapshot':   _snapshot_team(player_trainer),
+            'opponent_team_snapshot': _snapshot_team(
+                opponent_trainer,
+                wild_pokemon=wild_pokemon if battle_type == 'wild' else None
+            ),
         },
     )
 
@@ -1137,6 +1175,41 @@ def _capture_success(battle, opponent, ball_item, trainer, attempt, shakes):
     """Gere la capture reussie d'un Pokemon (helper prive)."""
     from myPokemonApp.models import CaptureJournal
     from myPokemonApp.views.AchievementViews import trigger_achievements_after_capture
+
+    # ── Snapshot HP AVANT de transférer le Pokémon au joueur ─────────────────
+    # On sauvegarde ici parce que _save_hp_snapshot (BattleViews) ne sera pas
+    # appelé dans le flux capture, et qu'après le save() ci-dessous le Pokémon
+    # appartient au joueur → il faut agir maintenant.
+    try:
+        bs = battle.battle_state if isinstance(battle.battle_state, dict) else {}
+        hp_snap = dict(bs.get('hp_snapshot', {}))
+
+        # HP finaux du joueur (uniquement les Pokémon du snapshot initial)
+        initial_ids = {s['id'] for s in bs.get('player_team_snapshot', [])}
+        for poke in trainer.pokemon_team.filter(is_in_party=True):
+            if initial_ids and poke.id not in initial_ids:
+                continue   # exclure le Pokémon capturé s'il était déjà en party
+            hp_snap[str(poke.id)] = {
+                'hp':               poke.current_hp,
+                'max_hp':           poke.max_hp,
+                'ko':               poke.current_hp == 0,
+                'status_condition': poke.status_condition or '',
+            }
+
+        # HP du Pokémon adverse (avant transfert)
+        hp_snap[str(opponent.id)] = {
+            'hp':               opponent.current_hp,
+            'max_hp':           opponent.max_hp,
+            'ko':               opponent.current_hp == 0,
+            'status_condition': opponent.status_condition or '',
+        }
+
+        bs['hp_snapshot'] = hp_snap
+        battle.battle_state = bs
+        battle.save(update_fields=['battle_state'])
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("hp_snapshot capture failed: %s", exc)
 
     # Transférer le Pokémon sauvage existant (conserve IVs/EVs/nature/moves)
     party_count = trainer.pokemon_team.filter(is_in_party=True).count()

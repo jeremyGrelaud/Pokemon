@@ -121,7 +121,7 @@
         {% for poke in player_team %}
         <div class="d-flex align-items-center px-3 py-2
                     {% if not forloop.last %}border-bottom{% endif %}
-                    {% if poke == battle.player_pokemon %}bg-light{% endif %}">
+                    {% if poke.is_last_active %}bg-light{% endif %}">
 
           <!-- Sprite -->
           <div class="me-3" style="width:64px;flex-shrink:0;text-align:center;">
@@ -137,7 +137,7 @@
               <strong>{{ poke.nickname|default:poke.species.name }}</strong>
               {% if poke.nickname %}<small class="text-muted">({{ poke.species.name }})</small>{% endif %}
               <span class="badge bg-secondary ms-1">Niv.{{ poke.level }}</span>
-              {% if poke == battle.player_pokemon %}
+              {% if poke.is_last_active %}
               <span class="badge bg-primary ms-1"><i class="fas fa-star"></i> Actif</span>
               {% endif %}
               <!-- Types -->
@@ -237,7 +237,7 @@
         {% for poke in opponent_team %}
         <div class="d-flex align-items-center px-3 py-2
                     {% if not forloop.last %}border-bottom{% endif %}
-                    {% if poke == battle.opponent_pokemon %}bg-light{% endif %}">
+                    {% if poke.is_last_active %}bg-light{% endif %}">
 
           <!-- Sprite -->
           <div class="me-3" style="width:64px;flex-shrink:0;text-align:center;">
@@ -253,7 +253,7 @@
               <strong>{{ poke.nickname|default:poke.species.name }}</strong>
               {% if poke.nickname %}<small class="text-muted">({{ poke.species.name }})</small>{% endif %}
               <span class="badge bg-secondary ms-1">Niv.{{ poke.level }}</span>
-              {% if poke == battle.opponent_pokemon %}
+              {% if poke.is_last_active %}
               <span class="badge bg-danger ms-1"><i class="fas fa-star"></i> Dernier actif</span>
               {% endif %}
               <span class="badge badge-type-{{ poke.species.primary_type.name }}">
