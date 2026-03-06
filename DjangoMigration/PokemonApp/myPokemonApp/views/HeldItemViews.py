@@ -25,7 +25,7 @@ from ..models.Trainer import TrainerInventory
 
 def _serialize_held_item(item: Item) -> dict:
     return {
-        "id":            item.id,
+        "item_id":        item.id,
         "name":          item.name,
         "description":   item.description,
         "held_effect":   item.held_effect or "",

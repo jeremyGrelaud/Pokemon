@@ -734,7 +734,7 @@
           <i class="fas fa-times-circle me-1"></i>Retirer
         </button>
         <button class="btn btn-sm btn-primary" id="hm-equip-btn" disabled
-                onclick="doEquipHeld(_hm_sel_id)">
+                onclick="doEquipHeld()">
           <i class="fas fa-check me-1"></i>Équiper
         </button>
       </div>
@@ -742,7 +742,6 @@
     </div>
   </div>
 </div>
-
 {% endblock content %}
 
 {% block css %}
@@ -1524,17 +1523,20 @@ function selectHeldOpt(el, itemId) {
 
 function doEquipHeld(itemId) {
   if (!_hm_pokemon_id) return;
-  post('/api/pokemon/equip-held-item/', { pokemon_id: _hm_pokemon_id, item_id: itemId || null })
+  // Sans argument = bouton Équiper → lit _hm_sel_id
+  // Avec null explicite = bouton Retirer
+  const id = (typeof itemId !== "undefined") ? itemId : _hm_sel_id;
+  post("/api/pokemon/equip-held-item/", { pokemon_id: _hm_pokemon_id, item_id: id })
     .then(d => {
-      bootstrap.Modal.getInstance(document.getElementById('held-item-modal'))?.hide();
+      bootstrap.Modal.getInstance(document.getElementById("held-item-modal"))?.hide();
       if (d.success) {
-        showAlert(d.message, 'success');
+        showAlert(d.message, "success");
         _refreshHeldRow(_hm_pokemon_id, d.held_item);
       } else {
-        showAlert(d.error || 'Erreur.', 'danger');
+        showAlert(d.error || "Erreur.", "danger");
       }
     })
-    .catch(() => showAlert('Erreur réseau.', 'danger'));
+    .catch(() => showAlert("Erreur réseau.", "danger"));
 }
 
 function _refreshHeldRow(pokemonId, heldItem) {
