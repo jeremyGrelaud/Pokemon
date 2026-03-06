@@ -559,12 +559,14 @@ class Battle(models.Model):
             item   = player_action.get('item')
             target = player_action.get('target')
             result = item.use_on_pokemon(target)
-            self.add_to_log(result)
+            msg = result.get('message', str(result)) if isinstance(result, dict) else result
+            self.add_to_log(msg)
         if opponent_using_item:
             item   = opponent_action.get('item')
             target = opponent_action.get('target')
             result = item.use_on_pokemon(target)
-            self.add_to_log(result)
+            msg = result.get('message', str(result)) if isinstance(result, dict) else result
+            self.add_to_log(msg)
 
         if player_using_item and opponent_using_item:
             self.current_turn += 1
