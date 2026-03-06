@@ -12,7 +12,7 @@
 {% block content %}
 <!-- Page Heading -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-  <h1 class="h3 mb-0 text-gray-800">
+  <h1 class="h3 mb-0 text-dark">
     <i class="fas fa-history text-danger"></i> Historique des Centres Pokémon
   </h1>
 </div>
@@ -37,10 +37,10 @@
             <div class="text-xs fw-bold text-primary text-uppercase mb-1">
               Visites Totales
             </div>
-            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_visits }}</div>
+            <div class="h5 mb-0 fw-bold text-dark">{{ total_visits }}</div>
           </div>
           <div class="col-auto">
-            <i class="fas fa-hospital fa-2x text-gray-300"></i>
+            <i class="fas fa-hospital fa-2x text-dark"></i>
           </div>
         </div>
       </div>
@@ -56,10 +56,10 @@
             <div class="text-xs fw-bold text-success text-uppercase mb-1">
               Pokémon Soignés
             </div>
-            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_healed }}</div>
+            <div class="h5 mb-0 fw-bold text-dark">{{ total_healed }}</div>
           </div>
           <div class="col-auto">
-            <i class="fas fa-heart fa-2x text-gray-300"></i>
+            <i class="fas fa-heart fa-2x text-dark"></i>
           </div>
         </div>
       </div>
@@ -75,10 +75,10 @@
             <div class="text-xs fw-bold text-warning text-uppercase mb-1">
               Argent Dépensé
             </div>
-            <div class="h5 mb-0 fw-bold text-gray-800">{{ total_spent }}₽</div>
+            <div class="h5 mb-0 fw-bold text-dark">{{ total_spent }}₽</div>
           </div>
           <div class="col-auto">
-            <i class="fas fa-coins fa-2x text-gray-300"></i>
+            <i class="fas fa-coins fa-2x text-dark"></i>
           </div>
         </div>
       </div>
@@ -94,7 +94,7 @@
             <div class="text-xs fw-bold text-info text-uppercase mb-1">
               Centre Favori
             </div>
-            <div class="h6 mb-0 fw-bold text-gray-800">
+            <div class="h6 mb-0 fw-bold text-dark">
               {% if favorite_center %}
                 {{ favorite_center.center__name|truncatewords:3 }}
               {% else %}
@@ -106,7 +106,7 @@
             {% endif %}
           </div>
           <div class="col-auto">
-            <i class="fas fa-star fa-2x text-gray-300"></i>
+            <i class="fas fa-star fa-2x text-dark"></i>
           </div>
         </div>
       </div>

@@ -13,3 +13,4 @@ from .MapViews import *
 from .AchievementViews import *
 from .QuestViews import *
 from .FloorViews import *
+from .HeldItemViews import *
