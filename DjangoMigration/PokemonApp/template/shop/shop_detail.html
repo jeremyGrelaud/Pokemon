@@ -196,7 +196,7 @@
             <!-- Prix de vente -->
             <div class="text-center mb-3">
               <h5 class="text-success mb-0">
-                <i class="fas fa-coins me-1"></i>{{ trainer_inv.item.price|floatformat:0|mul:0.5|floatformat:0 }}₽
+                <i class="fas fa-coins me-1"></i>{{ trainer_inv.sell_price }}₽
               </h5>
               <small class="text-muted">Prix de vente unitaire</small>
             </div>
@@ -217,7 +217,7 @@
               <button class="btn btn-success btn-sm btn-sell"
                       data-inventory-id="{{ trainer_inv.id }}"
                       data-item-name="{{ trainer_inv.item.name }}"
-                      data-unit-price="{{ trainer_inv.item.price|floatformat:0|mul:0.5|floatformat:0 }}">
+                      data-unit-price="{{ trainer_inv.sell_price }}">
                 <i class="fas fa-hand-holding-usd me-1"></i>Vendre
               </button>
             </div>
