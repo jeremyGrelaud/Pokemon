@@ -53,17 +53,22 @@ class DashboardView(generic.TemplateView):
         context = super().get_context_data(**kwargs)
         trainer = get_or_create_player_trainer(self.request.user)
         
+        # Charger l'équipe une seule fois pour éviter deux requêtes identiques
+        active_party = list(
+            trainer.pokemon_team.filter(is_in_party=True).order_by('party_position')
+        )
+
         # Statistiques
         total_pokemon = Pokemon.objects.count()
-        team_size = trainer.pokemon_team.filter(is_in_party=True).count()
-        total_caught = trainer.pokemon_team.count()
-        badges = trainer.badges
+        team_size     = len(active_party)
+        total_caught  = trainer.pokemon_team.count()
+        badges        = trainer.badges
         
         # Derniers combats
         recent_battles = Battle.objects.filter(
             player_trainer=trainer
         ).order_by('-created_at')[:5]
-        from myPokemonApp.models import GymLeader
+
         # Prochains gym leaders
         next_gym = GymLeader.objects.filter(
             badge_order__gt=badges
@@ -78,7 +83,6 @@ class DashboardView(generic.TemplateView):
         zone_shop = None
         gym_leader = None
         if current_zone:
-            from myPokemonApp.models import PokemonCenter, Shop
             if current_zone.has_pokemon_center:
                 pokemon_center = PokemonCenter.objects.filter(
                     location__icontains=current_zone.name, is_available=True
@@ -89,17 +93,17 @@ class DashboardView(generic.TemplateView):
             gym_leader = GymLeader.objects.filter(gym_city__icontains=english_zone).first()
 
         context.update({
-            'trainer': trainer,
-            'total_pokemon': total_pokemon,
-            'team_size': team_size,
-            'total_caught': total_caught,
-            'badges': badges,
-            'recent_battles': recent_battles,
-            'next_gym': next_gym,
-            'first_team_pokemon': trainer.pokemon_team.filter(is_in_party=True).order_by('party_position').first(),
-            'pokemon_center': pokemon_center,
-            'zone_shop': zone_shop,
-            'gym_leader': gym_leader,
+            'trainer':            trainer,
+            'total_pokemon':      total_pokemon,
+            'team_size':          team_size,
+            'total_caught':       total_caught,
+            'badges':             badges,
+            'recent_battles':     recent_battles,
+            'next_gym':           next_gym,
+            'first_team_pokemon': active_party[0] if active_party else None,
+            'pokemon_center':     pokemon_center,
+            'zone_shop':          zone_shop,
+            'gym_leader':         gym_leader,
         })
         
         return context

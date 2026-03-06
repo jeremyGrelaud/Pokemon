@@ -5,6 +5,7 @@ from myPokemonApp.models.Trainer import Trainer
 from myPokemonApp.models.PlayablePokemon import PlayablePokemon
 from myPokemonApp.models.Battle import Battle
 from myPokemonApp.models.Zone import PlayerLocation
+from myPokemonApp.models.GameSave import GameSave
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +49,7 @@ def active_save(request):
                 # GameSaves actives — on filtre côté DB, pas en Python
                 Prefetch(
                     'game_saves',
-                    queryset=__import__(
-                        'myPokemonApp.models.GameSave', fromlist=['GameSave']
-                    ).GameSave.objects.filter(is_active=True).order_by('-last_saved'),
+                    queryset=GameSave.objects.filter(is_active=True).order_by('-last_saved'),
                     to_attr='active_saves_list',
                 ),
                 # Équipe active — select_related('species') pour le nom + sprite

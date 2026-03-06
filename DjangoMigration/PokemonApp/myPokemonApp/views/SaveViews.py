@@ -371,7 +371,9 @@ def save_load_view(request, save_id):
 
 @login_required
 def save_game_view(request, save_id):
-    """Sauvegarde manuelle — crée un snapshot complet."""
+    """Sauvegarde manuelle — crée un snapshot complet. Requiert POST."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
     trainer = get_player_trainer(request.user)
     save    = get_object_or_404(GameSave, pk=save_id, trainer=trainer)
 

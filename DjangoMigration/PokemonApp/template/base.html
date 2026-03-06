@@ -34,7 +34,13 @@
     let activeSaveId = {{ active_save.id }};
     function autoSave() {
       if (!activeSaveId || window.__battleInProgress) return;
-      fetch(`/saves/${activeSaveId}/save/`, { method:'GET', headers:{'X-CSRFToken':'{{ csrf_token }}'} })
+      fetch(`/saves/${activeSaveId}/save/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json',
+        },
+      })
         .then(r => r.json())
         .then(data => {
           if (data.success && data.save_id) {
@@ -393,31 +399,47 @@
     function saveToSlot(slotNum, saveId) {
       const modal = bootstrap.Modal.getInstance(document.getElementById('saveModal'));
       if (!saveId) {
-        const name = prompt(`Nom pour Slot ${slotNum}:`, `Aventure ${slotNum}`);
-        if (!name) return;
+        // Slot vide : demander le nom via un champ dédié dans le modal
+        const name = document.getElementById('saveModal').dataset.pendingName
+                  || `Aventure ${slotNum}`;
         const fd = new FormData();
         fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
         fd.append('save_name', name);
-        fetch(`/saves/create/${slotNum}/quick/`, { method:'POST', body:fd })
+        fetch(`/saves/create/${slotNum}/quick/`, { method: 'POST', body: fd })
           .then(r => r.json())
           .then(data => {
             if (data.success) {
               if (typeof activeSaveId !== 'undefined' && data.save_id) activeSaveId = data.save_id;
-              alert(`Sauvegardé dans Slot ${slotNum} !`);
+              if (typeof showToast === 'function') showToast(`💾 Sauvegardé dans Slot ${slotNum} !`, 'success', 3000);
               modal.hide();
               location.reload();
+            } else {
+              if (typeof showToast === 'function') showToast(data.error || 'Erreur lors de la sauvegarde', 'error', 5000);
             }
+          })
+          .catch(() => {
+            if (typeof showToast === 'function') showToast('Erreur réseau lors de la sauvegarde', 'error', 5000);
           });
       } else {
-        fetch(`/saves/${saveId}/save/`)
+        fetch(`/saves/${saveId}/save/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+          },
+        })
           .then(r => r.json())
           .then(data => {
             if (data.success) {
               if (typeof activeSaveId !== 'undefined' && data.save_id) activeSaveId = data.save_id;
-              alert(`Sauvegardé dans Slot ${slotNum} !`);
+              if (typeof showToast === 'function') showToast(`💾 Sauvegardé dans Slot ${slotNum} !`, 'success', 3000);
               modal.hide();
-              location.reload();
+            } else {
+              if (typeof showToast === 'function') showToast(data.error || 'Erreur lors de la sauvegarde', 'error', 5000);
             }
+          })
+          .catch(() => {
+            if (typeof showToast === 'function') showToast('Erreur réseau lors de la sauvegarde', 'error', 5000);
           });
       }
     }
@@ -446,8 +468,6 @@
     <!-- Bootstrap 5 -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/sb-admin-5.js' %}"></script>
-    <!-- Chart.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
     <!-- Toast -->
     <script src="{% static 'js/toast-notifications.js' %}"></script>
 
@@ -459,14 +479,28 @@
       e.returnValue = 'Un combat est en cours. Quitter maintenant peut corrompre votre progression.';
     });
     (function() {
-      function tagShiny() {
-        document.querySelectorAll('img').forEach(img => {
-          if ((img.src.includes('/shiny/') || img.src.includes('/back-shiny/')) && !img.classList.contains('shiny-sprite'))
-            img.classList.add('shiny-sprite');
-        });
+      function tagShinyImg(img) {
+        if ((img.src.includes('/shiny/') || img.src.includes('/back-shiny/')) && !img.classList.contains('shiny-sprite'))
+          img.classList.add('shiny-sprite');
       }
-      document.addEventListener('DOMContentLoaded', tagShiny);
-      setInterval(tagShiny, 2000);
+      function tagAllShiny() {
+        document.querySelectorAll('img').forEach(tagShinyImg);
+      }
+      // Passe initiale au chargement
+      document.addEventListener('DOMContentLoaded', tagAllShiny);
+      // Observer les ajouts dynamiques (ex: sprites chargés par AJAX)
+      const _shinyObserver = new MutationObserver(mutations => {
+        mutations.forEach(m => {
+          m.addedNodes.forEach(node => {
+            if (node.nodeType !== 1) return;
+            if (node.tagName === 'IMG') tagShinyImg(node);
+            node.querySelectorAll && node.querySelectorAll('img').forEach(tagShinyImg);
+          });
+        });
+      });
+      document.addEventListener('DOMContentLoaded', () => {
+        _shinyObserver.observe(document.body, { childList: true, subtree: true });
+      });
     })();
 
     function tutorialOpen() {
