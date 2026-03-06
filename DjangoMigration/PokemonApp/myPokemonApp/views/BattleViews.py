@@ -745,6 +745,7 @@ def battle_action_view(request, pk):
             # Fallback : si aucun log trouvé par turn, prendre les 5 derniers
             if not turn_logs:
                 turn_logs = [entry['message'] for entry in battle.battle_log[-5:]]
+            turn_logs = [m.get('message', str(m)) if isinstance(m, dict) else m for m in turn_logs]
             seen   = set(turn_logs)
             merged = turn_logs + [m for m in extra_logs if m not in seen]
             response_data['log'] = merged
