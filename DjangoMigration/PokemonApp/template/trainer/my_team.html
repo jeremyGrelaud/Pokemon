@@ -1481,10 +1481,7 @@ function openHeldModal(pokemonId) {
         document.getElementById('hm-current-wrap').style.display = 'block';
         document.getElementById('hm-cur-name').textContent  = c.name;
         document.getElementById('hm-cur-desc').textContent  = c.description;
-        document.getElementById('hm-cur-img').src =
-          `/static/img/items_sprites/hold-item/${c.name.toLowerCase()
-            .replace(/['\s]/g, '-').replace(/é/g,'e').replace(/è/g,'e')
-            .replace(/à/g,'a').replace(/ê/g,'e')}.png`;
+        document.getElementById('hm-cur-img').src = heldItemSpritePath(c.name);
         document.getElementById('hm-remove-btn').classList.remove('d-none');
       }
 
@@ -1496,9 +1493,7 @@ function openHeldModal(pokemonId) {
       }
       list.innerHTML = d.available.map(it => `
         <div class="held-option" data-id="${it.item_id}" onclick="selectHeldOpt(this,${it.item_id})">
-          <img src="/static/img/items_sprites/hold-item/${it.name.toLowerCase()
-            .replace(/['\s]/g,'-').replace(/é/g,'e').replace(/è/g,'e')
-            .replace(/à/g,'a').replace(/ê/g,'e')}.png"
+          <img src="${heldItemSpritePath(it.name)}"
                alt="${it.name}" onerror="this.style.display='none'">
           <div style="flex:1;min-width:0;">
             <div class="opt-name">${it.name}</div>
@@ -1539,20 +1534,66 @@ function doEquipHeld(itemId) {
     .catch(() => showAlert("Erreur réseau.", "danger"));
 }
 
+// ── Map nom français → chemin sprite statique ────────────────────────────
+const HELD_SPRITE_MAP = {
+  // ── Restes / Leftovers
+  'restes':                ['hold-item', 'leftovers.png'],
+  // ── Orbe Vie
+  'orbe vie':              ['hold-item', 'life-orb.png'],
+  // ── Choice
+  'bandeau choix':         ['hold-item', 'choice-band.png'],
+  'lunettes choix':        ['hold-item', 'choice-specs.png'],
+  'foulard choix':         ['hold-item', 'choice-scarf.png'],
+  // ── Type boosters
+  'charbon':               ['hold-item', 'charcoal.png'],
+  'aimant':                ['hold-item', 'magnet.png'],
+  'eau mystique':          ['hold-item', 'mystic-water.png'],
+  'filtre miroir':         ['hold-item', 'twisted-spoon.png'],
+  'herbe miracle':         ['hold-item', 'miracle-seed.png'],
+  'écharpe soie':          ['hold-item', 'silk-scarf.png'],
+  'echarpe soie':          ['hold-item', 'silk-scarf.png'],
+  // ── Défense
+  'veste assaut':          ['hold-item', 'assault-vest.png'],
+  'ceinture concentration':['hold-item', 'focus-sash.png'],
+  'casque rocheux':        ['hold-item', 'rocky-helmet.png'],
+  // ── Baies sustain  (dossier berry/)
+  'baie sitrus':           ['berry', 'sitrus.png'],
+  'baie oran':             ['berry', 'oran.png'],
+  'baie lum':              ['berry', 'lum.png'],
+  // ── Baies résistance
+  'baie yache':            ['berry', 'yache.png'],
+  'baie chople':           ['berry', 'chople.png'],
+  // ── Baies statut
+  'baie pêche':            ['berry', 'pecha.png'],
+  'baie peche':            ['berry', 'pecha.png'],
+  'baie mepo':             ['berry', 'chesto.png'],
+  'baie gribi':            ['berry', 'pecha.png'],
+  'baie rago':             ['berry', 'rawst.png'],
+  'baie glace':            ['berry', 'aspear.png'],
+};
+
+/**
+ * Retourne le chemin statique complet d'un held item à partir de son nom français.
+ * Fallback : hold-item/leftovers.png si non trouvé.
+ */
+function heldItemSpritePath(name) {
+  const key = (name || '').toLowerCase().trim();
+  const entry = HELD_SPRITE_MAP[key];
+  if (entry) return `/static/img/items_sprites/${entry[0]}/${entry[1]}`;
+  // Fallback générique
+  return `/static/img/items_sprites/hold-item/leftovers.png`;
+}
+
 function _refreshHeldRow(pokemonId, heldItem) {
   const row = document.getElementById(`held-row-${pokemonId}`);
   if (!row) return;
-
-  const imgSlug = n => n.toLowerCase()
-    .replace(/['\s]/g,'-').replace(/é/g,'e').replace(/è/g,'e')
-    .replace(/à/g,'a').replace(/ê/g,'e');
 
   if (heldItem) {
     row.innerHTML = `
       <span class="held-item-badge${heldItem.is_consumable ? ' held-item-consumable' : ''}"
             title="${heldItem.description}"
             onclick="openHeldModal(${pokemonId})">
-        <img src="/static/img/items_sprites/hold-item/${imgSlug(heldItem.name)}.png"
+        <img src="${heldItemSpritePath(heldItem.name)}"
              alt="${heldItem.name}" onerror="this.style.display='none'">
         ${heldItem.name}
       </span>
