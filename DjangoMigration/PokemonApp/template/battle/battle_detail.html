@@ -488,7 +488,7 @@
 {% block js %}
 {{ block.super }}
 <script>
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function () {
   // Auto-scroll du log vers le bas (entrées les plus récentes)
   var logContainer = document.getElementById('battle-log-container');
   if (logContainer) {

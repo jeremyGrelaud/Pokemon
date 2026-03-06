@@ -11,10 +11,13 @@ Changements v1.0 → v1.1 :
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
 import logging
 import json
+
+logger = logging.getLogger(__name__)
 
 from myPokemonApp.models.Achievements import Achievement, TrainerAchievement
 from myPokemonApp.models.GameSave import GameSave
@@ -338,7 +341,8 @@ def save_create_view(request, slot):
         GameSave.objects.filter(trainer=trainer).exclude(pk=save.pk).update(is_active=False)
         save.save()
 
-        logging.info(request, f"Nouvelle partie '{save_name}' créée !")
+        logger.info("Nouvelle partie '%s' créée pour %s", save_name, trainer.username)
+        messages.success(request, f"Nouvelle partie '{save_name}' créée !")
         return redirect('home')
 
     return render(request, 'saves/save_create.html', {'slot': slot, 'existing': existing})
@@ -353,12 +357,15 @@ def save_load_view(request, save_id):
     if save.game_snapshot:
         try:
             restore_game_snapshot(trainer, save.game_snapshot)
-            logging.info(request, f"Sauvegarde '{save.save_name}' chargée !")
+            logger.info("Sauvegarde '%s' (slot %s) chargée pour %s", save.save_name, save.slot, trainer.username)
+            messages.success(request, f"Sauvegarde « {save.save_name} » chargée !")
         except Exception as e:
-            logging.error(request, f"Erreur lors du chargement : {e}")
+            logger.error("Erreur lors du chargement de la sauvegarde %s pour %s : %s", save.pk, trainer.username, e, exc_info=True)
+            messages.error(request, f"Erreur lors du chargement : {e}")
             return redirect('save_select')
     else:
-        logging.warning(request, "Sauvegarde sans snapshot — chargement sans restauration.")
+        logger.warning("Sauvegarde %s sans snapshot pour %s — chargement sans restauration.", save.pk, trainer.username)
+        messages.warning(request, "Cette sauvegarde ne contient pas de snapshot — chargement partiel.")
 
     GameSave.objects.filter(trainer=trainer).update(is_active=False)
     save.refresh_from_db()   # récupérer les story_flags/defeated_trainers restaurés

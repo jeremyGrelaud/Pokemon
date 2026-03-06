@@ -44,7 +44,6 @@ def _building_location_matches(trainer, building_location: str) -> bool:
 
     Retourne True si la position n'est pas connue (pas de blocage).
     """
-    from myPokemonApp.gameUtils import get_player_location
     location = get_player_location(trainer, create_if_missing=False)
     if location is None:
         return True
@@ -72,7 +71,6 @@ class ShopListView(generic.ListView):
         context = super().get_context_data(**kwargs)
         trainer = get_player_trainer(self.request.user)
 
-        from myPokemonApp.gameUtils import get_player_location
         location        = get_player_location(trainer)
         current_zone    = location.current_zone if location else None
         zone_name_lower = current_zone.name.lower() if current_zone else ''
