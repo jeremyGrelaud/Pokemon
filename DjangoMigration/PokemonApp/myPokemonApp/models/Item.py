@@ -159,7 +159,9 @@ class Item(models.Model):
         if not can:
             return {'success': False, 'message': reason}
 
-        success = playable_pokemon.learn_move(self.tm_move, replace_move=replace_move)
+        # Détermine la source selon le type de l'objet (CT ou CS)
+        source = 'hm' if self.item_type == 'cs' else 'tm'
+        success = playable_pokemon.learn_move(self.tm_move, replace_move=replace_move, source=source)
 
         if success:
             return {

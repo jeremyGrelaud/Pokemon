@@ -385,13 +385,20 @@ class PlayablePokemon(models.Model):
         
         return new_moves
     
-    def learn_move(self, move, replace_move=None):
-        """Apprend une nouvelle capacité"""
+    def learn_move(self, move, replace_move=None, source='level'):
+        """
+        Apprend une nouvelle capacité.
+
+        source : 'level' | 'tm' | 'hm' | 'tutor' | 'egg' | 'other'
+            Permet à learn_moves_up_to_level() de ne supprimer que les moves
+            appris par montée de niveau sans écraser les TM/CS enseignées.
+        """
         if self.moves.count() < 4:
             PokemonMoveInstance.objects.create(
                 pokemon=self,
                 move=move,
-                current_pp=move.pp
+                current_pp=move.pp,
+                source=source,
             )
             return True
         elif replace_move:
@@ -402,7 +409,8 @@ class PlayablePokemon(models.Model):
             PokemonMoveInstance.objects.create(
                 pokemon=self,
                 move=move,
-                current_pp=move.pp
+                current_pp=move.pp,
+                source=source,
             )
             return True
         return False
@@ -553,11 +561,27 @@ class PlayablePokemon(models.Model):
 
 class PokemonMoveInstance(models.Model):
     """Instance d'une capacité pour un Pokémon spécifique (avec PP)"""
-    
+
+    SOURCE_CHOICES = [
+        ('level', 'Montée de niveau'),
+        ('tm',    'CT (Technical Machine)'),
+        ('hm',    'CS (Hidden Machine)'),
+        ('tutor', 'Tuteur de capacité'),
+        ('egg',   'Capacité Œuf'),
+        ('other', 'Autre'),
+    ]
+
     pokemon = models.ForeignKey(PlayablePokemon, on_delete=models.CASCADE)
     move = models.ForeignKey(PokemonMove, on_delete=models.CASCADE)
     current_pp = models.IntegerField()
-    
+    # Source d'apprentissage — protège les TM/CS d'être écrasées par
+    # learn_moves_up_to_level() qui ne touche qu'aux moves 'level'.
+    source = models.CharField(
+        max_length=10,
+        choices=SOURCE_CHOICES,
+        default='level',
+    )
+
     class Meta:
         unique_together = ['pokemon', 'move']
     
