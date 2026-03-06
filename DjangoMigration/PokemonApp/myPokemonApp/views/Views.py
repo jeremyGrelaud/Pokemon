@@ -221,7 +221,7 @@ def choose_starter_view(request):
                 trainer.username, exc,
             )
 
-        return redirect('home')
+        return redirect('/?' + 'tutorial=1')
 
     return render(request, 'choose_starter.html', {
         'starters_with_shiny': starters_with_shiny,
