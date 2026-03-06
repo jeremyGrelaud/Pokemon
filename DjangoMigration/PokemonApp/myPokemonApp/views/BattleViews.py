@@ -13,7 +13,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.db.models import Q
+from django.db.models import Q, Count, Case, When, IntegerField
+from django.db.models import Prefetch
 from django.contrib import messages
 
 from myPokemonApp.models.Battle import Battle
@@ -120,16 +121,34 @@ class BattleListView(generic.ListView):
     paginate_by         = 20
 
     def get_queryset(self):
-        trainer = get_or_create_player_trainer(self.request.user)
-        qs = Battle.objects.filter(
-            Q(player_trainer=trainer) | Q(opponent_trainer=trainer)
-        ).order_by('-created_at')
+        # Cache trainer sur self pour ne pas le recalculer dans get_context_data
+        self._trainer = get_or_create_player_trainer(self.request.user)
+
+        qs = (
+            Battle.objects
+            .filter(Q(player_trainer=self._trainer) | Q(opponent_trainer=self._trainer))
+            .order_by('-created_at')
+            # ── select_related : élimine les requêtes FK par ligne ──────────
+            .select_related(
+                'player_trainer',
+                'opponent_trainer',
+                'winner',
+                'player_pokemon__species',
+                'opponent_pokemon__species',
+            )
+            .prefetch_related(
+                Prefetch(
+                    'opponent_trainer__pokemon_team',
+                    queryset=PlayablePokemon.objects.select_related('species'),
+                )
+            )
+        )
 
         result = self.request.GET.get('result', 'all')
         if result == 'win':
-            qs = qs.filter(winner=trainer)
+            qs = qs.filter(winner=self._trainer)
         elif result == 'loss':
-            qs = qs.exclude(winner=trainer).exclude(winner__isnull=True)
+            qs = qs.exclude(winner=self._trainer).exclude(winner__isnull=True)
         elif result == 'active':
             qs = qs.filter(is_active=True)
 
@@ -141,22 +160,39 @@ class BattleListView(generic.ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        trainer = get_or_create_player_trainer(self.request.user)
-        all_battles = Battle.objects.filter(
-            Q(player_trainer=trainer) | Q(opponent_trainer=trainer)
+        # Réutilise le trainer mis en cache dans get_queryset (déjà appelé par super())
+        trainer = getattr(self, '_trainer', None) or get_or_create_player_trainer(self.request.user)
+
+        # ── 1 requêtes pour 4 count ────────────
+        stats = (
+            Battle.objects
+            .filter(Q(player_trainer=trainer) | Q(opponent_trainer=trainer))
+            .aggregate(
+                stat_total=Count('id'),
+                stat_win=Count(
+                    Case(When(winner=trainer, then=1), output_field=IntegerField())
+                ),
+                stat_loss=Count(
+                    Case(
+                        When(winner__isnull=False, then=1),
+                        output_field=IntegerField(),
+                    )
+                ),
+                stat_active=Count(
+                    Case(When(is_active=True, then=1), output_field=IntegerField())
+                ),
+            )
         )
-        context['stat_total']    = all_battles.count()
-        context['stat_win']      = all_battles.filter(winner=trainer).count()
-        context['stat_loss']     = all_battles.exclude(winner=trainer).exclude(winner__isnull=True).count()
-        context['stat_active']   = all_battles.filter(is_active=True).count()
+        # stat_loss tel que calculé inclut les victoires — on soustrait
+        stats['stat_loss'] = stats['stat_loss'] - stats['stat_win']
+
+        context.update(stats)
         context['result_filter'] = self.request.GET.get('result', 'all')
         context['type_filter']   = self.request.GET.get('type', 'all')
 
-        # Pour les combats wild dont le Pokémon adverse a été supprimé (SET_NULL),
-        # injecter les données du snapshot directement sur l'objet battle.
         for battle in context['battles']:
             if battle.battle_type == 'wild' and not battle.opponent_pokemon:
-                snap = battle.battle_snapshot if isinstance(battle.battle_snapshot, dict) else {}
+                snap    = battle.battle_snapshot if isinstance(battle.battle_snapshot, dict) else {}
                 entries = snap.get('opponent_team', [])
                 if entries:
                     e = entries[0]
