@@ -16,7 +16,15 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 from django.contrib import messages
 
-from ..models import *
+from myPokemonApp.models.Battle import Battle
+from myPokemonApp.models.CaptureSystem import CaptureAttempt, PokeballItem
+from myPokemonApp.models.GameSave import GameSave, TrainerBattleHistory
+from myPokemonApp.models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
+from myPokemonApp.models.Pokemon import Pokemon
+from myPokemonApp.models.PokemonEvolution import PokemonEvolution
+from myPokemonApp.models.PokemonMove import PokemonMove
+from myPokemonApp.models.Trainer import GymLeader, PlayerRival, RivalTemplate, Trainer, TrainerInventory
+from myPokemonApp.models.Zone import PlayerLocation, Zone, ZoneConnection
 
 from myPokemonApp.questEngine import trigger_quest_event
 from myPokemonApp.views.AchievementViews import (

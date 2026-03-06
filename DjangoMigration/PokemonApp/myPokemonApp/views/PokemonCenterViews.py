@@ -22,6 +22,7 @@ class PokemonCenterListView(generic.ListView):
     model = PokemonCenter
     template_name = 'pokemon_center/center_list.html'
     context_object_name = 'centers'
+    paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
         trainer = get_player_trainer(request.user)

@@ -11,7 +11,9 @@ from django.db.models import Q
 import django_tables2 as tables
 from .Views import GenericOverview
 from django.views import generic
-from ..models import *
+from myPokemonApp.models.PokemonLearnableMove import PokemonLearnableMove
+from myPokemonApp.models.PokemonMove import PokemonMove
+from myPokemonApp.models.PokemonType import PokemonType
 
 
 # ============================================================================

@@ -13,9 +13,15 @@ from django.utils.decorators import method_decorator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from myPokemonApp.gameUtils import get_or_create_player_trainer, create_starter_pokemon, give_item_to_trainer, grant_pokedex, get_player_location, ZONE_TRANSLATIONS, get_defeated_trainer_ids
-from myPokemonApp.models import GameSave
 from myPokemonApp.questEngine import get_active_quests, complete_quest, get_quest_progress
-from ..models import *
+from myPokemonApp.models.Battle import Battle
+from myPokemonApp.models.GameSave import GameSave
+from myPokemonApp.models.Item import Item
+from myPokemonApp.models.Pokemon import Pokemon
+from myPokemonApp.models.PokemonCenter import PokemonCenter
+from myPokemonApp.models.Quest import QuestProgress
+from myPokemonApp.models.ShopModel import Shop
+from myPokemonApp.models.Trainer import GymLeader, PlayerRival, RivalTemplate, Trainer
 
 logger = logging.getLogger(__name__)
 

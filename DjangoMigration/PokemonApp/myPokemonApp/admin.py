@@ -7,7 +7,21 @@ pour l'application Pokémon — tous les modèles enregistrés.
 from django.contrib import admin
 from django.contrib import messages
 from django.utils.html import format_html
-from .models import *
+from .models.Achievements import Achievement, TrainerAchievement
+from .models.Battle import Battle
+from .models.CaptureSystem import CaptureAttempt, CaptureJournal, PokeballItem
+from .models.GameSave import GameSave, TrainerBattleHistory
+from .models.Item import Item
+from .models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
+from .models.Pokemon import Pokemon
+from .models.PokemonCenter import CenterVisit, NurseDialogue, PokemonCenter
+from .models.PokemonEvolution import PokemonEvolution
+from .models.PokemonLearnableMove import PokemonLearnableMove
+from .models.PokemonMove import PokemonMove
+from .models.PokemonType import PokemonType
+from .models.ShopModel import Shop, ShopInventory, Transaction
+from .models.Trainer import GymLeader, Trainer, TrainerInventory
+from .models.Zone import PlayerLocation, WildPokemonSpawn, Zone, ZoneConnection
 
 
 # ============================================================================

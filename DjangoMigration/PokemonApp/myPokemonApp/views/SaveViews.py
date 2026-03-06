@@ -16,9 +16,15 @@ from django.utils import timezone
 import logging
 import json
 
-from myPokemonApp.models import *
 from myPokemonApp.models.Achievements import Achievement, TrainerAchievement
+from myPokemonApp.models.GameSave import GameSave
+from myPokemonApp.models.Item import Item
+from myPokemonApp.models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
+from myPokemonApp.models.Pokemon import Pokemon
+from myPokemonApp.models.PokemonMove import PokemonMove
 from myPokemonApp.models.Quest import Quest, QuestProgress
+from myPokemonApp.models.Trainer import Trainer, TrainerInventory
+from myPokemonApp.models.Zone import PlayerLocation
 from myPokemonApp.gameUtils import get_player_trainer
 
 

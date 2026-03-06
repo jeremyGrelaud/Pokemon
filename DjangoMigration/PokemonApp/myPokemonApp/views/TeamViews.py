@@ -20,7 +20,9 @@ from myPokemonApp.gameUtils import (
     auto_reorganize_party,
 )
 
-from ..models import *
+from myPokemonApp.models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
+from myPokemonApp.models.PokemonMove import PokemonMove
+from myPokemonApp.models.Trainer import Trainer
 
 
 

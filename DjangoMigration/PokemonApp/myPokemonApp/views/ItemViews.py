@@ -22,6 +22,7 @@ class ItemListView(generic.ListView):
     model = Item
     template_name = "items/item_list.html"
     context_object_name = 'items'
+    paginate_by = 30 
 
     def get_queryset(self):
         item_type = self.request.GET.get('itemType', '')

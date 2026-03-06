@@ -10,7 +10,13 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
 
-from myPokemonApp.models import *
+from myPokemonApp.models.Battle import Battle
+from myPokemonApp.models.GameSave import GameSave
+from myPokemonApp.models.Item import Item
+from myPokemonApp.models.PokemonCenter import PokemonCenter
+from myPokemonApp.models.ShopModel import Shop
+from myPokemonApp.models.Trainer import GymLeader, Trainer, TrainerInventory
+from myPokemonApp.models.Zone import Zone, ZoneConnection
 from myPokemonApp.gameUtils import (
     get_random_wild_pokemon, get_player_trainer, get_player_location,
     get_defeated_trainer_ids, ZONE_TRANSLATIONS,

@@ -8,7 +8,7 @@ from django.views import generic
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from myPokemonApp.gameUtils import get_or_create_player_trainer
-from ..models import *
+from myPokemonApp.models.Trainer import GymLeader
 
 
 # ============================================================================

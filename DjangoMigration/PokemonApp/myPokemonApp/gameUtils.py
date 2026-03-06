@@ -17,7 +17,15 @@ Organisation :
 
 import random
 import logging
-from myPokemonApp.models import *
+from myPokemonApp.models.Ability import Ability
+from myPokemonApp.models.Battle import Battle
+from myPokemonApp.models.CaptureSystem import CaptureAttempt, CaptureJournal, PokeballItem
+from myPokemonApp.models.Item import Item
+from myPokemonApp.models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
+from myPokemonApp.models.Pokemon import Pokemon
+from myPokemonApp.models.PokemonMove import PokemonMove
+from myPokemonApp.models.Trainer import GymLeader, Trainer, TrainerInventory
+from myPokemonApp.models.Zone import WildPokemonSpawn
 
 
 # =============================================================================
