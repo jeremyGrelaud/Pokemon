@@ -65,48 +65,35 @@ _STATUS_LABELS = {
 }
 
 
-def _snap_to_mock(snap, active_pokemon_id=None, hp_snapshot=None):
-    """
-    Convertit un dict snapshot en objet mock compatible avec battle_detail.html.
-    hp_snapshot (fin de combat) écrase les HP/statut du snapshot initial.
-    """
+def _snap_to_mock(entry, active_pokemon_id=None):
+    """Convertit une entrée de battle_snapshot en mock compatible avec battle_detail.html."""
     species = SimpleNamespace(
-        name=snap['species_name'],
-        id=snap['species_id'],
-        primary_type=SimpleNamespace(name=snap['primary_type']),
+        name=entry['species_name'],
+        id=entry['species_id'],
+        primary_type=SimpleNamespace(name=entry['primary_type']),
         secondary_type=(
-            SimpleNamespace(name=snap['secondary_type'])
-            if snap.get('secondary_type') else None
+            SimpleNamespace(name=entry['secondary_type'])
+            if entry.get('secondary_type') else None
         ),
     )
-
-    current_hp = snap.get('current_hp', 0)
-    max_hp     = snap.get('max_hp', 0)
-    status     = snap.get('status_condition')
-    ko         = current_hp == 0
-
-    if hp_snapshot:
-        end = hp_snapshot.get(str(snap['id']))
-        if end:
-            current_hp = end['hp']
-            max_hp     = end.get('max_hp', max_hp)
-            ko         = end.get('ko', current_hp == 0)
-            status     = end.get('status_condition') or status
-
+    current_hp = entry.get('current_hp', 0)
+    max_hp     = entry.get('max_hp', 0)
+    status     = entry.get('status_condition') or None
+    ko         = entry.get('ko', current_hp == 0)
     mock = SimpleNamespace(
-        id=snap['id'],
-        nickname=snap.get('nickname'),
+        id=entry['id'],
+        nickname=entry.get('nickname'),
         species=species,
-        level=snap['level'],
-        is_shiny=snap.get('is_shiny', False),
-        attack=snap['attack'],
-        defense=snap['defense'],
-        speed=snap['speed'],
+        level=entry['level'],
+        is_shiny=entry.get('is_shiny', False),
+        attack=entry.get('attack'),
+        defense=entry.get('defense'),
+        speed=entry.get('speed'),
         max_hp=max_hp,
         current_hp=current_hp,
         ko=ko,
         status_condition=status,
-        is_last_active=(snap['id'] == active_pokemon_id),
+        is_last_active=(entry['id'] == active_pokemon_id),
     )
     mock.get_status_condition_display = lambda: _STATUS_LABELS.get(status, status or '')
     return mock
@@ -156,6 +143,23 @@ class BattleListView(generic.ListView):
         context['stat_active']   = all_battles.filter(is_active=True).count()
         context['result_filter'] = self.request.GET.get('result', 'all')
         context['type_filter']   = self.request.GET.get('type', 'all')
+
+        # Pour les combats wild dont le Pokémon adverse a été supprimé (SET_NULL),
+        # injecter les données du snapshot directement sur l'objet battle.
+        for battle in context['battles']:
+            if battle.battle_type == 'wild' and not battle.opponent_pokemon:
+                snap = battle.battle_snapshot if isinstance(battle.battle_snapshot, dict) else {}
+                entries = snap.get('opponent_team', [])
+                if entries:
+                    e = entries[0]
+                    battle.snap_opponent_name  = e.get('species_name', '?')
+                    battle.snap_opponent_level = e.get('level', '?')
+                    battle.snap_opponent_shiny = e.get('is_shiny', False)
+                else:
+                    battle.snap_opponent_name  = None
+                    battle.snap_opponent_level = None
+                    battle.snap_opponent_shiny = False
+
         return context
 
 
@@ -173,21 +177,17 @@ class BattleDetailView(generic.DetailView):
         viewer     = get_player_trainer(self.request.user)
         player_won = (battle.winner == battle.player_trainer) if battle.winner else None
 
-        bs          = battle.battle_state if isinstance(battle.battle_state, dict) else {}
-        hp_snapshot = bs.get('hp_snapshot', {})
-
+        snap               = battle.battle_snapshot if isinstance(battle.battle_snapshot, dict) else {}
         player_active_id   = battle.player_pokemon_id
         opponent_active_id = battle.opponent_pokemon_id
 
-        # ── Équipe joueur : snapshot figé au début + HP de fin ────────────────
-        player_snap = bs.get('player_team_snapshot')
-        if player_snap:
-            player_team = [
-                _snap_to_mock(s, player_active_id, hp_snapshot)
-                for s in player_snap
-            ]
+        # ── Équipe joueur ──────────────────────────────────────────────────────
+        player_entries = snap.get('player_team')
+        if player_entries:
+            player_team = [_snap_to_mock(e, player_active_id) for e in player_entries]
         else:
-            # Fallback legacy (anciens combats sans snapshot)
+            # Fallback legacy (combats antérieurs au champ battle_snapshot)
+            bs = battle.battle_state if isinstance(battle.battle_state, dict) else {}
             used_ids = bs.get('player_used_ids', [])
             qs = battle.player_trainer.pokemon_team.select_related(
                 'species', 'species__primary_type', 'species__secondary_type'
@@ -197,29 +197,16 @@ class BattleDetailView(generic.DetailView):
             for p in player_team:
                 p.is_last_active = (p.id == player_active_id)
 
-        # ── Équipe adversaire : snapshot figé au début + HP de fin ───────────
-        opponent_snap = bs.get('opponent_team_snapshot')
-        if opponent_snap:
-            opponent_team = [
-                _snap_to_mock(s, opponent_active_id, hp_snapshot)
-                for s in opponent_snap
-            ]
-        elif battle.battle_type == 'wild' or not battle.opponent_trainer:
+        # ── Équipe adversaire ──────────────────────────────────────────────────
+        opponent_entries = snap.get('opponent_team')
+        if opponent_entries:
+            opponent_team = [_snap_to_mock(e, opponent_active_id) for e in opponent_entries]
+        elif battle.opponent_pokemon:
             p = battle.opponent_pokemon
-            if p:
-                p.is_last_active = True
-                opponent_team = [p]
-            else:
-                opponent_team = []
+            p.is_last_active = True
+            opponent_team = [p]
         else:
-            used_ids = bs.get('opponent_used_ids', [])
-            qs = battle.opponent_trainer.pokemon_team.select_related(
-                'species', 'species__primary_type', 'species__secondary_type'
-            )
-            qs = qs.filter(id__in=used_ids) if used_ids else qs.filter(is_in_party=True)
-            opponent_team = list(qs)
-            for p in opponent_team:
-                p.is_last_active = (p.id == opponent_active_id)
+            opponent_team = []
 
         money_earned = 0
         try:
@@ -236,7 +223,6 @@ class BattleDetailView(generic.DetailView):
             'player_team':   player_team,
             'opponent_team': opponent_team,
             'money_earned':  money_earned,
-            'hp_snapshot':   hp_snapshot,
         })
         return context
 
@@ -418,53 +404,39 @@ def _handle_attack(request, battle, trainer, response_data):
 
 def _save_hp_snapshot(battle):
     """
-    Enregistre les HP finaux de l'équipe initiale du joueur et des Pokémon
-    adverses ayant participé.
-    Utilise player_team_snapshot pour n'inclure QUE les Pokémon présents au
-    début du combat (évite d'inclure un Pokémon capturé pendant le combat).
+    Met à jour battle_snapshot avec les HP/statut finaux de chaque Pokémon.
+    Appelé juste avant de marquer le combat comme terminé.
     """
     try:
+        snap = battle.battle_snapshot if isinstance(battle.battle_snapshot, dict) else {}
+
+        for entry in snap.get('player_team', []):
+            try:
+                poke = battle.player_trainer.pokemon_team.get(id=entry['id'])
+                entry.update({'current_hp': poke.current_hp, 'max_hp': poke.max_hp,
+                               'ko': poke.current_hp == 0, 'status_condition': poke.status_condition or ''})
+            except Exception:
+                pass
+
         bs = battle.battle_state if isinstance(battle.battle_state, dict) else {}
-        snapshot = dict(bs.get('hp_snapshot', {}))  # conserver les entrées déjà sauvegardées (capture)
-
-        # IDs de l'équipe initiale du joueur (snapshot pris au début du combat)
-        initial_snap = bs.get('player_team_snapshot', [])
-        initial_ids  = {s['id'] for s in initial_snap} if initial_snap else None
-
-        for poke in battle.player_trainer.pokemon_team.filter(is_in_party=True):
-            if initial_ids is not None and poke.id not in initial_ids:
-                continue  # Pokémon non-présent au début (ex: capturé pendant le combat)
-            snapshot[str(poke.id)] = {
-                'hp':               poke.current_hp,
-                'max_hp':           poke.max_hp,
-                'ko':               poke.current_hp == 0,
-                'status_condition': poke.status_condition or '',
-            }
-
-        # Pokémon adverses ayant participé
         opponent_used_ids = bs.get('opponent_used_ids', [])
-        if battle.opponent_trainer and opponent_used_ids:
-            for poke in battle.opponent_trainer.pokemon_team.filter(id__in=opponent_used_ids):
-                snapshot[str(poke.id)] = {
-                    'hp':               poke.current_hp,
-                    'max_hp':           poke.max_hp,
-                    'ko':               poke.current_hp == 0,
-                    'status_condition': poke.status_condition or '',
-                }
-        elif battle.opponent_pokemon:
-            p = battle.opponent_pokemon
-            snapshot[str(p.id)] = {
-                'hp':               p.current_hp,
-                'max_hp':           p.max_hp,
-                'ko':               p.current_hp == 0,
-                'status_condition': p.status_condition or '',
-            }
+        for entry in snap.get('opponent_team', []):
+            poke = None
+            if battle.opponent_trainer and opponent_used_ids:
+                try:
+                    poke = battle.opponent_trainer.pokemon_team.get(id=entry['id'])
+                except Exception:
+                    pass
+            elif battle.opponent_pokemon and battle.opponent_pokemon.id == entry['id']:
+                poke = battle.opponent_pokemon
+            if poke:
+                entry.update({'current_hp': poke.current_hp, 'max_hp': poke.max_hp,
+                               'ko': poke.current_hp == 0, 'status_condition': poke.status_condition or ''})
 
-        bs['hp_snapshot'] = snapshot
-        battle.battle_state = bs
-        battle.save(update_fields=['battle_state'])
+        battle.battle_snapshot = snap
+        battle.save(update_fields=['battle_snapshot'])
     except Exception as exc:
-        logger.warning("Impossible de sauvegarder hp_snapshot : %s", exc)
+        logger.warning("Impossible de mettre à jour battle_snapshot : %s", exc)
 
 
 def _handle_flee(request, battle, trainer, response_data):
@@ -873,18 +845,10 @@ def battle_create_wild_view(request):
     # Creer le Pokemon sauvage (stats + moves + fallback Tackle) via gameUtils
     wild_pokemon = create_wild_pokemon(wild_species, level)
 
-    # Réinitialiser les stages des deux Pokémon avant le combat
-    player_pokemon.reset_combat_stats()
-    wild_pokemon.reset_combat_stats()
-
-    battle = Battle.objects.create(
-        player_trainer=player_trainer,
-        opponent_trainer=None,
-        player_pokemon=player_pokemon,
-        opponent_pokemon=wild_pokemon,
-        battle_type='wild',
-        is_active=True,
-    )
+    battle, msg = start_battle(player_trainer, wild_pokemon=wild_pokemon)
+    if not battle:
+        messages.error(request, msg)
+        return redirect('BattleCreateView')
 
     messages.success(request, f"Un {wild_species.name} sauvage de niveau {level} apparait !")
     return redirect('BattleGameView', pk=battle.id)
@@ -970,14 +934,10 @@ def battle_create_trainer_view(request, trainer_id):
     player_pokemon.reset_combat_stats()
     opponent_pokemon.reset_combat_stats()
 
-    battle = Battle.objects.create(
-        player_trainer=player_trainer,
-        opponent_trainer=opponent_trainer,
-        player_pokemon=player_pokemon,
-        opponent_pokemon=opponent_pokemon,
-        battle_type='trainer',
-        is_active=True,
-    )
+    battle, msg = start_battle(player_trainer, opponent_trainer=opponent_trainer)
+    if not battle:
+        messages.error(request, msg)
+        return redirect('BattleCreateView')
 
     messages.info(request, opponent_trainer.intro_text or f"Vous affrontez {opponent_trainer.get_full_title()} !")
     return redirect('BattleGameView', pk=battle.id)
@@ -1027,14 +987,10 @@ def battle_create_gym_view(request):
     player_pokemon.reset_combat_stats()
     opponent_pokemon.reset_combat_stats()
 
-    battle = Battle.objects.create(
-        player_trainer=player_trainer,
-        opponent_trainer=opponent_trainer,
-        player_pokemon=player_pokemon,
-        opponent_pokemon=opponent_pokemon,
-        battle_type='gym',
-        is_active=True,
-    )
+    battle, msg = start_battle(player_trainer, opponent_trainer=opponent_trainer, battle_type='gym')
+    if not battle:
+        messages.error(request, msg)
+        return redirect('BattleCreateView')
 
     messages.info(
         request,
@@ -1118,14 +1074,10 @@ def battle_challenge_gym_view(request, gym_leader_id):
     player_pokemon.reset_combat_stats()
     opponent_pokemon.reset_combat_stats()
     
-    battle = Battle.objects.create(
-        player_trainer=player_trainer,
-        opponent_trainer=opponent_trainer,
-        player_pokemon=player_pokemon,
-        opponent_pokemon=opponent_pokemon,
-        battle_type='gym',
-        is_active=True,
-    )
+    battle, msg = start_battle(player_trainer, opponent_trainer=opponent_trainer, battle_type='gym')
+    if not battle:
+        messages.error(request, msg)
+        return redirect('GymLeaderDetailView', pk=gym_leader.id)
 
     messages.info(
         request,

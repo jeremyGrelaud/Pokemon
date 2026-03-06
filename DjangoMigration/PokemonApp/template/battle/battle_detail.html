@@ -151,33 +151,30 @@
               {% endif %}
             </div>
 
-            <!-- HP bar (snapshot au moment de la fin du combat) -->
-            {% with snap=hp_snapshot|dict_get:poke.id %}
-            {% if snap %}
-              {% widthratio snap.hp snap.max_hp 100 as hp_p %}
+            <!-- HP bar (depuis battle_snapshot) -->
+            {% if poke.max_hp %}
+              {% widthratio poke.current_hp poke.max_hp 100 as hp_p %}
               <div class="d-flex align-items-center" style="gap:8px;">
                 <div class="progress flex-grow-1" style="height:8px;">
                   <div class="progress-bar
-                              {% if snap.ko %}bg-secondary
+                              {% if poke.ko %}bg-secondary
                               {% elif hp_p|add:0 > 50 %}bg-success
                               {% elif hp_p|add:0 > 20 %}bg-warning
                               {% else %}bg-danger{% endif %}"
-                       style="width:{% if snap.ko %}100{% else %}{{ hp_p }}{% endif %}%;
-                              {% if snap.ko %}opacity:.35{% endif %}"></div>
+                       style="width:{% if poke.ko %}100{% else %}{{ hp_p }}{% endif %}%;
+                              {% if poke.ko %}opacity:.35{% endif %}"></div>
                 </div>
                 <small class="text-muted" style="white-space:nowrap;">
-                  {% if snap.ko %}
+                  {% if poke.ko %}
                     <span class="text-danger fw-bold">K.O.</span>
                   {% else %}
-                    {{ snap.hp }}/{{ snap.max_hp }}
+                    {{ poke.current_hp }}/{{ poke.max_hp }}
                   {% endif %}
                 </small>
               </div>
             {% else %}
-              {# Fallback: pas encore de snapshot (anciens combats) #}
               <small class="text-muted"><i class="fas fa-question-circle"></i> HP non enregistrés</small>
             {% endif %}
-            {% endwith %}
 
             <!-- Status -->
             {% if poke.status_condition %}
@@ -189,6 +186,7 @@
           </div>
 
           <!-- Stats compactes -->
+          {% if poke.attack %}
           <div class="ms-3 text-center d-none d-xl-block" style="min-width:90px;">
             <div class="row g-0 text-center" style="font-size:0.75em;">
               <div class="col-4 p-1 bg-light rounded-left">
@@ -205,6 +203,7 @@
               </div>
             </div>
           </div>
+          {% endif %}
 
         </div>
         {% empty %}
@@ -266,32 +265,30 @@
               {% endif %}
             </div>
 
-            <!-- HP bar (snapshot fin de combat) -->
-            {% with snap=hp_snapshot|dict_get:poke.id %}
-            {% if snap %}
-              {% widthratio snap.hp snap.max_hp 100 as hp_p2 %}
+            <!-- HP bar (depuis battle_snapshot) -->
+            {% if poke.max_hp %}
+              {% widthratio poke.current_hp poke.max_hp 100 as hp_p %}
               <div class="d-flex align-items-center" style="gap:8px;">
                 <div class="progress flex-grow-1" style="height:8px;">
                   <div class="progress-bar
-                              {% if snap.ko %}bg-secondary
-                              {% elif hp_p2|add:0 > 50 %}bg-success
-                              {% elif hp_p2|add:0 > 20 %}bg-warning
+                              {% if poke.ko %}bg-secondary
+                              {% elif hp_p|add:0 > 50 %}bg-success
+                              {% elif hp_p|add:0 > 20 %}bg-warning
                               {% else %}bg-danger{% endif %}"
-                       style="width:{% if snap.ko %}100{% else %}{{ hp_p2 }}{% endif %}%;
-                              {% if snap.ko %}opacity:.35{% endif %}"></div>
+                       style="width:{% if poke.ko %}100{% else %}{{ hp_p }}{% endif %}%;
+                              {% if poke.ko %}opacity:.35{% endif %}"></div>
                 </div>
                 <small class="text-muted" style="white-space:nowrap;">
-                  {% if snap.ko %}
+                  {% if poke.ko %}
                     <span class="text-danger fw-bold">K.O.</span>
                   {% else %}
-                    {{ snap.hp }}/{{ snap.max_hp }}
+                    {{ poke.current_hp }}/{{ poke.max_hp }}
                   {% endif %}
                 </small>
               </div>
             {% else %}
               <small class="text-muted"><i class="fas fa-question-circle"></i> HP non enregistrés</small>
             {% endif %}
-            {% endwith %}
 
             {% if poke.status_condition %}
             <span class="badge bg-warning mt-1">
@@ -302,6 +299,7 @@
           </div>
 
           <!-- Stats compactes -->
+          {% if poke.attack %}
           <div class="ms-3 text-center d-none d-xl-block" style="min-width:90px;">
             <div class="row g-0 text-center" style="font-size:0.75em;">
               <div class="col-4 p-1 bg-light rounded-left">
@@ -318,6 +316,7 @@
               </div>
             </div>
           </div>
+          {% endif %}
 
         </div>
         {% empty %}

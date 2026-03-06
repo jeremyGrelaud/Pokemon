@@ -94,6 +94,9 @@ class Battle(models.Model):
     battle_log   = models.JSONField(default=list)
     battle_state = models.JSONField(default=dict)   # ← état volatile du combat
 
+    # Snapshot permanent des équipes (début) + HP finaux (fin).
+    battle_snapshot = models.JSONField(default=dict, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     ended_at   = models.DateTimeField(null=True, blank=True)
 
