@@ -1228,7 +1228,3 @@ def runCSAndTM(clear_tm_learnsets: bool = False):
     logger.info("=" * 70)
     logger.info("[✓] Initialisation TM/CS terminée !")
     logger.info("=" * 70)
-
-
-if __name__ == "__main__":
-    runCSAndTM()

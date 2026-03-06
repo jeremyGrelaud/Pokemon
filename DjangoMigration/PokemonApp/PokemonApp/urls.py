@@ -39,6 +39,10 @@ urlpatterns = [
     path('api/items/tm/<int:item_id>/use/',          views.UseTMView.as_view(),         name='use_tm'),
     path('api/items/tm/compatible/<int:pokemon_id>/', views.TMCompatibilityView.as_view(), name='tm_compatible'),
 
+    # ── Held Items ──────────────────────────────────────────────────────────
+    path('api/pokemon/equip-held-item/',  views.EquipHeldItemView.as_view(),    name='equip_held_item'),
+    path('api/pokemon/held-items/',       views.PokemonHeldItemsView.as_view(), name='pokemon_held_items'),
+
     # Combats — liste et détail
     path('battles/',         views.BattleListView.as_view(),   name='BattleListView'),
     path('battle/<int:pk>/', views.BattleDetailView.as_view(), name='BattleDetailView'),

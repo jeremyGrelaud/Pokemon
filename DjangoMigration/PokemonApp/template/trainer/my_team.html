@@ -8,7 +8,7 @@
 {% block content %}
 <!-- Header -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-  <h1 class="h3 mb-0 text-gray-800">
+  <h1 class="h3 mb-0 text-dark">
     <i class="fas fa-users text-success"></i> Mon Équipe
   </h1>
   <div class="d-flex align-items-center gap-2">
@@ -113,6 +113,29 @@
               {% endif %}
             </div>
             {% endif %}
+            <!-- Objet tenu -->
+            <div class="held-item-row" id="held-row-{{ pokemon.id }}">
+              {% if pokemon.held_item %}
+              {% with path=pokemon.held_item|item_sprite_path %}
+              <span class="held-item-badge {% if pokemon.held_item.is_consumable %}held-item-consumable{% endif %}"
+                    title="{{ pokemon.held_item.description }}"
+                    onclick="openHeldModal({{ pokemon.id }})">
+                {% if path %}
+                <img src="{% static 'img/items_sprites/' %}{{ path }}"
+                     alt="{{ pokemon.held_item.name }}"
+                     onerror="this.style.display='none'">
+                {% endif %}
+                {{ pokemon.held_item.name }}
+              </span>
+              {% endwith %}
+              {% else %}
+              <span class="held-item-empty">Aucun objet tenu</span>
+              {% endif %}
+              <button class="btn-equip-held" onclick="openHeldModal({{ pokemon.id }})">
+                <i class="fas fa-hand-holding"></i>
+                {% if pokemon.held_item %}Changer{% else %}Équiper{% endif %}
+              </button>
+            </div>
             <div class="mb-2">
               <div class="moves-mini-grid">
                 {% for mi in pokemon.pokemonmoveinstance_set.all %}
@@ -662,12 +685,70 @@
   </div>
 </div>
 
+<!-- ═══ MODAL OBJET TENU ═══════════════════════════════════════════════════ -->
+<div class="modal fade" id="held-item-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+    <div class="modal-content">
+
+      <div class="modal-header" style="background:linear-gradient(135deg,#1a4a6b,#2471a3);color:#fff;">
+        <h5 class="modal-title">
+          <i class="fas fa-hand-holding me-2"></i>
+          Objet tenu — <span id="hm-poke-name">?</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body" style="max-height:420px;overflow-y:auto;">
+
+        <!-- Objet actuel -->
+        <div id="hm-current-wrap" class="mb-3" style="display:none;">
+          <div class="fw-bold text-muted mb-1" style="font-size:.75rem;letter-spacing:.04em;">
+            TENU ACTUELLEMENT
+          </div>
+          <div class="held-option active" id="hm-current-opt">
+            <img src="" alt="" id="hm-cur-img" onerror="this.style.display='none'">
+            <div>
+              <div class="opt-name" id="hm-cur-name">—</div>
+              <div class="opt-desc" id="hm-cur-desc"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Séparateur -->
+        <div class="fw-bold text-muted mb-2" style="font-size:.75rem;letter-spacing:.04em;">
+          VOS OBJETS TENUS
+        </div>
+
+        <div id="hm-list">
+          <div class="text-center text-muted py-3">
+            <i class="fas fa-spinner fa-spin"></i> Chargement…
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer py-2">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-sm btn-warning d-none" id="hm-remove-btn"
+                onclick="doEquipHeld(null)">
+          <i class="fas fa-times-circle me-1"></i>Retirer
+        </button>
+        <button class="btn btn-sm btn-primary" id="hm-equip-btn" disabled
+                onclick="doEquipHeld()">
+          <i class="fas fa-check me-1"></i>Équiper
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
 {% endblock content %}
 
 {% block css %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'css/my-team.css' %}">
 <link rel="stylesheet" href="{% static 'css/tm-teach.css' %}">
+<link rel="stylesheet" href="{% static 'css/held-items.css' %}">
 {% endblock css %}
 
 {% block js %}
@@ -1360,6 +1441,178 @@ function drawRadar(stats, bases, level, nat) {
     ctx.fillText(`${vals[i]}/${maxVals[i]}`, lx, ly + 13);
   });
 }
+
+// ══════════════════════════════════════════════════════════════════
+// HELD ITEMS
+// ══════════════════════════════════════════════════════════════════
+let _hm_pokemon_id = null;
+let _hm_sel_id     = null;   // item_id sélectionné dans la liste
+
+function openHeldModal(pokemonId) {
+  _hm_pokemon_id = pokemonId;
+  _hm_sel_id     = null;
+
+  // Nom du Pokémon depuis la carte
+  const slot   = document.querySelector(`.team-slot[data-id="${pokemonId}"]`);
+  const name   = slot ? (slot.querySelector('h6 strong')?.textContent || '?') : '?';
+  document.getElementById('hm-poke-name').textContent = name;
+
+  // Reset UI
+  document.getElementById('hm-list').innerHTML =
+    '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Chargement…</div>';
+  document.getElementById('hm-current-wrap').style.display = 'none';
+  document.getElementById('hm-remove-btn').classList.add('d-none');
+  document.getElementById('hm-equip-btn').disabled = true;
+
+  new bootstrap.Modal(document.getElementById('held-item-modal')).show();
+
+  fetch(`/api/pokemon/held-items/?pokemon_id=${pokemonId}`)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.success) {
+        document.getElementById('hm-list').innerHTML =
+          `<div class="text-danger text-center">${d.error || 'Erreur'}</div>`;
+        return;
+      }
+
+      // Objet actuel
+      if (d.current_held) {
+        const c = d.current_held;
+        document.getElementById('hm-current-wrap').style.display = 'block';
+        document.getElementById('hm-cur-name').textContent  = c.name;
+        document.getElementById('hm-cur-desc').textContent  = c.description;
+        document.getElementById('hm-cur-img').src = heldItemSpritePath(c.name);
+        document.getElementById('hm-remove-btn').classList.remove('d-none');
+      }
+
+      // Liste dispo
+      const list = document.getElementById('hm-list');
+      if (!d.available.length) {
+        list.innerHTML = '<div class="text-muted text-center py-2 none-opt">Aucun objet tenu dans votre inventaire.</div>';
+        return;
+      }
+      list.innerHTML = d.available.map(it => `
+        <div class="held-option" data-id="${it.item_id}" onclick="selectHeldOpt(this,${it.item_id})">
+          <img src="${heldItemSpritePath(it.name)}"
+               alt="${it.name}" onerror="this.style.display='none'">
+          <div style="flex:1;min-width:0;">
+            <div class="opt-name">${it.name}</div>
+            <div class="opt-desc">${it.description}</div>
+          </div>
+          <span class="opt-qty">×${it.quantity}</span>
+        </div>
+      `).join('');
+    })
+    .catch(() => {
+      document.getElementById('hm-list').innerHTML =
+        '<div class="text-danger text-center">Erreur réseau.</div>';
+    });
+}
+
+function selectHeldOpt(el, itemId) {
+  document.querySelectorAll('#hm-list .held-option').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  _hm_sel_id = itemId;
+  document.getElementById('hm-equip-btn').disabled = false;
+}
+
+function doEquipHeld(itemId) {
+  if (!_hm_pokemon_id) return;
+  // Sans argument = bouton Équiper → lit _hm_sel_id
+  // Avec null explicite = bouton Retirer
+  const id = (typeof itemId !== "undefined") ? itemId : _hm_sel_id;
+  post("/api/pokemon/equip-held-item/", { pokemon_id: _hm_pokemon_id, item_id: id })
+    .then(d => {
+      bootstrap.Modal.getInstance(document.getElementById("held-item-modal"))?.hide();
+      if (d.success) {
+        showAlert(d.message, "success");
+        _refreshHeldRow(_hm_pokemon_id, d.held_item);
+      } else {
+        showAlert(d.error || "Erreur.", "danger");
+      }
+    })
+    .catch(() => showAlert("Erreur réseau.", "danger"));
+}
+
+// ── Map nom français → chemin sprite statique ────────────────────────────
+const HELD_SPRITE_MAP = {
+  // ── Restes / Leftovers
+  'restes':                ['hold-item', 'leftovers.png'],
+  // ── Orbe Vie
+  'orbe vie':              ['hold-item', 'life-orb.png'],
+  // ── Choice
+  'bandeau choix':         ['hold-item', 'choice-band.png'],
+  'lunettes choix':        ['hold-item', 'choice-specs.png'],
+  'foulard choix':         ['hold-item', 'choice-scarf.png'],
+  // ── Type boosters
+  'charbon':               ['hold-item', 'charcoal.png'],
+  'aimant':                ['hold-item', 'magnet.png'],
+  'eau mystique':          ['hold-item', 'mystic-water.png'],
+  'filtre miroir':         ['hold-item', 'twisted-spoon.png'],
+  'herbe miracle':         ['hold-item', 'miracle-seed.png'],
+  'écharpe soie':          ['hold-item', 'silk-scarf.png'],
+  'echarpe soie':          ['hold-item', 'silk-scarf.png'],
+  // ── Défense
+  'veste assaut':          ['hold-item', 'assault-vest.png'],
+  'ceinture concentration':['hold-item', 'focus-sash.png'],
+  'casque rocheux':        ['hold-item', 'rocky-helmet.png'],
+  // ── Baies sustain  (dossier berry/)
+  'baie sitrus':           ['berry', 'sitrus.png'],
+  'baie oran':             ['berry', 'oran.png'],
+  'baie lum':              ['berry', 'lum.png'],
+  // ── Baies résistance
+  'baie yache':            ['berry', 'yache.png'],
+  'baie chople':           ['berry', 'chople.png'],
+  // ── Baies statut
+  'baie pêche':            ['berry', 'pecha.png'],
+  'baie peche':            ['berry', 'pecha.png'],
+  'baie mepo':             ['berry', 'chesto.png'],
+  'baie gribi':            ['berry', 'pecha.png'],
+  'baie rago':             ['berry', 'rawst.png'],
+  'baie glace':            ['berry', 'aspear.png'],
+};
+
+/**
+ * Retourne le chemin statique complet d'un held item à partir de son nom français.
+ * Fallback : hold-item/leftovers.png si non trouvé.
+ */
+function heldItemSpritePath(name) {
+  const key = (name || '').toLowerCase().trim();
+  const entry = HELD_SPRITE_MAP[key];
+  if (entry) return `/static/img/items_sprites/${entry[0]}/${entry[1]}`;
+  // Fallback générique
+  return `/static/img/items_sprites/hold-item/leftovers.png`;
+}
+
+function _refreshHeldRow(pokemonId, heldItem) {
+  const row = document.getElementById(`held-row-${pokemonId}`);
+  if (!row) return;
+
+  if (heldItem) {
+    row.innerHTML = `
+      <span class="held-item-badge${heldItem.is_consumable ? ' held-item-consumable' : ''}"
+            title="${heldItem.description}"
+            onclick="openHeldModal(${pokemonId})">
+        <img src="${heldItemSpritePath(heldItem.name)}"
+             alt="${heldItem.name}" onerror="this.style.display='none'">
+        ${heldItem.name}
+      </span>
+      <button class="btn-equip-held" onclick="openHeldModal(${pokemonId})">
+        <i class="fas fa-hand-holding"></i> Changer
+      </button>`;
+  } else {
+    row.innerHTML = `
+      <span class="held-item-empty">Aucun objet tenu</span>
+      <button class="btn-equip-held" onclick="openHeldModal(${pokemonId})">
+        <i class="fas fa-hand-holding"></i> Équiper
+      </button>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// HELD ITEMS SECTION END
+// ══════════════════════════════════════════════════════════════════
+
 
 syncUI();
 

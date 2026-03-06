@@ -418,6 +418,22 @@ class Battle(models.Model):
         if pokemon == self.player_pokemon:
             return self.opponent_pokemon
         return self.player_pokemon
+    
+    # ── Held Item helpers ─────────────────────────────────────────────────
+    def _get_held_effect(self, pokemon) -> str | None:
+        """Retourne le held_effect de l'objet tenu du Pokémon, ou None."""
+        item = getattr(pokemon, 'held_item', None)
+        if item and item.held_effect:
+            return item.held_effect
+        return None
+
+    def _consume_held_item(self, pokemon) -> None:
+        """Retire l'objet tenu si is_consumable=True (sauvegarde FK uniquement)."""
+        item = getattr(pokemon, 'held_item', None)
+        if item and item.is_consumable:
+            pokemon.held_item = None
+            pokemon.save(update_fields=['held_item'])
+
 
     def _try_apply_status(self, target, status, attacker=None):
         """
@@ -1371,9 +1387,36 @@ class Battle(models.Model):
             damage = defender.current_hp - 1
             self.add_to_log(f"{defender} tient le coup !")
 
+        # ── Focus Sash : survivre à 1 PV (PV pleins requis) ─────────────────
+        _hp_before = defender.current_hp
+        if (self._get_held_effect(defender) == 'focus_sash'
+                and _hp_before == defender.max_hp
+                and _hp_before <= damage):
+            damage = _hp_before - 1
+        
         defender.current_hp = max(0, defender.current_hp - damage)
         defender.save()
         self.add_to_log(f"{defender} subit {damage} points de dégâts !")
+
+        # ── Focus Sash : log + consommation après dégâts ─────────────────────
+        if (self._get_held_effect(defender) == 'focus_sash'
+                and _hp_before == defender.max_hp
+                and defender.current_hp == 1):
+            self.add_to_log(
+                f"La Ceinture Concentration de {defender} lui permet de tenir !"
+            )
+            self._consume_held_item(defender)
+
+        # ── Life Orb : recul 1/10 PV max sur l'attaquant ────────────────────
+        if self._get_held_effect(attacker) == 'life_orb' and damage > 0:
+            _mg = self._get_ability(attacker)
+            if not (_mg and _mg.effect_tag == 'magic_guard'):
+                _recoil = max(1, attacker.max_hp // 10)
+                attacker.current_hp = max(0, attacker.current_hp - _recoil)
+                attacker.save(update_fields=['current_hp'])
+                self.add_to_log(
+                    f"L'Orbe Vie blesse {attacker} en retour ! (-{_recoil} PV)"
+                )
 
         # ── Efficacité des types ─────────────────────────────────────────────
         effectiveness = self.get_type_effectiveness(move.type, defender)
@@ -1543,6 +1586,49 @@ class Battle(models.Model):
         # ── Écrans (Light Screen / Reflect) ────────────────────────────────────
         side = 'opponent' if attacker == self.player_pokemon else 'player'
         damage *= self.get_screen_multiplier(side, move.category)
+
+
+        # ── Held items — bonus offensifs (attaquant) ────────────────────────
+        _attk_held = self._get_held_effect(attacker)
+        if _attk_held and move.power:
+            _mtype = getattr(move.type, 'name', '').lower() if move.type else ''
+
+            if _attk_held == 'life_orb':
+                damage *= 1.3
+
+            elif _attk_held == 'choice_band' and move.category == 'physical':
+                damage *= 1.5
+
+            elif _attk_held == 'choice_specs' and move.category == 'special':
+                damage *= 1.5
+
+            else:
+                _TYPE_BOOST = {
+                    'type_boost_fire':     'fire',
+                    'type_boost_electric': 'electric',
+                    'type_boost_water':    'water',
+                    'type_boost_psychic':  'psychic',
+                    'type_boost_grass':    'grass',
+                    'type_boost_normal':   'normal',
+                }
+                if _attk_held in _TYPE_BOOST and _mtype == _TYPE_BOOST[_attk_held]:
+                    damage *= 1.2
+
+        # ── Held items — baies de résistance (défenseur) ─────────────────────
+        _def_held = self._get_held_effect(defender)
+        if _def_held and move.power:
+            _mtype = getattr(move.type, 'name', '').lower() if move.type else ''
+            _eff   = getattr(self, 'last_effectiveness', 1.0)
+            _RESIST = {
+                'resist_berry_ice':   'ice',
+                'resist_berry_fight': 'fighting',
+            }
+            if _def_held in _RESIST and _mtype == _RESIST[_def_held] and _eff >= 2.0:
+                damage *= 0.5
+                self.add_to_log(
+                    f"La {defender.held_item.name} de {defender} atténue le coup !"
+                )
+                self._consume_held_item(defender)
 
         # ── Plancher à 1 ─────────────────────────────────────────────────────
         result = int(damage)
@@ -1846,6 +1932,82 @@ class Battle(models.Model):
             # ── Réinitialiser was_hit_this_turn ───────────────────────────────
             pst.pop('was_hit_this_turn', None)
             self._save_state()
+
+        # ── Held items — effets de fin de tour ───────────────────────────────
+        for _pk in [self.player_pokemon, self.opponent_pokemon]:
+            if not _pk or _pk.is_fainted():
+                continue
+            _opp  = self._get_opponent(_pk)
+            _held = self._get_held_effect(_pk)
+            if not _held:
+                continue
+
+            # Restes : +1/16 PV max chaque tour
+            if _held == 'leftovers' and _pk.current_hp < _pk.max_hp:
+                _h = min(max(1, _pk.max_hp // 16), _pk.max_hp - _pk.current_hp)
+                _pk.current_hp += _h
+                _pk.save(update_fields=['current_hp'])
+                self.add_to_log(f"Les Restes de {_pk} lui restaurent {_h} PV !")
+
+            # Baie Sitrus : +1/8 PV si ≤ 50 %
+            elif _held == 'sitrus_berry' and _pk.current_hp <= _pk.max_hp // 2:
+                _h = min(max(1, _pk.max_hp // 8), _pk.max_hp - _pk.current_hp)
+                if _h > 0:
+                    _pk.current_hp += _h
+                    _pk.save(update_fields=['current_hp'])
+                    self.add_to_log(f"La Baie Sitrus de {_pk} lui restaure {_h} PV !")
+                    self._consume_held_item(_pk)
+
+            # Baie Oran : +10 PV si ≤ 50 %
+            elif _held == 'oran_berry' and _pk.current_hp <= _pk.max_hp // 2:
+                _h = min(10, _pk.max_hp - _pk.current_hp)
+                if _h > 0:
+                    _pk.current_hp += _h
+                    _pk.save(update_fields=['current_hp'])
+                    self.add_to_log(f"La Baie Oran de {_pk} lui restaure {_h} PV !")
+                    self._consume_held_item(_pk)
+
+            # Baie Lum : soigne tout statut
+            elif _held == 'lum_berry' and _pk.status_condition:
+                _pk.cure_status()
+                self.add_to_log(f"La Baie Lum de {_pk} guérit son altération de statut !")
+                self._consume_held_item(_pk)
+
+            # Baies mono-statut
+            elif _held == 'cure_paralysis_berry' and _pk.status_condition == 'paralysis':
+                _pk.cure_status()
+                self.add_to_log(f"La Baie Pêche de {_pk} soigne sa paralysie !")
+                self._consume_held_item(_pk)
+
+            elif _held == 'cure_sleep_berry' and _pk.status_condition == 'sleep':
+                _pk.cure_status()
+                self.add_to_log(f"La Baie Mepo réveille {_pk} !")
+                self._consume_held_item(_pk)
+
+            elif _held == 'cure_poison_berry' and _pk.status_condition == 'poison':
+                _pk.cure_status()
+                self.add_to_log(f"La Baie Gribi soigne le poison de {_pk} !")
+                self._consume_held_item(_pk)
+
+            elif _held == 'cure_burn_berry' and _pk.status_condition == 'burn':
+                _pk.cure_status()
+                self.add_to_log(f"La Baie Rago soigne la brûlure de {_pk} !")
+                self._consume_held_item(_pk)
+
+            elif _held == 'cure_freeze_berry' and _pk.status_condition == 'freeze':
+                _pk.cure_status()
+                self.add_to_log(f"La Baie Glace dégèle {_pk} !")
+                self._consume_held_item(_pk)
+
+            # Casque Rocheux : 1/6 PV max en retour si touché ce tour
+            elif _held == 'rocky_helmet':
+                if self._pstate(_pk).get('was_hit_this_turn') and _opp and not _opp.is_fainted():
+                    _d = max(1, _opp.max_hp // 6)
+                    _opp.current_hp = max(0, _opp.current_hp - _d)
+                    _opp.save(update_fields=['current_hp'])
+                    self.add_to_log(
+                        f"Le Casque Rocheux de {_pk} blesse {_opp} ! (-{_d} PV)"
+                    )
 
         # ── Météo ─────────────────────────────────────────────────────────────
         weather_turns = self.get_weather_turns()

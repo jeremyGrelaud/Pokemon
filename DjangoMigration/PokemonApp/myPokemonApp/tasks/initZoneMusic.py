@@ -6,14 +6,6 @@ de la Kanto Soundtrack 2004.
 
 Les fichiers audio doivent être placés dans :
     static/sounds/bgm/kanto/<nom_normalise>.mp3
-
-Après avoir renommé les fichiers avec rename_kanto_soundtrack.py,
-exécutez ce script depuis le shell Django :
-    python manage.py shell < initZoneMusic.py
-
-Ou importez la fonction dans initAllDatabase.py :
-    from myPokemonApp.tasks.initZoneMusic import init_zone_music
-    init_zone_music()
 """
 
 import logging
@@ -106,11 +98,3 @@ def init_zone_music():
         logger.warning(f"⚠️   Zones introuvables (ignorées) :")
         for z in missing:
             logger.warning(f"     • {z}")
-
-
-# ---------------------------------------------------------------------------
-# Exécution directe via  python manage.py shell < initZoneMusic.py
-# ---------------------------------------------------------------------------
-if __name__ == '__main__' or True:
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
-    init_zone_music()

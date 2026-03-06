@@ -77,7 +77,7 @@
           <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
              href="#" id="userDropdown" role="button"
              data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="d-none d-lg-inline text-gray-600 small">{{ user.username }}</span>
+            <span class="d-none d-lg-inline text-dark small">{{ user.username }}</span>
             {% if lead_pokemon_sprite %}
             <img class="img-profile rounded-circle"
                  src="{% static lead_pokemon_sprite %}"
@@ -91,14 +91,14 @@
               {% if user.is_superuser %}
               <li>
                 <a class="dropdown-item" href="/admin" target="_blank">
-                  <i class="fas fa-cogs fa-sm fa-fw me-2 text-gray-400"></i>Admin Django
+                  <i class="fas fa-cogs fa-sm fa-fw me-2 text-dark"></i>Admin Django
                 </a>
               </li>
               <li><hr class="dropdown-divider" /></li>
               {% endif %}
               <li>
                 <a class="dropdown-item" href="{% url 'MyTeamView' %}">
-                  <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>Mon Profil
+                  <i class="fas fa-user fa-sm fa-fw me-2 text-dark"></i>Mon Profil
                 </a>
               </li>
               <li><hr class="dropdown-divider" /></li>
@@ -114,20 +114,20 @@
               <li><hr class="dropdown-divider" /></li>
               <li>
                 <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#saveModal">
-                  <i class="fas fa-save fa-sm fa-fw me-2 text-gray-400"></i>Sauvegarder
+                  <i class="fas fa-save fa-sm fa-fw me-2 text-dark"></i>Sauvegarder
                 </a>
               </li>
               {% endif %}
               <li><hr class="dropdown-divider" /></li>
               <li>
                 <a class="dropdown-item" href="/logout">
-                  <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>Déconnexion
+                  <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-dark"></i>Déconnexion
                 </a>
               </li>
             {% else %}
               <li>
                 <a class="dropdown-item" href="/login">
-                  <i class="fas fa-sign-in-alt fa-sm fa-fw me-2 text-gray-400"></i>Connexion
+                  <i class="fas fa-sign-in-alt fa-sm fa-fw me-2 text-dark"></i>Connexion
                 </a>
               </li>
             {% endif %}

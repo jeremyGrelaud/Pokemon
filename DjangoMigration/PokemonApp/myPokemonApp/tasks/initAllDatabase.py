@@ -50,6 +50,10 @@ from myPokemonApp.tasks.initKantoMaps import init_kanto_map
 from myPokemonApp.tasks.initPokeCenters import scriptToInitializePokeCenters
 from myPokemonApp.tasks.initShops import initShops
 from myPokemonApp.tasks.initAchievments import init_achievements
+from myPokemonApp.tasks.initHeldItems import initHeldItems
+from myPokemonApp.tasks.initZoneMusic import init_zone_music
+from myPokemonApp.tasks.initQuests import init_all_quests
+from myPokemonApp.tasks.InitTMsandCS import runCSAndTM
 
 # ── Nouveaux scripts Gen 3 ─────────────────────────────────────────────────
 from myPokemonApp.tasks.initMovesGen9 import add_missing_gen9_moves
@@ -150,8 +154,23 @@ def initAllDatabase(stop_on_error=True):
         # ── SUCCÈS ────────────────────────────────────────────────────────────
         (15, "Succès / Achievements",
              init_achievements),
-    ]
 
+        # ── QUESTS ────────────────────────────────────────────────────────────
+        (16, "Quêtes",
+             init_all_quests),
+        
+        # ── Held Items  ────────────────────────────────────────────────────────────
+        (17, "Held Items",
+             initHeldItems),
+
+        # ── Music into zones ────────────────────────────────────────────────────────────
+        (18, "Zone Musics",
+             init_zone_music),
+
+        # ── CS & CT (TM & HM) ────────────────────────────────────────────────────────────
+        (19, "CS & CT",
+             runCSAndTM),
+    ]
     failed_steps = []
 
     for entry in steps:

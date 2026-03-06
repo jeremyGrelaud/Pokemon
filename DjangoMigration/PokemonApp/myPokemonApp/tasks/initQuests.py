@@ -1,11 +1,6 @@
 """
 Script d'initialisation du système de quêtes — Région de Kanto complète.
 
-Usage :
-    python manage.py shell
-    >>> from myPokemonApp.initQuests import init_all
-    >>> init_all()
-
 Progression narrative complète Gen 1 / FRLG :
   Chapitre 1  : Bourg Palette → Jadielle (prologue)
   Chapitre 2  : Forêt de Jade → Argenta (Badge 1 Pierre)
@@ -1411,7 +1406,7 @@ def init_elite4():
 # ENTRY POINT
 # =============================================================================
 
-def init_all():
+def init_all_quests():
     print("── Initialisation du système de quêtes de Kanto ─────────────────────")
     print("[1/7] Objets clés…")
     init_key_items()
