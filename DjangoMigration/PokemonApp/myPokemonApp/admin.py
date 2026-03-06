@@ -342,7 +342,7 @@ class BattleAdmin(QuietModelAdmin):
     fieldsets = (
         ('Participants', {'fields': ('battle_type', 'player_trainer', 'opponent_trainer', 'player_pokemon', 'opponent_pokemon')}),
         ('État',         {'fields': ('is_active', 'current_turn', 'winner', 'weather', 'terrain')}),
-        ('Journal',      {'fields': ('battle_log', 'created_at', 'ended_at'), 'classes': ('collapse',)}),
+        ('Journal',      {'fields': ('battle_log', 'battle_snapshot', 'created_at', 'ended_at'), 'classes': ('collapse',)}),
     )
 
     actions = ['end_battles']

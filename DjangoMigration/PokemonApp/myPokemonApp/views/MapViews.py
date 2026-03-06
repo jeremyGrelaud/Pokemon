@@ -15,7 +15,7 @@ from myPokemonApp.gameUtils import (
     get_random_wild_pokemon, get_player_trainer, get_player_location,
     get_defeated_trainer_ids, ZONE_TRANSLATIONS,
     create_wild_pokemon, get_first_alive_pokemon,
-    cleanup_orphan_wild_pokemon,
+    cleanup_orphan_wild_pokemon, start_battle,
 )
 from myPokemonApp.questEngine import trigger_quest_event, check_rival_encounter, get_active_quests, can_access_floor
 from myPokemonApp.views.AchievementViews import trigger_achievements_after_zone_visit
@@ -277,23 +277,13 @@ def travel_to_zone_view(request, zone_id):
                     cleanup_orphan_wild_pokemon()
                     wild_pokemon = create_wild_pokemon(wild_species, level, location=zone.name)
 
-                    # Réinitialiser les stages des deux Pokémon avant le combat
-                    player_pokemon.reset_combat_stats()
-                    wild_pokemon.reset_combat_stats()
-
-                    battle = Battle.objects.create(
-                        player_trainer=trainer,
-                        opponent_trainer=None,
-                        player_pokemon=player_pokemon,
-                        opponent_pokemon=wild_pokemon,
-                        battle_type='wild',
-                        is_active=True,
-                    )
-                    messages.warning(
-                        request,
-                        f"⚡ En traversant la route, un {wild_species.name} sauvage (Niv.{level}) surgit !"
-                    )
-                    return redirect('BattleGameView', pk=battle.id)
+                    battle, msg = start_battle(trainer, wild_pokemon=wild_pokemon)
+                    if battle:
+                        messages.warning(
+                            request,
+                            f"⚡ En traversant la route, un {wild_species.name} sauvage (Niv.{level}) surgit !"
+                        )
+                        return redirect('BattleGameView', pk=battle.id)
 
     else:
         messages.error(request, message)
@@ -332,18 +322,10 @@ def wild_encounter_view(request, zone_id):
     cleanup_orphan_wild_pokemon()
     wild_pokemon = create_wild_pokemon(wild_species, level, location=zone.name)
 
-    # Réinitialiser les stages des deux Pokémon avant le combat
-    player_pokemon.reset_combat_stats()
-    wild_pokemon.reset_combat_stats()
-    
-    battle = Battle.objects.create(
-        player_trainer=trainer,
-        opponent_trainer=None,
-        player_pokemon=player_pokemon,
-        opponent_pokemon=wild_pokemon,
-        battle_type='wild',
-        is_active=True,
-    )
+    battle, msg = start_battle(trainer, wild_pokemon=wild_pokemon)
+    if not battle:
+        messages.error(request, msg)
+        return redirect('zone_detail', zone_id=zone.id)
 
     messages.success(request, f"Un {wild_species.name} sauvage de niveau {level} apparaît !")
     return redirect('BattleGameView', pk=battle.id)

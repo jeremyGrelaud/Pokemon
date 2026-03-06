@@ -216,6 +216,16 @@
                     <span class="text-secondary">Niv.{{ battle.opponent_pokemon.level }}</span>
                   </small>
                 </div>
+                {% elif battle.snap_opponent_name %}
+                <div class="d-flex align-items-center">
+                  <img src="{% static 'img/sprites_gen5/' %}{% if battle.snap_opponent_shiny %}shiny{% else %}normal{% endif %}/{{ battle.snap_opponent_name|lowerPokemonFileNames }}.png"
+                       style="width:40px;height:40px;object-fit:contain;"
+                       onerror="this.src='{% static 'img/pokeball.png' %}'">
+                  <small class="ms-1 text-muted">
+                    {{ battle.snap_opponent_name }}
+                    <span class="text-secondary">Niv.{{ battle.snap_opponent_level }}</span>
+                  </small>
+                </div>
                 {% endif %}
               {% else %}
                 {% if battle.opponent_trainer %}

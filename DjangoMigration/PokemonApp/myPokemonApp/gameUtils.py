@@ -53,8 +53,6 @@ def learn_moves_up_to_level(pokemon, level):
     Synchronise les PokemonMoveInstance avec les 4 dernieres capacites
     apprises jusqu'au niveau donne.
 
-    - Filtre UNIQUEMENT les moves par montee de niveau (learn_method='level',
-      level_learned > 0) pour exclure les TM/CS (level_learned=0).
     - Deduplique (si un move apparait a plusieurs niveaux, garde le plus recent).
     - Supprime les moves hors du set final (utile apres level-up ou relance).
     - Ajoute les moves manquants via get_or_create (idempotent).
@@ -461,6 +459,42 @@ def create_rival(username, player_trainer):
 # 5. COMBATS
 # =============================================================================
 
+# --- Snapshot helpers ---
+
+def _snapshot_pokemon(p):
+    """Sérialise un PlayablePokemon en dict JSON-safe pour battle_snapshot."""
+    return {
+        'id':               p.id,
+        'nickname':         p.nickname,
+        'species_name':     p.species.name,
+        'species_id':       p.species.id,
+        'primary_type':     p.species.primary_type.name  if p.species.primary_type  else 'normal',
+        'secondary_type':   p.species.secondary_type.name if p.species.secondary_type else None,
+        'level':            p.level,
+        'is_shiny':         p.is_shiny,
+        'attack':           p.attack,
+        'defense':          p.defense,
+        'speed':            p.speed,
+        'max_hp':           p.max_hp,
+        'current_hp':       p.current_hp,
+        'ko':               p.current_hp == 0,
+        'status_condition': p.status_condition or '',
+    }
+
+
+def _snapshot_team(trainer, wild_pokemon=None):
+    """Snapshot de l'équipe active d'un dresseur (ou d'un Pokémon sauvage)."""
+    if wild_pokemon:
+        return [_snapshot_pokemon(wild_pokemon)]
+    return [
+        _snapshot_pokemon(p)
+        for p in trainer.pokemon_team
+            .filter(is_in_party=True)
+            .order_by('party_position')
+            .select_related('species', 'species__primary_type', 'species__secondary_type')
+    ]
+
+
 # --- Demarrage ---
 
 def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
@@ -503,7 +537,16 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
             'player_used_ids':   [player_pokemon.id],
             'opponent_used_ids': [opponent_pokemon.id],
         },
+        battle_snapshot={
+            'player_team':   _snapshot_team(player_trainer),
+            'opponent_team': _snapshot_team(
+                opponent_trainer,
+                wild_pokemon=wild_pokemon if battle_type == 'wild' else None,
+            ),
+        },
     )
+
+    print(f"Dict snap : {battle.battle_snapshot}")
 
     msg = (
         f"Un {opponent_pokemon.species.name} sauvage apparait !"
@@ -627,7 +670,7 @@ def apply_exp_gain(pokemon, exp_amount):
             pokemon.max_hp
         )
 
-        # Trouver les moves apprenables exactement à ce niveau (par montée de niveau uniquement)
+        # Trouver les moves apprenables exactement à ce niveau (montée de niveau uniquement)
         new_learnable = pokemon.species.learnable_moves.filter(
             learn_method='level',
             level_learned=pokemon.level,
@@ -1137,6 +1180,25 @@ def _capture_success(battle, opponent, ball_item, trainer, attempt, shakes):
     """Gere la capture reussie d'un Pokemon (helper prive)."""
     from myPokemonApp.models import CaptureJournal
     from myPokemonApp.views.AchievementViews import trigger_achievements_after_capture
+
+    # ── Mettre à jour battle_snapshot avec les HP finaux AVANT le transfert ──
+    try:
+        snap = battle.battle_snapshot if isinstance(battle.battle_snapshot, dict) else {}
+        for entry in snap.get('player_team', []):
+            try:
+                poke = battle.player_trainer.pokemon_team.get(id=entry['id'])
+                entry.update({'current_hp': poke.current_hp, 'max_hp': poke.max_hp,
+                               'ko': poke.current_hp == 0, 'status_condition': poke.status_condition or ''})
+            except Exception:
+                pass
+        for entry in snap.get('opponent_team', []):
+            if entry['id'] == opponent.id:
+                entry.update({'current_hp': opponent.current_hp, 'max_hp': opponent.max_hp,
+                               'ko': False, 'status_condition': opponent.status_condition or ''})
+        battle.battle_snapshot = snap
+        battle.save(update_fields=['battle_snapshot'])
+    except Exception as exc:
+        import logging; logging.getLogger(__name__).warning("battle_snapshot capture update: %s", exc)
 
     # Transférer le Pokémon sauvage existant (conserve IVs/EVs/nature/moves)
     party_count = trainer.pokemon_team.filter(is_in_party=True).count()
