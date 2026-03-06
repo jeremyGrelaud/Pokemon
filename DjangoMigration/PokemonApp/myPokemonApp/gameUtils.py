@@ -546,8 +546,6 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
         },
     )
 
-    print(f"Dict snap : {battle.battle_snapshot}")
-
     msg = (
         f"Un {opponent_pokemon.species.name} sauvage apparait !"
         if battle_type == 'wild'
