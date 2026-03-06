@@ -18,23 +18,29 @@ from ..models import Item, PlayablePokemon, PokemonLearnableMove
 # ============================================================================
 
 class ItemListView(generic.ListView):
-    """Liste des objets — filtre par type possible via ?itemType=tm"""
-    model = Item
-    template_name = "items/item_list.html"
+    """
+    Liste des objets — filtre côté serveur 
+    """
+    model               = Item
+    template_name       = "items/item_list.html"
     context_object_name = 'items'
-    paginate_by = 30 
+    paginate_by         = 30
 
     def get_queryset(self):
-        item_type = self.request.GET.get('itemType', '')
-        queryset = Item.objects.all().order_by('item_type', 'tm_number', 'name')
+        qs        = Item.objects.all().order_by('item_type', 'tm_number', 'name')
+        item_type = self.request.GET.get('itemType', '').strip()
+        q         = self.request.GET.get('q', '').strip()
         if item_type:
-            queryset = queryset.filter(item_type=item_type)
-        return queryset
+            qs = qs.filter(item_type=item_type)
+        if q:
+            qs = qs.filter(name__icontains=q)
+        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['item_types']    = Item.ITEM_TYPES
         context['selected_type'] = self.request.GET.get('itemType', '')
+        context['search_query']  = self.request.GET.get('q', '')
         return context
 
 
