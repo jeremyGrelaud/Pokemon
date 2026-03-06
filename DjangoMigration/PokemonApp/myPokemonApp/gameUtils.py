@@ -44,6 +44,37 @@ def get_or_create_wild_trainer():
     return trainer
 
 
+def _reset_team_stages(trainer, wild=None):
+    """
+    Réinitialise les stat_stages de combat de toute l'équipe d'un dresseur.
+    Si wild est fourni (Pokémon sauvage sans Trainer), reset ce seul Pokémon.
+
+    Utilise bulk_update pour n'émettre qu'une seule requête SQL pour toute l'équipe
+
+    Appelé AVANT et APRÈS chaque combat pour garantir qu'aucun stage résiduel
+    (attack_stage, speed_stage, etc.) ne persiste d'un combat à l'autre.
+    """
+    from myPokemonApp.models import PlayablePokemon as _PP
+    _STAGE_FIELDS = [
+        'attack_stage', 'defense_stage',
+        'special_attack_stage', 'special_defense_stage',
+        'speed_stage', 'accuracy_stage', 'evasion_stage',
+    ]
+    if wild is not None:
+        for f in _STAGE_FIELDS:
+            setattr(wild, f, 0)
+        wild.save(update_fields=_STAGE_FIELDS)
+        return
+    if trainer is None:
+        return
+    team = list(trainer.pokemon_team.filter(is_in_party=True))
+    for p in team:
+        for f in _STAGE_FIELDS:
+            setattr(p, f, 0)
+    if team:
+        _PP.objects.bulk_update(team, _STAGE_FIELDS)
+
+
 # =============================================================================
 # 2. GESTION DES MOVES
 # =============================================================================
@@ -74,13 +105,17 @@ def learn_moves_up_to_level(pokemon, level):
     final_moves = all_moves[-4:] if len(all_moves) > 4 else all_moves
     final_ids   = {lm.move_id for lm in final_moves}
 
-    PokemonMoveInstance.objects.filter(pokemon=pokemon).exclude(move_id__in=final_ids).delete()
+    # Ne supprimer QUE les moves appris par niveau (source='level').
+    # Les TM (source='tm'), CS (source='hm'), tuteurs etc. sont préservés.
+    PokemonMoveInstance.objects.filter(
+        pokemon=pokemon, source='level'
+    ).exclude(move_id__in=final_ids).delete()
 
     for lm in final_moves:
         PokemonMoveInstance.objects.get_or_create(
             pokemon=pokemon,
             move=lm.move,
-            defaults={'current_pp': lm.move.pp}
+            defaults={'current_pp': lm.move.pp, 'source': 'level'}
         )
 
 
@@ -522,9 +557,12 @@ def start_battle(player_trainer, opponent_trainer=None, wild_pokemon=None,
     else:
         return None, "Pas d'adversaire defini !"
 
-    # Réinitialiser les stages des deux Pokémon avant le combat
-    player_pokemon.reset_combat_stats()
-    opponent_pokemon.reset_combat_stats()
+    # Reset les stages de TOUTE l'équipe avant le combat.
+    _reset_team_stages(player_trainer)
+    if wild_pokemon:
+        _reset_team_stages(None, wild=wild_pokemon)
+    elif opponent_trainer:
+        _reset_team_stages(opponent_trainer)
 
     battle = Battle.objects.create(
         battle_type=battle_type,
@@ -970,6 +1008,12 @@ def check_battle_end(battle):
         from django.utils import timezone
         battle.ended_at  = timezone.now()
         battle.save()
+        # Nettoyage des stages résiduels même en cas de défaite
+        _reset_team_stages(battle.player_trainer)
+        if battle.opponent_trainer:
+            _reset_team_stages(battle.opponent_trainer)
+        elif battle.opponent_pokemon:
+            _reset_team_stages(None, wild=battle.opponent_pokemon)
         return True, battle.opponent_trainer, "Vous avez perdu le combat..."
 
     if not opponent_alive:
@@ -984,6 +1028,12 @@ def check_battle_end(battle):
         msg = "Vous avez gagne le combat !"
         if battle.opponent_trainer:
             msg = battle.opponent_trainer.defeat_text or msg
+        # Nettoyage des stages résiduels
+        _reset_team_stages(battle.player_trainer)
+        if battle.opponent_trainer:
+            _reset_team_stages(battle.opponent_trainer)
+        elif battle.opponent_pokemon:
+            _reset_team_stages(None, wild=battle.opponent_pokemon)
         return True, battle.player_trainer, msg
 
     return False, None, ""
