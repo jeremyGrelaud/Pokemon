@@ -498,20 +498,24 @@
   border-radius: 10px;
   background: rgba(124, 58, 237, 0.18);
   border: 1px solid rgba(124, 58, 237, 0.4);
-  color: #ddd6fe;
+  color: #5b21b6;
   font-size: .62rem;
   font-weight: 700;
   letter-spacing: .02em;
   white-space: nowrap;
   overflow: hidden;
   max-width: 130px;
+}
+
+.ability-battle-badge > span {
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .ability-battle-badge.ability-battle-hidden {
   background: rgba(67, 56, 202, 0.35);
   border-color: #818cf8;
-  color: #e0e7ff;
+  color: #3730a3;
 }
 
 /* Clignotement quand le talent vient de s'activer */
