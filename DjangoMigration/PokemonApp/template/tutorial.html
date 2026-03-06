@@ -1,0 +1,465 @@
+{% load static %}
+{# ════════════════════════════════════════════════════════════════════════════
+   TUTORIAL OVERLAY — inclus dans base.html
+   Déclenché par ?tutorial=1 (après choose_starter) ou absence de localStorage
+   ════════════════════════════════════════════════════════════════════════════ #}
+
+<div id="tutorial-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Tutoriel de jeu">
+<div id="tutorial-window">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div id="tutorial-header">
+    <div class="tut-header-title">
+      <img src="{% static 'img/pokeball.png' %}" class="tut-header-icon" alt="">
+      <span class="tut-header-text">Guide du Dresseur</span>
+    </div>
+    <span class="tut-step-counter" id="tut-step-label">1 / 8</span>
+  </div>
+
+  <!-- ── Progress ────────────────────────────────────────────────────────── -->
+  <div id="tutorial-progress-bar">
+    <div id="tutorial-progress-fill" style="width:12.5%"></div>
+  </div>
+
+  <!-- ── Slides ──────────────────────────────────────────────────────────── -->
+  <div id="tutorial-body">
+
+    <!-- ══ 1 — Bienvenue ═════════════════════════════════════════════════ -->
+    <div class="tut-slide tut-slide-active" data-index="0">
+      <div class="tut-slide-visual">
+        <img class="tut-visual-img"
+             src="{% static 'img/pokedex_transparent.png' %}"
+             alt="Pokédex">
+        <div class="tut-visual-label">Bienvenue<br>dans<br>Kanto !</div>
+      </div>
+      <div class="tut-slide-content">
+        <div class="tut-slide-title">Bienvenue, Dresseur !</div>
+        <div class="tut-dialogue">
+          Bonjour ! Je suis le <strong>Professeur Chen</strong>. Ce monde est peuplé de créatures que l'on appelle <strong>Pokémon</strong>.<br><br>
+          Vous venez de choisir votre premier partenaire. Laissez-moi vous guider dans votre aventure !
+        </div>
+        <div class="tut-tips">
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/mapSprites/Kanto/Full_Kanto_Map.png' %}" alt="Kanto">
+            </div>
+            <div class="tut-tip-text">Vous commencez à <strong>Bourg Palette</strong>, votre ville de départ dans la région de <strong>Kanto</strong>.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-graduation-cap"></i></div>
+            <div class="tut-tip-text">Ce guide présente toutes les fonctionnalités essentielles. Vous pouvez le relire à tout moment depuis le menu latéral.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 2 — Navigation ════════════════════════════════════════════════ -->
+    <div class="tut-slide" data-index="1">
+      <div class="tut-slide-visual">
+        <img class="tut-visual-img"
+             src="{% static 'img/sprites_gen5/normal/charmander.png' %}"
+             alt="Salamèche">
+        <div class="tut-visual-label">Menus &amp;<br>Navigation</div>
+      </div>
+      <div class="tut-slide-content">
+        <div class="tut-slide-title">Navigation dans le jeu</div>
+        <div class="tut-dialogue">
+          Tous les menus sont accessibles depuis la <strong>barre latérale gauche</strong>. Cliquez sur <span class="tut-key">☰</span> en haut à gauche pour l'ouvrir ou la fermer.
+        </div>
+        <div class="tut-tips">
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-tachometer-alt"></i></div>
+            <div class="tut-tip-text"><strong>Dashboard</strong> — Vue d'ensemble : stats, quêtes actives, badges obtenus.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/mapSprites/Kanto/Full_Kanto_Map.png' %}" alt="Maps">
+            </div>
+            <div class="tut-tip-text"><strong>Maps</strong> — Explorez Kanto et déplacez-vous de zone en zone.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-users"></i></div>
+            <div class="tut-tip-text"><strong>Mon Équipe</strong> — Gérez vos Pokémon : moves, talents, évolutions.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}" alt="Boutique">
+            </div>
+            <div class="tut-tip-text"><strong>Boutiques</strong> — Achetez des Pokéballs, potions et objets utiles.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 3 — Déplacement / Carte ════════════════════════════════════════ -->
+    <div class="tut-slide" data-index="2">
+      <div class="tut-slide-visual">
+        <img class="tut-visual-img"
+             src="{% static 'img/mapSprites/Kanto/Full_Kanto_Map.png' %}"
+             alt="Carte Kanto">
+        <div class="tut-visual-label">Explorer<br>Kanto</div>
+      </div>
+      <div class="tut-slide-content">
+        <div class="tut-slide-title">Se déplacer dans Kanto</div>
+        <div class="tut-dialogue">
+          La carte de Kanto est divisée en <strong>zones</strong> (villes, routes, grottes…). Chaque zone peut contenir des Pokémon sauvages, des dresseurs, une boutique ou un Centre Pokémon.
+        </div>
+        <div class="tut-tips">
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="tut-tip-text">Cliquez sur une zone dans <strong>Maps</strong> pour vous y déplacer et voir ce qu'elle contient.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}" alt="Herbes">
+            </div>
+            <div class="tut-tip-text">Les <strong>zones avec herbes hautes</strong> permettent de rencontrer des Pokémon sauvages à combattre ou capturer.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-trophy"></i></div>
+            <div class="tut-tip-text">Certaines zones ont une <strong>Arène</strong>. Battez le Champion d'Arène pour obtenir un badge !</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 4 — Combats ════════════════════════════════════════════════════ -->
+    <div class="tut-slide" data-index="3">
+      <div class="tut-slide-visual">
+        <div class="tut-visual-group">
+          <img class="tut-visual-img"
+               src="{% static 'img/sprites_gen5/normal/charmander.png' %}"
+               alt="Salamèche">
+          <img class="tut-visual-img"
+               src="{% static 'img/sprites_gen5/normal/squirtle.png' %}"
+               alt="Carapuce">
+        </div>
+        <div class="tut-visual-label">Système<br>de Combat</div>
+      </div>
+      <div class="tut-slide-content">
+        <div class="tut-slide-title">Combattre des Pokémon</div>
+        <div class="tut-dialogue">
+          Les combats sont au <strong>tour par tour</strong>. Choisissez chaque tour une action : attaquer, utiliser un objet, changer de Pokémon ou fuir.
+        </div>
+        <div class="tut-tips">
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/movesTypesSprites/move-physical.png' %}" alt="Attaque physique">
+            </div>
+            <div class="tut-tip-text"><strong>Attaquer</strong> — Choisissez parmi les 4 capacités. Chacune a un type, des PP limités et une puissance.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/movesTypesSprites/move-special.png' %}" alt="Attaque spéciale">
+            </div>
+            <div class="tut-tip-text">Les <strong>types</strong> sont cruciaux : Feu bat Plante, Eau bat Feu, Plante bat Eau… Exploitez les faiblesses !</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-sync-alt"></i></div>
+            <div class="tut-tip-text"><strong>Changer de Pokémon</strong> — Si votre Pokémon actif est en difficulté, faites-en entrer un autre.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-running"></i></div>
+            <div class="tut-tip-text"><strong>Fuir</strong> — Uniquement contre les Pokémon sauvages. Impossible contre un dresseur !</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 5 — Capture ════════════════════════════════════════════════════ -->
+    <div class="tut-slide" data-index="4">
+      <div class="tut-slide-visual">
+        <img class="tut-visual-img"
+             src="{% static 'img/pokeball.png' %}"
+             alt="Pokéball">
+        <div class="tut-visual-label">Capture<br>Pokémon</div>
+      </div>
+      <div class="tut-slide-content">
+        <div class="tut-slide-title">Capturer des Pokémon</div>
+        <div class="tut-dialogue">
+          Lancez une <strong>Pokéball</strong> sur un Pokémon sauvage affaibli pour l'attraper. Moins il a de PV, plus vos chances sont élevées !
+        </div>
+        <div class="tut-tips">
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-heart-broken"></i></div>
+            <div class="tut-tip-text">Affaiblissez d'abord le Pokémon (<strong>PV dans le rouge</strong>) avant de lancer une Pokéball.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/movesTypesSprites/move-status.png' %}" alt="Statut">
+            </div>
+            <div class="tut-tip-text">Les <strong>altérations d'état</strong> (sommeil, paralysie) augmentent aussi le taux de capture !</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-book"></i></div>
+            <div class="tut-tip-text">Retrouvez tous vos Pokémon capturés dans le <strong>Journal de Captures</strong> accessible depuis le menu.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-star"></i></div>
+            <div class="tut-tip-text">Rare : il existe des Pokémon <strong>Chromatiques ✨</strong> avec une couleur unique. Bonne chance !</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 6 — Centre Pokémon ══════════════════════════════════════════════ -->
+    <div class="tut-slide" data-index="5">
+      <div class="tut-slide-visual">
+        <img class="tut-visual-img"
+             src="{% static 'img/nurse_joy_pokemon_gen_3.png' %}"
+             alt="Infirmière Joëlle">
+        <div class="tut-visual-label">Centre<br>Pokémon</div>
+      </div>
+      <div class="tut-slide-content">
+        <div class="tut-slide-title">Soigner votre équipe</div>
+        <div class="tut-dialogue">
+          Après les combats, vos Pokémon peuvent être blessés ou K.O. Rendez-vous au <strong>Centre Pokémon</strong> pour les soigner gratuitement et instantanément !
+        </div>
+        <div class="tut-tips">
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}" alt="Centre Pokémon">
+            </div>
+            <div class="tut-tip-text">Le Centre Pokémon restaure les <strong>PV et PP</strong> de toute votre équipe <strong>gratuitement</strong>.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="tut-tip-text">Chaque ville en possède un. Accédez-y via le menu <strong>Centre Pokémon</strong> ou depuis votre zone courante.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/items_sprites/potion.png' %}"
+                   alt="Potion"
+                   onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <i class="fas fa-flask" style="display:none"></i>
+            </div>
+            <div class="tut-tip-text">En dehors du Centre, utilisez vos <strong>Potions</strong> pour soigner directement depuis "Mon Équipe".</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="tut-tip-text">Si <strong>tous vos Pokémon tombent K.O.</strong>, vous êtes renvoyé au dernier Centre Pokémon visité.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 7 — Équipe & Évolutions ════════════════════════════════════════ -->
+    <div class="tut-slide" data-index="6">
+      <div class="tut-slide-visual">
+        <div class="tut-visual-group">
+          <img class="tut-visual-img"
+               src="{% static 'img/sprites_gen5/normal/charmander.png' %}"
+               alt="Salamèche">
+          <img class="tut-visual-img"
+               src="{% static 'img/sprites_gen5/normal/charmeleon.png' %}"
+               alt="Reptincel">
+        </div>
+        <div class="tut-visual-label">Équipe &amp;<br>Évolution</div>
+      </div>
+      <div class="tut-slide-content">
+        <div class="tut-slide-title">Gérer votre équipe</div>
+        <div class="tut-dialogue">
+          Votre équipe peut contenir jusqu'à <strong>6 Pokémon</strong>. Gérez-les depuis <strong>Mon Équipe</strong> : nouvelles capacités, CTs, évolutions !
+        </div>
+        <div class="tut-tips">
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="tut-tip-text">Gagner des combats donne des <strong>points d'expérience (XP)</strong>. En montant de niveau, vos Pokémon deviennent plus forts !</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-fire"></i></div>
+            <div class="tut-tip-text">Certains Pokémon <strong>évoluent</strong> à un niveau donné (ex: Salamèche → Reptincel à Niv.&nbsp;16). L'évolution améliore toutes les stats.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon">
+              <img src="{% static 'img/items_sprites/tm/tm-normal.png' %}"
+                   alt="CT"
+                   onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+              <i class="fas fa-compact-disc" style="display:none"></i>
+            </div>
+            <div class="tut-tip-text">Les <strong>Capsules Techniques (CT)</strong> permettent d'enseigner des capacités spéciales à vos Pokémon.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 8 — Objectifs finaux ════════════════════════════════════════════ -->
+    <div class="tut-slide" data-index="7">
+      <div class="tut-slide-visual">
+        <div class="tut-visual-group">
+          <img class="tut-visual-img"
+               src="{% static 'img/sprites_gen5/normal/bulbasaur.png' %}"
+               alt="Bulbizarre">
+          <img class="tut-visual-img"
+               src="{% static 'img/sprites_gen5/normal/charmander.png' %}"
+               alt="Salamèche">
+          <img class="tut-visual-img"
+               src="{% static 'img/sprites_gen5/normal/squirtle.png' %}"
+               alt="Carapuce">
+        </div>
+        <div class="tut-visual-label">Bonne<br>Aventure !</div>
+      </div>
+      <div class="tut-slide-content">
+        <div class="tut-slide-title">Prêt à devenir Maître Pokémon ?</div>
+        <div class="tut-dialogue">
+          Votre objectif ultime : <strong>battre les 8 Champions d'Arène</strong> de Kanto, puis affronter la <strong>Ligue Pokémon</strong>. Et bien sûr, compléter votre Pokédex !
+        </div>
+        <div class="tut-tips">
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-tasks"></i></div>
+            <div class="tut-tip-text">Consultez vos <strong>Quêtes</strong> dans le Dashboard pour suivre votre progression et débloquer de nouvelles missions.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-save"></i></div>
+            <div class="tut-tip-text">La partie se <strong>sauvegarde automatiquement</strong> toutes les 5 minutes. Vous pouvez aussi sauvegarder manuellement via votre profil.</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-medal"></i></div>
+            <div class="tut-tip-text">Débloquez des <strong>Succès</strong> en réalisant des exploits : captures, victoires, niveaux atteints… visibles dans votre profil !</div>
+          </div>
+          <div class="tut-tip">
+            <div class="tut-tip-icon"><i class="fas fa-graduation-cap"></i></div>
+            <div class="tut-tip-text">Ce guide est disponible à tout moment via le bouton <strong>Tutoriel</strong> dans le menu de navigation.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tutorial-body -->
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+  <div id="tutorial-footer">
+    <button class="tut-skip-btn" onclick="tutorialClose()">✕ Passer</button>
+    <div class="tut-dots" id="tut-dots"></div>
+    <div class="tut-nav-btns">
+      <button class="tut-btn tut-btn-prev" id="tut-prev-btn" onclick="tutorialPrev()" style="display:none;">◀ Préc.</button>
+      <button class="tut-btn tut-btn-next" id="tut-next-btn" onclick="tutorialNext()">Suivant ▶</button>
+    </div>
+  </div>
+
+</div><!-- /tutorial-window -->
+</div><!-- /tutorial-overlay -->
+
+<script>
+(function () {
+  const STORAGE_KEY  = 'pkmn_tutorial_done';
+  const TOTAL        = 8;
+  let cur            = 0;
+  let busy           = false;
+
+  function shouldShow() {
+    if (new URLSearchParams(window.location.search).get('tutorial') === '1') return true;
+    return !localStorage.getItem(STORAGE_KEY);
+  }
+
+  function init() {
+    if (!shouldShow()) return;
+    document.getElementById('tutorial-overlay').style.display = 'flex';
+    buildDots();
+    updateUI();
+    // Nettoyer l'URL
+    if (window.history && window.location.search.includes('tutorial')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    }
+  }
+
+  function buildDots() {
+    const c = document.getElementById('tut-dots');
+    c.innerHTML = '';
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement('div');
+      d.className = 'tut-dot' + (i === 0 ? ' active' : '');
+      d.onclick = () => goTo(i);
+      c.appendChild(d);
+    }
+  }
+
+  function updateUI() {
+    document.getElementById('tut-step-label').textContent = `${cur + 1} / ${TOTAL}`;
+    document.getElementById('tutorial-progress-fill').style.width = ((cur + 1) / TOTAL * 100) + '%';
+    document.querySelectorAll('.tut-dot').forEach((d, i) => d.classList.toggle('active', i === cur));
+
+    const prev = document.getElementById('tut-prev-btn');
+    const next = document.getElementById('tut-next-btn');
+    prev.style.display = cur === 0 ? 'none' : 'flex';
+    if (cur === TOTAL - 1) {
+      next.textContent = "C'est parti !";
+      next.className   = 'tut-btn tut-btn-finish';
+      next.onclick      = tutorialFinish;
+    } else {
+      next.innerHTML   = 'Suivant ▶';
+      next.className   = 'tut-btn tut-btn-next';
+      next.onclick      = tutorialNext;
+    }
+  }
+
+  function goTo(idx) {
+    if (busy || idx === cur) return;
+    busy = true;
+    const slides = document.querySelectorAll('.tut-slide');
+    slides[cur].classList.add('tut-slide-exit');
+    slides[cur].classList.remove('tut-slide-active');
+    setTimeout(() => {
+      slides[cur].classList.remove('tut-slide-exit');
+      cur = idx;
+      slides[cur].classList.add('tut-slide-active');
+      updateUI();
+      busy = false;
+    }, 260);
+  }
+
+  window.tutorialNext  = () => { if (cur < TOTAL - 1) goTo(cur + 1); };
+  window.tutorialPrev  = () => { if (cur > 0) goTo(cur - 1); };
+
+  window.tutorialClose = function () {
+    localStorage.setItem(STORAGE_KEY, '1');
+    const o = document.getElementById('tutorial-overlay');
+    o.classList.add('tut-hidden');
+    setTimeout(() => { o.style.display = 'none'; }, 350);
+  };
+
+  window.tutorialFinish = function () { spawnConfetti(); setTimeout(tutorialClose, 800); };
+
+  window.tutorialOpen = function () {
+    localStorage.removeItem(STORAGE_KEY);
+    cur = 0;
+    const o      = document.getElementById('tutorial-overlay');
+    const slides = document.querySelectorAll('.tut-slide');
+    slides.forEach(s => s.classList.remove('tut-slide-active', 'tut-slide-exit'));
+    slides[0].classList.add('tut-slide-active');
+    buildDots();
+    updateUI();
+    o.classList.remove('tut-hidden');
+    o.style.display = 'flex';
+  };
+
+  function spawnConfetti() {
+    const colors = ['#2ecc71','#f39c12','#3498db','#e74c3c','#9b59b6','#f1c40f'];
+    const r = document.getElementById('tutorial-window').getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    for (let i = 0; i < 52; i++) {
+      const el = document.createElement('div');
+      el.className = 'tut-confetti-particle';
+      Object.assign(el.style, {
+        left: `${cx + (Math.random() - .5) * 500}px`,
+        top:  `${cy + (Math.random() - .5) * 240}px`,
+        background: colors[Math.floor(Math.random() * colors.length)],
+        animationDelay:    `${Math.random() * .4}s`,
+        animationDuration: `${.8 + Math.random() * .6}s`,
+      });
+      document.body.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    const o = document.getElementById('tutorial-overlay');
+    if (!o || o.style.display === 'none') return;
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); tutorialNext(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); tutorialPrev(); }
+    if (e.key === 'Escape') tutorialClose();
+  });
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>

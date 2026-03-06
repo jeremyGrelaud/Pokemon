@@ -20,6 +20,7 @@
       <link href="{% static 'css/bgm.css'%}" rel="stylesheet" />
       <link href="{% static 'css/toast-notifications.css' %}" rel="stylesheet">
       <link href="{% static 'css/layout.css'%}" rel="stylesheet" />
+      <link href="{% static 'css/tutorial.css' %}" rel="stylesheet">
 
       <!-- Fonts -->
       <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" type="text/css" />
@@ -207,6 +208,11 @@
                  href="{% url 'save_select' %}">
                 <div class="sb-nav-link-icon"><i class="fas fa-save"></i></div>
                 Sauvegardes
+              </a>
+
+              <a class="nav-link" href="#" onclick="tutorialOpen(); return false;">
+                <div class="sb-nav-link-icon"><i class="fas fa-graduation-cap"></i></div>
+                Tutoriel
               </a>
 
               <!-- Widget Zone + HP équipe -->
@@ -462,6 +468,18 @@
       document.addEventListener('DOMContentLoaded', tagShiny);
       setInterval(tagShiny, 2000);
     })();
+
+    function tutorialOpen() {
+      localStorage.removeItem('pkmn_tutorial_done');
+      const overlay = document.getElementById('tutorial-overlay');
+      if (!overlay) return;
+      const slides = overlay.querySelectorAll('.tut-slide');
+      slides.forEach(s => s.classList.remove('tut-slide-active', 'tut-slide-exit'));
+      slides[0].classList.add('tut-slide-active');
+      overlay.classList.remove('tut-hidden');
+      overlay.style.display = 'flex';
+    }
+
     </script>
     {% endblock js %}
 
@@ -500,6 +518,7 @@
       else relocateNav();
     })();
     </script>
-
+  
+  {% include 'tutorial.html' %}
   </body>
 </html>
