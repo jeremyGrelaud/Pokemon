@@ -236,16 +236,13 @@ def init_kanto_map():
         logging.info(f"  {'✅' if created else '⭕'} Route 22 → Route 23 (flag: all_badges_obtained)")
 
     # ── Connexion Cave Taupiqueur : CS01 Coupe requise ─────────────────────────
+    # (géré de façon centralisée par initHMGates.init_hm_gates)
     cave_t = created_zones.get('Cave Taupiqueur')
     carmin = created_zones.get('Carmin sur Mer')
     if cave_t and carmin:
-        conn, _ = ZoneConnection.objects.get_or_create(
+        ZoneConnection.objects.get_or_create(
             from_zone=carmin, to_zone=cave_t,
-            defaults={
-                'is_bidirectional': True,
-                'required_hm': 'cut',
-                'passage_message': "Un arbuste épais bloque l'entrée de la Cave Taupiqueur. CS01 Coupe est requise.",
-            }
+            defaults={'is_bidirectional': True}
         )
 
     # ── Connexions bâtiments (depuis initQuests.init_extra_zones) ──────────────
@@ -580,3 +577,11 @@ def init_kanto_map():
     ], enc='cave')
 
     logging.info("\n✅ Carte Kanto initialisée !")
+
+    # ── Appliquer toutes les portes CS (required_hm) ─────────────────────────
+    logging.info("\n🔑 Application des portes CS (HM Gates)...")
+    try:
+        from myPokemonApp.tasks.initHMGates import init_hm_gates
+        init_hm_gates()
+    except Exception as e:
+        logging.warning(f"initHMGates skipped: {e}")

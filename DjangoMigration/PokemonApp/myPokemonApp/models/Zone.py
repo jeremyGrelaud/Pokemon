@@ -151,7 +151,7 @@ class ZoneConnection(models.Model):
 
         if self.required_hm:
             if not trainer_has_hm(trainer, self.required_hm):
-                move_label = HM_MOVE_NAMES.get(self.required_hm, self.required_hm)
+                move_label = HM_MOVE_NAMES.get(self.required_hm, (self.required_hm,))[0]
                 msg = self.passage_message or f"CS {move_label} requise pour passer."
                 return False, msg
 

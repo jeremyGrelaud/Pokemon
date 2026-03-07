@@ -553,6 +553,19 @@
           </div>
           {% endif %}
 
+          {% if can_fly and is_current %}
+          <div class="fly-sidebar-widget">
+            <a href="{% url 'fly_view' %}" class="fly-sidebar-link">
+              <span class="fly-sidebar-icon"><i class="fas fa-dove"></i></span>
+              <span class="fly-sidebar-content">
+                <span class="fly-sidebar-title">CS02 Vol</span>
+                <span class="fly-sidebar-sub">Voyager rapidement</span>
+              </span>
+              <i class="fas fa-arrow-right fly-sidebar-arrow"></i>
+            </a>
+          </div>
+          {% endif %}
+
           <div class="card-header py-2 text-center">
             <strong><i class="fas fa-route p-2"></i> Zones Adjacentes</strong>
           </div>
@@ -568,9 +581,16 @@
                 <div class="card-body py-2">
                   <h6 class="mb-1">{{ conn.to_zone.name }}</h6>
                   {% if is_current %}
-                  <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-arrow-right"></i> Voyager
-                  </a>
+                    {% if conn.is_passable %}
+                    <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
+                      <i class="fas fa-arrow-right"></i> Voyager
+                    </a>
+                    {% else %}
+                    <div class="hm-gate-block mt-1">
+                      <i class="fas fa-lock hm-gate-icon"></i>
+                      <span class="hm-gate-msg">{{ conn.block_reason }}</span>
+                    </div>
+                    {% endif %}
                   {% else %}
                   <small class="text-muted">Revenez ici pour voyager</small>
                   {% endif %}

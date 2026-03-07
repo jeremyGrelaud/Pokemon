@@ -18,13 +18,14 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-# Mapping nom CS → nom de la capacité dans la BDD
+# Mapping nom CS → noms possibles en BDD (tuple FR, EN)
+# La BDD peut contenir le nom français OU anglais selon la source des données.
 HM_MOVE_NAMES = {
-    'cut':      'Coupe',
-    'surf':     'Surf',
-    'strength': 'Force',
-    'fly':      'Vol',
-    'flash':    'Flash',
+    'cut':      ('Coupe',    'Cut'),
+    'surf':     ('Surf',     'Surf'),
+    'strength': ('Force',    'Strength'),
+    'fly':      ('Vol',      'Fly'),
+    'flash':    ('Flash',    'Flash'),
 }
 
 
@@ -84,20 +85,24 @@ def _has_item(trainer, item):
 
 def trainer_has_hm(trainer, hm_name: str) -> bool:
     """
-    Retourne True si au moins un Pokémon vivant de l'équipe active
-    connaît la CS demandée.
+    Retourne True si au moins un Pokémon de l'équipe active connaît la CS demandée.
+    Cherche le move par nom français ET anglais (la BDD peut contenir l'un ou l'autre).
+    La condition HP est volontairement absente : un Pokémon KO peut toujours utiliser
+    une CS hors combat.
     hm_name : 'cut' | 'surf' | 'strength' | 'fly' | 'flash'
     """
-    move_name = HM_MOVE_NAMES.get(hm_name.lower())
-    if not move_name:
+    names = HM_MOVE_NAMES.get(hm_name.lower())
+    if not names:
         return False
 
     from myPokemonApp.models import PokemonMoveInstance
+    from django.db.models import Q
+
+    name_fr, name_en = names
     return PokemonMoveInstance.objects.filter(
+        Q(move__name__iexact=name_fr) | Q(move__name__iexact=name_en),
         pokemon__trainer=trainer,
         pokemon__is_in_party=True,
-        pokemon__current_hp__gt=0,
-        move__name__iexact=move_name,
     ).exists()
 
 
@@ -376,7 +381,7 @@ def can_access_zone(trainer, zone) -> tuple:
     # 3. CS
     if hasattr(zone, 'required_hm') and zone.required_hm:
         hm = zone.required_hm
-        move_label = HM_MOVE_NAMES.get(hm, hm.capitalize())
+        move_label = HM_MOVE_NAMES.get(hm, (hm.capitalize(),))[0]
         if not trainer_has_hm(trainer, hm):
             return False, f"CS {move_label} requise (un Pokémon doit la connaître)"
 

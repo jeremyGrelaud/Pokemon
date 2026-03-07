@@ -15,3 +15,4 @@ from .initAchievments import init_achievements
 from .initQuests import init_all_quests
 from .initZoneMusic import init_zone_music
 from .initGymZones import run_gym_initialization
+from .initHMGates import init_hm_gates

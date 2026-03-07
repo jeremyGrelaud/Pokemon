@@ -130,7 +130,8 @@ class Trainer(models.Model):
             appelle is_defeated_by_player() en boucle (ex: liste de trainers
             dans une zone). Si None, la save active est récupérée automatiquement.
         """
-        from .GameSave import GameSave, DefeatedTrainer
+        from .GameSave import GameSave
+        from .DefeatedTrainer import DefeatedTrainer
         if game_save is None:
             game_save = GameSave.objects.filter(
                 trainer=player_trainer, is_active=True

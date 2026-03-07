@@ -985,7 +985,7 @@ def create_champion():
         trainer_type='champion',
         location='Plateau Indigo',
         team_data=champion_team,
-        intro_text="Je t'attendais! Je suis maintenant le Champion de la Ligue Pokémon!",,
+        intro_text="Je t'attendais! Je suis maintenant le Champion de la Ligue Pokémon!",
         ai_flags=['basic', 'evaluate_attack', 'expert', 'setup_first_turn']
     )
     
