@@ -93,16 +93,26 @@ class Trainer(models.Model):
     # Statut de defaite per-joueur
     # ------------------------------------------------------------------
 
-    def is_defeated_by_player(self, player_trainer) -> bool:
+    def is_defeated_by_player(self, player_trainer, game_save=None) -> bool:
         """
         Retourne True si CE joueur a déjà vaincu ce Trainer NPC.
-        Source de vérité : table DefeatedTrainer (FK indexée)
+        Source de vérité : table DefeatedTrainer (FK indexée).
+
+        game_save : GameSave active du joueur, si déjà chargée par l'appelant.
+            Passer cet argument évite une requête DB supplémentaire quand on
+            appelle is_defeated_by_player() en boucle (ex: liste de trainers
+            dans une zone). Si None, la save active est récupérée automatiquement.
         """
         from .GameSave import GameSave, DefeatedTrainer
-        save = GameSave.objects.filter(trainer=player_trainer, is_active=True).only('id').first()
-        if save is None:
+        if game_save is None:
+            game_save = GameSave.objects.filter(
+                trainer=player_trainer, is_active=True
+            ).only('id').first()
+        if game_save is None:
             return False
-        return DefeatedTrainer.objects.filter(game_save_id=save.id, trainer_id=self.id).exists()
+        return DefeatedTrainer.objects.filter(
+            game_save_id=game_save.id, trainer_id=self.id
+        ).exists()
 
     # ------------------------------------------------------------------
     # Helpers badges

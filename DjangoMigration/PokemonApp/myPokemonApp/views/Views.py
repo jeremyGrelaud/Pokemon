@@ -52,16 +52,26 @@ class DashboardView(generic.TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         trainer = get_or_create_player_trainer(self.request.user)
-        
-        # Charger l'équipe une seule fois pour éviter deux requêtes identiques
+
+        # Une seule requête annotée : total de tous les Pokémon + équipe active
+        from django.db.models import Count
+        trainer_annotated = (
+            type(trainer).objects
+            .annotate(total_pokemon_count=Count('pokemon_team'))
+            .get(pk=trainer.pk)
+        )
+        total_caught = trainer_annotated.total_pokemon_count
+
         active_party = list(
-            trainer.pokemon_team.filter(is_in_party=True).order_by('party_position')
+            trainer.pokemon_team
+            .filter(is_in_party=True)
+            .select_related('species')
+            .order_by('party_position')
         )
 
         # Statistiques
         total_pokemon = Pokemon.objects.count()
         team_size     = len(active_party)
-        total_caught  = trainer.pokemon_team.count()
         badges        = trainer.badges
         
         # Derniers combats

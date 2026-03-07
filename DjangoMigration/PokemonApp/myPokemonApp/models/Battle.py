@@ -103,6 +103,11 @@ class Battle(models.Model):
     class Meta:
         verbose_name          = "Combat"
         verbose_name_plural   = "Combats"
+        indexes = [
+            # Requête la plus fréquente : combat actif d'un joueur
+            # → filter(player_trainer=X, is_active=True)
+            models.Index(fields=['player_trainer', 'is_active'], name='idx_battle_trainer_active'),
+        ]
 
     def __str__(self):
         opp = self.opponent_trainer.username if self.opponent_trainer else 'Sauvage'

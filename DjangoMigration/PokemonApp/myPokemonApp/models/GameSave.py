@@ -44,6 +44,11 @@ class GameSave(models.Model):
         unique_together = ['trainer', 'slot']
         ordering        = ['slot']
         verbose_name    = "Sauvegarde"
+        indexes = [
+            # Requête fréquente : sauvegarde active d'un joueur
+            # → filter(trainer=X, is_active=True)
+            models.Index(fields=['trainer', 'is_active'], name='idx_gamesave_trainer_active'),
+        ]
 
     def __str__(self):
         name    = self.save_name or f"Sauvegarde {self.slot}"
