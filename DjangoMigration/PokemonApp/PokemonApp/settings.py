@@ -148,3 +148,27 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = '/login/'
+
+# ─── django-allauth ───────────────────────────────────────────────────────────
+# https://docs.allauth.org/en/latest/account/configuration.html
+
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# Utiliser l'email comme identifiant principal (optionnel — à ajuster selon le projet)
+ACCOUNT_AUTHENTICATION_METHOD = 'username'
+ACCOUNT_EMAIL_REQUIRED         = True
+ACCOUNT_EMAIL_VERIFICATION     = 'optional'  # 'mandatory' si l'e-mail est vérifié avant login
+
+# Redirection après connexion/déconnexion — cohérent avec les URLs existantes
+ACCOUNT_LOGIN_REDIRECT_URL  = '/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/login/'
+
+# Backend e-mail (console en développement ; remplacer par SMTP en production)
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND    = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@djangomon.local'
