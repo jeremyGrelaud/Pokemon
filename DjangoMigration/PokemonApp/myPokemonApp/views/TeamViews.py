@@ -4,13 +4,17 @@ Views Django pour l'application Pokémon Gen 1
 Adapté aux nouveaux modèles
 """
 
+import json
+import logging
+
 from django.shortcuts import get_object_or_404
 from django.views import generic
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
-import json
 from django.views.decorators.http import require_POST
+
+logger = logging.getLogger(__name__)
 from myPokemonApp.gameUtils import (
     deposit_pokemon,
     withdraw_pokemon,
@@ -92,7 +96,8 @@ def heal_pokemon_api(request):
         return JsonResponse({'success': True, 'message': f'{pokemon} a été soigné!'})
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        logger.exception("Erreur inattendue dans TeamViews")
+        return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
 
 
 @login_required
@@ -120,7 +125,8 @@ def send_to_pc_api(request):
         return JsonResponse({'success': True, 'message': f'{pokemon} a été envoyé au PC'})
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        logger.exception("Erreur inattendue dans TeamViews")
+        return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
 
 
 @login_required
@@ -151,7 +157,8 @@ def add_to_party_api(request):
         return JsonResponse({'success': True, 'message': message})
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        logger.exception("Erreur inattendue dans TeamViews")
+        return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
 
 
 @login_required
@@ -206,7 +213,8 @@ def swap_move_api(request):
         return JsonResponse({'success': True, 'moves': serialize_pokemon_moves(pokemon)})
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        logger.exception("Erreur inattendue dans TeamViews")
+        return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
 
 
 @login_required
@@ -279,7 +287,8 @@ def reorder_party_api(request):
         return JsonResponse({'success': True})
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        logger.exception("Erreur inattendue dans TeamViews")
+        return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
 
 @login_required
 @require_POST
@@ -310,20 +319,25 @@ def reorder_moves_api(request):
         if set(order) != current_ids or len(order) != len(current_ids):
             return JsonResponse({'success': False, 'error': 'IDs de capacités invalides.'}, status=400)
 
-        # Supprimer et recréer dans l'ordre en une transaction atomique
+        # Supprimer et recréer dans l'ordre en une transaction atomique.
+        # Les moves sont pré-chargés en une seule requête pour éviter un
+        # PokemonMove.objects.get() par entrée dans la boucle.
         with transaction.atomic():
+            from myPokemonApp.models.PokemonMove import PokemonMove
+            moves_map = {m.id: m for m in PokemonMove.objects.filter(pk__in=order)}
             instances.delete()
-            for move_id in order:
-                from myPokemonApp.models.PokemonMove import PokemonMove
-                move = PokemonMove.objects.get(pk=move_id)
-                PokemonMoveInstance.objects.create(
+            PokemonMoveInstance.objects.bulk_create([
+                PokemonMoveInstance(
                     pokemon=pokemon,
-                    move=move,
-                    current_pp=pp_map[move_id]
+                    move=moves_map[move_id],
+                    current_pp=pp_map[move_id],
                 )
+                for move_id in order
+            ])
 
         from myPokemonApp.gameUtils import serialize_pokemon_moves
         return JsonResponse({'success': True, 'moves': serialize_pokemon_moves(pokemon)})
 
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        logger.exception("Erreur inattendue dans TeamViews")
+        return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
