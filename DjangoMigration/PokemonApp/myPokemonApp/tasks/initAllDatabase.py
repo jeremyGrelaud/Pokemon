@@ -62,6 +62,7 @@ from myPokemonApp.tasks.InitTMsandCS import runCSAndTM
 from myPokemonApp.tasks.initMovesGen9 import add_missing_gen9_moves
 from myPokemonApp.tasks.initLearnableMovesGen9 import update_learnable_moves_gen9
 from myPokemonApp.tasks.initNPCTrainersComplete import run_complete_npc_initialization
+from myPokemonApp.tasks.initGymZones import run_gym_initialization
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +88,7 @@ STEPS = [
     (17, "Held Items",                                        initHeldItems),
     (18, "Zone Musics",                                       init_zone_music),
     (19, "CS & CT",                                           runCSAndTM),
+    (20, "Gym Zones",                                         run_gym_initialization),
 ]
 
 

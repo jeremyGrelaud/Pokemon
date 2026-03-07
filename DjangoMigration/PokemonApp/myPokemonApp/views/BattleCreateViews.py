@@ -275,9 +275,9 @@ def battle_create_gym_view(request):
 @login_required
 def battle_challenge_gym_view(request, gym_leader_id):
     """
-    Lance un combat contre un Champion d'Arène directement depuis zone_detail.
+    Lance un combat contre un Champion d'Arène directement depuis la zone arène.
     GET /battle/gym/<id>/challenge/
-    Vérifie que le joueur est bien dans la ville de l'arène.
+    Vérifie que le joueur est dans la zone arène ET a battu tous les dresseurs obligatoires.
     """
     player_trainer = get_player_trainer(request.user)
 
@@ -290,18 +290,71 @@ def battle_challenge_gym_view(request, gym_leader_id):
     try:
         player_location = PlayerLocation.objects.get(trainer=player_trainer)
         current_zone    = player_location.current_zone
-        expected_zone   = _GYM_CITY_TO_ZONE.get(gym_leader.gym_city, gym_leader.gym_city)
-        if current_zone.name != expected_zone:
-            messages.error(
-                request,
-                f"L'arène de {gym_leader.trainer.username} se trouve à {expected_zone}, "
-                f"mais vous êtes à {current_zone.name} !",
-            )
-            return redirect('zone_detail', zone_id=current_zone.id)
     except PlayerLocation.DoesNotExist:
         messages.error(request, "Position introuvable. Veuillez voyager vers une zone.")
         return redirect('map_view')
 
+    # ── Vérifier que le joueur est dans une zone arène (building "Arène de X") ──
+    expected_city = _GYM_CITY_TO_ZONE.get(gym_leader.gym_city, gym_leader.gym_city)
+    in_gym_zone   = (
+        current_zone.zone_type == 'building'
+        and current_zone.name.startswith('Arène')
+    )
+    in_city       = (current_zone.name == expected_city)
+
+    if not in_gym_zone and not in_city:
+        messages.error(
+            request,
+            f"L'arène de {gym_leader.trainer.username} se trouve à {expected_city}. "
+            f"Vous êtes actuellement à {current_zone.name} !"
+        )
+        return redirect('zone_detail', zone_id=current_zone.id)
+
+    # Si le joueur est dans la ville (et pas dans la zone arène), l'inviter à entrer dans l'arène
+    if in_city and not in_gym_zone:
+        # Chercher la zone arène connectée
+        from myPokemonApp.models.Zone import Zone as ZoneModel, ZoneConnection as ZC
+        arena_conn = ZC.objects.filter(
+            from_zone=current_zone, to_zone__zone_type='building',
+            to_zone__name__startswith='Arène'
+        ).select_related('to_zone').first()
+        if not arena_conn:
+            arena_conn = ZC.objects.filter(
+                to_zone=current_zone, is_bidirectional=True,
+                from_zone__zone_type='building',
+                from_zone__name__startswith='Arène'
+            ).select_related('from_zone').first()
+            gym_zone = arena_conn.from_zone if arena_conn else None
+        else:
+            gym_zone = arena_conn.to_zone
+
+        if gym_zone:
+            messages.warning(
+                request,
+                f"Vous devez entrer dans l'arène ({gym_zone.name}) pour défier {gym_leader.trainer.username} !"
+            )
+            return redirect('zone_detail', zone_id=gym_zone.id)
+
+    # ── Vérifier les dresseurs obligatoires de l'arène ─────────────────────────
+    from myPokemonApp.gameUtils import get_defeated_trainer_ids
+    defeated_ids  = get_defeated_trainer_ids(player_trainer)
+    arena_name    = current_zone.name
+    required_trainers = Trainer.objects.filter(
+        is_npc=True,
+        is_battle_required=True,
+        location=arena_name,
+    ).exclude(id__in=defeated_ids)
+
+    blocker = required_trainers.first()
+    if blocker:
+        messages.warning(
+            request,
+            f"⚠️ {blocker.get_full_title()} vous barre le chemin vers {gym_leader.trainer.username} ! "
+            f"Battez tous les dresseurs de l'arène d'abord."
+        )
+        return redirect('battle_create_trainer', trainer_id=blocker.id)
+
+    # ── Vérifier challengeability (badges) ────────────────────────────────────
     if not gym_leader.isChallengableByPlayer(player_trainer):
         messages.warning(
             request,

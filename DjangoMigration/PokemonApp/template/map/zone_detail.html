@@ -145,6 +145,44 @@
 
               <!-- Arène / Gym Leader -->
               {% if gym_leader %}
+              {% if gym_zone %}
+              {# ── Nouvelle logique : l'arène est une zone building à explorer ── #}
+              <a href="{% if gym_leader_defeated %}#{% else %}{% url 'travel_to_zone' gym_zone.id %}{% endif %}"
+                 class="action-card action-card--gym {% if gym_leader_defeated %}action-card--done{% endif %}"
+                 {% if gym_leader_defeated %}style="pointer-events:none;"{% endif %}>
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}"
+                         alt="{{ gym_leader.trainer.username }}"
+                         class="action-card__img action-card__img--trainer {% if gym_leader_defeated %}action-card__img--defeated{% endif %}"
+                         onerror="this.style.display='none';">
+                  </div>
+                  <div class="action-card__text">
+                    <div class="action-card__title">Arène Pokémon</div>
+                    <div class="action-card__subtitle">
+                      <strong>{{ gym_leader.trainer.username }}</strong> — {{ gym_leader.badge_name }}
+                    </div>
+                    {% if gym_leader_defeated %}
+                    <span class="action-card__badge-won">
+                      <i class="fas fa-medal me-1"></i>Badge obtenu
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning text-dark" style="font-size:.7rem;">
+                      <i class="fas fa-door-open me-1"></i>Entrer dans l'arène
+                    </span>
+                    {% endif %}
+                  </div>
+                  <div class="action-card__cta">
+                    {% if gym_leader_defeated %}
+                    <i class="fas fa-check me-2"></i>Déjà vaincu
+                    {% else %}
+                    <i class="fas fa-fist-raised me-2"></i>Accéder à l'Arène
+                    {% endif %}
+                  </div>
+                </div>
+              </a>
+              {% else %}
+              {# ── Fallback ancienne logique si pas de zone arène configurée ── #}
               <a href="{% if gym_leader_defeated %}#{% else %}{% url 'battle_challenge_gym' gym_leader.id %}{% endif %}"
                  class="action-card action-card--gym {% if gym_leader_defeated %}action-card--done{% endif %}"
                  {% if gym_leader_defeated %}style="pointer-events:none;"{% endif %}>
@@ -175,6 +213,7 @@
                   </div>
                 </div>
               </a>
+              {% endif %}
               {% endif %}
 
             </div>{# /action-grid #}
@@ -232,6 +271,60 @@
               {% endfor %}
             </div>
           </div>
+          {% endif %}
+
+          <!-- ══════════════════════════════════════════════════════════════
+               ZONE ARÈNE — Affichage spécial si la zone est une arène
+          ══════════════════════════════════════════════════════════════════ -->
+          {% if zone.zone_type == 'building' and zone.name|slice:":5" == "Arène" %}
+          {% if gym_leader %}
+          <div class="card border-warning mb-4">
+            <div class="card-header bg-warning text-dark py-2 d-flex align-items-center justify-content-between">
+              <h5 class="mb-0">
+                <i class="fas fa-trophy me-2"></i>Champion d'Arène
+              </h5>
+              {% if gym_leader_defeated %}
+              <span class="badge bg-success"><i class="fas fa-medal me-1"></i>Badge obtenu</span>
+              {% else %}
+              <span class="badge bg-dark">Badge {{ gym_leader.badge_order }}/8</span>
+              {% endif %}
+            </div>
+            <div class="card-body d-flex align-items-center" style="gap:16px;">
+              <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}"
+                   alt="{{ gym_leader.trainer.username }}"
+                   style="width:80px;height:80px;object-fit:contain;flex-shrink:0;{% if gym_leader_defeated %}filter:grayscale(80%);opacity:.7;{% endif %}"
+                   onerror="this.style.display='none';">
+              <div class="flex-grow-1">
+                <div class="fw-bold fs-5">{{ gym_leader.trainer.username }}</div>
+                <div class="text-muted">{{ gym_leader.gym_name }} — {{ gym_leader.badge_name }}</div>
+                <div class="mt-1">
+                  <span class="badge" style="background:var(--type-{{ gym_leader.specialty_type.name|lower }},#6c757d);font-size:.8rem;">
+                    {{ gym_leader.specialty_type.name|upper }}
+                  </span>
+                </div>
+                {% if gym_leader.trainer.intro_text %}
+                <blockquote class="blockquote mt-2 mb-0" style="font-size:.9rem;">
+                  <p class="mb-0 fst-italic">"{{ gym_leader.trainer.intro_text }}"</p>
+                </blockquote>
+                {% endif %}
+              </div>
+              {% if is_current and not gym_leader_defeated %}
+              <div class="flex-shrink-0">
+                <a href="{% url 'battle_challenge_gym' gym_leader.id %}"
+                   class="btn btn-warning btn-lg fw-bold">
+                  <i class="fas fa-fist-raised me-1"></i>Défier !
+                </a>
+              </div>
+              {% elif gym_leader_defeated %}
+              <div class="flex-shrink-0">
+                <span class="btn btn-success btn-lg disabled">
+                  <i class="fas fa-check me-1"></i>Vaincu
+                </span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
           {% endif %}
 
           <!-- Rencontre Rival -->
