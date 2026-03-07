@@ -7,6 +7,17 @@
 
 {% block content %}
 
+<!-- Breadcrumb combat -->
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb mb-0" style="font-size:.85rem;">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}"><i class="fas fa-home"></i></a></li>
+    <li class="breadcrumb-item"><a href="{% url 'BattleListView' %}">Combats</a></li>
+    <li class="breadcrumb-item active">
+      {{ battle.player_pokemon.species.name }} vs {{ battle.opponent_pokemon.species.name }}
+    </li>
+  </ol>
+</nav>
+
 {% if battle.battle_type == 'trainer' or battle.battle_type == 'gym' %}
 <!-- ╔══════════════════════════════════════════════════════╗
      ║        TRAINER INTRO OVERLAY                        ║
@@ -431,6 +442,31 @@
           <i class="fas fa-map-marker-alt"></i> Retour à la zone
         </button>
         {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmation de fuite -->
+<div class="modal fade" id="flee-confirm-modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+    <div class="modal-content border-warning">
+      <div class="modal-header bg-warning text-dark py-2">
+        <h6 class="modal-title mb-0">
+          <i class="fas fa-running me-1"></i> Fuir le combat ?
+        </h6>
+      </div>
+      <div class="modal-body text-center py-3">
+        <p class="mb-0">Voulez-vous vraiment abandonner ce combat ?<br>
+        <small class="text-muted">La fuite n'est pas garantie !</small></p>
+      </div>
+      <div class="modal-footer py-2 justify-content-center gap-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+          <i class="fas fa-times me-1"></i>Annuler
+        </button>
+        <button type="button" class="btn btn-warning btn-sm" onclick="_doFlee()">
+          <i class="fas fa-running me-1"></i>Fuir
+        </button>
       </div>
     </div>
   </div>

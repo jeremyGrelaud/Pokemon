@@ -496,10 +496,14 @@ function useItem(itemId) {
 }
 
 function tryRun() {
-  if (!confirm('Voulez-vous vraiment fuir le combat ?')) {
-    return;
-  }
-  
+  // Ouvrir la modal de confirmation Bootstrap (plus stylée que confirm() natif)
+  $('#flee-confirm-modal').modal('show');
+}
+
+function _doFlee() {
+  $('#flee-confirm-modal').modal('hide');
+  $('button').prop('disabled', true);
+
   $.post(BATTLE_CONFIG.urls.action, {
     action: 'flee',
     csrfmiddlewaretoken: csrfToken
@@ -507,17 +511,17 @@ function tryRun() {
   .done(function(data) {
     if (data.fled) {
       addBattleLog('Vous avez fui le combat !');
-      setTimeout(() => {
-        window.location.href = BATTLE_CONFIG.urls.returnZone;
-      }, 2000);
+      updateBattleState(data);
     } else {
       addBattleLog('Impossible de fuir !');
       updateBattleState(data);
+      $('button').prop('disabled', false);
     }
   })
   .fail(function(xhr) {
     console.error('Flee failed:', xhr);
-    addBattleLog('Erreur');
+    addBattleLog('Erreur lors de la fuite');
+    $('button').prop('disabled', false);
   });
 }
 
