@@ -41,7 +41,7 @@
 
 
 /* ── Fonds de type (.badge-type-*) – cartes de moves, modals ───────────────── */
-.badge-type-normal   { background: var(--type-normal);   }
+.badge-type-normal   { background: var(--type-normal);   color: #333 !important; }
 .badge-type-fire     { background: var(--type-fire);     }
 .badge-type-water    { background: var(--type-water);    }
 .badge-type-electric { background: var(--type-electric); color: #333 !important; }
@@ -52,8 +52,8 @@
 .badge-type-ground   { background: var(--type-ground);   color: #333 !important; }
 .badge-type-flying   { background: var(--type-flying);   }
 .badge-type-psychic  { background: var(--type-psychic);  }
-.badge-type-bug      { background: var(--type-bug);      }
-.badge-type-rock     { background: var(--type-rock);     }
+.badge-type-bug      { background: var(--type-bug);      color: #333 !important; }
+.badge-type-rock     { background: var(--type-rock);     color: #333 !important; }
 .badge-type-ghost    { background: var(--type-ghost);    }
 .badge-type-dragon   { background: var(--type-dragon);   }
 .badge-type-dark     { background: var(--type-dark);     }
@@ -152,20 +152,10 @@
     transition: width 0.5s ease;
 }
 
-
-/* Barre HP colorée */
-.hp-bar {
-    height: 20px;
-    background-color: #e9ecef;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.hp-bar-fill {
-    height: 100%;
-    transition: width 0.3s ease;
-}
-
-.hp-high { background-color: #28a745; }
-.hp-medium { background-color: #ffc107; }
-.hp-low { background-color: #dc3545; }
+/* ── Barre HP colorée (version canonique — 8px, partagée entre my_team,
+   center_detail, battle, etc.) ──────────────────────────────────────────── */
+.hp-bar      { width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+.hp-bar-fill { height: 100%; transition: width 0.3s ease; }
+.hp-high     { background-color: #28a745; }
+.hp-medium   { background-color: #ffc107; }
+.hp-low      { background-color: #dc3545; }

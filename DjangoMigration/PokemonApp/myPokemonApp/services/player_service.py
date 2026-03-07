@@ -59,7 +59,7 @@ def get_or_create_player_trainer(user):
         user=user,
         defaults={
             'trainer_type': 'player',
-            'username': user.username,   # conservé pour l'affichage / __str__
+            'username': user.username,
         }
     )
     return trainer
@@ -74,10 +74,6 @@ def get_player_location(trainer, create_if_missing=True):
     Récupère le PlayerLocation du trainer, en créant la position initiale
     (Bourg Palette ou première zone) si elle n'existe pas encore et que
     create_if_missing=True.
-
-    Usage :
-        location = get_player_location(trainer)
-        current_zone = location.current_zone
     """
     from myPokemonApp.models import PlayerLocation, Zone
 
@@ -100,14 +96,10 @@ def trainer_is_at_zone_with(trainer, zone_attr: str) -> bool:
 
     Si le trainer n'a pas de PlayerLocation connue, retourne True par défaut
     pour ne pas bloquer les joueurs sans position.
-
-    Usage :
-        if not trainer_is_at_zone_with(trainer, 'has_shop'):
-            return redirect('map_view')
     """
     location = get_player_location(trainer, create_if_missing=False)
     if location is None:
-        return True  # pas de position connue → on ne bloque pas
+        return True
     return bool(getattr(location.current_zone, zone_attr, False))
 
 
@@ -118,9 +110,7 @@ def trainer_is_at_zone_with(trainer, zone_attr: str) -> bool:
 def get_defeated_trainer_ids(player_trainer) -> set:
     """
     Retourne le set des IDs de Trainers NPC vaincus par ce joueur.
-
-    Récupère la save active en une seule requête DB et retourne
-    un set Python pour des tests d'appartenance en O(1).
+    Requête directe sur la table DefeatedTrainer (index sur game_save_id) :
 
     À utiliser dans les vues qui itèrent sur N trainers pour éviter
     le N+1 que produirait npc.is_defeated_by_player() dans une boucle.
@@ -131,20 +121,21 @@ def get_defeated_trainer_ids(player_trainer) -> set:
             is_beaten = npc.id in defeated_ids
     """
     from myPokemonApp.models.GameSave import GameSave
-    save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+    from myPokemonApp.models.DefeatedTrainer import DefeatedTrainer
+    save = GameSave.objects.filter(trainer=player_trainer, is_active=True).only('id').first()
     if save is None:
         return set()
-    return set(save.defeated_trainers)
+    return set(
+        DefeatedTrainer.objects
+        .filter(game_save_id=save.id)
+        .values_list('trainer_id', flat=True)
+    )
 
 
 def has_pokedex(player_trainer) -> bool:
     """
     Retourne True si le joueur a reçu son Pokédex.
     Vérifie le story_flag 'has_pokedex' dans la GameSave active.
-
-    Usage :
-        if not has_pokedex(trainer):
-            return HttpResponseForbidden(...)
     """
     from myPokemonApp.models.GameSave import GameSave
     save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
@@ -154,12 +145,7 @@ def has_pokedex(player_trainer) -> bool:
 def grant_pokedex(player_trainer) -> None:
     """
     Donne le Pokédex au joueur en posant le story_flag 'has_pokedex'
-    sur sa GameSave active. Si aucune save n'existe, en crée une au slot 1.
-
-    À appeler dès que le joueur choisit son starter.
-
-    Usage :
-        grant_pokedex(trainer)
+    sur sa GameSave active.
     """
     from myPokemonApp.models.GameSave import GameSave
     save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
@@ -196,11 +182,6 @@ def organize_party(trainer, pokemon_order: list) -> None:
     """
     Réordonne l'équipe du dresseur selon une liste d'IDs fournie par le client
     (drag-and-drop).
-
-    pokemon_order = [pokemon_id_1, pokemon_id_2, ...]
-
-    Distinct de auto_reorganize_party() qui réordonne l'existant sans changer
-    l'ordre.
     """
     for position, pokemon_id in enumerate(pokemon_order, 1):
         pokemon = trainer.pokemon_team.get(id=pokemon_id)

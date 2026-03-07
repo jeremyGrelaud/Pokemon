@@ -787,3 +787,26 @@ def dict_get(d, key):
     if key in d:
         return d[key]
     return d.get(str(key))
+
+@register.filter(name='table_page_range')
+def table_page_range(page_obj, paginator):
+    """
+    Génère une liste compacte de numéros de pages pour la navigation.
+    Affiche toujours la première, la dernière, la page courante, et les 2
+    voisines de chaque côté. Insère '...' pour les trous.
+    """
+    current  = page_obj.number
+    total    = paginator.num_pages
+
+    always = {1, total}
+    window = set(range(max(1, current - 2), min(total, current + 2) + 1))
+    visible = sorted(always | window)
+
+    result = []
+    prev = None
+    for p in visible:
+        if prev is not None and p - prev > 1:
+            result.append('...')
+        result.append(p)
+        prev = p
+    return result

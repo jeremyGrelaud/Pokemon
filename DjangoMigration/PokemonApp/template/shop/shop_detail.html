@@ -196,7 +196,7 @@
             <!-- Prix de vente -->
             <div class="text-center mb-3">
               <h5 class="text-success mb-0">
-                <i class="fas fa-coins me-1"></i>{{ trainer_inv.item.price|floatformat:0|mul:0.5|floatformat:0 }}₽
+                <i class="fas fa-coins me-1"></i>{{ trainer_inv.sell_price }}₽
               </h5>
               <small class="text-muted">Prix de vente unitaire</small>
             </div>
@@ -217,7 +217,7 @@
               <button class="btn btn-success btn-sm btn-sell"
                       data-inventory-id="{{ trainer_inv.id }}"
                       data-item-name="{{ trainer_inv.item.name }}"
-                      data-unit-price="{{ trainer_inv.item.price|floatformat:0|mul:0.5|floatformat:0 }}">
+                      data-unit-price="{{ trainer_inv.sell_price }}">
                 <i class="fas fa-hand-holding-usd me-1"></i>Vendre
               </button>
             </div>
@@ -249,6 +249,25 @@
 <!-- Toast Container -->
 <div id="toast-container" style="position:fixed; top:20px; right:20px; z-index:9999;"></div>
 
+<!-- ═══ MODAL DE CONFIRMATION ════════════════════════════════════════════════ -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2" id="confirmModalHeader">
+        <h6 class="modal-title fw-bold" id="confirmModalTitle"></h6>
+        <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center py-3">
+        <p class="mb-0" id="confirmModalBody"></p>
+      </div>
+      <div class="modal-footer py-2 justify-content-center gap-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-sm" id="confirmModalBtn">Confirmer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock content %}
 
 {% block js %}
@@ -266,45 +285,71 @@ function getCookie(name) {
 }
 const csrftoken = getCookie('csrftoken');
 
+/* ── Modal de confirmation générique ─────────────────────────────────────── */
+let _confirmModal = null;
+function showConfirm({ title, body, btnLabel, btnClass = 'btn-primary', onConfirm }) {
+  if (!_confirmModal) _confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+  document.getElementById('confirmModalTitle').textContent = title;
+  document.getElementById('confirmModalBody').textContent  = body;
+  const btn = document.getElementById('confirmModalBtn');
+  btn.textContent  = btnLabel;
+  btn.className    = `btn btn-sm ${btnClass}`;
+  // Remplace le listener précédent pour éviter les doublons
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', () => {
+    _confirmModal.hide();
+    onConfirm();
+  });
+  _confirmModal.show();
+}
+
 /* ── Achat ────────────────────────────────────────────────────────────────── */
 function buyItem(shopInventoryId, itemName, unitPrice) {
   const quantityInput = document.querySelector(`.buy-quantity[data-shop-inventory-id="${shopInventoryId}"]`);
-  const quantity = parseInt(quantityInput?.value) || 1;
+  const quantity  = parseInt(quantityInput?.value) || 1;
   const totalCost = unitPrice * quantity;
-  if (!confirm(`Acheter ${quantity}× ${itemName} pour ${totalCost}₽ ?`)) return;
 
-  const btn = document.querySelector(`.btn-buy[data-shop-inventory-id="${shopInventoryId}"]`);
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Achat…';
+  showConfirm({
+    title:    'Confirmer l\'achat',
+    body:     `Acheter ${quantity}× ${itemName} pour ${totalCost}₽ ?`,
+    btnLabel: 'Acheter',
+    btnClass: 'btn-primary',
+    onConfirm() {
+      const btn = document.querySelector(`.btn-buy[data-shop-inventory-id="${shopInventoryId}"]`);
+      btn.disabled  = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Achat…';
 
-  fetch('/api/shop/buy/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-    body: JSON.stringify({ shop_inventory_id: shopInventoryId, quantity })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      showToast(data.message, 'success');
-      const newMoney = data.new_balance.toLocaleString('fr-FR') + '₽';
-      document.querySelectorAll('.money-display').forEach(el => {
-        el.innerHTML = `<i class="fas fa-coins text-warning me-1"></i>${newMoney}`;
+      fetch('/api/shop/buy/', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body:    JSON.stringify({ shop_inventory_id: shopInventoryId, quantity }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast(data.message, 'success');
+          const newMoney = data.new_balance.toLocaleString('fr-FR') + '₽';
+          document.querySelectorAll('.money-display').forEach(el => {
+            el.innerHTML = `<i class="fas fa-coins text-warning me-1"></i>${newMoney}`;
+          });
+          if (quantityInput) quantityInput.value = 1;
+          const totalEl = document.querySelector(`.total-price[data-shop-inventory-id="${shopInventoryId}"]`);
+          if (totalEl) totalEl.textContent = unitPrice + '₽';
+          btn.disabled  = false;
+          btn.innerHTML = '<i class="fas fa-shopping-cart me-1"></i>Acheter';
+        } else {
+          showToast(data.error, 'error');
+          btn.disabled  = false;
+          btn.innerHTML = '<i class="fas fa-shopping-cart me-1"></i>Acheter';
+        }
+      })
+      .catch(() => {
+        showToast("Erreur lors de l'achat", 'error');
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="fas fa-shopping-cart me-1"></i>Acheter';
       });
-      if (quantityInput) quantityInput.value = 1;
-      const totalEl = document.querySelector(`.total-price[data-shop-inventory-id="${shopInventoryId}"]`);
-      if (totalEl) totalEl.textContent = unitPrice + '₽';
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-shopping-cart me-1"></i>Acheter';
-    } else {
-      showToast(data.error, 'error');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-shopping-cart me-1"></i>Acheter';
-    }
-  })
-  .catch(() => {
-    showToast("Erreur lors de l'achat", 'error');
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-shopping-cart me-1"></i>Acheter';
+    },
   });
 }
 
@@ -313,54 +358,62 @@ document.addEventListener('click', e => {
   const btn = e.target.closest('.btn-sell');
   if (!btn) return;
 
-  const id = btn.dataset.inventoryId;
-  const itemName  = btn.dataset.itemName;
-  const unitPrice = parseInt(btn.dataset.unitPrice);
-  const qtyInput  = document.querySelector(`.sell-quantity[data-inventory-id="${id}"]`);
-  const quantity  = parseInt(qtyInput?.value) || 1;
+  const id          = btn.dataset.inventoryId;
+  const itemName    = btn.dataset.itemName;
+  const unitPrice   = parseInt(btn.dataset.unitPrice);
+  const qtyInput    = document.querySelector(`.sell-quantity[data-inventory-id="${id}"]`);
+  const quantity    = parseInt(qtyInput?.value) || 1;
   const totalEarned = unitPrice * quantity;
 
-  if (!confirm(`Vendre ${quantity}× ${itemName} pour ${totalEarned}₽ ?`)) return;
+  showConfirm({
+    title:    'Confirmer la vente',
+    body:     `Vendre ${quantity}× ${itemName} pour ${totalEarned}₽ ?`,
+    btnLabel: 'Vendre',
+    btnClass: 'btn-success',
+    onConfirm() {
+      btn.disabled  = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Vente…';
 
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Vente…';
-
-  fetch('/api/shop/sell/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-    body: JSON.stringify({ trainer_inventory_id: id, quantity })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      showToast(data.message, 'success');
-      const newMoney = data.new_balance.toLocaleString('fr-FR') + '₽';
-      document.querySelectorAll('.money-display').forEach(el => {
-        el.innerHTML = `<i class="fas fa-coins text-warning me-1"></i>${newMoney}`;
-      });
-      const card = btn.closest('.col-lg-3, .col-md-4, .col-sm-6');
-      const qtyBadge = card?.querySelector('.bg-info');
-      const newQty = (parseInt(qtyBadge?.textContent?.replace('x','')) || 0) - quantity;
-      if (newQty <= 0) {
-        card?.style && (card.style.transition = 'opacity .3s');
-        card?.style && (card.style.opacity = '0');
-        setTimeout(() => card?.remove(), 300);
-      } else {
-        if (qtyBadge) qtyBadge.textContent = 'x' + newQty;
-        if (qtyInput) { qtyInput.max = newQty; qtyInput.value = 1; }
-        btn.disabled = false;
+      fetch('/api/shop/sell/', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body:    JSON.stringify({ trainer_inventory_id: id, quantity }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          showToast(data.message, 'success');
+          const newMoney = data.new_balance.toLocaleString('fr-FR') + '₽';
+          document.querySelectorAll('.money-display').forEach(el => {
+            el.innerHTML = `<i class="fas fa-coins text-warning me-1"></i>${newMoney}`;
+          });
+          const card   = btn.closest('.col-lg-3, .col-md-4, .col-sm-6');
+          const qtyBadge = card?.querySelector('.bg-info');
+          const newQty = (parseInt(qtyBadge?.textContent?.replace('x', '')) || 0) - quantity;
+          if (newQty <= 0) {
+            if (card) {
+              card.style.transition = 'opacity .3s';
+              card.style.opacity    = '0';
+              setTimeout(() => card.remove(), 300);
+            }
+          } else {
+            if (qtyBadge) qtyBadge.textContent = 'x' + newQty;
+            if (qtyInput) { qtyInput.max = newQty; qtyInput.value = 1; }
+            btn.disabled  = false;
+            btn.innerHTML = '<i class="fas fa-hand-holding-usd me-1"></i>Vendre';
+          }
+        } else {
+          showToast(data.error, 'error');
+          btn.disabled  = false;
+          btn.innerHTML = '<i class="fas fa-hand-holding-usd me-1"></i>Vendre';
+        }
+      })
+      .catch(() => {
+        showToast('Erreur lors de la vente', 'error');
+        btn.disabled  = false;
         btn.innerHTML = '<i class="fas fa-hand-holding-usd me-1"></i>Vendre';
-      }
-    } else {
-      showToast(data.error, 'error');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-hand-holding-usd me-1"></i>Vendre';
-    }
-  })
-  .catch(() => {
-    showToast('Erreur lors de la vente', 'error');
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-hand-holding-usd me-1"></i>Vendre';
+      });
+    },
   });
 });
 

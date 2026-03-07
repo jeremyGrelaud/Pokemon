@@ -7,18 +7,34 @@ Changements v1.0 → v1.1 :
     (pour référence / export — la source de vérité reste la DB)
   - restore_game_snapshot() restaure achievements et quests depuis le snapshot
   - Pas de régression sur le reste
+
+v1.2 (DefeatedTrainer) :
+  - defeated_trainers n'est plus un JSONField sur GameSave mais une table
+    relationnelle (DefeatedTrainer). Les snapshots conservent le format
+    list[int] pour la portabilité (export/import), mais la source de
+    vérité live est la table.
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
 import logging
 import json
 
-from myPokemonApp.models import *
+logger = logging.getLogger(__name__)
+
 from myPokemonApp.models.Achievements import Achievement, TrainerAchievement
+from myPokemonApp.models.GameSave import GameSave
+from myPokemonApp.models.DefeatedTrainer import DefeatedTrainer
+from myPokemonApp.models.Item import Item
+from myPokemonApp.models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
+from myPokemonApp.models.Pokemon import Pokemon
+from myPokemonApp.models.PokemonMove import PokemonMove
 from myPokemonApp.models.Quest import Quest, QuestProgress
+from myPokemonApp.models.Trainer import Trainer, TrainerInventory
+from myPokemonApp.models.Zone import PlayerLocation
 from myPokemonApp.gameUtils import get_player_trainer
 
 
@@ -48,52 +64,56 @@ def create_game_snapshot(trainer, save):
 
         'pokemon_team':      [],
         'inventory':         [],
-        'defeated_trainers': list(save.defeated_trainers),
-        'story_flags':       dict(save.story_flags),
-        'achievements':      [],   # NOUVEAU v1.1
-        'quests':            [],   # NOUVEAU v1.1
+        # defeated_trainers : list[int] dans le snapshot pour portabilité (export/restore)
+        # La source de vérité live est la table DefeatedTrainer.
+        'defeated_trainers': list(
+            save.defeated_trainer_set.values_list('trainer_id', flat=True)
+        ),
+        'story_flags':  dict(save.story_flags),
+        'achievements': [],
+        'quests':       [],
     }
 
     # ── Pokémon ───────────────────────────────────────────────────────────
     for pokemon in trainer.pokemon_team.all():
         pdata = {
-            'species_id':        pokemon.species.id,
-            'species_name':      pokemon.species.name,
-            'nickname':          pokemon.nickname,
-            'level':             pokemon.level,
-            'current_hp':        pokemon.current_hp,
-            'max_hp':            pokemon.max_hp,
-            'attack':            pokemon.attack,
-            'defense':           pokemon.defense,
-            'special_attack':    pokemon.special_attack,
-            'special_defense':   pokemon.special_defense,
-            'speed':             pokemon.speed,
-            'status_condition':  pokemon.status_condition,
-            'is_in_party':       pokemon.is_in_party,
-            'current_exp':       pokemon.current_exp,
+            'species_id':         pokemon.species.id,
+            'species_name':       pokemon.species.name,
+            'nickname':           pokemon.nickname,
+            'level':              pokemon.level,
+            'current_hp':         pokemon.current_hp,
+            'max_hp':             pokemon.max_hp,
+            'attack':             pokemon.attack,
+            'defense':            pokemon.defense,
+            'special_attack':     pokemon.special_attack,
+            'special_defense':    pokemon.special_defense,
+            'speed':              pokemon.speed,
+            'status_condition':   pokemon.status_condition,
+            'is_in_party':        pokemon.is_in_party,
+            'current_exp':        pokemon.current_exp,
             'exp_for_next_level': pokemon.exp_for_next_level(),
             # ── IVs ──────────────────────────────────────────────────────
-            'iv_hp':             pokemon.iv_hp,
-            'iv_attack':         pokemon.iv_attack,
-            'iv_defense':        pokemon.iv_defense,
-            'iv_special_attack': pokemon.iv_special_attack,
-            'iv_special_defense':pokemon.iv_special_defense,
-            'iv_speed':          pokemon.iv_speed,
+            'iv_hp':              pokemon.iv_hp,
+            'iv_attack':          pokemon.iv_attack,
+            'iv_defense':         pokemon.iv_defense,
+            'iv_special_attack':  pokemon.iv_special_attack,
+            'iv_special_defense': pokemon.iv_special_defense,
+            'iv_speed':           pokemon.iv_speed,
             # ── EVs ──────────────────────────────────────────────────────
-            'ev_hp':             pokemon.ev_hp,
-            'ev_attack':         pokemon.ev_attack,
-            'ev_defense':        pokemon.ev_defense,
-            'ev_special_attack': pokemon.ev_special_attack,
-            'ev_special_defense':pokemon.ev_special_defense,
-            'ev_speed':          pokemon.ev_speed,
+            'ev_hp':              pokemon.ev_hp,
+            'ev_attack':          pokemon.ev_attack,
+            'ev_defense':         pokemon.ev_defense,
+            'ev_special_attack':  pokemon.ev_special_attack,
+            'ev_special_defense': pokemon.ev_special_defense,
+            'ev_speed':           pokemon.ev_speed,
             # ── Misc ─────────────────────────────────────────────────────
-            'nature':            pokemon.nature,
-            'is_shiny':          pokemon.is_shiny,
-            'party_position':    pokemon.party_position,
-            'original_trainer':  pokemon.original_trainer,
-            'pokeball_used':     pokemon.pokeball_used,
-            'friendship':        pokemon.friendship,
-            'moves':             [],
+            'nature':             pokemon.nature,
+            'is_shiny':           pokemon.is_shiny,
+            'party_position':     pokemon.party_position,
+            'original_trainer':   pokemon.original_trainer,
+            'pokeball_used':      pokemon.pokeball_used,
+            'friendship':         pokemon.friendship,
+            'moves':              [],
         }
         for mi in pokemon.pokemonmoveinstance_set.all():
             pdata['moves'].append({
@@ -155,14 +175,23 @@ def restore_game_snapshot(trainer, snapshot):
     trainer.badges = snapshot['trainer']['badges']
     trainer.save()
 
-    # ── GameSave : story_flags + defeated_trainers ────────────────────────
-    # Ces deux champs vivent sur GameSave, pas sur Trainer.
-    # On met à jour l'objet actif en DB.
+    # ── GameSave : story_flags + dresseurs vaincus ────────────────────────
     save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
     if save:
-        save.story_flags      = dict(snapshot.get('story_flags', {}))
-        save.defeated_trainers = list(snapshot.get('defeated_trainers', []))
-        save.save(update_fields=['story_flags', 'defeated_trainers'])
+        save.story_flags = dict(snapshot.get('story_flags', {}))
+        save.save(update_fields=['story_flags'])
+
+        # Restaure les dresseurs vaincus depuis le snapshot :
+        save.defeated_trainer_set.all().delete()
+        valid_ids = set(Trainer.objects.filter(
+            id__in=snapshot.get('defeated_trainers', [])
+        ).values_list('id', flat=True))
+        DefeatedTrainer.objects.bulk_create(
+            [DefeatedTrainer(game_save=save, trainer_id=tid)
+             for tid in snapshot.get('defeated_trainers', [])
+             if tid in valid_ids],
+            ignore_conflicts=True,
+        )
 
     # ── Pokémon ───────────────────────────────────────────────────────────
     trainer.pokemon_team.all().delete()
@@ -210,8 +239,6 @@ def restore_game_snapshot(trainer, snapshot):
             pokeball_used=pd.get('pokeball_used'),
             friendship=pd.get('friendship', 70),
         )
-        # Poser le flag AVANT save() pour bloquer learn_initial_moves().
-        # Les moves seront restaurés manuellement depuis le snapshot juste après.
         restored._skip_learn_moves = True
         restored.save()
 
@@ -252,7 +279,6 @@ def restore_game_snapshot(trainer, snapshot):
             achievement=ach,
             defaults={'current_progress': 0},
         )
-        # Ne restaurer que si snapshot est plus avancé
         if adata['current_progress'] > ta.current_progress:
             ta.current_progress = adata['current_progress']
         if adata['is_completed'] and not ta.is_completed:
@@ -323,7 +349,7 @@ def save_create_view(request, slot):
             last_pokemon_center='Bourg Palette',
             play_time=0,
             story_flags={},
-            defeated_trainers=[],
+            # defeated_trainers : table vide par défaut (aucun DefeatedTrainer à créer)
         )
 
         snapshot = create_game_snapshot(trainer, save)
@@ -332,7 +358,8 @@ def save_create_view(request, slot):
         GameSave.objects.filter(trainer=trainer).exclude(pk=save.pk).update(is_active=False)
         save.save()
 
-        logging.info(request, f"Nouvelle partie '{save_name}' créée !")
+        logger.info("Nouvelle partie '%s' créée pour %s", save_name, trainer.username)
+        messages.success(request, f"Nouvelle partie '{save_name}' créée !")
         return redirect('home')
 
     return render(request, 'saves/save_create.html', {'slot': slot, 'existing': existing})
@@ -347,12 +374,15 @@ def save_load_view(request, save_id):
     if save.game_snapshot:
         try:
             restore_game_snapshot(trainer, save.game_snapshot)
-            logging.info(request, f"Sauvegarde '{save.save_name}' chargée !")
+            logger.info("Sauvegarde '%s' (slot %s) chargée pour %s", save.save_name, save.slot, trainer.username)
+            messages.success(request, f"Sauvegarde « {save.save_name} » chargée !")
         except Exception as e:
-            logging.error(request, f"Erreur lors du chargement : {e}")
+            logger.error("Erreur lors du chargement de la sauvegarde %s pour %s : %s", save.pk, trainer.username, e, exc_info=True)
+            messages.error(request, f"Erreur lors du chargement : {e}")
             return redirect('save_select')
     else:
-        logging.warning(request, "Sauvegarde sans snapshot — chargement sans restauration.")
+        logger.warning("Sauvegarde %s sans snapshot pour %s — chargement sans restauration.", save.pk, trainer.username)
+        messages.warning(request, "Cette sauvegarde ne contient pas de snapshot — chargement partiel.")
 
     GameSave.objects.filter(trainer=trainer).update(is_active=False)
     save.refresh_from_db()   # récupérer les story_flags/defeated_trainers restaurés
@@ -365,7 +395,9 @@ def save_load_view(request, save_id):
 
 @login_required
 def save_game_view(request, save_id):
-    """Sauvegarde manuelle — crée un snapshot complet."""
+    """Sauvegarde manuelle — crée un snapshot complet. Requiert POST."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
     trainer = get_player_trainer(request.user)
     save    = get_object_or_404(GameSave, pk=save_id, trainer=trainer)
 
@@ -389,14 +421,14 @@ def save_game_view(request, save_id):
     save.save()
 
     return JsonResponse({
-        'success':                  True,
-        'message':                  'Partie sauvegardée !',
-        'save_id':                  save.id,
-        'slot':                     save.slot,
-        'play_time':                save.get_play_time_display(),
-        'story_flags_count':        len(snapshot.get('story_flags', {})),
-        'defeated_trainers_count':  len(snapshot.get('defeated_trainers', [])),
-        'location':                 snapshot['trainer']['location'],
+        'success':                 True,
+        'message':                 'Partie sauvegardée !',
+        'save_id':                 save.id,
+        'slot':                    save.slot,
+        'play_time':               save.get_play_time_display(),
+        'story_flags_count':       len(snapshot.get('story_flags', {})),
+        'defeated_trainers_count': len(snapshot.get('defeated_trainers', [])),
+        'location':                snapshot['trainer']['location'],
     })
 
 
@@ -412,10 +444,8 @@ def auto_save_view(request, save_id):
     if request.POST.get('location'):
         save.current_location = request.POST.get('location')
 
-    # Rafraîchir depuis la DB avant le snapshot
     save.refresh_from_db()
 
-    # Re-appliquer la location si elle a été fournie (refresh l'aurait écrasée)
     if request.POST.get('location'):
         save.current_location = request.POST.get('location')
 
@@ -466,26 +496,27 @@ def save_create_quick_view(request, slot):
     trainer   = get_player_trainer(request.user)
     save_name = request.POST.get('save_name', f'Aventure {slot}')
 
-    # ── Récupérer l'état ACTUEL avant toute suppression ───────────────────
-    # story_flags et defeated_trainers vivent sur le GameSave actif.
-    # Il faut les lire MAINTENANT, avant de supprimer quoi que ce soit.
+    # ── Lire l'état ACTUEL avant toute suppression ────────────────────────
     active_save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
-    current_story_flags      = dict(active_save.story_flags)      if active_save else {}
-    current_defeated_trainers = list(active_save.defeated_trainers) if active_save else []
+    current_story_flags = dict(active_save.story_flags) if active_save else {}
 
-    # ── Récupérer la vraie position courante ──────────────────────────────
+    # Lire les IDs de dresseurs vaincus depuis la table (et non le JSONField)
+    current_defeated_ids = list(
+        active_save.defeated_trainer_set.values_list('trainer_id', flat=True)
+    ) if active_save else []
+
     try:
         current_location = trainer.player_location.current_zone.name
     except Exception:
         from myPokemonApp.gameUtils import get_player_location
         current_location = get_player_location(trainer)
 
-    # ── Supprimer l'ancien save de CE slot (pas l'actif si différent) ─────
+    # ── Supprimer l'ancien save de CE slot ────────────────────────────────
     existing = GameSave.objects.filter(trainer=trainer, slot=slot).first()
     if existing:
-        existing.delete()
+        existing.delete()  # CASCADE supprime ses DefeatedTrainer
 
-    # ── Créer le nouveau save avec les vraies données ─────────────────────
+    # ── Créer le nouveau save ─────────────────────────────────────────────
     save = GameSave.objects.create(
         trainer=trainer,
         slot=slot,
@@ -493,8 +524,14 @@ def save_create_quick_view(request, slot):
         current_location=current_location,
         play_time=active_save.play_time if active_save else 0,
         story_flags=current_story_flags,
-        defeated_trainers=current_defeated_trainers,
     )
+
+    # Copier les dresseurs vaincus sur le nouveau slot
+    if current_defeated_ids:
+        DefeatedTrainer.objects.bulk_create(
+            [DefeatedTrainer(game_save=save, trainer_id=tid) for tid in current_defeated_ids],
+            ignore_conflicts=True,
+        )
 
     snapshot = create_game_snapshot(trainer, save)
     save.game_snapshot = snapshot
@@ -507,8 +544,7 @@ def save_create_quick_view(request, slot):
         'save_id': save.id,
         'slot':    slot,
         'message': f"Sauvegarde '{save_name}' créée !",
-        # Debug
-        'story_flags_count':        len(current_story_flags),
-        'defeated_trainers_count':  len(current_defeated_trainers),
-        'location':                 current_location,
+        'story_flags_count':       len(current_story_flags),
+        'defeated_trainers_count': len(current_defeated_ids),
+        'location':                current_location,
     })

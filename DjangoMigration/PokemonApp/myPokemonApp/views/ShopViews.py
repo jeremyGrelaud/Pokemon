@@ -8,13 +8,14 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, F, ExpressionWrapper, IntegerField
 import json
 
 from myPokemonApp.models import Shop, ShopInventory, Item, Trainer, TrainerInventory, Transaction
 from django.contrib import messages
 from myPokemonApp.gameUtils import (
     get_player_trainer,
+    get_player_location,
     trainer_is_at_zone_with,
     give_item_to_trainer,
     remove_item_from_trainer,
@@ -43,7 +44,6 @@ def _building_location_matches(trainer, building_location: str) -> bool:
 
     Retourne True si la position n'est pas connue (pas de blocage).
     """
-    from myPokemonApp.gameUtils import get_player_location
     location = get_player_location(trainer, create_if_missing=False)
     if location is None:
         return True
@@ -71,7 +71,6 @@ class ShopListView(generic.ListView):
         context = super().get_context_data(**kwargs)
         trainer = get_player_trainer(self.request.user)
 
-        from myPokemonApp.gameUtils import get_player_location
         location        = get_player_location(trainer)
         current_zone    = location.current_zone if location else None
         zone_name_lower = current_zone.name.lower() if current_zone else ''
@@ -120,20 +119,30 @@ class ShopDetailView(generic.DetailView):
         new_items      = [inv for inv in available_items if inv.is_new and not inv.is_featured]
         regular_items  = [inv for inv in available_items if not inv.is_featured and not inv.is_new]
 
-        player_inventory = trainer.inventory.filter(quantity__gt=0)
+        # Annote chaque ligne d'inventaire avec le prix de vente (price // 2)
+        player_inventory = (
+            trainer.inventory
+            .filter(quantity__gt=0)
+            .select_related('item')
+            .annotate(
+                sell_price=ExpressionWrapper(
+                    F('item__price') / 2,
+                    output_field=IntegerField(),
+                )
+            )
+        )
 
-        from myPokemonApp.gameUtils import get_player_location
         location     = get_player_location(trainer, create_if_missing=False)
         current_zone = location.current_zone if location else None
 
         context.update({
-            'trainer':        trainer,
-            'featured_items': featured_items,
-            'new_items':      new_items,
-            'regular_items':  regular_items,
+            'trainer':          trainer,
+            'featured_items':   featured_items,
+            'new_items':        new_items,
+            'regular_items':    regular_items,
             'player_inventory': player_inventory,
-            'can_sell':       player_inventory.exists(),
-            'current_zone':   current_zone,
+            'can_sell':         player_inventory.exists(),
+            'current_zone':     current_zone,
         })
         return context
 

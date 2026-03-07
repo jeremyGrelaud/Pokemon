@@ -189,7 +189,7 @@
           {% if poke.attack %}
           <div class="ms-3 text-center d-none d-xl-block" style="min-width:90px;">
             <div class="row g-0 text-center" style="font-size:0.75em;">
-              <div class="col-4 p-1 bg-light rounded-left">
+              <div class="col-4 p-1 bg-light rounded-start">
                 <div class="fw-bold">{{ poke.attack }}</div>
                 <div class="text-muted">ATK</div>
               </div>
@@ -197,7 +197,7 @@
                 <div class="fw-bold">{{ poke.defense }}</div>
                 <div class="text-muted">DEF</div>
               </div>
-              <div class="col-4 p-1 bg-light rounded-right">
+              <div class="col-4 p-1 bg-light rounded-end">
                 <div class="fw-bold">{{ poke.speed }}</div>
                 <div class="text-muted">VIT</div>
               </div>
@@ -302,7 +302,7 @@
           {% if poke.attack %}
           <div class="ms-3 text-center d-none d-xl-block" style="min-width:90px;">
             <div class="row g-0 text-center" style="font-size:0.75em;">
-              <div class="col-4 p-1 bg-light rounded-left">
+              <div class="col-4 p-1 bg-light rounded-start">
                 <div class="fw-bold">{{ poke.attack }}</div>
                 <div class="text-muted">ATK</div>
               </div>
@@ -310,7 +310,7 @@
                 <div class="fw-bold">{{ poke.defense }}</div>
                 <div class="text-muted">DEF</div>
               </div>
-              <div class="col-4 p-1 bg-light rounded-right">
+              <div class="col-4 p-1 bg-light rounded-end">
                 <div class="fw-bold">{{ poke.speed }}</div>
                 <div class="text-muted">VIT</div>
               </div>
@@ -488,7 +488,7 @@
 {% block js %}
 {{ block.super }}
 <script>
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function () {
   // Auto-scroll du log vers le bas (entrées les plus récentes)
   var logContainer = document.getElementById('battle-log-container');
   if (logContainer) {

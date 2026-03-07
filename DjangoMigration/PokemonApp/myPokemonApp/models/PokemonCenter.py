@@ -65,16 +65,38 @@ class PokemonCenter(models.Model):
             trainer.money -= self.healing_cost
             trainer.save()
         
-        # Soigner tous les Pokémon de l'équipe
+        # Soigner tous les Pokémon de l'équipe — toutes les écritures en DB
+        # sont groupées pour n'émettre que 3 requêtes au lieu de N×(4 + nb_moves).
+        from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+        from django.db import models as _models
+
         team_pokemon = trainer.pokemon_team.filter(is_in_party=True)
-        healed_count = 0
-        
-        for pokemon in team_pokemon:
-            pokemon.heal()  # Restaure HP
-            pokemon.cure_status()  # Retire statuts
-            pokemon.restore_all_pp()  # Restaure PP
-            pokemon.reset_combat_stats()  # Reset modificateurs
-            healed_count += 1
+        healed_count = team_pokemon.count()
+
+        # 1) HP + statut + stages — un seul UPDATE sur tout le QuerySet
+        team_pokemon.update(
+            current_hp=_models.F('max_hp'),
+            status_condition=None,
+            sleep_turns=0,
+            attack_stage=0,
+            defense_stage=0,
+            special_attack_stage=0,
+            special_defense_stage=0,
+            speed_stage=0,
+            accuracy_stage=0,
+            evasion_stage=0,
+        )
+
+        # 2) PP — SQLite/Django interdit F('move__pp') dans un UPDATE (joined field).
+        #    On charge toutes les instances avec select_related (1 requête),
+        #    affecte current_pp = move.pp en Python, puis bulk_update (1 requête).
+        move_instances = list(
+            PokemonMoveInstance.objects.filter(pokemon__in=team_pokemon).select_related('move')
+        )
+        for mi in move_instances:
+            mi.current_pp = mi.move.pp
+        if move_instances:
+            PokemonMoveInstance.objects.bulk_update(move_instances, ['current_pp'])
         
         # Incrémenter les stats du centre
         self.total_healings += 1

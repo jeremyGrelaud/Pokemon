@@ -19,6 +19,7 @@ from .ShopModel import Shop, ShopInventory, Transaction
 from .PokemonCenter import PokemonCenter, CenterVisit, NurseDialogue
 from .CaptureSystem import *
 from .GameSave import *
+from .DefeatedTrainer import DefeatedTrainer
 from .Zone import *
 from .Achievements import *
 from .Quest import *

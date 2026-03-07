@@ -35,5 +35,5 @@ python manage.py createsuperuser
 
 To init database in one command :
 ```
-python manage.py shell -c "from myPokemonApp.tasks.initAllDatabase import initAllDatabase; initAllDatabase();"
+python manage.py init_db
 ```

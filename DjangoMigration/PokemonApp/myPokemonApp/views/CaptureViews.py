@@ -12,7 +12,7 @@ from django.db.models.functions import TruncDate
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 
-from ..models import *
+from myPokemonApp.models.CaptureSystem import CaptureAttempt, CaptureJournal
 from myPokemonApp.gameUtils import get_player_trainer
 
 

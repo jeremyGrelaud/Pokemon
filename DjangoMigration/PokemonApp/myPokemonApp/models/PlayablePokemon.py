@@ -175,6 +175,11 @@ class PlayablePokemon(models.Model):
         verbose_name = "Pokémon (Jouable)"
         verbose_name_plural = "Pokémon (Jouables)"
         ordering = ['party_position']
+        indexes = [
+            # Requête la plus fréquente : équipe active d'un dresseur
+            # → filter(trainer=X, is_in_party=True)
+            models.Index(fields=['trainer', 'is_in_party'], name='idx_pp_trainer_party'),
+        ]
     
     def __str__(self):
         name = self.nickname or self.species.name
@@ -385,13 +390,20 @@ class PlayablePokemon(models.Model):
         
         return new_moves
     
-    def learn_move(self, move, replace_move=None):
-        """Apprend une nouvelle capacité"""
+    def learn_move(self, move, replace_move=None, source='level'):
+        """
+        Apprend une nouvelle capacité.
+
+        source : 'level' | 'tm' | 'hm' | 'tutor' | 'egg' | 'other'
+            Permet à learn_moves_up_to_level() de ne supprimer que les moves
+            appris par montée de niveau sans écraser les TM/CS enseignées.
+        """
         if self.moves.count() < 4:
             PokemonMoveInstance.objects.create(
                 pokemon=self,
                 move=move,
-                current_pp=move.pp
+                current_pp=move.pp,
+                source=source,
             )
             return True
         elif replace_move:
@@ -402,7 +414,8 @@ class PlayablePokemon(models.Model):
             PokemonMoveInstance.objects.create(
                 pokemon=self,
                 move=move,
-                current_pp=move.pp
+                current_pp=move.pp,
+                source=source,
             )
             return True
         return False
@@ -472,40 +485,42 @@ class PlayablePokemon(models.Model):
         return self.nickname or self.species.name
     
     def heal(self, hp_amount=None):
-        """Soigne le Pokémon"""
+        """Soigne le Pokémon (HP seulement). N'écrit que current_hp en base."""
         if hp_amount is None:
-            # Soigne complètement
             self.current_hp = self.max_hp
         else:
             self.current_hp = min(self.max_hp, self.current_hp + hp_amount)
-        
-        self.save()
-    
+        self.save(update_fields=['current_hp'])
+
     def cure_status(self):
-        """Guérit le statut"""
+        """Guérit le statut. N'écrit que status_condition et sleep_turns en base."""
         self.status_condition = None
         self.sleep_turns = 0
-        self.save()
-    
+        self.save(update_fields=['status_condition', 'sleep_turns'])
+
     def restore_all_pp(self):
-        """Restaure tous les PP des capacités"""
-        for move_instance in self.pokemonmoveinstance_set.all():
-            move_instance.restore_pp()
-    
+        """
+        Restaure tous les PP des capacités en une seule requête bulk_update.
+        Nettement plus efficace que N appels individuels à restore_pp().
+        """
+        instances = list(self.pokemonmoveinstance_set.select_related('move').all())
+        for mi in instances:
+            mi.current_pp = mi.move.pp
+        if instances:
+            PokemonMoveInstance.objects.bulk_update(instances, ['current_pp'])
+
     def apply_status(self, status):
-        """Applique un statut"""
+        """Applique un statut. N'écrit que les champs statut en base."""
         if not self.status_condition:
             self.status_condition = status
-            
             if status == 'sleep':
                 self.sleep_turns = random.randint(1, 3)
-            
-            self.save()
+            self.save(update_fields=['status_condition', 'sleep_turns'])
             return True
         return False
-    
+
     def reset_combat_stats(self):
-        """Réinitialise les modificateurs de combat"""
+        """Réinitialise les modificateurs de combat. N'écrit que les stages en base."""
         self.attack_stage = 0
         self.defense_stage = 0
         self.special_attack_stage = 0
@@ -513,7 +528,11 @@ class PlayablePokemon(models.Model):
         self.speed_stage = 0
         self.accuracy_stage = 0
         self.evasion_stage = 0
-        self.save()
+        self.save(update_fields=[
+            'attack_stage', 'defense_stage',
+            'special_attack_stage', 'special_defense_stage',
+            'speed_stage', 'accuracy_stage', 'evasion_stage',
+        ])
     
     def get_stat_multiplier(self, stage):
         """Retourne le multiplicateur de stat basé sur le stage"""
@@ -553,11 +572,27 @@ class PlayablePokemon(models.Model):
 
 class PokemonMoveInstance(models.Model):
     """Instance d'une capacité pour un Pokémon spécifique (avec PP)"""
-    
+
+    SOURCE_CHOICES = [
+        ('level', 'Montée de niveau'),
+        ('tm',    'CT (Technical Machine)'),
+        ('hm',    'CS (Hidden Machine)'),
+        ('tutor', 'Tuteur de capacité'),
+        ('egg',   'Capacité Œuf'),
+        ('other', 'Autre'),
+    ]
+
     pokemon = models.ForeignKey(PlayablePokemon, on_delete=models.CASCADE)
     move = models.ForeignKey(PokemonMove, on_delete=models.CASCADE)
     current_pp = models.IntegerField()
-    
+    # Source d'apprentissage — protège les TM/CS d'être écrasées par
+    # learn_moves_up_to_level() qui ne touche qu'aux moves 'level'.
+    source = models.CharField(
+        max_length=10,
+        choices=SOURCE_CHOICES,
+        default='level',
+    )
+
     class Meta:
         unique_together = ['pokemon', 'move']
     

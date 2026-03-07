@@ -93,23 +93,26 @@ class Trainer(models.Model):
     # Statut de defaite per-joueur
     # ------------------------------------------------------------------
 
-    def is_defeated_by_player(self, player_trainer) -> bool:
+    def is_defeated_by_player(self, player_trainer, game_save=None) -> bool:
         """
-        Retourne True si CE joueur a deja vaincu ce Trainer NPC.
+        Retourne True si CE joueur a déjà vaincu ce Trainer NPC.
+        Source de vérité : table DefeatedTrainer (FK indexée).
 
-        La source de verite est GameSave.defeated_trainers (liste d IDs JSON),
-        qui est strictement per-joueur. On ne se base PAS sur Trainer.is_defeated
-        qui est un booleen global inutilisable en contexte multi-joueur.
-
-        Performance : dans les vues qui iterent sur N trainers, preferer
-        get_defeated_trainer_ids(player_trainer) pour recuperer le set
-        d IDs en une seule requete, puis tester npc.id in defeated_ids.
+        game_save : GameSave active du joueur, si déjà chargée par l'appelant.
+            Passer cet argument évite une requête DB supplémentaire quand on
+            appelle is_defeated_by_player() en boucle (ex: liste de trainers
+            dans une zone). Si None, la save active est récupérée automatiquement.
         """
-        from .GameSave import GameSave
-        save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
-        if save is None:
+        from .GameSave import GameSave, DefeatedTrainer
+        if game_save is None:
+            game_save = GameSave.objects.filter(
+                trainer=player_trainer, is_active=True
+            ).only('id').first()
+        if game_save is None:
             return False
-        return self.id in save.defeated_trainers
+        return DefeatedTrainer.objects.filter(
+            game_save_id=game_save.id, trainer_id=self.id
+        ).exists()
 
     # ------------------------------------------------------------------
     # Helpers badges

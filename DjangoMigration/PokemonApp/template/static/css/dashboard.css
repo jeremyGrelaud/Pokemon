@@ -50,7 +50,10 @@
 .stat-card--blue   { background: linear-gradient(135deg, #2c6fad, #4e73df); }
 .stat-card--green  { background: linear-gradient(135deg, #1a7a3c, #1cc88a); }
 .stat-card--teal   { background: linear-gradient(135deg, #117a8b, #36b9cc); }
-.stat-card--yellow { background: linear-gradient(135deg, #b7791f, #f6c23e); }
+/* Yellow: fond clair → texte sombre pour respecter le contraste WCAG AA */
+.stat-card--yellow { background: linear-gradient(135deg, #b7791f, #f6c23e); color: #3d2b00 !important; }
+.stat-card--yellow .stat-card__bar     { background: rgba(0,0,0,.15); }
+.stat-card--yellow .stat-card__bar div { background: rgba(0,0,0,.4); }
 
 .stat-card__label {
   font-size: .7rem;
