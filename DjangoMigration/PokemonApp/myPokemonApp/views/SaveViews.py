@@ -1,5 +1,5 @@
 """
-Système de sauvegarde COMPLET avec snapshot v1.1
+Système de sauvegarde COMPLET avec snapshot v1.3
 =================================================
 
 Changements v1.0 → v1.1 :
@@ -13,6 +13,12 @@ v1.2 (DefeatedTrainer) :
     relationnelle (DefeatedTrainer). Les snapshots conservent le format
     list[int] pour la portabilité (export/import), mais la source de
     vérité live est la table.
+
+v1.3 (Held Items) :
+  - create_game_snapshot() inclut désormais 'held_item_id' pour chaque Pokémon.
+  - restore_game_snapshot() restaure le held_item de chaque Pokémon.
+  - Les snapshots anciens (sans held_item_id) sont tolérés : pd.get('held_item_id')
+    retourne None, ce qui équivaut à aucun objet tenu.
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -113,6 +119,8 @@ def create_game_snapshot(trainer, save):
             'original_trainer':   pokemon.original_trainer,
             'pokeball_used':      pokemon.pokeball_used,
             'friendship':         pokemon.friendship,
+            # ── Held item ────────────────────────────────────────────────
+            'held_item_id':       pokemon.held_item_id,
             'moves':              [],
         }
         for mi in pokemon.pokemonmoveinstance_set.all():
@@ -238,6 +246,8 @@ def restore_game_snapshot(trainer, snapshot):
             original_trainer=pd.get('original_trainer'),
             pokeball_used=pd.get('pokeball_used'),
             friendship=pd.get('friendship', 70),
+            # ── Held item ────────────────────────────────────────────────
+            held_item_id=pd.get('held_item_id'),
         )
         restored._skip_learn_moves = True
         restored.save()
