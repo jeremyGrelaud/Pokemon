@@ -114,13 +114,33 @@ def _reset_team_stages(trainer, wild=None):
 # =============================================================================
 
 def heal_team(trainer):
-    """Soigne complètement tous les Pokémon d'un dresseur (HP max + PP max)."""
+    """
+    Soigne complètement tous les Pokémon d'un dresseur (HP max + PP max).
+    Utilise des UPDATE groupés : 2 requêtes quelle que soit la taille de l'équipe.
+    """
     from myPokemonApp.models.PlayablePokemon import PokemonMoveInstance
+    from django.db import models as _models
 
-    for pokemon in trainer.pokemon_team.all():
-        pokemon.heal()
-        for mi in PokemonMoveInstance.objects.filter(pokemon=pokemon):
-            mi.restore_pp()
+    team_qs = trainer.pokemon_team.all()
+
+    # 1) HP + statut + stages en une seule requête
+    team_qs.update(
+        current_hp=_models.F('max_hp'),
+        status_condition=None,
+        sleep_turns=0,
+        attack_stage=0,
+        defense_stage=0,
+        special_attack_stage=0,
+        special_defense_stage=0,
+        speed_stage=0,
+        accuracy_stage=0,
+        evasion_stage=0,
+    )
+
+    # 2) PP en une seule requête (move__pp traverse la FK move → PokemonMove.pp)
+    PokemonMoveInstance.objects.filter(
+        pokemon__in=team_qs
+    ).update(current_pp=_models.F('move__pp'))
 
 
 def cleanup_orphan_wild_pokemon():
