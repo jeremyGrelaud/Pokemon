@@ -18,7 +18,13 @@
       <small class="text-muted">
         {{ zones|length }} zones &nbsp;·&nbsp;
         <i class="fas fa-map-marker-alt text-success"></i>
-        <strong class="text-light">{{ current_zone.name }}</strong>
+        <strong class="text-light">
+          {% if map_zone.id != current_zone.id %}
+            {{ map_zone.name }} <span class="text-muted" style="font-weight:400;font-size:.85em;">({{ current_zone.name }})</span>
+          {% else %}
+            {{ current_zone.name }}
+          {% endif %}
+        </strong>
       </small>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -113,7 +119,7 @@
 
 <script>
 const KD = {  // KantoData
-  curId:   {{ current_zone.id|default:"null" }},
+  curId:   {{ map_zone.id|default:current_zone.id|default:"null" }},
   curName: "{{ current_zone.name|default:''|escapejs }}",
   static:  "{% static '' %}",
   urlZone: "{% url 'zone_detail'    0 %}".replace('/0/','/'),

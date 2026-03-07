@@ -62,8 +62,25 @@ def map_view(request):
         for can_access, reason in [zone.is_accessible_by(trainer)]
     ]
 
+    # Si le joueur est dans une arène, pointer le point vert sur la ville parente
+    map_zone = current_zone
+    if current_zone.zone_type == 'building' and current_zone.name.startswith('Arène'):
+        from myPokemonApp.models.Zone import ZoneConnection as ZC
+        pc = ZC.objects.filter(
+            to_zone=current_zone, from_zone__zone_type='city'
+        ).select_related('from_zone').first()
+        if pc:
+            map_zone = pc.from_zone
+        else:
+            pc = ZC.objects.filter(
+                from_zone=current_zone, to_zone__zone_type='city', is_bidirectional=True
+            ).select_related('to_zone').first()
+            if pc:
+                map_zone = pc.to_zone
+
     return render(request, 'map/map_overview.html', {
-        'current_zone':       player_location.current_zone,
+        'current_zone':       current_zone,
+        'map_zone':           map_zone,
         'zones':              accessible_zones,
         'player_location':    player_location,
         'connected_zone_ids': connected_zone_ids,
@@ -157,44 +174,43 @@ def zone_detail_view(request, zone_id):
 
     gym_leader = GymLeader.objects.filter(gym_city__icontains=english_zone_name).first()
 
-    # Si la zone est une arène (building "Arène de X"), chercher le gym_leader via la ville connectée
-    if not gym_leader and zone.zone_type == 'building' and zone.name.startswith('Arène'):
+    # Détecter si la zone courante EST une arène (building "Arène de X")
+    is_gym_zone = (zone.zone_type == 'building' and zone.name.startswith('Arène'))
+
+    # Si c'est une arène, retrouver le GymLeader via la ville parente
+    if not gym_leader and is_gym_zone:
         from myPokemonApp.models.Zone import ZoneConnection as ZC
-        # Trouver la ville connectée
-        city_conn = ZC.objects.filter(
+        pc = ZC.objects.filter(
             to_zone=zone, from_zone__zone_type='city'
         ).select_related('from_zone').first()
-        if not city_conn:
-            city_conn = ZC.objects.filter(
-                from_zone=zone, to_zone__zone_type='city',
-                is_bidirectional=True
+        if not pc:
+            pc = ZC.objects.filter(
+                from_zone=zone, to_zone__zone_type='city', is_bidirectional=True
             ).select_related('to_zone').first()
-        if city_conn:
-            city_zone = city_conn.from_zone if city_conn.to_zone == zone else city_conn.to_zone
-            city_en = ZONE_TRANSLATIONS.get(city_zone.name, city_zone.name).strip()
-            gym_leader = GymLeader.objects.filter(gym_city__icontains=city_en).first()
+        if pc:
+            pz = pc.from_zone if pc.to_zone_id == zone.id else pc.to_zone
+            pz_en = ZONE_TRANSLATIONS.get(pz.name, pz.name).strip()
+            gym_leader = GymLeader.objects.filter(gym_city__icontains=pz_en).first()
 
     # Gym Leader : défaite per-joueur via la save
-    gym_leader_defeated = gym_leader and gym_leader.trainer.id in defeated_ids
+    gym_leader_defeated = bool(gym_leader and gym_leader.trainer.id in defeated_ids)
 
-    # Zone arène associée à cette ville (building "Arène de X")
+    # Zone arène connectée à cette ville (bouton "Entrer dans l'Arène")
     gym_zone = None
-    if gym_leader and zone.zone_type == 'city':
-        # Convention : la zone arène est une connexion directe de type building
+    if gym_leader and not is_gym_zone and zone.zone_type == 'city':
         from myPokemonApp.models.Zone import ZoneConnection as ZC
-        arena_connections = ZC.objects.filter(
-            from_zone=zone, to_zone__zone_type='building',
-            to_zone__name__startswith='Arène'
-        ).select_related('to_zone')
-        if not arena_connections.exists():
-            arena_connections = ZC.objects.filter(
-                to_zone=zone, is_bidirectional=True,
-                from_zone__zone_type='building',
-                from_zone__name__startswith='Arène'
-            ).select_related('from_zone')
-            gym_zone = arena_connections.first().from_zone if arena_connections.exists() else None
+        ac = ZC.objects.filter(
+            from_zone=zone, to_zone__zone_type='building', to_zone__name__startswith='Arène'
+        ).select_related('to_zone').first()
+        if ac:
+            gym_zone = ac.to_zone
         else:
-            gym_zone = arena_connections.first().to_zone
+            ac = ZC.objects.filter(
+                to_zone=zone, is_bidirectional=True,
+                from_zone__zone_type='building', from_zone__name__startswith='Arène'
+            ).select_related('from_zone').first()
+            if ac:
+                gym_zone = ac.from_zone
 
     # Rival présent dans cette zone ?
     rival_encounter = check_rival_encounter(trainer, zone)
@@ -218,6 +234,7 @@ def zone_detail_view(request, zone_id):
         'gym_leader':         gym_leader,
         'gym_leader_defeated': gym_leader_defeated,
         'gym_zone':           gym_zone,
+        'is_gym_zone':        is_gym_zone,
         'player_trainer':     trainer,
         'rival_encounter':    rival_encounter,
         'active_quests':      active_quests,

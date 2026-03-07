@@ -143,10 +143,10 @@
               </a>
               {% endif %}
 
-              <!-- Arène / Gym Leader -->
-              {% if gym_leader %}
+              <!-- Arène / Gym Leader (affiché uniquement depuis la ville, pas depuis l'arène elle-même) -->
+              {% if gym_leader and not is_gym_zone %}
               {% if gym_zone %}
-              {# ── Nouvelle logique : l'arène est une zone building à explorer ── #}
+              {# Ville avec zone arène : pointer vers l'arène #}
               <a href="{% if gym_leader_defeated %}#{% else %}{% url 'travel_to_zone' gym_zone.id %}{% endif %}"
                  class="action-card action-card--gym {% if gym_leader_defeated %}action-card--done{% endif %}"
                  {% if gym_leader_defeated %}style="pointer-events:none;"{% endif %}>
@@ -182,7 +182,7 @@
                 </div>
               </a>
               {% else %}
-              {# ── Fallback ancienne logique si pas de zone arène configurée ── #}
+              {# Fallback sans zone arène : combat direct #}
               <a href="{% if gym_leader_defeated %}#{% else %}{% url 'battle_challenge_gym' gym_leader.id %}{% endif %}"
                  class="action-card action-card--gym {% if gym_leader_defeated %}action-card--done{% endif %}"
                  {% if gym_leader_defeated %}style="pointer-events:none;"{% endif %}>
@@ -273,16 +273,11 @@
           </div>
           {% endif %}
 
-          <!-- ══════════════════════════════════════════════════════════════
-               ZONE ARÈNE — Affichage spécial si la zone est une arène
-          ══════════════════════════════════════════════════════════════════ -->
-          {% if zone.zone_type == 'building' and zone.name|slice:":5" == "Arène" %}
-          {% if gym_leader %}
+          <!-- ══ Bloc Champion (affiché uniquement dans la zone arène) ══ -->
+          {% if is_gym_zone and gym_leader %}
           <div class="card border-warning mb-4">
             <div class="card-header bg-warning text-dark py-2 d-flex align-items-center justify-content-between">
-              <h5 class="mb-0">
-                <i class="fas fa-trophy me-2"></i>Champion d'Arène
-              </h5>
+              <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Champion d'Arène</h5>
               {% if gym_leader_defeated %}
               <span class="badge bg-success"><i class="fas fa-medal me-1"></i>Badge obtenu</span>
               {% else %}
@@ -298,33 +293,25 @@
                 <div class="fw-bold fs-5">{{ gym_leader.trainer.username }}</div>
                 <div class="text-muted">{{ gym_leader.gym_name }} — {{ gym_leader.badge_name }}</div>
                 <div class="mt-1">
-                  <span class="badge" style="background:var(--type-{{ gym_leader.specialty_type.name|lower }},#6c757d);font-size:.8rem;">
-                    {{ gym_leader.specialty_type.name|upper }}
-                  </span>
+                  <span class="badge bg-secondary">{{ gym_leader.specialty_type.name|upper }}</span>
                 </div>
                 {% if gym_leader.trainer.intro_text %}
-                <blockquote class="blockquote mt-2 mb-0" style="font-size:.9rem;">
-                  <p class="mb-0 fst-italic">"{{ gym_leader.trainer.intro_text }}"</p>
-                </blockquote>
+                <p class="fst-italic text-muted mt-2 mb-0" style="font-size:.9rem;">"{{ gym_leader.trainer.intro_text }}"</p>
                 {% endif %}
               </div>
-              {% if is_current and not gym_leader_defeated %}
+              {% if is_current %}
               <div class="flex-shrink-0">
-                <a href="{% url 'battle_challenge_gym' gym_leader.id %}"
-                   class="btn btn-warning btn-lg fw-bold">
+                {% if gym_leader_defeated %}
+                <span class="btn btn-success disabled"><i class="fas fa-check me-1"></i>Vaincu</span>
+                {% else %}
+                <a href="{% url 'battle_challenge_gym' gym_leader.id %}" class="btn btn-warning btn-lg fw-bold">
                   <i class="fas fa-fist-raised me-1"></i>Défier !
                 </a>
-              </div>
-              {% elif gym_leader_defeated %}
-              <div class="flex-shrink-0">
-                <span class="btn btn-success btn-lg disabled">
-                  <i class="fas fa-check me-1"></i>Vaincu
-                </span>
+                {% endif %}
               </div>
               {% endif %}
             </div>
           </div>
-          {% endif %}
           {% endif %}
 
           <!-- Rencontre Rival -->
