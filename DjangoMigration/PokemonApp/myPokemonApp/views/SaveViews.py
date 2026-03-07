@@ -173,10 +173,19 @@ def create_game_snapshot(trainer, save):
 # RESTORE — Restaurer l'état complet
 # ============================================================================
 
-def restore_game_snapshot(trainer, snapshot):
+def restore_game_snapshot(trainer, snapshot, save=None):
     """
     Restaure l'état complet du jeu depuis un snapshot.
-    Gère v1.0 (sans achievements/quests) et v1.1.
+    Gère v1.0 (sans achievements/quests), v1.1, v1.2, v1.3.
+
+    Args:
+        trainer  : le Trainer dont on restaure la progression.
+        snapshot : le dict JSON du snapshot.
+        save     : la GameSave cible (optionnel). Si None, on cherche
+                   is_active=True — comportement rétrocompatible pour
+                   les appels sans save explicite (ex. quicksave).
+                   Toujours passer save explicitement depuis save_load_view
+                   pour éviter d'écrire les DefeatedTrainer sur la mauvaise save.
     """
     # ── Trainer ───────────────────────────────────────────────────────────
     trainer.money  = snapshot['trainer']['money']
@@ -184,7 +193,8 @@ def restore_game_snapshot(trainer, snapshot):
     trainer.save()
 
     # ── GameSave : story_flags + dresseurs vaincus ────────────────────────
-    save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+    if save is None:
+        save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
     if save:
         save.story_flags = dict(snapshot.get('story_flags', {}))
         save.save(update_fields=['story_flags'])
@@ -383,7 +393,7 @@ def save_load_view(request, save_id):
 
     if save.game_snapshot:
         try:
-            restore_game_snapshot(trainer, save.game_snapshot)
+            restore_game_snapshot(trainer, save.game_snapshot, save=save)
             logger.info("Sauvegarde '%s' (slot %s) chargée pour %s", save.save_name, save.slot, trainer.username)
             messages.success(request, f"Sauvegarde « {save.save_name} » chargée !")
         except Exception as e:
@@ -414,6 +424,27 @@ def save_game_view(request, save_id):
     # Relire depuis la DB (story_flags/defeated_trainers écrits par d'autres vues)
     save.refresh_from_db()
 
+    active_save           = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+    saving_to_active_slot = active_save and active_save.id == save.id
+
+    # ── Si on sauvegarde dans un slot DIFFÉRENT du slot actif ─────────────
+    # → Copier l'état courant (defeated_trainers + story_flags) vers le slot cible.
+    # → NE PAS changer is_active : sauvegarder ailleurs = backup, pas un switch de session.
+    if not saving_to_active_slot and active_save:
+        live_ids     = set(active_save.defeated_trainer_set.values_list('trainer_id', flat=True))
+        snapshot_ids = set(active_save.game_snapshot.get('defeated_trainers', [])) if active_save.game_snapshot else set()
+        source_ids   = list(live_ids | snapshot_ids)
+
+        save.defeated_trainer_set.all().delete()
+        if source_ids:
+            valid_ids = set(Trainer.objects.filter(id__in=source_ids).values_list('id', flat=True))
+            DefeatedTrainer.objects.bulk_create(
+                [DefeatedTrainer(game_save=save, trainer_id=tid) for tid in source_ids if tid in valid_ids],
+                ignore_conflicts=True,
+            )
+        save.story_flags = dict(active_save.story_flags)
+        logger.info("save_game_view: backup vers slot %s — %d defeated trainers", save.slot, len(source_ids))
+
     # Mettre à jour current_location depuis PlayerLocation (vraie source de vérité)
     try:
         save.current_location = trainer.player_location.current_zone.name
@@ -426,8 +457,10 @@ def save_game_view(request, save_id):
     time_since_last = (timezone.now() - save.last_saved).seconds
     save.play_time += time_since_last
 
-    GameSave.objects.filter(trainer=trainer).update(is_active=False)
-    save.is_active = True
+    if saving_to_active_slot:
+        GameSave.objects.filter(trainer=trainer).update(is_active=False)
+        save.is_active = True
+
     save.save()
 
     return JsonResponse({
@@ -508,12 +541,19 @@ def save_create_quick_view(request, slot):
 
     # ── Lire l'état ACTUEL avant toute suppression ────────────────────────
     active_save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+    saving_to_active_slot = active_save and active_save.slot == slot
+
     current_story_flags = dict(active_save.story_flags) if active_save else {}
 
-    # Lire les IDs de dresseurs vaincus depuis la table (et non le JSONField)
-    current_defeated_ids = list(
+    # Lire les IDs de dresseurs vaincus : fusion table live + snapshot
+    # pour couvrir les éventuels écarts entre les deux sources.
+    live_defeated_ids = set(
         active_save.defeated_trainer_set.values_list('trainer_id', flat=True)
-    ) if active_save else []
+    ) if active_save else set()
+    snapshot_defeated_ids = set(
+        active_save.game_snapshot.get('defeated_trainers', [])
+    ) if active_save and active_save.game_snapshot else set()
+    current_defeated_ids = list(live_defeated_ids | snapshot_defeated_ids)
 
     try:
         current_location = trainer.player_location.current_zone.name
@@ -538,15 +578,26 @@ def save_create_quick_view(request, slot):
 
     # Copier les dresseurs vaincus sur le nouveau slot
     if current_defeated_ids:
+        valid_ids = set(Trainer.objects.filter(
+            id__in=current_defeated_ids
+        ).values_list('id', flat=True))
         DefeatedTrainer.objects.bulk_create(
-            [DefeatedTrainer(game_save=save, trainer_id=tid) for tid in current_defeated_ids],
+            [DefeatedTrainer(game_save=save, trainer_id=tid)
+             for tid in current_defeated_ids if tid in valid_ids],
             ignore_conflicts=True,
         )
 
     snapshot = create_game_snapshot(trainer, save)
     save.game_snapshot = snapshot
-    GameSave.objects.filter(trainer=trainer).update(is_active=False)
-    save.is_active = True
+
+    # ── Gestion de is_active ──────────────────────────────────────────────
+    # Sauvegarder dans un slot différent = copie de l'état (backup) :
+    # l'active_save reste inchangée pour ne pas perturber add_defeated_trainer.
+    # On ne bascule is_active que si on écrase le slot déjà actif.
+    if saving_to_active_slot:
+        GameSave.objects.filter(trainer=trainer).update(is_active=False)
+        save.is_active = True
+
     save.save()
 
     return JsonResponse({
