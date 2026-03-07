@@ -9,8 +9,6 @@ Endpoint secondaire : battle_learn_move_view (POST /battle/<pk>/learn-move/)
 """
 
 import logging
-import traceback
-
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -464,10 +462,10 @@ def battle_action_view(request, pk):
                 response_data['log'].append(end_message)
 
     except Exception as exc:
-        traceback.print_exc()
+        logger.exception("Erreur inattendue dans battle_action_view pk=%s action=%s", pk, action_type)
         response_data['success'] = False
-        response_data['error']   = str(exc)
-        response_data['log']     = [f'Erreur : {exc}']
+        response_data['error']   = "Une erreur est survenue. Veuillez réessayer."
+        response_data['log']     = ["Erreur serveur. Réessayez dans un instant."]
 
     return JsonResponse(response_data)
 
