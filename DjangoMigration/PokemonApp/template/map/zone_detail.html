@@ -216,25 +216,6 @@
               {% endif %}
               {% endif %}
 
-              <!-- CS02 Vol -->
-              {% if can_fly and is_current %}
-              <a href="{% url 'fly_view' %}" class="action-card action-card--fly">
-                <div class="action-card__inner">
-                  <div class="action-card__icon-wrap">
-                    <i class="fas fa-dove" style="font-size:2.2rem;color:#7eb8f7;"></i>
-                  </div>
-                  <div class="action-card__text">
-                    <div class="action-card__title">CS02 Vol</div>
-                    <div class="action-card__subtitle">Volez vers une ville déjà visitée</div>
-                  </div>
-                  <div class="action-card__cta">
-                    <i class="fas fa-dove me-2"></i>Choisir une destination
-                    <i class="fas fa-arrow-right ms-2 action-card__arrow"></i>
-                  </div>
-                </div>
-              </a>
-              {% endif %}
-
             </div>{# /action-grid #}
           </div>{# /zone-actions #}
           {% endif %}
@@ -568,6 +549,19 @@
             {% endfor %}
             <a href="{% url 'quest_log' %}" class="btn btn-outline-warning btn-block btn-sm mt-1">
               Journal complet
+            </a>
+          </div>
+          {% endif %}
+
+          {% if can_fly and is_current %}
+          <div class="fly-sidebar-widget">
+            <a href="{% url 'fly_view' %}" class="fly-sidebar-link">
+              <span class="fly-sidebar-icon"><i class="fas fa-dove"></i></span>
+              <span class="fly-sidebar-content">
+                <span class="fly-sidebar-title">CS02 Vol</span>
+                <span class="fly-sidebar-sub">Voyager rapidement</span>
+              </span>
+              <i class="fas fa-arrow-right fly-sidebar-arrow"></i>
             </a>
           </div>
           {% endif %}

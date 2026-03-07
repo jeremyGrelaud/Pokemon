@@ -68,3 +68,64 @@
   font-weight: 600;
   letter-spacing: .02em;
 }
+
+/* ── Widget Vol dans la sidebar de zone_detail ───────────────── */
+.fly-sidebar-widget {
+  padding: 6px 8px;
+  border-top: 1px solid rgba(255,255,255,.07);
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  margin-bottom: 2px;
+}
+.fly-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(21,101,192,.18), rgba(66,165,245,.12));
+  border: 1px solid rgba(66,165,245,.25);
+  text-decoration: none;
+  color: inherit;
+  transition: background .18s, border-color .18s;
+}
+.fly-sidebar-link:hover {
+  background: linear-gradient(135deg, rgba(21,101,192,.32), rgba(66,165,245,.22));
+  border-color: rgba(66,165,245,.5);
+  text-decoration: none;
+  color: inherit;
+}
+.fly-sidebar-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1565c0, #42a5f5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: .9rem;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(66,165,245,.35);
+}
+.fly-sidebar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.fly-sidebar-title {
+  font-size: .82rem;
+  font-weight: 700;
+  color: #212529;
+  line-height: 1.2;
+}
+.fly-sidebar-sub {
+  font-size: .7rem;
+  color: darkblue;
+  line-height: 1.2;
+}
+.fly-sidebar-arrow {
+  font-size: .7rem;
+  color: #42a5f5;
+  flex-shrink: 0;
+}
