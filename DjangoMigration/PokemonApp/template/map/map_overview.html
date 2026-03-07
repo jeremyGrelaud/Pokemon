@@ -18,7 +18,13 @@
       <small class="text-muted">
         {{ zones|length }} zones &nbsp;·&nbsp;
         <i class="fas fa-map-marker-alt text-success"></i>
-        <strong class="text-light">{{ current_zone.name }}</strong>
+        <strong class="text-light">
+          {% if map_zone.id != current_zone.id %}
+            {{ map_zone.name }} <span class="text-muted" style="font-weight:400;font-size:.85em;">({{ current_zone.name }})</span>
+          {% else %}
+            {{ current_zone.name }}
+          {% endif %}
+        </strong>
       </small>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -113,7 +119,8 @@
 
 <script>
 const KD = {  // KantoData
-  curId:   {{ current_zone.id|default:"null" }},
+  curId:   {{ map_zone.id|default:current_zone.id|default:"null" }},
+  realId:  {{ current_zone.id|default:"null" }},
   curName: "{{ current_zone.name|default:''|escapejs }}",
   static:  "{% static '' %}",
   urlZone: "{% url 'zone_detail'    0 %}".replace('/0/','/'),
@@ -423,7 +430,7 @@ const MapUI = (() => {
       g.addEventListener('dblclick', e => {
         e.stopPropagation();
         if (z.id === KD.curId) {
-          window.location.href = `${KD.urlZone}${z.id}/`;
+          window.location.href = `${KD.urlZone}${KD.realId}/`;
         } else if (z.ok && KD.adj.has(z.id)) {
           window.location.href = `${KD.urlGo}${z.id}/`;
         } else if (z.ok) {
@@ -457,10 +464,13 @@ const MapUI = (() => {
 
     const isCur = z.id === KD.curId;
     const isAdj = KD.adj.has(z.id);   // Zone directement adjacente ?
+    const curLabel = (KD.realId !== KD.curId && isCur)
+      ? `Vous êtes ici (${KD.curName})`
+      : 'Vous êtes ici';
 
     // Badge état
     const badge = isCur
-      ? `<span class="badge bg-success"><i class="fas fa-map-marker-alt me-1"></i>Vous êtes ici</span>`
+      ? `<span class="badge bg-success"><i class="fas fa-map-marker-alt me-1"></i>${curLabel}</span>`
       : z.seen
         ? `<span class="badge bg-primary"><i class="fas fa-check me-1"></i>Visitée</span>`
         : `<span class="badge bg-secondary">Inexplorée</span>`;
@@ -478,7 +488,7 @@ const MapUI = (() => {
     // ── Boutons ──────────────────────────────────────────────────────────────
     let btns = '';
     if (isCur) {
-      btns = `<a href="${KD.urlZone}${z.id}/" class="btn btn-success btn-sm btn-block mt-3">
+      btns = `<a href="${KD.urlZone}${KD.realId}/" class="btn btn-success btn-sm btn-block mt-3">
         <i class="fas fa-map-marker-alt me-1"></i>Voir ma zone
       </a>`;
     } else if (z.ok) {

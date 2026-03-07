@@ -14,3 +14,4 @@ from .initKantoMaps import init_kanto_map
 from .initAchievments import init_achievements
 from .initQuests import init_all_quests
 from .initZoneMusic import init_zone_music
+from .initGymZones import run_gym_initialization
