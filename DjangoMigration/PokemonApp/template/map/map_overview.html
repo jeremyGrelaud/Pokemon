@@ -34,6 +34,12 @@
       <button class="btn btn-sm btn-outline-secondary" onclick="MapUI.resetView()">
         <i class="fas fa-compress-arrows-alt"></i> Vue globale
       </button>
+      {% if can_fly %}
+      <a href="{% url 'fly_view' %}" class="btn btn-sm btn-primary fly-map-btn">
+        <i class="fas fa-dove me-1"></i>Vol
+        <span class="badge bg-light text-primary ms-1" style="font-size:.65rem;">CS02</span>
+      </a>
+      {% endif %}
     </div>
   </div>
 

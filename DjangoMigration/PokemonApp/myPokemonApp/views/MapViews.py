@@ -108,6 +108,22 @@ def zone_detail_view(request, zone_id):
             conn.to_zone = conn.from_zone
             connections.append(conn)
 
+    # Enrichir chaque connexion avec l'accessibilité CS/flag
+    for conn in connections:
+        passable, reason = conn.is_passable_by(trainer)
+        conn.is_passable  = passable
+        conn.block_reason = reason if not passable else ''
+        # Icône CS pour l'affichage
+        hm_icons = {
+            'cut': 'fas fa-cut', 'surf': 'fas fa-water',
+            'fly': 'fas fa-dove', 'strength': 'fas fa-fist-raised', 'flash': 'fas fa-bolt',
+        }
+        conn.hm_icon = hm_icons.get(conn.required_hm, 'fas fa-lock') if conn.required_hm else ''
+
+    # Vol disponible pour ce joueur ?
+    from myPokemonApp.questEngine import trainer_has_hm
+    can_fly = trainer_has_hm(trainer, 'fly')
+
     wild_spawns      = zone.wild_spawns.all()
     defeated_ids     = get_defeated_trainer_ids(trainer)
 
@@ -238,6 +254,7 @@ def zone_detail_view(request, zone_id):
         'player_trainer':     trainer,
         'rival_encounter':    rival_encounter,
         'active_quests':      active_quests,
+        'can_fly':            can_fly,
     })
 
 @login_required
@@ -349,6 +366,85 @@ def travel_to_zone_view(request, zone_id):
         messages.error(request, message)
 
     return redirect('zone_detail', zone_id=zone.id)
+
+
+@login_required
+def fly_view(request, zone_id=None):
+    """
+    CS02 Vol — téléportation vers une ville/zone déjà visitée.
+    GET  : affiche la liste des zones visitées (cities + routes safe)
+    POST : effectue la téléportation si le joueur a Vol dans son équipe
+    """
+    from myPokemonApp.questEngine import trainer_has_hm
+
+    trainer         = get_player_trainer(request.user)
+    player_location = get_player_location(trainer)
+
+    # Vérification : un Pokémon de l'équipe connaît-il Vol ?
+    can_fly = trainer_has_hm(trainer, 'fly')
+    if not can_fly:
+        messages.error(request, "⚠️ Aucun Pokémon de votre équipe ne connaît CS02 Vol !")
+        return redirect('zone_detail', zone_id=player_location.current_zone.id)
+
+    if request.method == 'POST':
+        target_id = request.POST.get('zone_id')
+        if not target_id:
+            messages.error(request, "Zone cible invalide.")
+            return redirect('fly_view')
+
+        target_zone = get_object_or_404(Zone, pk=target_id)
+
+        # Vérifier que la zone a déjà été visitée
+        if not player_location.visited_zones.filter(id=target_zone.id).exists():
+            messages.error(request, "Vous ne pouvez voler que vers des zones déjà visitées !")
+            return redirect('fly_view')
+
+        # Vérifier l'accessibilité de la zone (badge, quête, etc.)
+        can_access, reason = target_zone.is_accessible_by(trainer)
+        if not can_access:
+            messages.error(request, f"Zone inaccessible : {reason}")
+            return redirect('fly_view')
+
+        # Téléportation directe (Vol contourne les connexions normales)
+        player_location.current_zone = target_zone
+        player_location.visited_zones.add(target_zone)
+        player_location.save()
+
+        # Mettre à jour la GameSave
+        try:
+            save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+            if save:
+                save.current_location = target_zone.name
+                save.save(update_fields=['current_location'])
+        except Exception as exc:
+            logger.warning("Fly: impossible de mettre à jour la save : %s", exc)
+
+        # Déclencher quêtes visit_zone
+        quest_notifications = trigger_quest_event(trainer, 'visit_zone', zone=target_zone)
+        for notif in quest_notifications:
+            msg = f"✅ Quête terminée : « {notif['title']} »"
+            if notif.get('reward_money'):
+                msg += f" (+{notif['reward_money']}₽)"
+            messages.success(request, msg)
+
+        messages.success(request, f"🦅 Vous atterrissez à {target_zone.name} !")
+        return redirect('zone_detail', zone_id=target_zone.id)
+
+    # GET : liste des zones visitées, regroupées par type
+    visited_zones = player_location.visited_zones.all().order_by('order', 'name')
+
+    # On groupe : villes d'abord, puis routes, puis le reste
+    cities  = [z for z in visited_zones if z.zone_type == 'city']
+    routes  = [z for z in visited_zones if z.zone_type == 'route']
+    others  = [z for z in visited_zones if z.zone_type not in ('city', 'route')]
+
+    return render(request, 'map/fly_select.html', {
+        'cities':         cities,
+        'routes':         routes,
+        'others':         others,
+        'current_zone':   player_location.current_zone,
+        'player_location': player_location,
+    })
 
 
 @login_required

@@ -21,6 +21,7 @@
       <link href="{% static 'css/bgm.css'%}" rel="stylesheet" />
       <link href="{% static 'css/toast-notifications.css' %}" rel="stylesheet">
       <link href="{% static 'css/layout.css'%}" rel="stylesheet" />
+      <link href="{% static 'css/hm-gates.css'%}" rel="stylesheet" />
       <link href="{% static 'css/tutorial.css' %}" rel="stylesheet">
 
       <!-- Fonts -->
@@ -77,6 +78,18 @@
       <div class="ms-auto me-2">
         {% block bgm %}{% endblock bgm %}
       </div>
+
+      <!-- Bouton Vol CS02 -->
+      {% if can_fly %}
+      <div class="me-2">
+        <a href="{% url 'fly_view' %}"
+           class="btn btn-sm fly-nav-btn"
+           title="CS02 Vol — Voyager rapidement vers une ville visitée">
+          <i class="fas fa-dove me-1"></i>
+          <span class="d-none d-md-inline">Vol</span>
+        </a>
+      </div>
+      {% endif %}
 
       <!-- User dropdown -->
       <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
@@ -169,6 +182,14 @@
                 <div class="sb-nav-link-icon"><i class="fas fa-map-location-dot"></i></div>
                 Maps
               </a>
+
+              {% if can_fly %}
+              <a class="nav-link {% if request.resolver_match.url_name == 'fly_view' %}active{% endif %}"
+                 href="{% url 'fly_view' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-dove"></i></div>
+                Vol <span class="badge bg-primary ms-1" style="font-size:.6rem;vertical-align:middle;">CS02</span>
+              </a>
+              {% endif %}
 
               <a class="nav-link {% if request.resolver_match.url_name == 'MyTeamView' %}active{% endif %}"
                  href="{% url 'MyTeamView' %}">

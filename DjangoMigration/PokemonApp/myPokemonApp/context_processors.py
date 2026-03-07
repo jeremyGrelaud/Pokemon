@@ -17,6 +17,7 @@ _EMPTY = {
     'team_needs_healing':   False,
     'active_battle':        None,
     'lead_pokemon_sprite':  None,
+    'can_fly':              False,
 }
 
 # Champs nécessaires pour le widget sidebar — on évite de charger tous les champs
@@ -142,6 +143,14 @@ def active_save(request):
         trainer.active_battles_list[0] if trainer.active_battles_list else None
     )
 
+    # ── Vol (CS02) disponible ? ───────────────────────────────────────────────
+    can_fly = False
+    try:
+        from myPokemonApp.questEngine import trainer_has_hm
+        can_fly = trainer_has_hm(trainer, 'fly')
+    except Exception:
+        pass
+
     return {
         'active_save':          save,
         'has_active_save':      save is not None,
@@ -150,4 +159,5 @@ def active_save(request):
         'team_needs_healing':   team_needs_healing,
         'active_battle':        active_battle,
         'lead_pokemon_sprite':  lead_pokemon_sprite,
+        'can_fly':              can_fly,
     }

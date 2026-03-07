@@ -170,27 +170,38 @@ def get_moves(move_names):
     return moves
 
 
-def _gym_trainer(arena_name, username, npc_class, team_data, intro_text, is_required=True):
-    """Crée ou met à jour un dresseur d'arène."""
-    trainer, created = Trainer.objects.get_or_create(
-        username=username,
-        defaults={
-            'trainer_type': 'trainer',
-            'location': arena_name,
-            'is_npc': True,
-            'npc_class': npc_class,
-            'is_battle_required': is_required,
-            'intro_text': intro_text,
-            'can_rebattle': False,
-        }
-    )
-    if not created:
-        trainer.location = arena_name
-        trainer.is_npc = True
-        trainer.npc_class = npc_class
-        trainer.is_battle_required = is_required
-        trainer.intro_text = intro_text
-        trainer.save()
+def _gym_trainer(arena_name, username, npc_class, team_data, intro_text, is_required=True, ai_flags=None):
+    """Crée ou met à jour un dresseur d'arène (NPC uniquement)."""
+    # Chercher parmi les NPC existants pour éviter les conflits avec les comptes joueurs
+    # et les doublons éventuels (prend le premier en cas de doublon résiduel)
+    existing = Trainer.objects.filter(username=username, is_npc=True).order_by('id')
+
+    if existing.count() > 1:
+        # Nettoyer les doublons : garder le premier, supprimer les autres
+        keeper = existing.first()
+        duplicates = existing.exclude(pk=keeper.pk)
+        logging.warning(f"    ⚠️  Doublon NPC détecté pour « {username} » "
+                        f"({duplicates.count()} en trop) — suppression des doublons")
+        duplicates.delete()
+        trainer = keeper
+        created = False
+    elif existing.count() == 1:
+        trainer = existing.first()
+        created = False
+    else:
+        trainer = Trainer(username=username)
+        created = True
+
+    # Toujours mettre à jour les champs (idempotent)
+    trainer.trainer_type      = 'trainer'
+    trainer.location          = arena_name
+    trainer.is_npc            = True
+    trainer.npc_class         = npc_class
+    trainer.is_battle_required = is_required
+    trainer.intro_text        = intro_text
+    trainer.can_rebattle      = False
+    trainer.ai_flags          = ai_flags or []
+    trainer.save()
 
     # Construire l'équipe si elle est vide
     if not trainer.pokemon_team.exists():

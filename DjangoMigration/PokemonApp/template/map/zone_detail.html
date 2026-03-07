@@ -216,6 +216,25 @@
               {% endif %}
               {% endif %}
 
+              <!-- CS02 Vol -->
+              {% if can_fly and is_current %}
+              <a href="{% url 'fly_view' %}" class="action-card action-card--fly">
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
+                    <i class="fas fa-dove" style="font-size:2.2rem;color:#7eb8f7;"></i>
+                  </div>
+                  <div class="action-card__text">
+                    <div class="action-card__title">CS02 Vol</div>
+                    <div class="action-card__subtitle">Volez vers une ville déjà visitée</div>
+                  </div>
+                  <div class="action-card__cta">
+                    <i class="fas fa-dove me-2"></i>Choisir une destination
+                    <i class="fas fa-arrow-right ms-2 action-card__arrow"></i>
+                  </div>
+                </div>
+              </a>
+              {% endif %}
+
             </div>{# /action-grid #}
           </div>{# /zone-actions #}
           {% endif %}
@@ -568,9 +587,16 @@
                 <div class="card-body py-2">
                   <h6 class="mb-1">{{ conn.to_zone.name }}</h6>
                   {% if is_current %}
-                  <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-arrow-right"></i> Voyager
-                  </a>
+                    {% if conn.is_passable %}
+                    <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
+                      <i class="fas fa-arrow-right"></i> Voyager
+                    </a>
+                    {% else %}
+                    <div class="hm-gate-block mt-1">
+                      <i class="fas fa-lock hm-gate-icon"></i>
+                      <span class="hm-gate-msg">{{ conn.block_reason }}</span>
+                    </div>
+                    {% endif %}
                   {% else %}
                   <small class="text-muted">Revenez ici pour voyager</small>
                   {% endif %}
