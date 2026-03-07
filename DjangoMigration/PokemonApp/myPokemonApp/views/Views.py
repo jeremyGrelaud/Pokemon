@@ -53,14 +53,17 @@ class DashboardView(generic.TemplateView):
         context = super().get_context_data(**kwargs)
         trainer = get_or_create_player_trainer(self.request.user)
 
-        # Une seule requête annotée : total de tous les Pokémon + équipe active
+        # Nombre d'espèces uniques capturées (via le journal de captures)
+        # On compte les species_id distincts pour correspondre à la logique "Pokédex"
+        from myPokemonApp.models.CaptureSystem import CaptureJournal
         from django.db.models import Count
-        trainer_annotated = (
-            type(trainer).objects
-            .annotate(total_pokemon_count=Count('pokemon_team'))
-            .get(pk=trainer.pk)
+        total_caught = (
+            CaptureJournal.objects
+            .filter(trainer=trainer)
+            .values('pokemon__species_id')
+            .distinct()
+            .count()
         )
-        total_caught = trainer_annotated.total_pokemon_count
 
         active_party = list(
             trainer.pokemon_team
