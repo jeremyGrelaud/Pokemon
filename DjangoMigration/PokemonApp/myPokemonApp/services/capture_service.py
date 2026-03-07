@@ -42,7 +42,7 @@ def calculate_capture_rate(pokemon, ball, pokemon_hp_percent, pokemon_status=Non
         pokeball_stats = PokeballItem.objects.get(item=ball)
         if pokeball_stats.guaranteed_capture:
             return 1.0
-    except PokeballItem.DoesNotExist:
+    except Exception:
         pokeball_stats = None
 
     base_rate = (
@@ -89,6 +89,9 @@ def calculate_shake_count(capture_rate_0_1):
     Returns:
         tuple (shakes: int 0-3, success: bool)
     """
+    if capture_rate_0_1 <= 0.0:
+        return (0, False)
+
     modified_rate = int(capture_rate_0_1 * 255)
     modified_rate = max(1, min(255, modified_rate))
 
