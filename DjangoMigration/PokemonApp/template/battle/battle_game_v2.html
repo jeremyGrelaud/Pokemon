@@ -92,7 +92,7 @@
                 {% endif %}
                 {% if battle.opponent_pokemon.is_shiny %}<span class="shiny-indicator" title="Chromatique !">✨</span>{% endif %}
               </span>
-              <span class="pokemon-gender">♂</span>
+              {% if battle.opponent_pokemon.gender == "M" %}<span class="pokemon-gender" style="color:#6eb4ff">♂</span>{% elif battle.opponent_pokemon.gender == "F" %}<span class="pokemon-gender" style="color:#ff82b2">♀</span>{% endif %}
               <span class="pokemon-level" id="opponent-level">Niv.{{ battle.opponent_pokemon.level }}</span>
             </div>
             
@@ -181,7 +181,7 @@
                 {% endif %}
                 {% if battle.player_pokemon.is_shiny %}<span class="shiny-indicator" title="Chromatique !">✨</span>{% endif %}
               </span>
-              <span class="pokemon-gender">♂</span>
+              {% if battle.player_pokemon.gender == "M" %}<span class="pokemon-gender" style="color:#6eb4ff">♂</span>{% elif battle.player_pokemon.gender == "F" %}<span class="pokemon-gender" style="color:#ff82b2">♀</span>{% endif %}
               <span class="pokemon-level" id="player-level" data-level="{{ battle.player_pokemon.level }}">Niv.{{ battle.player_pokemon.level }}</span>
             </div>
             

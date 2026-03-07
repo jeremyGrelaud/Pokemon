@@ -81,6 +81,7 @@ def _create_npc_pokemon(species, trainer, level, username, party_position,
         is_in_party=True,
         party_position=party_position,
         nature=nature,
+        gender=generate_gender(species),
         **ivs
     )
     pokemon.calculate_stats()
@@ -226,6 +227,23 @@ def generate_random_nature():
     ])
 
 
+def generate_gender(species):
+    """
+    Tire le genre d'un Pokémon selon le gender_ratio de son espèce.
+
+    species.gender_ratio :
+        -1   → sans genre  ('N')
+         0.0 → toujours femelle ('F')
+         1.0 → toujours mâle   ('M')
+         0.875 → starters / plupart des pseudo-légendaires
+         0.5   → majorité des espèces
+    """
+    ratio = getattr(species, 'gender_ratio', 0.5)
+    if ratio < 0:
+        return 'N'
+    return 'M' if random.random() < ratio else 'F'
+
+
 def assign_ability(pokemon, allow_hidden=True):
     """
     Assigne un talent (Ability) à un PlayablePokemon en tirant au sort
@@ -284,6 +302,7 @@ def create_wild_pokemon(species, level, location=None):
         is_in_party=True,
         is_shiny=is_shiny,
         nature=generate_random_nature(),
+        gender=generate_gender(species),
         **_build_ivs(0, 31)
     )
     assign_ability(pokemon, allow_hidden=True)  # sauvages peuvent avoir le talent caché
@@ -310,6 +329,7 @@ def create_starter_pokemon(species, trainer, nickname=None, is_shiny=False):
         party_position=1,
         is_shiny=is_shiny,
         nature=generate_random_nature(),
+        gender=generate_gender(species),
         **_build_ivs(10, 31)
     )
     assign_ability(pokemon, allow_hidden=False)  # starters : talents normaux seulement

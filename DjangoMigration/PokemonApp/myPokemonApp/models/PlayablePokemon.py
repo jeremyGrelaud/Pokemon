@@ -136,6 +136,23 @@ class PlayablePokemon(models.Model):
 
     is_shiny = models.BooleanField(default=False)
 
+    # Genre individuel : 'M' mâle, 'F' femelle, 'N' sans genre.
+    # Tiré à la création selon species.gender_ratio.
+    GENDER_MALE    = 'M'
+    GENDER_FEMALE  = 'F'
+    GENDER_NONE    = 'N'
+    GENDER_CHOICES = [
+        (GENDER_MALE,   'Mâle'),
+        (GENDER_FEMALE, 'Femelle'),
+        (GENDER_NONE,   'Sans genre'),
+    ]
+    gender = models.CharField(
+        max_length=1,
+        choices=GENDER_CHOICES,
+        default=GENDER_MALE,
+        help_text="M = mâle, F = femelle, N = sans genre",
+    )
+
     # -------------------------------------------------------------------------
     # Talent individuel
     # Assigné à la création via assign_ability() dans gameUtils.py.
