@@ -6,6 +6,13 @@
 {% endblock title %}
 
 {% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+    <li class="breadcrumb-item active">Mon Équipe</li>
+  </ol>
+</nav>
+
 <!-- Header -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
   <h1 class="h3 mb-0 text-dark">
@@ -217,6 +224,30 @@
                     {% if team|length <= 1 %}disabled title="Dernier Pokémon de l'équipe"{% endif %}>
               <i class="fas fa-database"></i> Envoyer au PC
             </button>
+            <!-- Renommer inline -->
+            <div class="rename-row mt-1" id="rename-row-{{ pokemon.id }}" style="display:none;">
+              <div class="input-group input-group-sm">
+                <input type="text" class="form-control rename-input"
+                       id="rename-input-{{ pokemon.id }}"
+                       placeholder="Surnom (max 12 car.)"
+                       maxlength="12"
+                       value="{{ pokemon.nickname|default:'' }}">
+                <button class="btn btn-success rename-confirm-btn"
+                        data-id="{{ pokemon.id }}"
+                        aria-label="Valider le surnom">
+                  <i class="fas fa-check"></i>
+                </button>
+                <button class="btn btn-secondary rename-cancel-btn"
+                        data-id="{{ pokemon.id }}"
+                        aria-label="Annuler">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm w-100 mt-1 rename-toggle-btn"
+                    data-id="{{ pokemon.id }}">
+              <i class="fas fa-pen"></i> Renommer
+            </button>
           </div>
         </div>
       </div>
@@ -265,6 +296,34 @@
           </div>
           <div class="card-footer p-1" style="font-size:.7rem;">
             <i class="fas fa-plus-circle text-success"></i> Équipe
+            <button class="btn btn-link btn-sm p-0 ms-1 rename-toggle-btn"
+                    data-id="{{ pokemon.id }}"
+                    title="Renommer"
+                    onclick="event.stopPropagation()">
+              <i class="fas fa-pen" style="font-size:.65rem;"></i>
+            </button>
+          </div>
+          <div class="rename-row px-1 pb-1" id="rename-row-{{ pokemon.id }}" style="display:none;">
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control rename-input"
+                     id="rename-input-{{ pokemon.id }}"
+                     placeholder="Surnom (max 12)"
+                     maxlength="12"
+                     value="{{ pokemon.nickname|default:'' }}"
+                     onclick="event.stopPropagation()">
+              <button class="btn btn-success rename-confirm-btn"
+                      data-id="{{ pokemon.id }}"
+                      onclick="event.stopPropagation()"
+                      aria-label="Valider">
+                <i class="fas fa-check"></i>
+              </button>
+              <button class="btn btn-secondary rename-cancel-btn"
+                      data-id="{{ pokemon.id }}"
+                      onclick="event.stopPropagation()"
+                      aria-label="Annuler">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1619,6 +1678,7 @@ syncUI();
 
 </script>
 <script src="{% static 'js/tm-teach.js' %}"></script>
+<script src="{% static 'js/rename-utilities.js' %}"></script>
 
 
 {% endblock js %}

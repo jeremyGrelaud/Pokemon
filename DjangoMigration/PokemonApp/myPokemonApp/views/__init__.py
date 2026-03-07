@@ -25,6 +25,7 @@ from myPokemonApp.views.TeamViews import (
     get_pokemon_moves_api,
     reorder_party_api,
     reorder_moves_api,
+    rename_pokemon_api
 )
 
 # ── Objets tenus ───────────────────────────────────────────────────────────────

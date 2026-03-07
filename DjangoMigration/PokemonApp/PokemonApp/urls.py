@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/reorder-party/',     views.reorder_party_api,          name='reorder_party'),
     path('api/send-to-pc/',        views.send_to_pc_api,             name='send_to_pc'),
     path('api/add-to-party/',      views.add_to_party_api,           name='add_to_party'),
+    path('api/rename-pokemon/',    views.rename_pokemon_api,         name='rename_pokemon'),
     path('api/pokemon/moves/',     views.get_pokemon_moves_api,      name='get_pokemon_moves'),
     path('api/pokemon/swap-move/',    views.swap_move_api,           name='swap_move'),
     path('api/pokemon/reorder-moves/', views.reorder_moves_api,     name='reorder_moves'),

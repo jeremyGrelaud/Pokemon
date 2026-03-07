@@ -11,6 +11,14 @@
 {% block content %}
 <div class="kanto-map-page">
 
+  <!-- ── Breadcrumb ───────────────────────────────────────────────────────── -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+      <li class="breadcrumb-item active">Carte de Kanto</li>
+    </ol>
+  </nav>
+
   <!-- ── En-tête ──────────────────────────────────────────────────────────── -->
   <div class="map-header d-flex align-items-center justify-content-between mb-2">
     <div>

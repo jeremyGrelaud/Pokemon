@@ -27,6 +27,7 @@ from myPokemonApp.gameUtils import (
 from myPokemonApp.models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
 from myPokemonApp.models.PokemonMove import PokemonMove
 from myPokemonApp.models.Trainer import Trainer
+from myPokemonApp.models.GameSave import GameSave
 
 
 
@@ -341,3 +342,36 @@ def reorder_moves_api(request):
     except Exception as e:
         logger.exception("Erreur inattendue dans TeamViews")
         return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
+
+@require_POST
+@login_required
+def rename_pokemon_api(request):
+    """Endpoint pour renommer (donner un surnom à) un Pokémon."""
+    try:
+        data = json.loads(request.body)
+        pokemon_id = int(data.get('pokemon_id', 0))
+        nickname = data.get('nickname', '').strip()
+
+        if len(nickname) > 12:
+            return JsonResponse({'success': False, 'error': 'Le surnom ne peut pas dépasser 12 caractères.'}, status=400)
+
+        trainer = get_player_trainer(request.user)
+        save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+        if not save:
+            return JsonResponse({'success': False, 'error': 'Aucune sauvegarde active.'}, status=400)
+
+        pokemon = get_object_or_404(PlayablePokemon, pk=pokemon_id)
+        if GameSave.objects.filter(trainer=pokemon.trainer, is_active=True).first()  != save:
+            return JsonResponse({'success': False, 'error': 'Ce Pokémon ne vous appartient pas.'}, status=403)
+
+        # Nickname vide = suppression du surnom
+        pokemon.nickname = nickname if nickname else None
+        pokemon.save(update_fields=['nickname'])
+
+        return JsonResponse({'success': True, 'nickname': pokemon.nickname or ''})
+
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'Données invalides.'}, status=400)
+    except Exception:
+        logger.exception("Erreur dans rename_pokemon_api")
+        return JsonResponse({'success': False, 'error': 'Une erreur est survenue.'}, status=500)

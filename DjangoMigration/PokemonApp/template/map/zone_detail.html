@@ -6,11 +6,13 @@
 
 {% block content %}
 <div class="container-fluid">
-  <div class="mb-3">
-    <a href="{% url 'map_view' %}" class="btn btn-secondary">
-      <i class="fas fa-arrow-left"></i> Retour à la carte
-    </a>
-  </div>
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'map_view' %}">Carte</a></li>
+      <li class="breadcrumb-item active">{{ zone.name }}</li>
+    </ol>
+  </nav>
 
   <div class="row">
     <!-- ── Colonne principale ─────────────────────────────────────── -->
