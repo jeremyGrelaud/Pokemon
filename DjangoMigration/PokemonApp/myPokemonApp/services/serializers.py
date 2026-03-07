@@ -187,4 +187,6 @@ def build_battle_response(battle):
             'player_first':   True,
             'second_skipped': False,
         }),
+        # HP avant les effets de fin de tour (pour animations EOT côté frontend)
+        'hp_before_eot':    bs.get('hp_before_eot', None),
     }
