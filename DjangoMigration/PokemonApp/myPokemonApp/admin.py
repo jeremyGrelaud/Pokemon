@@ -128,22 +128,50 @@ class PokemonTypeAdmin(QuietModelAdmin):
 
 @admin.register(Pokemon)
 class PokemonAdmin(QuietModelAdmin):
-    list_display = ('pokedex_number', 'name', 'primary_type', 'secondary_type', 'total_stats', 'catch_rate', 'base_experience')
-    list_filter  = ('primary_type', 'secondary_type')
+    list_display  = ('pokedex_number', 'name', 'primary_type', 'secondary_type',
+                     'total_stats', 'ev_yield_total', 'catch_rate', 'base_experience')
+    list_filter   = ('primary_type', 'secondary_type')
     search_fields = ('name', 'pokedex_number')
-    ordering     = ('pokedex_number',)
-    inlines      = [PokemonEvolutionInline, PokemonLearnableMoveInline]
+    ordering      = ('pokedex_number',)
+    inlines       = [PokemonEvolutionInline, PokemonLearnableMoveInline]
 
     fieldsets = (
-        ('Informations', {'fields': ('name', 'pokedex_number', 'primary_type', 'secondary_type', 'sprite_url')}),
-        ('Stats de base', {'fields': (('base_hp', 'base_attack', 'base_defense'), ('base_special_attack', 'base_special_defense', 'base_speed'))}),
-        ('Méta', {'fields': ('catch_rate', 'base_experience', 'growth_rate')}),
+        ('Informations', {
+            'fields': ('name', 'pokedex_number', 'primary_type', 'secondary_type', 'sprite_url'),
+        }),
+        ('Stats de base', {
+            'fields': (
+                ('base_hp', 'base_attack', 'base_defense'),
+                ('base_special_attack', 'base_special_defense', 'base_speed'),
+            ),
+        }),
+        ('EV Yields', {
+            'description': 'EVs accordés au vainqueur lors de la défaite de ce Pokémon (Gen 3+).',
+            'fields': (
+                ('ev_yield_hp', 'ev_yield_attack', 'ev_yield_defense'),
+                ('ev_yield_special_attack', 'ev_yield_special_defense', 'ev_yield_speed'),
+            ),
+        }),
+        ('Méta', {
+            'fields': ('catch_rate', 'base_experience', 'growth_rate'),
+        }),
+        ('Talents', {
+            'fields': ('ability_1', 'ability_2', 'hidden_ability'),
+            'classes': ('collapse',),
+        }),
     )
 
     def total_stats(self, obj):
         return (obj.base_hp + obj.base_attack + obj.base_defense +
                 obj.base_special_attack + obj.base_special_defense + obj.base_speed)
-    total_stats.short_description = 'Total'
+    total_stats.short_description = 'BST'
+
+    def ev_yield_total(self, obj):
+        total = (obj.ev_yield_hp + obj.ev_yield_attack + obj.ev_yield_defense +
+                 obj.ev_yield_special_attack + obj.ev_yield_special_defense + obj.ev_yield_speed)
+        return total if total else '-'
+    ev_yield_total.short_description = 'EVs'
+    ev_yield_total.admin_order_field = 'ev_yield_hp' 
 
 
 @admin.register(PokemonMove)

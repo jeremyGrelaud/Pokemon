@@ -73,6 +73,16 @@ class Pokemon(models.Model):
         verbose_name='Talent Caché',
     )
 
+    # -------------------------------------------------------------------------
+    # EV Yields / Source : FRLG / Bulbapedia — Gen 3+
+    # -------------------------------------------------------------------------
+    ev_yield_hp              = models.PositiveSmallIntegerField(default=0, verbose_name='EV HP')
+    ev_yield_attack          = models.PositiveSmallIntegerField(default=0, verbose_name='EV Attaque')
+    ev_yield_defense         = models.PositiveSmallIntegerField(default=0, verbose_name='EV Défense')
+    ev_yield_special_attack  = models.PositiveSmallIntegerField(default=0, verbose_name='EV Att. Spé.')
+    ev_yield_special_defense = models.PositiveSmallIntegerField(default=0, verbose_name='EV Déf. Spé.')
+    ev_yield_speed           = models.PositiveSmallIntegerField(default=0, verbose_name='EV Vitesse')
+
     class Meta:
         verbose_name = "Pokémon (Base)"
         verbose_name_plural = "Pokémon (Bases)"
@@ -109,3 +119,20 @@ class Pokemon(models.Model):
             pool.append((self.hidden_ability, 10))
 
         return pool
+
+    def get_ev_yields(self) -> list[tuple[str, int]]:
+        """
+        Retourne la liste des EVs accordés par ce Pokémon sous la forme :
+            [('ev_hp', 2), ('ev_speed', 1), ...]
+
+        Seules les stats avec un yield > 0 sont incluses.
+        """
+        mapping = [
+            ('ev_hp',              self.ev_yield_hp),
+            ('ev_attack',          self.ev_yield_attack),
+            ('ev_defense',         self.ev_yield_defense),
+            ('ev_special_attack',  self.ev_yield_special_attack),
+            ('ev_special_defense', self.ev_yield_special_defense),
+            ('ev_speed',           self.ev_yield_speed),
+        ]
+        return [(field, amount) for field, amount in mapping if amount > 0]
