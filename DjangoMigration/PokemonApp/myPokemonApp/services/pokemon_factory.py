@@ -379,7 +379,8 @@ def create_npc_trainer(username, trainer_type, location, team_data,
                        defeat_text=None, victory_text=None,
                        is_battle_required=False,
                        fixed_ivs=None, fixed_nature=None,
-                       iv_min=0, iv_max=20):
+                       iv_min=0, iv_max=20,
+                       ai_flags=None):
     """
     Crée un dresseur NPC générique avec son équipe. Idempotent (get_or_create).
     La clé d'idempotence est (username, location).
@@ -388,6 +389,8 @@ def create_npc_trainer(username, trainer_type, location, team_data,
         fixed_ivs    : dict IVs fixes appliqués à TOUS les Pokémon de l'équipe.
         fixed_nature : str nature fixée (ex: 'Hardy') — bypasse le tirage aléatoire.
         iv_min/iv_max: plage IVs aléatoires si fixed_ivs est None (défaut 0-20).
+        ai_flags     : list de flags IA Gen 4 (ex: ['basic', 'evaluate_attack', 'expert']).
+                       Si None, get_ai_flags() utilisera les defaults selon trainer_type.
     """
     from myPokemonApp.models.Trainer import Trainer
 
@@ -409,6 +412,7 @@ def create_npc_trainer(username, trainer_type, location, team_data,
             'npc_class':          npc_class,
             'sprite_name':        sprite_name,
             'is_battle_required': is_battle_required,
+            'ai_flags':           ai_flags or [],
         }
     )
 

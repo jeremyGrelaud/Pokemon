@@ -807,7 +807,8 @@ def initialize_elite_four():
         trainer_type='elite_four',
         location='Plateau Indigo',
         team_data=lorelei_team,
-        intro_text="Bienvenue dans le Conseil des 4. Je suis Lorelei, maître du type Glace!"
+        intro_text="Bienvenue dans le Conseil des 4. Je suis Lorelei, maître du type Glace!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
     
     # ============================================================================
@@ -846,7 +847,8 @@ def initialize_elite_four():
         trainer_type='elite_four',
         location='Plateau Indigo',
         team_data=bruno_team,
-        intro_text="Je suis Bruno, maître du Combat!"
+        intro_text="Je suis Bruno, maître du Combat!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
     
     # ============================================================================
@@ -885,7 +887,8 @@ def initialize_elite_four():
         trainer_type='elite_four',
         location='Plateau Indigo',
         team_data=agatha_team,
-        intro_text="Je suis Agatha, maître des Spectres!"
+        intro_text="Je suis Agatha, maître des Spectres!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
     
     # ============================================================================
@@ -924,7 +927,8 @@ def initialize_elite_four():
         trainer_type='elite_four',
         location='Plateau Indigo',
         team_data=lance_team,
-        intro_text="Je suis Lance, maître des Dragons et dernier membre du Conseil des 4!"
+        intro_text="Je suis Lance, maître des Dragons et dernier membre du Conseil des 4!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
     
     logging.info("[+] Conseil des 4 créé")
@@ -981,7 +985,8 @@ def create_champion():
         trainer_type='champion',
         location='Plateau Indigo',
         team_data=champion_team,
-        intro_text="Je t'attendais! Je suis maintenant le Champion de la Ligue Pokémon!",
+        intro_text="Je t'attendais! Je suis maintenant le Champion de la Ligue Pokémon!",,
+        ai_flags=['basic', 'evaluate_attack', 'expert', 'setup_first_turn']
     )
     
     logging.info("[+] Champion créé")
