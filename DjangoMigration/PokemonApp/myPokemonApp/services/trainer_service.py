@@ -137,10 +137,16 @@ def heal_team(trainer):
         evasion_stage=0,
     )
 
-    # 2) PP en une seule requête (move__pp traverse la FK move → PokemonMove.pp)
-    PokemonMoveInstance.objects.filter(
-        pokemon__in=team_qs
-    ).update(current_pp=_models.F('move__pp'))
+    # 2) PP — SQLite/Django interdit F('move__pp') dans un UPDATE (joined field).
+    #    On charge toutes les instances avec select_related (1 requête),
+    #    affecte current_pp = move.pp en Python, puis bulk_update (1 requête).
+    move_instances = list(
+        PokemonMoveInstance.objects.filter(pokemon__in=team_qs).select_related('move')
+    )
+    for mi in move_instances:
+        mi.current_pp = mi.move.pp
+    if move_instances:
+        PokemonMoveInstance.objects.bulk_update(move_instances, ['current_pp'])
 
 
 def cleanup_orphan_wild_pokemon():

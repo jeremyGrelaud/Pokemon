@@ -87,11 +87,16 @@ class PokemonCenter(models.Model):
             evasion_stage=0,
         )
 
-        # 2) PP — un seul UPDATE sur toutes les PokemonMoveInstance de l'équipe
-        #    current_pp = max PP du move associé (move.pp)
-        PokemonMoveInstance.objects.filter(
-            pokemon__in=team_pokemon
-        ).update(current_pp=_models.F('move__pp'))
+        # 2) PP — SQLite/Django interdit F('move__pp') dans un UPDATE (joined field).
+        #    On charge toutes les instances avec select_related (1 requête),
+        #    affecte current_pp = move.pp en Python, puis bulk_update (1 requête).
+        move_instances = list(
+            PokemonMoveInstance.objects.filter(pokemon__in=team_pokemon).select_related('move')
+        )
+        for mi in move_instances:
+            mi.current_pp = mi.move.pp
+        if move_instances:
+            PokemonMoveInstance.objects.bulk_update(move_instances, ['current_pp'])
         
         # Incrémenter les stats du centre
         self.total_healings += 1
