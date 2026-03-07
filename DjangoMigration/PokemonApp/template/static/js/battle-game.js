@@ -1570,57 +1570,65 @@ $(document).keydown(function(e) {
 async function initiateCaptureSequence(itemId) {
   // Fermer le menu items
   showMainMenu();
-  
-  // Demander au serveur les infos pour la capture
-  const response = await $.post(BATTLE_CONFIG.urls.action, {
-    action: 'item',
-    item_id: itemId,
-    csrfmiddlewaretoken: csrfToken
-  });
-  
-  if (response.capture_attempt) {
+
+  try {
+    // Demander au serveur les infos pour la capture (calcul shakes + résultat)
+    const response = await $.post(BATTLE_CONFIG.urls.action, {
+      action: 'item',
+      item_id: itemId,
+      csrfmiddlewaretoken: csrfToken
+    });
+
+    if (!response.capture_attempt) {
+      // Réponse inattendue — réactiver les boutons
+      $('button').prop('disabled', false);
+      return;
+    }
+
     // Lancer l'animation avec les shakes/résultat pré-calculés par le backend
-    // (formule Gen 3 officielle — pas de random côté client)
-    const result = await captureSystem.attemptCapture(
+    await captureSystem.attemptCapture(
       response.capture_attempt.pokemon,
       response.capture_attempt.ball_type,
       response.capture_attempt.capture_rate,
       response.capture_attempt.shakes,
       response.capture_attempt.success
     );
-    
-    // Confirmer la capture au serveur
+
+    // Confirmer la capture au serveur (consomme la ball, déclenche l'attaque adverse si échec)
     const finalResult = await $.post(BATTLE_CONFIG.urls.action, {
       action: 'confirm_capture',
       item_id: itemId,
       csrfmiddlewaretoken: csrfToken
     });
-    
-    // Traiter le résultat
+
     if (finalResult.capture_result && finalResult.capture_result.success) {
-      // SUCCÈS !
-      addBattleLog(finalResult.capture_result.message);
-      
-      if (audioManager) {
-        audioManager.playSFX('capture/success');
+      // SUCCÈS — afficher le modal de fin de combat
+      if (finalResult.log && finalResult.log.length) {
+        finalResult.log.forEach(msg => addBattleLog(msg));
+      } else {
+        addBattleLog(finalResult.capture_result.message);
       }
-      
-      // Afficher modal de succès
-      setTimeout(() => {
-        showCaptureSuccessModal(finalResult.capture_result);
-      }, 500);
+      try { if (audioManager) audioManager.playSFX('capture/success'); } catch(e) {}
+      setTimeout(() => showCaptureSuccessModal(finalResult.capture_result), 500);
+
     } else {
-      // ÉCHEC
-      addBattleLog(finalResult.capture_result.message);
-      
-      if (audioManager) {
-        audioManager.playSFX('capture/failed');
+      // ÉCHEC — afficher les logs renvoyés par le serveur
+      // (message d'échec + dégâts adverses, déjà assemblés côté serveur)
+      if (finalResult.log && finalResult.log.length) {
+        finalResult.log.forEach(msg => addBattleLog(msg));
       }
-      
-      // Continuer le combat
+      // Ne PAS afficher capture_result.message séparément : il est déjà dans finalResult.log.
+      try { if (audioManager) audioManager.playSFX('capture/failed'); } catch(e) {}
       updateBattleState(finalResult);
+      updateVolatileStates(finalResult);
       $('button').prop('disabled', false);
     }
+
+  } catch (err) {
+    // Toute erreur réseau ou JS — on réactive les boutons pour ne pas bloquer le joueur
+    console.error('Erreur dans initiateCaptureSequence :', err);
+    addBattleLog('Erreur lors de la capture. Veuillez réessayer.');
+    $('button').prop('disabled', false);
   }
 }
 

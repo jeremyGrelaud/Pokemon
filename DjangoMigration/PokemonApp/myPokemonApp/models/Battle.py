@@ -579,6 +579,22 @@ class Battle(models.Model):
             return
         if player_using_item:
             self.execute_action(self.opponent_pokemon, self.player_pokemon, opponent_action)
+            # Enregistrer last_turn_info pour que le frontend sache que l'adversaire a agi.
+            # Sans ça, turn_info est périmé (tour précédent) et le client ne déclenche pas
+            # l'animation/mise à jour HP de l'attaque adverse.
+            opp_move = opponent_action.get('move')
+            bs = self._bstate()
+            bs['last_turn_info'] = {
+                'player_first':   False,   # l'adversaire agit côté "attaquant" ce tour
+                'second_skipped': False,
+                'player_move': {'name': '', 'type': '', 'category': ''},
+                'opponent_move': {
+                    'name':     opp_move.name     if opp_move else '',
+                    'type':     opp_move.type.name if opp_move and opp_move.type else '',
+                    'category': opp_move.category  if opp_move else '',
+                },
+            }
+            self._save_state()
             self._apply_end_of_turn_effects()
             self.current_turn += 1
             self.save()

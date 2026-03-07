@@ -269,8 +269,8 @@ def _handle_confirm_capture(request, battle, trainer, response_data):
     Utilise le résultat pré-calculé en session (pas de nouveau random).
     Retourne True → early return.
     """
-    from myPokemonApp.gameUtils import _capture_success
-    from myPokemonApp.models import CaptureAttempt
+    from myPokemonApp.services.capture_service import _capture_success
+    from myPokemonApp.models.CaptureSystem import CaptureAttempt
 
     pending = request.session.pop('pending_capture', None)
 
@@ -320,12 +320,34 @@ def _handle_confirm_capture(request, battle, trainer, response_data):
         inv.save(update_fields=['quantity'])
 
     if not result['success']:
+        turn_before     = battle.current_turn
         opponent_action = get_opponent_ai_action(battle)
         battle.execute_turn({'type': 'PokeBall'}, opponent_action)
+        # Rebuild response_data avec les HP à jour après l'attaque adverse.
+        battle.refresh_from_db()
+        fresh = build_battle_response(battle)
+        response_data.update(fresh)
+
+        # Récupérer les messages du battle_log générés par execute_turn
+        # (dégâts, statut, etc. infligés par l'adversaire ce tour).
+        opponent_logs = [
+            entry['message'] for entry in battle.battle_log
+            if entry.get('turn') in (turn_before, turn_before + 1)
+        ]
+        if not opponent_logs:
+            opponent_logs = [entry['message'] for entry in battle.battle_log[-5:]]
+        
+        opponent_logs = [
+            m.get('message', str(m)) if isinstance(m, dict) else m
+            for m in opponent_logs
+        ]
+        # Le message d'échec de capture est ajouté en premier, suivi des dégâts adverses.
+        response_data['log'] = [result['message']] + opponent_logs
+    else:
+        response_data['log'] = [result['message']]
 
     response_data['capture_result'] = result
     response_data['battle_ended']   = result['success']
-    response_data['log']            = [result['message']]
     if result['success']:
         response_data['result'] = 'capture'
     return True  # early return
