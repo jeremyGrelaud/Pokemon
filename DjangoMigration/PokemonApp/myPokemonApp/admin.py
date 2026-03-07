@@ -11,6 +11,7 @@ from .models.Achievements import Achievement, TrainerAchievement
 from .models.Battle import Battle
 from .models.CaptureSystem import CaptureAttempt, CaptureJournal, PokeballItem
 from .models.GameSave import GameSave, TrainerBattleHistory
+from myPokemonApp.models.DefeatedTrainer import DefeatedTrainer
 from .models.Item import Item
 from .models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
 from .models.Pokemon import Pokemon
@@ -434,6 +435,12 @@ class GameSaveAdmin(QuietModelAdmin):
         return obj.get_play_time_display()
     play_time_display.short_description = 'Temps de jeu'
 
+@admin.register(DefeatedTrainer)
+class DefeatedTrainerAdmin(QuietModelAdmin):
+    list_display    = ('game_save', 'trainer')
+    list_filter     = ('game_save', 'trainer')
+    search_fields   = ('game_save', 'trainer')
+    readonly_fields = ('game_save', 'trainer')
 
 @admin.register(TrainerBattleHistory)
 class TrainerBattleHistoryAdmin(QuietModelAdmin):

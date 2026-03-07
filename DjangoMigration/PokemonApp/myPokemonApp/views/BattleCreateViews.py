@@ -417,9 +417,9 @@ def battle_trainer_complete_view(request, battle_id):
         logger.warning("Impossible de créer l'historique de combat : %s", exc)
 
     try:
-        save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
-        if save and player_won and opponent:
-            save.add_defeated_trainer(opponent.id)
+        game_save = GameSave.objects.filter(trainer=player_trainer, is_active=True).first()
+        if game_save  and player_won and opponent:
+            game_save.add_defeated_trainer(opponent.id)
     except Exception as exc:
         logger.warning("Impossible de marquer le dresseur %s comme battu : %s", opponent, exc)
 
