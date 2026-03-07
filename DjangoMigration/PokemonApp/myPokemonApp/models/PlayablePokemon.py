@@ -175,6 +175,11 @@ class PlayablePokemon(models.Model):
         verbose_name = "Pokémon (Jouable)"
         verbose_name_plural = "Pokémon (Jouables)"
         ordering = ['party_position']
+        indexes = [
+            # Requête la plus fréquente : équipe active d'un dresseur
+            # → filter(trainer=X, is_in_party=True)
+            models.Index(fields=['trainer', 'is_in_party'], name='idx_pp_trainer_party'),
+        ]
     
     def __str__(self):
         name = self.nickname or self.species.name
