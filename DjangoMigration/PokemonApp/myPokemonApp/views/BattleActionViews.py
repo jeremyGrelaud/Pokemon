@@ -378,14 +378,12 @@ _ACTION_HANDLERS = {
 # =============================================================================
 
 @login_required
+@require_http_methods(['POST'])
 def battle_action_view(request, pk):
     """
     API POST pour exécuter une action de combat.
     Retourne du JSON pour mise à jour en temps réel par le client.
     """
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-
     battle  = get_object_or_404(Battle, pk=pk)
     trainer = get_player_trainer(request.user)
 

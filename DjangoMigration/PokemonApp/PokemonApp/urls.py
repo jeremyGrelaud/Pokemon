@@ -60,9 +60,9 @@ urlpatterns = [
     path('battle/gym/<int:gym_leader_id>/challenge/',   views.battle_challenge_gym_view,  name='battle_challenge_gym'),
     path('battle/<int:battle_id>/trainer/complete/',    views.battle_trainer_complete_view, name='battle_trainer_complete'),
 
-    # APIs combat
-    path('get_trainer_items/', views.GetTrainerItems, name='GetTrainerItems'),
-    path('get_trainer_team/',  views.GetTrainerTeam,  name='GetTrainerTeam'),
+    # APIs combat — équipe et inventaire du dresseur
+    path('api/battle/team/',  views.GetTrainerTeam,  name='GetTrainerTeam'),
+    path('api/battle/items/', views.GetTrainerItems, name='GetTrainerItems'),
 
     # Champions d'Arène
     path('gym-leaders/',        views.GymLeaderListView.as_view(),   name='GymLeaderListView'),

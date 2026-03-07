@@ -99,33 +99,6 @@ WSGI_APPLICATION = 'PokemonApp.wsgi.application'
 
 
 # ─── Base de données ──────────────────────────────────────────────────────────
-#
-# Optimisations SQLite appliquées via le signal `connection_created`.
-#
-#   WAL (Write-Ahead Logging)
-#     Mode journal par défaut = DELETE → un seul writer, tous les readers bloqués.
-#     WAL = les lecteurs ne bloquent jamais les écritures et vice-versa.
-#     Essentiel pour un jeu où les combats écrivent pendant que d'autres pages lisent.
-#
-#   synchronous = NORMAL
-#     Par défaut SQLite fait un fsync() à chaque commit (FULL) — très lent sur disque.
-#     NORMAL synce uniquement aux checkpoints WAL, safe en pratique.
-#
-#   cache_size = -64000
-#     Valeur négative = kilobytes. 64 Mo de pages SQLite gardées en RAM.
-#
-#   foreign_keys = ON
-#     SQLite n'enforces PAS les FK par défaut — ce pragma corrige ce comportement.
-#
-#   temp_store = MEMORY
-#     Les tables temporaires (ORDER BY, GROUP BY) sont créées en RAM.
-#
-#   mmap_size = 268435456
-#     Memory-mapped I/O sur 256 Mo : réduit les syscalls de lecture.
-#
-#   CONN_MAX_AGE = 300
-#     Réutilise la connexion SQLite 5 min — les PRAGMAs ne sont exécutés
-#     qu'une fois par connexion, pas à chaque requête HTTP.
 
 DATABASES = {
     'default': {
@@ -137,30 +110,6 @@ DATABASES = {
         },
     }
 }
-
-
-# ─── PRAGMAs SQLite appliqués à chaque nouvelle connexion ────────────────────
-# Le signal connection_created est le seul moyen fiable d'envoyer des PRAGMAs
-# au backend SQLite de Django (init_command n'existe que pour MySQL).
-
-from django.db.backends.signals import connection_created
-
-def _apply_sqlite_pragmas(sender, connection, **kwargs):
-    """
-    Applique les PRAGMAs d'optimisation dès l'ouverture de chaque connexion SQLite.
-    Ignoré automatiquement si le backend n'est pas SQLite (utile en CI/CD avec Postgres).
-    """
-    if connection.vendor != 'sqlite':
-        return
-    with connection.cursor() as cursor:
-        cursor.execute('PRAGMA journal_mode=WAL;')
-        cursor.execute('PRAGMA synchronous=NORMAL;')
-        cursor.execute('PRAGMA cache_size=-64000;')
-        cursor.execute('PRAGMA foreign_keys=ON;')
-        cursor.execute('PRAGMA temp_store=MEMORY;')
-        cursor.execute('PRAGMA mmap_size=268435456;')
-
-connection_created.connect(_apply_sqlite_pragmas)
 
 
 # ─── Validation des mots de passe ─────────────────────────────────────────────
