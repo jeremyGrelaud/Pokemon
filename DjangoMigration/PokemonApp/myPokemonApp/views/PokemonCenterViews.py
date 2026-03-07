@@ -11,9 +11,12 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.db.models import Sum
 import json
+import logging
 
 from myPokemonApp.models import PokemonCenter, CenterVisit, Trainer, NurseDialogue, PlayerLocation, Zone
 from myPokemonApp.gameUtils import get_player_trainer, trainer_is_at_zone_with
+
+logger = logging.getLogger(__name__)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -144,8 +147,8 @@ def heal_team_api(request):
             return JsonResponse({'success': False, 'error': result['message']})
 
     except Exception as e:
-        import traceback; traceback.print_exc()
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        logger.exception("Erreur dans heal_team_api pour user=%s", request.user.pk)
+        return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
 
 
 @login_required
