@@ -41,6 +41,17 @@ def active_save(request):
     if not request.user.is_authenticated:
         return dict(_EMPTY)
 
+    # ── Court-circuit : endpoints API / JSON / admin (pas besoin du contexte sidebar) ──
+    path = request.path
+    if (path.startswith('/api/')
+            or path.startswith('/admin/')
+            or path.startswith('/static/')
+            or path.startswith('/media/')
+            # Endpoints de combat — très fréquents, pas besoin du contexte HTML
+            or '/action/' in path
+            or '/learn-move/' in path):
+        return dict(_EMPTY)
+
     try:
         # ── Requête principale : Trainer + toutes ses relations ────
         trainer = (
@@ -143,7 +154,7 @@ def active_save(request):
         trainer.active_battles_list[0] if trainer.active_battles_list else None
     )
 
-    # ── Vol (CS02) disponible ? ───────────────────────────────────────────────
+    # ── Vol (CS02) disponible ? — réutilise trainer_has_hm ──────────────────
     can_fly = False
     try:
         from myPokemonApp.questEngine import trainer_has_hm
