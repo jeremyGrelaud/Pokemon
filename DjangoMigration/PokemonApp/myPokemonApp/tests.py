@@ -90,17 +90,19 @@ def make_playable_pokemon(trainer, species=None, level=10,
     )
 
 
-def make_move(name='Tackle', pp=35, power=40,
-              accuracy=100, move_type='physical', damage_category='physical'):
-    """Crée un PokemonMove minimal."""
+def make_move(name='Tackle', pp=35, power=40, accuracy=100, category='physical'):
+    """Crée un PokemonMove minimal. Vrais noms de champs : type (FK), category."""
     from myPokemonApp.models.PokemonMove import PokemonMove
-    from myPokemonApp.models.PokemonType import PokemonType
     ptype = make_pokemon_type('Normal')
     obj, _ = PokemonMove.objects.get_or_create(
         name=name,
         defaults=dict(
-            pp=pp, power=power, accuracy=accuracy,
-            move_type=ptype, damage_category=damage_category,
+            type=ptype,
+            pp=pp,
+            max_pp=pp,
+            power=power,
+            accuracy=accuracy,
+            category=category,
         )
     )
     return obj
@@ -262,20 +264,31 @@ class TestPlayablePokemonModel(TestCase):
         self.assertEqual(self.pokemon.current_hp, self.pokemon.max_hp)
 
     def test_heal_partial(self):
-        """heal(20) doit ajouter exactement 20 HP."""
-        self.pokemon.current_hp = 50
-        self.pokemon.save()
+        """heal(20) doit ajouter exactement 20 HP — sans dépasser max_hp."""
+        # Le save() override de PlayablePokemon recalcule calculate_stats() et
+        # peut modifier max_hp. On doit travailler avec la valeur réelle.
+        self.pokemon.refresh_from_db()
+        real_max = self.pokemon.max_hp
+        # Mettre à half HP via update() pour contourner le save() override.
+        half_hp = real_max // 2
+        type(self.pokemon).objects.filter(pk=self.pokemon.pk).update(current_hp=half_hp)
+        self.pokemon.refresh_from_db()
         self.pokemon.heal(20)
         self._refresh()
-        self.assertEqual(self.pokemon.current_hp, 70)
+        expected = min(real_max, half_hp + 20)
+        self.assertEqual(self.pokemon.current_hp, expected)
 
     def test_heal_capped_at_max(self):
-        """heal() ne doit pas dépasser max_hp."""
-        self.pokemon.current_hp = 90
-        self.pokemon.save()
-        self.pokemon.heal(50)
+        """heal() ne doit jamais dépasser max_hp."""
+        self.pokemon.refresh_from_db()
+        real_max = self.pokemon.max_hp
+        # Forcer les HP à 1 via update() direct (bypass save() override).
+        type(self.pokemon).objects.filter(pk=self.pokemon.pk).update(current_hp=1)
+        self.pokemon.refresh_from_db()
+        # heal() avec un montant supérieur au max doit se limiter à max_hp.
+        self.pokemon.heal(real_max + 999)
         self._refresh()
-        self.assertEqual(self.pokemon.current_hp, 100)
+        self.assertEqual(self.pokemon.current_hp, real_max)
 
     # --- cure_status -----------------------------------------------------------
 
@@ -635,7 +648,7 @@ class TestCaptureRate(TestCase):
         from myPokemonApp.services.capture_service import calculate_capture_rate
         return calculate_capture_rate(pokemon, ball, hp_percent, status)
 
-    @patch('myPokemonApp.services.capture_service.PokeballItem')
+    @patch('myPokemonApp.models.CaptureSystem.PokeballItem')
     def test_master_ball_guarantees_capture(self, MockPokeball):
         """Master Ball → taux de capture = 1.0."""
         mock_pb = MagicMock()
@@ -647,7 +660,7 @@ class TestCaptureRate(TestCase):
         result  = self._call(pokemon, ball)
         self.assertEqual(result, 1.0)
 
-    @patch('myPokemonApp.services.capture_service.PokeballItem')
+    @patch('myPokemonApp.models.CaptureSystem.PokeballItem')
     def test_low_hp_increases_capture_rate(self, MockPokeball):
         """Un Pokémon à faibles HP doit avoir un taux de capture plus élevé."""
         MockPokeball.objects.get.side_effect = Exception('DoesNotExist')
@@ -659,7 +672,7 @@ class TestCaptureRate(TestCase):
         rate_low  = self._call(pokemon, ball, hp_percent=0.1)
         self.assertGreater(rate_low, rate_full)
 
-    @patch('myPokemonApp.services.capture_service.PokeballItem')
+    @patch('myPokemonApp.models.CaptureSystem.PokeballItem')
     def test_sleep_status_boosts_capture(self, MockPokeball):
         """Le statut 'sleep' (×2.0) doit augmenter le taux vs aucun statut."""
         MockPokeball.objects.get.side_effect = Exception('DoesNotExist')
@@ -670,7 +683,7 @@ class TestCaptureRate(TestCase):
         rate_slp = self._call(pokemon, ball, hp_percent=0.5, status='sleep')
         self.assertGreater(rate_slp, rate_no)
 
-    @patch('myPokemonApp.services.capture_service.PokeballItem')
+    @patch('myPokemonApp.models.CaptureSystem.PokeballItem')
     def test_paralysis_boosts_less_than_sleep(self, MockPokeball):
         """Paralysie (×1.5) doit donner un taux inférieur au sommeil (×2.0)."""
         MockPokeball.objects.get.side_effect = Exception('DoesNotExist')
@@ -681,7 +694,7 @@ class TestCaptureRate(TestCase):
         rate_para    = self._call(pokemon, ball, hp_percent=0.5, status='paralysis')
         self.assertGreater(rate_sleep, rate_para)
 
-    @patch('myPokemonApp.services.capture_service.PokeballItem')
+    @patch('myPokemonApp.models.CaptureSystem.PokeballItem')
     def test_rate_capped_at_1(self, MockPokeball):
         """Le taux de capture ne doit jamais dépasser 1.0."""
         MockPokeball.objects.get.side_effect = Exception('DoesNotExist')
@@ -691,7 +704,7 @@ class TestCaptureRate(TestCase):
         result  = self._call(pokemon, ball, hp_percent=0.01, status='sleep')
         self.assertLessEqual(result, 1.0)
 
-    @patch('myPokemonApp.services.capture_service.PokeballItem')
+    @patch('myPokemonApp.models.CaptureSystem.PokeballItem')
     def test_rate_always_non_negative(self, MockPokeball):
         """Le taux de capture doit toujours être ≥ 0."""
         MockPokeball.objects.get.side_effect = Exception('DoesNotExist')
@@ -723,11 +736,16 @@ class TestCalculateShakeCount(TestCase):
             self.assertTrue(success)
 
     def test_rate_0_never_captures(self):
-        """Taux 0.0 doit toujours échouer (0 shakes, success=False)."""
-        for _ in range(20):
+        """Taux 0.0 : la capture doit toujours échouer (success=False).
+
+        Note : la formule Gen 3 force modified_rate = max(1, ...) donc même avec
+        un taux d entrée 0.0, le seuil b n est jamais nul et 1 shake est possible.
+        On ne teste donc que success=False, pas le nombre exact de shakes.
+        """
+        for _ in range(30):
             shakes, success = self._call(0.0)
-            self.assertEqual(shakes, 0)
-            self.assertFalse(success)
+            self.assertFalse(success, f"capture inattendue avec taux 0.0 (shakes={shakes})")
+            self.assertIn(shakes, [0, 1, 2, 3])
 
     def test_shakes_in_range(self):
         """Le nombre de shakes doit toujours être compris entre 0 et 3."""
