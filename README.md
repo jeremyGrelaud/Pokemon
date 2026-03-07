@@ -10,20 +10,12 @@
 - Johto reference for future integration ? https://gamefaqs.gamespot.com/gbc/375087-pokemon-crystal-version/faqs/75486/full-trainer-info-list
 
 
-
 # Pokemon
 For education purpose only
 
-
-TODO Roadmap :
-
-- Improve Moves effects during battle (use real pokemon game move animations)
+Roadmap :
 - After everything, implement different game mods ?
 
-
-TODO BugFixes :
-
-- continuer la refactorisation en utilisant/implémentant le plus possibles des helpers de GameUtils.py ou via des méthodes dans les models
 
 # Setup
 
@@ -37,3 +29,35 @@ To init database in one command :
 ```
 python manage.py init_db
 ```
+
+To launch unitTests : 
+```
+python manage.py test myPokemonApp.tests
+```
+
+
+## Stack technique
+
+- **Backend** : Django (Python)
+- **Frontend** : HTML/CSS/JS vanilla + Bootstrap 5 (free sb admin theme)
+- **Base de données** : SQLite (dev) / PostgreSQL (prod)
+- **Auth** : Django Auth natif
+
+---
+
+## Fonctionnalités principales
+
+- **Combat au tour par tour** — formules Gen 3 (FireRed/LeafGreen), effets de capacités, états de statut
+- **Système de capture** — formule Gen 3, shake count, Master Ball
+- **Pokédex** — consultation des espèces, types, capacités apprenables
+- **Mon équipe** — gestion de l'équipe (6 max), PC, IVs/EVs, natures, talents, capacités
+- **Carte Kanto** — zones avec accès conditionnels (badges, CS, objets clés, quêtes)
+- **Quêtes** — journal de quêtes, quêtes principales / secondaires / rival
+- **Succès** — 5 catégories (combat, capture, collection, exploration, progression)
+- **Shops & Pokémon Centers** — achat d'objets, soins d'équipe
+- **Objets tenus** — équipement sur les Pokémon
+- **Sauvegarde** — système de slots avec snapshot 
+- **Champions d'Arène** — badges, progression de ligue
+- **Rencontres sauvages** — spawn par zone, herbe / eau / pêche / grotte
+- **Rival** — rencontres scénaristiques liées aux quêtes
+- **BGM** — musiques par zone
