@@ -711,6 +711,14 @@ class Battle(models.Model):
             'player_move':    player_move_info,
             'opponent_move':  opponent_move_info,
         }
+
+        # Capturer les HP AVANT les effets de fin de tour (pour calculer les dégâts EOT côté frontend)
+        self.player_pokemon.refresh_from_db(fields=['current_hp'])
+        self.opponent_pokemon.refresh_from_db(fields=['current_hp'])
+        bs['hp_before_eot'] = {
+            'player':   self.player_pokemon.current_hp,
+            'opponent': self.opponent_pokemon.current_hp,
+        }
         self._save_state()
 
         # ── Effets de fin de tour ─────────────────────────────────────────────

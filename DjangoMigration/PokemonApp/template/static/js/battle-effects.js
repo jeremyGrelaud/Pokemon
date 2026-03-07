@@ -418,15 +418,19 @@ class BattleEffects {
    * @param {string}  moveType  — type Pokémon (fallback si moveName inconnu)
    * @param {string}  moveCategory — 'physical'|'special'|'status'
    */
-  playMoveAnimation(moveName, from, to, isPlayer = true, moveType = 'normal', moveCategory = 'special') {
+  playMoveAnimation(moveName, from, to, isPlayer = true, moveType = 'normal', moveCategory = '') {
     // Nettoyage doux des effets précédents
     this.clearEffects();
 
     // Sprite bounce attaquant
     this.attackSprite(isPlayer);
 
-    // Damage sprite au moment de l'impact (~400ms)
-    this.damageSprite(!isPlayer, 450);
+    // Damage sprite au moment de l'impact (~400ms) — seulement pour les moves qui font des dégâts
+    // Les moves de statut (category='status') n'infligent pas de dégâts directs
+    const isStatusMove = (moveCategory === 'status');
+    if (!isStatusMove) {
+      this.damageSprite(!isPlayer, 450);
+    }
 
     const scene = this;  // alias pour lisibilité dans les anims
 
@@ -436,7 +440,7 @@ class BattleEffects {
       fn(scene, from, to, isPlayer);
     } else if (moveCategory === 'physical') {
       MOVE_ANIMS.__physical(scene, from, to, isPlayer);
-    } else {
+    } else if (!isStatusMove) {
       MOVE_ANIMS.__generic_special(scene, from, to, isPlayer, moveType);
     }
   }

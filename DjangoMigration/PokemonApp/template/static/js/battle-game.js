@@ -275,6 +275,7 @@ function playTurnAnimations(data, onDone) {
   const IMPACT_OFFSET = 350;   // ms après ATTACK_DELAY : moment où la HP bar change
   const ATTACK_DUR    = 700;   // durée approximative de l'effet
   const BETWEEN_GAP   = 400;   // pause entre les deux attaques
+  const EOT_GAP       = 500;   // pause avant les animations de fin de tour
 
   let seq = [];
 
@@ -292,9 +293,18 @@ function playTurnAnimations(data, onDone) {
     return;
   }
 
+  // HP actuels affichés avant ce tour — lus depuis le data-attribute stocké par updateHP
+  function getCurrentDisplayedHp(side) {
+    return parseInt($(`#${side}-hp-bar`).data('current-hp')) || 0;
+  }
+
+  // HP intermédiaires (après attaques, avant EOT) — fournis par le backend
+  const hpBeforeEot = data.hp_before_eot || null;
+
   function playStep(index) {
     if (index >= seq.length) {
-      onDone();
+      // ── Fin des attaques : animations EOT si des dégâts/soins ont eu lieu ──
+      playEotAnimations(onDone);
       return;
     }
 
@@ -303,10 +313,20 @@ function playTurnAnimations(data, onDone) {
 
     // Le défenseur est le camp opposé à l'attaquant
     const defenderSide  = isPlayer ? 'opponent' : 'player';
-    const defenderHp    = isPlayer ? data.opponent_hp     : data.player_hp;
-    const defenderMaxHp = isPlayer ? data.opponent_max_hp : data.player_max_hp;
 
-    const spriteId = isPlayer ? '#player-sprite' : '#opponent-sprite';
+    // HP intermédiaires du défenseur : après toutes les attaques mais avant EOT
+    // Si c'est la dernière attaque, utiliser hp_before_eot ; sinon utiliser les HP finaux
+    // Pour simplifier : on utilise toujours hp_before_eot pour l'impact si disponible,
+    // sinon les HP finaux.
+    let defenderHp, defenderMaxHp;
+    if (hpBeforeEot && index === seq.length - 1) {
+      // Dernière attaque : afficher les HP intermédiaires à l'impact
+      defenderHp    = isPlayer ? hpBeforeEot.opponent : hpBeforeEot.player;
+      defenderMaxHp = isPlayer ? data.opponent_max_hp : data.player_max_hp;
+    } else {
+      defenderHp    = isPlayer ? data.opponent_hp     : data.player_hp;
+      defenderMaxHp = isPlayer ? data.opponent_max_hp : data.player_max_hp;
+    }
 
     const playerPos   = getElementCenter($('#player-sprite'));
     const opponentPos = getElementCenter($('#opponent-sprite'));
@@ -315,7 +335,7 @@ function playTurnAnimations(data, onDone) {
 
     const moveName     = move.name     || '';
     const moveType     = move.type     || 'normal';
-    const moveCategory = move.category || 'special';
+    const moveCategory = move.category || '';   // '' si inconnu — battle-effects gère le fallback
     const cleanName    = moveName.replace(/\s+/g, '').toLowerCase();
 
     // Log
@@ -328,16 +348,92 @@ function playTurnAnimations(data, onDone) {
       try { audioManager.playSFX(`attacks/${cleanName}`); } catch(e) {}
     }, ATTACK_DELAY);
 
+    // Capturer les HP affichés MAINTENANT (avant le setTimeout) pour comparer à l'impact
+    const hpDisplayedBeforeImpact = getCurrentDisplayedHp(defenderSide);
+
     // Mise à jour HP bar du défenseur à l'impact
+    // On ne flashe QUE si les HP ont réellement baissé : on compare les HP actuels
+    // affichés avec les HP reçus du serveur (delta > 0 = dégâts réels).
     setTimeout(() => {
-      updateHP(defenderSide, defenderHp, defenderMaxHp, false, true);
+      const hpAfterAttack = hpBeforeEot
+        ? (isPlayer ? hpBeforeEot.opponent : hpBeforeEot.player)
+        : defenderHp;
+      const tookDamage = hpAfterAttack < hpDisplayedBeforeImpact;
+      updateHP(defenderSide, defenderHp, defenderMaxHp, false, tookDamage);
     }, ATTACK_DELAY + IMPACT_OFFSET);
 
     // Étape suivante
     setTimeout(() => playStep(index + 1), ATTACK_DELAY + ATTACK_DUR + BETWEEN_GAP);
   }
 
+  /**
+   * Joue les animations de fin de tour (vampigraine, poison, brûlure…)
+   * si hp_before_eot est présent et différent des HP finaux.
+   */
+  function playEotAnimations(callback) {
+    if (!hpBeforeEot) {
+      callback();
+      return;
+    }
+
+    const playerEotDmg  = hpBeforeEot.player   - data.player_hp;
+    const opponentEotDmg = hpBeforeEot.opponent - data.opponent_hp;
+    // Soins : HP finaux > HP avant EOT
+    const playerEotHeal  = data.player_hp   - hpBeforeEot.player;
+    const opponentEotHeal = data.opponent_hp - hpBeforeEot.opponent;
+
+    const hasEot = playerEotDmg > 0 || opponentEotDmg > 0 ||
+                   playerEotHeal > 0 || opponentEotHeal > 0;
+
+    if (!hasEot) {
+      callback();
+      return;
+    }
+
+    // Petite pause pour séparer visuellement les phases attaque / fin de tour
+    setTimeout(() => {
+      // Animer le joueur
+      if (playerEotDmg > 0) {
+        triggerEotDamageFlash('player');
+        updateHP('player', data.player_hp, data.player_max_hp, false, false);
+      } else if (playerEotHeal > 0) {
+        triggerEotHealFlash('player');
+        updateHP('player', data.player_hp, data.player_max_hp, false, false);
+      }
+
+      // Animer l'adversaire
+      if (opponentEotDmg > 0) {
+        triggerEotDamageFlash('opponent');
+        updateHP('opponent', data.opponent_hp, data.opponent_max_hp, false, false);
+      } else if (opponentEotHeal > 0) {
+        triggerEotHealFlash('opponent');
+        updateHP('opponent', data.opponent_hp, data.opponent_max_hp, false, false);
+      }
+
+      // Attendre la fin de l'animation avant de continuer
+      setTimeout(callback, 800);
+    }, EOT_GAP);
+  }
+
   playStep(0);
+}
+
+/**
+ * Flash rouge pour les dégâts de fin de tour (poison, brûlure, vampigraine…)
+ */
+function triggerEotDamageFlash(side) {
+  const sprite = $(`#${side}-sprite`);
+  sprite.addClass('eot-damage');
+  setTimeout(() => sprite.removeClass('eot-damage'), 800);
+}
+
+/**
+ * Flash vert pour les soins de fin de tour (Restes, soin vampigraine côté receveur…)
+ */
+function triggerEotHealFlash(side) {
+  const sprite = $(`#${side}-sprite`);
+  sprite.addClass('eot-heal');
+  setTimeout(() => sprite.removeClass('eot-heal'), 800);
 }
 
 
@@ -828,6 +924,9 @@ function updateHP(side, current, max, skipDamageAnimation = false, wasHitThisTur
     sprite.addClass('taking-damage');
     setTimeout(() => sprite.removeClass('taking-damage'), 600);
   }
+
+  // Stocker les HP actuels dans la barre pour pouvoir les comparer au prochain appel
+  bar.data('current-hp', current);
   
   // Check if fainted
   if (current === 0 && side === 'player') {
