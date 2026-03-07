@@ -329,7 +329,8 @@ def init_mont_selenite():
             {'species': get_pokemon('Rattata'), 'level': 12, 'moves': get_moves(['Tackle', 'Hyper Fang'])},
             {'species': get_pokemon('Ekans'), 'level': 12, 'moves': get_moves(['Wrap', 'Leer', 'Bite'])},
         ],
-        intro_text="Les fossiles rares appartiennent à la Team Rocket!"
+        intro_text="Les fossiles rares appartiennent à la Team Rocket!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
     create_npc_trainer(
         username='Super Nerd Clifford',
@@ -376,7 +377,8 @@ def init_mont_selenite():
             {'species': get_pokemon('Zubat'), 'level': 13, 'moves': get_moves(['Leech Life', 'Supersonic', 'Bite'])},
             {'species': get_pokemon('Sandshrew'), 'level': 13, 'moves': get_moves(['Scratch', 'Defense Curl', 'Sand Attack'])},
         ],
-        intro_text="Rendez-nous ces fossiles!"
+        intro_text="Rendez-nous ces fossiles!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
 
@@ -1074,7 +1076,8 @@ def init_celadon_city():
             {'species': get_pokemon('Weezing'), 'level': 28, 'moves': get_moves(['Smog', 'Tackle', 'Sludge'])},
             {'species': get_pokemon('Hypno'), 'level': 28, 'moves': get_moves(['Pound', 'Hypnosis', 'Confusion', 'Disable'])},
         ],
-        intro_text="Tu ne peux pas arrêter la Team Rocket!"
+        intro_text="Tu ne peux pas arrêter la Team Rocket!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     # ── B4F — Salle au trésor (Lunette Silph) ────────────────────────────────
@@ -1159,7 +1162,8 @@ def init_lavender_town():
             {'species': get_pokemon('Ekans'), 'level': 23, 'moves': get_moves(['Wrap', 'Bite', 'Poison Sting'])},
             {'species': get_pokemon('Drowzee'), 'level': 23, 'moves': get_moves(['Pound', 'Hypnosis', 'Confusion'])},
         ],
-        intro_text="Nous sommes de la Team Rocket! La Tour nous appartient!"
+        intro_text="Nous sommes de la Team Rocket! La Tour nous appartient!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
     create_npc_trainer(
         username='Team Rocket James',
@@ -1170,7 +1174,8 @@ def init_lavender_town():
             {'species': get_pokemon('Koffing'), 'level': 23, 'moves': get_moves(['Tackle', 'Smog', 'Poison Gas'])},
             {'species': get_pokemon('Zubat'), 'level': 23, 'moves': get_moves(['Leech Life', 'Bite', 'Supersonic'])},
         ],
-        intro_text="Prepare for trouble... et maintenant du combat!"
+        intro_text="Prepare for trouble... et maintenant du combat!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     # ── 5F ───────────────────────────────────────────────────────────────────
@@ -1326,7 +1331,8 @@ def init_saffron_city():
             {'species': get_pokemon('Growlithe'), 'level': 35, 'moves': get_moves(['Bite', 'Ember', 'Roar'])},
             {'species': get_pokemon('Alakazam'),  'level': 38, 'moves': get_moves(['Psybeam', 'Recover', 'Psychic'])},
         ],
-        intro_text="Je t'attendais ici! Tu es vraiment tenace..."
+        intro_text="Je t'attendais ici! Tu es vraiment tenace...",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     # ── 11F — Giovanni (OBLIGATOIRE — script de libération de Sylphe SARL) ───
@@ -1341,7 +1347,8 @@ def init_saffron_city():
             {'species': get_pokemon('Kangaskhan'), 'level': 35, 'moves': get_moves(['Headbutt', 'Dizzy Punch', 'Tail Whip'])},
             {'species': get_pokemon('Rhyhorn'),   'level': 37, 'moves': get_moves(['Horn Attack', 'Stomp', 'Tail Whip'])},
         ],
-        intro_text="Giovanni - Sylphe SARL: Cette entreprise sera à nous... enfin à la Team Rocket!"
+        intro_text="Giovanni - Sylphe SARL: Cette entreprise sera à nous... enfin à la Team Rocket!",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
 

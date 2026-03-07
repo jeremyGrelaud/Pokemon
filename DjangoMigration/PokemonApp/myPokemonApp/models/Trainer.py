@@ -58,6 +58,33 @@ class Trainer(models.Model):
     npc_class = models.CharField(max_length=50, blank=True)  # "Gamin", "Scout", etc.
     sprite_name = models.CharField(max_length=100, blank=True)
 
+    # ── IA adversaire — flags Gen 4 (pokeplatinum) ────────────────────────────
+    # Valeurs possibles : "basic", "evaluate_attack", "expert", "setup_first_turn",
+    #                     "risky", "prioritize_damage"
+    # Par défaut : dresseur normal = basic + evaluate_attack
+    # Champion d'Arène / boss = basic + evaluate_attack + expert
+    AI_FLAG_BASIC            = 'basic'
+    AI_FLAG_EVALUATE_ATTACK  = 'evaluate_attack'
+    AI_FLAG_EXPERT           = 'expert'
+    AI_FLAG_SETUP_FIRST_TURN = 'setup_first_turn'
+
+    ai_flags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Flags IA Gen 4 : ["basic", "evaluate_attack", "expert", ...]'
+    )
+
+    def get_ai_flags(self) -> set:
+        """Retourne les flags IA sous forme de set. Applique les defaults selon trainer_type."""
+        flags = set(self.ai_flags or [])
+        if not flags:
+            # Defaults selon le type de dresseur
+            if self.trainer_type in ('gym_leader', 'elite_four', 'champion', 'rival'):
+                flags = {'basic', 'evaluate_attack', 'expert'}
+            else:
+                flags = {'basic', 'evaluate_attack'}
+        return flags
+
     
     class Meta:
         verbose_name = "Dresseur"
@@ -103,8 +130,7 @@ class Trainer(models.Model):
             appelle is_defeated_by_player() en boucle (ex: liste de trainers
             dans une zone). Si None, la save active est récupérée automatiquement.
         """
-        from .GameSave import GameSave
-        from .DefeatedTrainer import DefeatedTrainer
+        from .GameSave import GameSave, DefeatedTrainer
         if game_save is None:
             game_save = GameSave.objects.filter(
                 trainer=player_trainer, is_active=True

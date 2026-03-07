@@ -243,7 +243,8 @@ def init_argenta_gym_trainers():
             {'species': get_pokemon('Geodude'), 'level': 10,
              'moves': get_moves(['Tackle', 'Defense Curl'])},
         ],
-        intro_text="Je m'entraîne pour Pierre ! Tu ne passeras pas !"
+        intro_text="Je m'entraîne pour Pierre ! Tu ne passeras pas !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
     _gym_trainer(
@@ -254,7 +255,8 @@ def init_argenta_gym_trainers():
             {'species': get_pokemon('Onix'), 'level': 11,
              'moves': get_moves(['Tackle', 'Screech'])},
         ],
-        intro_text="La Roche résiste à tout ! Prouve ta valeur !"
+        intro_text="La Roche résiste à tout ! Prouve ta valeur !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
 
@@ -273,7 +275,8 @@ def init_azuria_gym_trainers():
             {'species': get_pokemon('Shellder'), 'level': 18,
              'moves': get_moves(['Tackle', 'Withdraw'])},
         ],
-        intro_text="Tu veux affronter Ondine ? Commence par me battre !"
+        intro_text="Tu veux affronter Ondine ? Commence par me battre !",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     _gym_trainer(
@@ -284,7 +287,8 @@ def init_azuria_gym_trainers():
             {'species': get_pokemon('Poliwag'), 'level': 19,
              'moves': get_moves(['Bubble', 'Hypnosis'])},
         ],
-        intro_text="Ces eaux sont ma demeure. Tu ne peux pas gagner !"
+        intro_text="Ces eaux sont ma demeure. Tu ne peux pas gagner !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
     _gym_trainer(
@@ -295,7 +299,8 @@ def init_azuria_gym_trainers():
             {'species': get_pokemon('Psyduck'), 'level': 20,
              'moves': get_moves(['Scratch', 'Tail Whip', 'Disable'])},
         ],
-        intro_text="Ondine est ma championne préférée ! Je vais tout faire pour elle !"
+        intro_text="Ondine est ma championne préférée ! Je vais tout faire pour elle !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
 
@@ -312,7 +317,8 @@ def init_carmin_gym_trainers():
             {'species': get_pokemon('Pikachu'), 'level': 21,
              'moves': get_moves(['Thunder Shock', 'Growl', 'Thunder Wave'])},
         ],
-        intro_text="Repos ! Qui va là ? Seuls les meilleurs passent ce couloir !"
+        intro_text="Repos ! Qui va là ? Seuls les meilleurs passent ce couloir !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
     _gym_trainer(
@@ -325,7 +331,8 @@ def init_carmin_gym_trainers():
             {'species': get_pokemon('Voltorb'), 'level': 21,
              'moves': get_moves(['Tackle', 'Screech', 'Sonic Boom'])},
         ],
-        intro_text="Le Capitaine Surge m'a tout appris. En garde !"
+        intro_text="Le Capitaine Surge m'a tout appris. En garde !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
     _gym_trainer(
@@ -336,7 +343,8 @@ def init_carmin_gym_trainers():
             {'species': get_pokemon('Magnemite'), 'level': 22,
              'moves': get_moves(['Thunder Shock', 'Supersonic', 'Thunder Wave'])},
         ],
-        intro_text="L'électricité, c'est le rock ! Prêt pour le show ?"
+        intro_text="L'électricité, c'est le rock ! Prêt pour le show ?",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
 
@@ -355,7 +363,8 @@ def init_celadon_gym_trainers():
             {'species': get_pokemon('Bellsprout'), 'level': 29,
              'moves': get_moves(['Vine Whip', 'Wrap', 'Sleep Powder'])},
         ],
-        intro_text="Tu veux entrer ? Il faut d'abord t'occuper de moi, chéri !"
+        intro_text="Tu veux entrer ? Il faut d'abord t'occuper de moi, chéri !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
     _gym_trainer(
@@ -366,7 +375,8 @@ def init_celadon_gym_trainers():
             {'species': get_pokemon('Weepinbell'), 'level': 30,
              'moves': get_moves(['Vine Whip', 'Growth', 'Wrap', 'Sleep Powder'])},
         ],
-        intro_text="Le Jardin d'Olga est interdit aux faibles. En avant !"
+        intro_text="Le Jardin d'Olga est interdit aux faibles. En avant !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
     _gym_trainer(
@@ -377,7 +387,8 @@ def init_celadon_gym_trainers():
             {'species': get_pokemon('Gloom'), 'level': 32,
              'moves': get_moves(['Absorb', 'Acid', 'Sleep Powder', 'Petal Dance'])},
         ],
-        intro_text="L'odeur de mes Pokémon Plante va t'endormir !"
+        intro_text="L'odeur de mes Pokémon Plante va t'endormir !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
 
@@ -396,7 +407,8 @@ def init_parmanie_gym_trainers():
             {'species': get_pokemon('Hypno'), 'level': 38,
              'moves': get_moves(['Hypnosis', 'Pound', 'Confusion', 'Disable'])},
         ],
-        intro_text="Il faut voir au-delà pour trouver Stella. Moi, je vais t'endormir !"
+        intro_text="Il faut voir au-delà pour trouver Stella. Moi, je vais t'endormir !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
     _gym_trainer(
@@ -407,7 +419,8 @@ def init_parmanie_gym_trainers():
             {'species': get_pokemon('Kadabra'), 'level': 38,
              'moves': get_moves(['Confusion', 'Psybeam', 'Recover'])},
         ],
-        intro_text="Mes Pokémon sont insaisissables ! Attrape-les si tu peux !"
+        intro_text="Mes Pokémon sont insaisissables ! Attrape-les si tu peux !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
     _gym_trainer(
@@ -420,7 +433,8 @@ def init_parmanie_gym_trainers():
             {'species': get_pokemon('Arbok'), 'level': 40,
              'moves': get_moves(['Wrap', 'Bite', 'Poison Sting', 'Glare'])},
         ],
-        intro_text="Mes Cobras sont fidèles ! Ils te paralyseront !"
+        intro_text="Mes Cobras sont fidèles ! Ils te paralyseront !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
 
@@ -437,7 +451,8 @@ def init_safrania_gym_trainers():
             {'species': get_pokemon('Kadabra'), 'level': 35,
              'moves': get_moves(['Confusion', 'Psybeam', 'Recover'])},
         ],
-        intro_text="J'ai lu tes pensées. Tu vas perdre."
+        intro_text="J'ai lu tes pensées. Tu vas perdre.",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     _gym_trainer(
@@ -450,7 +465,8 @@ def init_safrania_gym_trainers():
             {'species': get_pokemon('Slowbro'), 'level': 37,
              'moves': get_moves(['Confusion', 'Disable', 'Withdraw', 'Headbutt'])},
         ],
-        intro_text="L'esprit de Morgane t'observe. Tes intentions sont claires pour moi."
+        intro_text="L'esprit de Morgane t'observe. Tes intentions sont claires pour moi.",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     _gym_trainer(
@@ -461,7 +477,8 @@ def init_safrania_gym_trainers():
             {'species': get_pokemon('Jynx'), 'level': 38,
              'moves': get_moves(['Confusion', 'Lovely Kiss', 'Psybeam', 'Ice Punch'])},
         ],
-        intro_text="Mes pouvoirs psychiques sont sans limites dans cette arène !"
+        intro_text="Mes pouvoirs psychiques sont sans limites dans cette arène !",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
 
@@ -478,7 +495,8 @@ def init_cramois_gym_trainers():
             {'species': get_pokemon('Growlithe'), 'level': 44,
              'moves': get_moves(['Bite', 'Flamethrower', 'Fire Blast'])},
         ],
-        intro_text="Réponds à ma question ou affronte mes Pokémon !"
+        intro_text="Réponds à ma question ou affronte mes Pokémon !",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     _gym_trainer(
@@ -491,7 +509,8 @@ def init_cramois_gym_trainers():
             {'species': get_pokemon('Magmar'), 'level': 45,
              'moves': get_moves(['Ember', 'Fire Punch', 'Smog', 'Confuse Ray'])},
         ],
-        intro_text="La chaleur de ces volcans a trempé mes Pokémon comme de l'acier !"
+        intro_text="La chaleur de ces volcans a trempé mes Pokémon comme de l'acier !",
+        ai_flags=['basic', 'evaluate_attack']
     )
 
 
@@ -510,7 +529,8 @@ def init_jadielle_gym_trainers():
             {'species': get_pokemon('Sandslash'), 'level': 45,
              'moves': get_moves(['Slash', 'Sand Attack', 'Poison Sting'])},
         ],
-        intro_text="Giovanni m'a confié la garde de cette arène. Prouve ta valeur !"
+        intro_text="Giovanni m'a confié la garde de cette arène. Prouve ta valeur !",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     _gym_trainer(
@@ -521,7 +541,8 @@ def init_jadielle_gym_trainers():
             {'species': get_pokemon('Dugtrio'), 'level': 47,
              'moves': get_moves(['Dig', 'Sand Attack', 'Slash', 'Earthquake'])},
         ],
-        intro_text="Tu crois avoir les 7 badges ? Giovanni va tout changer !"
+        intro_text="Tu crois avoir les 7 badges ? Giovanni va tout changer !",
+        ai_flags=['basic', 'evaluate_attack', 'expert']
     )
 
     _gym_trainer(
@@ -532,7 +553,8 @@ def init_jadielle_gym_trainers():
             {'species': get_pokemon('Nidoking'), 'level': 48,
              'moves': get_moves(['Poison Sting', 'Thrash', 'Earthquake', 'Horn Drill'])},
         ],
-        intro_text="La Team Rocket ne laisse personne approcher Giovanni !"
+        intro_text="La Team Rocket ne laisse personne approcher Giovanni !",
+        ai_flags=['basic', 'evaluate_attack', 'expert', 'setup_first_turn']
     )
 
 

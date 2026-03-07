@@ -2117,14 +2117,23 @@ class Battle(models.Model):
     # =========================================================================
 
     def choose_enemy_move(self, attacker, defender):
-        """Sélectionne intelligemment le move de l'ennemi via un système de scoring."""
+        """
+        Sélectionne le move de l'ennemi via le système de scoring Gen 4 (pokeplatinum).
+
+        Architecture :
+          - Score de base = 100 pour chaque move
+          - Chaque flag applique des modificateurs indépendants
+          - Les flags se cumulent entre eux
+          - En cas d'égalité, choix aléatoire parmi les ex-aequo
+          - Les flags sont lus depuis opponent_trainer.get_ai_flags()
+            (défaut : basic + evaluate_attack pour NPC, + expert pour GymLeader/boss)
+        """
         from .PlayablePokemon import PokemonMoveInstance
 
         move_instances = PokemonMoveInstance.objects.filter(
             pokemon=attacker, current_pp__gt=0
         ).select_related('move', 'move__type')
 
-        # Filtrer les moves désactivés
         available_moves = [
             mi.move for mi in move_instances
             if not self.is_move_disabled(attacker, mi.move)
@@ -2136,66 +2145,346 @@ class Battle(models.Model):
                 return {'type': 'attack', 'move': struggle}
             return None
 
-        best_move  = None
-        best_score = -9999
+        # Récupérer les flags IA du dresseur adverse
+        ai_flags = set()
+        if self.opponent_trainer:
+            ai_flags = self.opponent_trainer.get_ai_flags()
+        else:
+            ai_flags = {'basic', 'evaluate_attack'}
 
+        # Scorer chaque move
+        scores = {}
         for move in available_moves:
-            score = self._score_enemy_move(move, attacker, defender)
-            if score > best_score:
-                best_score = score
-                best_move  = move
+            scores[move.id] = 100.0  # Score de base Gen 4
 
-        return {'type': 'attack', 'move': best_move}
+            if 'basic' in ai_flags:
+                scores[move.id] += self._ai_flag_basic(move, attacker, defender)
 
-    def _score_enemy_move(self, move, attacker, defender):
-        """Calcule un score de pertinence pour un move donné."""
-        score = 0.0
+            if 'evaluate_attack' in ai_flags:
+                scores[move.id] += self._ai_flag_evaluate_attack(move, attacker, defender, available_moves)
 
+            if 'expert' in ai_flags:
+                scores[move.id] += self._ai_flag_expert(move, attacker, defender)
+
+            if 'setup_first_turn' in ai_flags:
+                scores[move.id] += self._ai_flag_setup_first_turn(move, attacker, defender)
+
+        # Choisir le move avec le score le plus élevé (aléatoire en cas d'égalité)
+        best_score = max(scores.values())
+        best_moves = [m for m in available_moves if scores[m.id] == best_score]
+        chosen = random.choice(best_moves)
+
+        return {'type': 'attack', 'move': chosen}
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # FLAG : BASIC
+    # Philosophie : décourager les moves qui gaspillent un tour ou profitent
+    # directement à l'adversaire.
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _ai_flag_basic(self, move, attacker, defender):
+        """Modificateurs du flag Basic (Gen 4 / pokeplatinum)."""
+        mod   = 0
+        effect = move.effect or ''
+
+        def get_stage(pokemon, stat):
+            return getattr(pokemon, f'{stat}_stage', 0)
+
+        def defender_has_type(type_name):
+            t1 = defender.species.primary_type
+            t2 = defender.species.secondary_type
+            n  = type_name.lower()
+            return (t1 and t1.name.lower() == n) or (t2 and t2.name.lower() == n)
+
+        # ── Étape 1 : Immunités de type ───────────────────────────────────────
         type_mult = self.get_type_effectiveness(move.type, defender)
-        if type_mult >= 2.0:    score += 80
-        elif type_mult > 1.0:   score += 40
-        elif type_mult == 0:    score -= 200
-        elif type_mult < 1.0:   score -= 30
+        if type_mult == 0:
+            mod -= 10
 
-        attacker_types = [attacker.species.primary_type, attacker.species.secondary_type]
-        if move.type in attacker_types:
-            score += 20
+        # ── Étape 2 : Scoring par effet ───────────────────────────────────────
 
-        if move.power and move.power > 0:
-            score += move.power * 0.25
+        # Sommeil
+        if move.inflicts_status == 'asleep' or effect in ('sleep', 'yawn'):
+            if (defender.status_condition or
+                    defender_has_type('electric')):   # Safeguard non implémenté, skip
+                mod -= 10
 
-        accuracy = move.accuracy if move.accuracy else 100
-        score *= (accuracy / 100.0)
+        # Poison
+        elif move.inflicts_status in ('poisoned', 'badly_poisoned'):
+            if (defender.status_condition or
+                    defender_has_type('poison') or
+                    defender_has_type('steel')):
+                mod -= 10
 
-        if move.power and move.power > 0:
-            estimated = self._estimate_enemy_damage(move, attacker, defender)
-            if estimated >= defender.current_hp:
-                score += 200
-            elif estimated >= defender.current_hp * 0.75:
-                score += 50
+        # Paralysie
+        elif move.inflicts_status == 'paralyzed':
+            if defender.status_condition:
+                mod -= 10
+
+        # Brûlure
+        elif move.inflicts_status == 'burned':
+            if defender.status_condition or defender_has_type('fire'):
+                mod -= 10
+
+        # Moves de statut : vérifications statut existant (catch-all)
+        elif move.inflicts_status and defender.status_condition:
+            mod -= 10
+
+        # Belly Drum
+        if effect == 'belly_drum':
+            if attacker.current_hp < attacker.max_hp * 0.51:
+                mod -= 10
+
+        # Stat-boost (self)
+        if move.stat_changes:
+            for stat, change in move.stat_changes.items():
+                if change > 0:
+                    current = get_stage(attacker, stat)
+                    if current >= 6:
+                        mod -= 10
+                        break
+                elif change < 0:
+                    # Debuff sur la cible
+                    current = get_stage(defender, stat)
+                    if current <= -6:
+                        mod -= 10
+                        break
+
+        # Cosmic Power / Bulk Up / Calm Mind / Dragon Dance (double boost)
+        if effect in ('bulk_up', 'calm_mind', 'dragon_dance', 'cosmic_power'):
+            # Vérifie le premier stat boosté
+            stat_map = {
+                'bulk_up':     [('attack', 1), ('defense', 1)],
+                'calm_mind':   [('special_attack', 1), ('special_defense', 1)],
+                'dragon_dance':['attack', 'speed'],
+                'cosmic_power':['defense', 'special_defense'],
+            }
+            stats = stat_map.get(effect, [])
+            if stats:
+                first_stat = stats[0] if isinstance(stats[0], str) else stats[0][0]
+                if get_stage(attacker, first_stat) >= 6:
+                    mod -= 10
+                elif len(stats) > 1:
+                    second_stat = stats[1] if isinstance(stats[1], str) else stats[1][0]
+                    if get_stage(attacker, second_stat) >= 6:
+                        mod -= 8
+
+        # Recovery — inutile si HP = 100 %
+        if effect in ('heal_half', 'heal_sleep', 'morning_sun', 'synthesis', 'moonlight'):
+            if attacker.current_hp >= attacker.max_hp:
+                mod -= 8
+
+        # Reflect / Light Screen / Safeguard — déjà actif
+        # (on vérifie via battle_state si ces effets sont actifs côté opponent)
+        bs = self.battle_state if isinstance(self.battle_state, dict) else {}
+        opp_effects = bs.get('opponent_effects', {})
+        if effect == 'reflect' and opp_effects.get('reflect'):
+            mod -= 8
+        if effect == 'light_screen' and opp_effects.get('light_screen'):
+            mod -= 8
+
+        # Focus Energy / Mud Sport / Water Sport / Aqua Ring / Ingrain — déjà actif
+        one_time_effects = {
+            'focus_energy': 'focus_energy',
+            'mud_sport':    'mud_sport',
+            'water_sport':  'water_sport',
+            'aqua_ring':    'aqua_ring',
+            'ingrain':      'ingrain',
+            'magnet_rise':  'magnet_rise',
+        }
+        if effect in one_time_effects:
+            key = one_time_effects[effect]
+            if opp_effects.get(key):
+                mod -= 10
+            # Mud Sport sans type Électrik en face → inutile
+            if effect == 'mud_sport' and not defender_has_type('electric'):
+                mod -= 10
+            # Water Sport sans type Feu en face → inutile
+            if effect == 'water_sport' and not defender_has_type('fire'):
+                mod -= 10
+
+        # Substitute
+        if effect == 'substitute':
+            if opp_effects.get('substitute'):
+                mod -= 8
+            elif attacker.current_hp < attacker.max_hp * 0.26:
+                mod -= 10
+
+        # Leech Seed
+        if effect == 'leech_seed':
+            if self.has_leech_seed(defender) or defender_has_type('grass'):
+                mod -= 10
+
+        # Météo déjà active
+        weather_effects = {
+            'sunny_day':  'sunny',
+            'rain_dance': 'rain',
+            'sandstorm':  'sandstorm',
+            'hail':       'hail',
+        }
+        if effect in weather_effects and self.weather == weather_effects[effect]:
+            mod -= 8
+
+        # Protect / Endure déjà utilisés ce tour (évite le spam)
+        if effect in ('protect', 'endure'):
+            last_opp = bs.get('opponent_last_move', '')
+            if last_opp in ('Protect', 'Detect', 'Endure'):
+                mod -= 10
+
+        # Fake Out — seulement au premier tour
+        if effect == 'fake_out':
+            turns = bs.get('opponent_turns_in_battle', 0)
+            if turns > 0:
+                mod -= 10
+
+        # Snore / Sleep Talk — seulement si endormi
+        if effect in ('snore', 'sleep_talk'):
+            if attacker.status_condition != 'asleep':
+                mod -= 8
+
+        # Refresh — seulement si statué
+        if effect == 'refresh':
+            if not attacker.status_condition:
+                mod -= 10
+
+        # Entraves (Disable/Encore) — déjà actives
+        player_effects = bs.get('player_effects', {})
+        if effect == 'disable' and player_effects.get('disable'):
+            mod -= 8
+        if effect == 'encore' and player_effects.get('encore'):
+            mod -= 8
+
+        # Splash / no_effect → jamais
+        if effect in ('splash', 'no_effect'):
+            mod -= 100
+
+        return mod
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # FLAG : EVALUATE ATTACK
+    # Philosophie : maximiser les dégâts bruts.
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _ai_flag_evaluate_attack(self, move, attacker, defender, all_moves):
+        """Modificateurs du flag Evaluate Attack (Gen 4)."""
+        mod    = 0
+        effect = move.effect or ''
 
         if not move.power or move.power == 0:
-            if move.inflicts_status:
-                score += 30 if not defender.status_condition else -40
-            elif move.stat_changes:
-                hp_ratio = attacker.current_hp / max(attacker.max_hp, 1)
-                score += 20 if hp_ratio > 0.6 else -10
-            elif move.effect in ('leech_seed',) and not self.has_leech_seed(defender):
-                score += 40
-            elif move.effect in ('heal_half', 'heal_sleep'):
-                hp_ratio = attacker.current_hp / max(attacker.max_hp, 1)
-                if hp_ratio < 0.3:   score += 120
-                elif hp_ratio < 0.5: score += 50
-                else:                score -= 30
+            return 0
+
+        # Moves exclus du calcul dommages (effets spéciaux)
+        EXCLUDED_EFFECTS = {
+            'self_destruct', 'explosion', 'dream_eater',
+            'charge_turn', 'recharge', 'skull_bash',
+            'solar_beam', 'spit_up', 'focus_punch',
+            'superpower', 'eruption', 'water_spout', 'sucker_punch',
+            'head_smash',
+        }
+        if effect in EXCLUDED_EFFECTS:
+            return 0
+
+        estimated = self._estimate_enemy_damage(move, attacker, defender)
+        type_mult  = self.get_type_effectiveness(move.type, defender)
+
+        # 1. KO potentiel
+        if estimated >= defender.current_hp:
+            if effect == 'self_destruct':
+                pass  # pas de bonus pour self-destruct
+            elif effect in ('focus_punch', 'sucker_punch', 'future_sight'):
+                if random.random() < 0.336:
+                    mod += 4
+            elif hasattr(move, 'priority') and move.priority and move.priority > 0:
+                mod += 6
             else:
-                score -= 20
+                mod += 4
 
-        if hasattr(move, 'priority') and move.priority and move.priority > 0:
-            if defender.current_hp <= attacker.current_hp * 0.4:
-                score += 25
+        # 2. Pas le move le plus puissant de la sélection → -1
+        max_damage = max(
+            (self._estimate_enemy_damage(m, attacker, defender)
+             for m in all_moves if m.power and m.power > 0),
+            default=0
+        )
+        if estimated < max_damage:
+            mod -= 1
 
-        score += random.uniform(0, 8)
-        return score
+        # 3. Quad-efficace → ~31% de chance de +2
+        if type_mult >= 4.0 and random.random() < 0.3125:
+            mod += 2
+
+        return mod
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # FLAG : EXPERT
+    # Philosophie : logique contextuelle avancée pour les boss.
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _ai_flag_expert(self, move, attacker, defender):
+        """Modificateurs du flag Expert (Gen 4) — Champions d'Arène et bosses."""
+        mod    = 0
+        effect = move.effect or ''
+
+        # Paralysie : bonus si attaquant plus lent que défenseur (~92%)
+        if move.inflicts_status == 'paralyzed':
+            if attacker.speed < defender.speed and random.random() < 0.922:
+                mod += 3
+            if attacker.current_hp / max(attacker.max_hp, 1) <= 0.70:
+                mod -= 1
+
+        # Poison : malus si HP bas
+        elif move.inflicts_status in ('poisoned', 'badly_poisoned'):
+            hp_ratio_a = attacker.current_hp / max(attacker.max_hp, 1)
+            hp_ratio_d = defender.current_hp / max(defender.max_hp, 1)
+            if hp_ratio_a < 0.5 or hp_ratio_d <= 0.5:
+                mod -= 1
+
+        # Moves de soin — malus si HP > 70%
+        if effect in ('heal_half', 'heal_sleep', 'morning_sun', 'synthesis', 'moonlight'):
+            hp_ratio = attacker.current_hp / max(attacker.max_hp, 1)
+            if hp_ratio > 0.70:
+                mod -= 1
+            # Bonus si vraiment critique
+            if hp_ratio <= 0.30 and random.random() < 0.5:
+                mod += 1
+
+        # Draining attacks (giga drain, absorb…) — malus si résistée/immune
+        if effect in ('drain', 'leech'):
+            type_mult = self.get_type_effectiveness(move.type, defender)
+            if type_mult < 1.0 and random.random() < 0.805:
+                mod -= 3
+
+        # Stat-boost : bonus si HP > 50% et stage pas encore au max
+        if move.stat_changes:
+            for stat, change in move.stat_changes.items():
+                if change > 0:
+                    current = getattr(attacker, f'{stat}_stage', 0)
+                    hp_ratio = attacker.current_hp / max(attacker.max_hp, 1)
+                    if current < 4 and hp_ratio > 0.5:
+                        mod += 1
+                        break
+
+        return mod
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # FLAG : SETUP FIRST TURN
+    # Philosophie : prioriser les stat-boosts au premier tour.
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _ai_flag_setup_first_turn(self, move, attacker, defender):
+        """Modificateurs du flag Setup First Turn (Gen 4)."""
+        bs = self.battle_state if isinstance(self.battle_state, dict) else {}
+        turns = bs.get('opponent_turns_in_battle', 0)
+
+        if turns > 0:
+            return 0  # Flag actif seulement au premier tour
+
+        if move.stat_changes:
+            for stat, change in move.stat_changes.items():
+                if change > 0:
+                    current = getattr(attacker, f'{stat}_stage', 0)
+                    if current < 6:
+                        return 2  # Boost disponible → fort bonus premier tour
+        return 0
 
     def _estimate_enemy_damage(self, move, attacker, defender):
         if not move.power or move.power == 0:
