@@ -480,40 +480,42 @@ class PlayablePokemon(models.Model):
         return self.nickname or self.species.name
     
     def heal(self, hp_amount=None):
-        """Soigne le Pokémon"""
+        """Soigne le Pokémon (HP seulement). N'écrit que current_hp en base."""
         if hp_amount is None:
-            # Soigne complètement
             self.current_hp = self.max_hp
         else:
             self.current_hp = min(self.max_hp, self.current_hp + hp_amount)
-        
-        self.save()
-    
+        self.save(update_fields=['current_hp'])
+
     def cure_status(self):
-        """Guérit le statut"""
+        """Guérit le statut. N'écrit que status_condition et sleep_turns en base."""
         self.status_condition = None
         self.sleep_turns = 0
-        self.save()
-    
+        self.save(update_fields=['status_condition', 'sleep_turns'])
+
     def restore_all_pp(self):
-        """Restaure tous les PP des capacités"""
-        for move_instance in self.pokemonmoveinstance_set.all():
-            move_instance.restore_pp()
-    
+        """
+        Restaure tous les PP des capacités en une seule requête bulk_update.
+        Nettement plus efficace que N appels individuels à restore_pp().
+        """
+        instances = list(self.pokemonmoveinstance_set.select_related('move').all())
+        for mi in instances:
+            mi.current_pp = mi.move.pp
+        if instances:
+            PokemonMoveInstance.objects.bulk_update(instances, ['current_pp'])
+
     def apply_status(self, status):
-        """Applique un statut"""
+        """Applique un statut. N'écrit que les champs statut en base."""
         if not self.status_condition:
             self.status_condition = status
-            
             if status == 'sleep':
                 self.sleep_turns = random.randint(1, 3)
-            
-            self.save()
+            self.save(update_fields=['status_condition', 'sleep_turns'])
             return True
         return False
-    
+
     def reset_combat_stats(self):
-        """Réinitialise les modificateurs de combat"""
+        """Réinitialise les modificateurs de combat. N'écrit que les stages en base."""
         self.attack_stage = 0
         self.defense_stage = 0
         self.special_attack_stage = 0
@@ -521,7 +523,11 @@ class PlayablePokemon(models.Model):
         self.speed_stage = 0
         self.accuracy_stage = 0
         self.evasion_stage = 0
-        self.save()
+        self.save(update_fields=[
+            'attack_stage', 'defense_stage',
+            'special_attack_stage', 'special_defense_stage',
+            'speed_stage', 'accuracy_stage', 'evasion_stage',
+        ])
     
     def get_stat_multiplier(self, stage):
         """Retourne le multiplicateur de stat basé sur le stage"""
