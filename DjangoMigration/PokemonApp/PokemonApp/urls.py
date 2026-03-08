@@ -31,6 +31,7 @@ urlpatterns = [
 
     # Mon équipe
     path('my-team/',               views.MyTeamView.as_view(),       name='MyTeamView'),
+    path('pc/',                    views.PCView.as_view(),            name='PCView'),
     path('api/reorder-party/',     views.reorder_party_api,          name='reorder_party'),
     path('api/send-to-pc/',        views.send_to_pc_api,             name='send_to_pc'),
     path('api/add-to-party/',      views.add_to_party_api,           name='add_to_party'),

@@ -375,3 +375,46 @@ def rename_pokemon_api(request):
     except Exception:
         logger.exception("Erreur dans rename_pokemon_api")
         return JsonResponse({'success': False, 'error': 'Une erreur est survenue.'}, status=500)
+    
+
+# ============================================================================
+# PC DÉDIÉ
+# ============================================================================
+
+@method_decorator(login_required, name='dispatch')
+class PCView(generic.TemplateView):
+    """Interface dédiée au PC — tous les Pokémon en réserve."""
+    template_name = "trainer/pc.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        trainer = get_or_create_player_trainer(self.request.user)
+
+        pc_qs = (
+            trainer.pokemon_team
+            .filter(is_in_party=False)
+            .select_related(
+                'species',
+                'species__primary_type',
+                'species__secondary_type',
+                'held_item',
+            )
+            .prefetch_related('moves__move')
+            .order_by('species__pokedex_number', 'id')
+        )
+
+        # Collecte des types présents pour les filtres
+        types_present = sorted({
+            p.species.primary_type.name
+            for p in pc_qs
+            if p.species.primary_type
+        })
+
+        context.update({
+            'trainer':       trainer,
+            'pc_pokemon':    pc_qs,
+            'party':         trainer.party,
+            'party_count':   trainer.party_count,
+            'types_present': types_present,
+        })
+        return context
