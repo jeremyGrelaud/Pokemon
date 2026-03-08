@@ -7,13 +7,14 @@ Adapté aux nouveaux modèles
 import json
 import logging
 
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.views import generic
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Q
+import re
 
 logger = logging.getLogger(__name__)
 from myPokemonApp.gameUtils import (
@@ -464,3 +465,102 @@ class PCView(generic.TemplateView):
             'pc_total':      paginator.count,
         })
         return context
+
+# ============================================================================
+# CENTRE D'ÉCHANGE NPC — Évolutions par trade
+# ============================================================================
+
+# Zones possédant un NPC échangeur (Centres Pokémon des grandes villes)
+_TRADE_ZONES = {
+    'Carmin sur Mer', 'Céladopole', 'Safrania', 'Parmanie',
+    "Cramois'Île", 'Jadielle', 'Argenta',
+}
+
+
+@login_required
+def trade_center_view(request):
+    """
+    GET  /team/trade-center/     → liste les Pokémon échangeables (évolution par trade possible)
+    POST /team/trade-center/     → effectue le trade NPC et déclenche l'évolution
+    Body POST : pokemon_id=<int>
+
+    Règle narrative : le joueur doit se trouver dans une ville avec un Centre Pokémon.
+    Le NPC échange le Pokémon contre lui-même (simule le câble d'échange),
+    ce qui déclenche l'évolution immédiatement.
+    """
+    from myPokemonApp.gameUtils import get_player_location
+    from myPokemonApp.models.PlayablePokemon import PlayablePokemon
+
+    trainer         = get_player_trainer(request.user)
+    player_location = get_player_location(trainer)
+    current_zone    = player_location.current_zone if player_location else None
+
+    # Vérifier que le joueur est dans une ville avec Centre d'échange
+    in_trade_zone = current_zone and current_zone.name in _TRADE_ZONES
+
+    if request.method == 'POST':
+        if not in_trade_zone:
+            return JsonResponse({
+                'success': False,
+                'message': "Vous devez être dans une ville proposant un Centre d'échange."
+            }, status=403)
+
+        pokemon_id = request.POST.get('pokemon_id')
+        if not pokemon_id:
+            return JsonResponse({'error': 'pokemon_id manquant'}, status=400)
+
+        poke = get_object_or_404(
+            PlayablePokemon, pk=pokemon_id, trainer=trainer
+        )
+
+        can_evolve, evo = poke.check_trade_evolution()
+        if not can_evolve:
+            return JsonResponse({
+                'success': False,
+                'message': f"{poke.nickname or poke.species.name} ne peut pas évoluer par échange."
+                           + (" (objet tenu requis ?)" if poke.species.evolutions_from.filter(method='trade').exists() else ""),
+            })
+
+        old_name  = poke.species.name
+        new_name  = evo.evolves_to.name
+        msg       = poke.evolve_to(evo.evolves_to)
+
+        # Si l'évolution nécessitait un objet tenu, le consommer
+        if evo.required_item and poke.held_item:
+            poke.held_item = None
+            poke.save(update_fields=['held_item'])
+
+        logger.info("Trade evolution: %s → %s (trainer=%s)", old_name, new_name, trainer.username)
+
+        cleanedName = poke.species.name.replace('♂', 'm').replace('♀', 'f').lower()
+        cleanedName = re.sub(r'[^a-z0-9]', '', cleanedName)
+        return JsonResponse({
+            'success':   True,
+            'message':   f"🔗 {old_name} a été échangé… et revient transformé en {new_name} !",
+            'old_name':  old_name,
+            'new_name':  new_name,
+            'sprite_url': f"/static/img/sprites_gen5/normal/{cleanedName}.png",
+        })
+
+
+    # GET — liste les membres de l'équipe capables d'évoluer par échange
+    tradeable = []
+    for poke in trainer.party:
+        can_evolve, evo = poke.check_trade_evolution()
+        if can_evolve:
+            needs_item = evo.required_item is not None
+            tradeable.append({
+                'pokemon':    poke,
+                'evolves_to': evo.evolves_to,
+                'needs_item': needs_item,
+                'item_name':  evo.required_item.name if needs_item else None,
+                'has_item':   bool(needs_item and poke.held_item and poke.held_item == evo.required_item),
+            })
+
+    return render(request, 'trainer/trade_center.html', {
+        'tradeable':    tradeable,
+        'in_trade_zone': in_trade_zone,
+        'current_zone': current_zone,
+        'trade_zones':  sorted(_TRADE_ZONES),
+        'trainer':      trainer,
+    })
