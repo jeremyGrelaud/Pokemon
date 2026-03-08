@@ -269,9 +269,14 @@
       <i class="fas fa-database"></i> PC — Réserve
       <span class="badge bg-light ms-1" id="pc-count">{{ pc_pokemon|length }}</span>
     </h6>
-    {% if pc_pokemon %}
-    <small class="text-muted">Cliquez sur un Pokémon pour l'ajouter à l'équipe</small>
-    {% endif %}
+    <div class="d-flex align-items-center gap-3">
+      {% if pc_pokemon %}
+      <small class="text-muted">Cliquez sur un Pokémon pour l'ajouter à l'équipe</small>
+      {% endif %}
+      <a href="{% url 'PCView' %}" class="btn btn-sm btn-outline-info">
+        <i class="fas fa-expand-alt me-1"></i>Vue dédiée
+      </a>
+    </div>
   </div>
   <div class="card-body">
     {% if pc_pokemon %}

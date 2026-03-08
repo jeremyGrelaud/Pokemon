@@ -399,7 +399,7 @@ class PCView(generic.TemplateView):
                 'species__secondary_type',
                 'held_item',
             )
-            .prefetch_related('moves__move')
+            .prefetch_related('pokemonmoveinstance_set__move__type')
             .order_by('species__pokedex_number', 'id')
         )
 

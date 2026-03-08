@@ -5,7 +5,6 @@
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/pokemon-types.css' %}">
-<link rel="stylesheet" href="{% static 'css/toast-notifications.css' %}">
 
 <style>
   /* ── Layout ───────────────────────────────────────────────── */
@@ -204,11 +203,13 @@
 {# ── Breadcrumb ──────────────────────────────────────────────── #}
 <nav class="pc-breadcrumb" aria-label="breadcrumb">
   <ol class="breadcrumb mb-0">
-    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
     <li class="breadcrumb-item"><a href="{% url 'MyTeamView' %}">Mon Équipe</a></li>
     <li class="breadcrumb-item active">PC</li>
   </ol>
 </nav>
+
+<div id="pc-alert" class="alert d-none mx-3 mt-2 mb-0" role="alert"></div>
 
 <div class="pc-page">
 
@@ -325,13 +326,14 @@
 
             <div class="pc-card-actions">
               <button class="btn-pc-action btn-withdraw"
-                      onclick="withdrawPokemon({{ pokemon.id }}, this)"
+                      data-action="withdraw" data-id="{{ pokemon.id }}"
                       title="Ajouter à l'équipe">⬆ Équipe</button>
               <button class="btn-pc-action btn-rename"
-                      onclick="startRename({{ pokemon.id }}, '{{ pokemon.nickname|default:pokemon.species.name|escapejs }}')"
+                      data-action="rename" data-id="{{ pokemon.id }}"
+                      data-name="{{ pokemon.nickname|default:pokemon.species.name|escapejs }}"
                       title="Renommer">✏ Nom</button>
               <button class="btn-pc-action btn-detail"
-                      onclick="openDetail({{ pokemon.id }})"
+                      data-action="detail" data-id="{{ pokemon.id }}"
                       title="Détails">👁</button>
             </div>
 
@@ -339,17 +341,16 @@
           {% endwith %}
         {% endfor %}
 
-        <div class="pc-no-result" id="pc-no-result" style="display:none;">
-          Aucun Pokémon ne correspond à cette recherche.
-        </div>
-
-      {% else %}
-        <div class="pc-empty">
-          <div class="pc-empty-icon">📦</div>
-          <div class="pc-empty-text">Votre PC est vide.<br>Envoyez des Pokémon ici depuis votre équipe.</div>
-        </div>
-      {% endif %}
+    </div>{# /pc-grid #}
+    <div class="pc-no-result" id="pc-no-result" style="display:none;padding:40px;text-align:center;color:#4a5568;font-size:.8rem;">
+      Aucun Pokémon ne correspond à cette recherche.
     </div>
+    {% else %}
+      <div class="pc-empty" style="padding:60px 20px;text-align:center;color:#4a5568;">
+        <div style="font-size:3rem;margin-bottom:12px;">📦</div>
+        <div style="font-size:.85rem;">Votre PC est vide.<br>Envoyez des Pokémon ici depuis votre équipe.</div>
+      </div>
+    {% endif %}
   </main>
 </div>
 
@@ -385,7 +386,7 @@ const PC_DATA = {
       spe: {{ pokemon.speed|default:0 }},
     },
     moves: [
-      {% for mi in pokemon.moves.all %}
+      {% for mi in pokemon.pokemonmoveinstance_set.all %}
       { name:"{{ mi.move.name|escapejs }}", type:"{{ mi.move.type.name|lower|default:'normal' }}", pp:{{ mi.current_pp }}, maxPp:{{ mi.move.pp }} },
       {% endfor %}
     ],
@@ -399,8 +400,40 @@ const PARTY_COUNT    = {{ party_count }};
 const PARTY_FULL_MSG = "Votre équipe est complète (6/6)";
 const CSRF = "{{ csrf_token }}";
 
+// ── Délégation d'événements sur la grille ──
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const id = parseInt(btn.dataset.id, 10);
+  const action = btn.dataset.action;
+  if (action === 'withdraw') withdrawPokemon(id, btn);
+  if (action === 'rename')   startRename(id, btn.dataset.name || '');
+  if (action === 'detail')   openDetail(id);
+});
+
+// ── Délégation d'événements sur la grille (évite les problèmes d'inline onclick) ──
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const id = parseInt(btn.dataset.id, 10);
+  const action = btn.dataset.action;
+  if (action === 'withdraw') withdrawPokemon(id, btn);
+  if (action === 'rename')   startRename(id, btn.dataset.name || '');
+  if (action === 'detail')   openDetail(id);
+});
+
 // ── Types → couleur barre de stat ──────────────────────────
 const STAT_COLORS = { hp:'#e53935', atk:'#ef6c00', def:'#1565c0', spa:'#6a1599', spd:'#00695c', spe:'#558b2f' };
+
+// ── Alert ──────────────────────────────────────────────────
+function showAlert(msg, type = 'success') {
+  const el = document.getElementById('pc-alert');
+  el.className = `alert alert-${type} mx-3 mt-2 mb-0`;
+  el.textContent = msg;
+  el.classList.remove('d-none');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add('d-none'), 3500);
+}
 
 // ── Filtre / recherche / tri ───────────────────────────────
 let activeType = 'all';
@@ -461,7 +494,7 @@ function sortGrid() {
 
 // ── Withdraw ───────────────────────────────────────────────
 async function withdrawPokemon(id, btn) {
-  if (PARTY_COUNT >= 6) { showToast(PARTY_FULL_MSG, 'warning'); return; }
+  if (PARTY_COUNT >= 6) { showAlert(PARTY_FULL_MSG, 'warning'); return; }
   btn.disabled = true;
   btn.textContent = '…';
   try {
@@ -475,11 +508,11 @@ async function withdrawPokemon(id, btn) {
       const card = document.getElementById('pc-card-' + id);
       card.classList.add('withdrawing');
       setTimeout(() => card.remove(), 450);
-      showToast(d.message || 'Pokémon ajouté à l\'équipe !', 'success');
+      showAlert(d.message || 'Pokémon ajouté à l\'équipe !', 'success');
       // Mettre à jour sidebar (rechargement léger)
       setTimeout(() => location.reload(), 600);
     } else {
-      showToast(d.error || 'Erreur', 'danger');
+      showAlert(d.error || 'Erreur', 'danger');
       btn.disabled = false;
       btn.textContent = '⬆ Équipe';
     }
@@ -512,10 +545,10 @@ function startRename(id, currentName) {
         const newName = d.nickname || PC_DATA[id]?.name || val;
         nameEl.textContent = newName;
         if (PC_DATA[id]) PC_DATA[id].nick = d.nickname || '';
-        showToast('Renommé en ' + (d.nickname || PC_DATA[id].name), 'success');
+        showAlert('Renommé en ' + (d.nickname || PC_DATA[id].name), 'success');
       } else {
         nameEl.textContent = currentName;
-        showToast(d.error || 'Erreur', 'danger');
+        showAlert(d.error || 'Erreur', 'danger');
       }
     } catch { nameEl.textContent = currentName; }
     if (nickEl) nickEl.style.display = '';
@@ -588,12 +621,22 @@ function openDetail(id) {
     ${movesHtml}
 
     <div class="pd-actions">
-      <button class="pd-action-btn pd-withdraw" onclick="withdrawPokemon(${d.id}, this)">⬆ Ajouter à l'équipe</button>
-      <button class="pd-action-btn pd-rename"   onclick="startRename(${d.id}, '${(d.nick||d.name).replace(/'/g,'\\'')}');closeDetail()">✏ Renommer</button>
+      <button class="pd-action-btn pd-withdraw" id="pd-btn-withdraw">⬆ Ajouter à l'équipe</button>
+      <button class="pd-action-btn pd-rename"   id="pd-btn-rename">✏ Renommer</button>
       <a class="pd-action-btn pd-detail" href="/pokemon/${d.species_id}/"
          style="text-align:center;text-decoration:none;display:block">📖 Fiche Pokédex</a>
     </div>
   `;
+
+  // Câblage sans inline onclick (évite les bugs avec apostrophes dans les noms)
+  document.getElementById('pd-btn-withdraw').addEventListener('click', function() {
+    withdrawPokemon(d.id, this);
+  });
+  document.getElementById('pd-btn-rename').addEventListener('click', function() {
+    closeDetail();
+    startRename(d.id, d.nick || d.name);
+  });
+
 
   document.getElementById('detail-panel').classList.add('open');
   document.getElementById('detail-overlay').classList.add('open');
@@ -607,5 +650,4 @@ function closeDetail() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
 </script>
 
-{% include "toast-notifications.html" %}
 {% endblock %}
