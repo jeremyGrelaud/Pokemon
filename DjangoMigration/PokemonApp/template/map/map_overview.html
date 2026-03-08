@@ -11,6 +11,14 @@
 {% block content %}
 <div class="kanto-map-page">
 
+  <!-- ── Breadcrumb ───────────────────────────────────────────────────────── -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+      <li class="breadcrumb-item active">Carte de Kanto</li>
+    </ol>
+  </nav>
+
   <!-- ── En-tête ──────────────────────────────────────────────────────────── -->
   <div class="map-header d-flex align-items-center justify-content-between mb-2">
     <div>
@@ -55,7 +63,10 @@
         <div class="leg"><span class="dot" style="background:#4caf50;box-shadow:0 0 4px rgba(76,175,80,.8)"></span>Position</div>
         <div class="leg"><span class="dot" style="background:#42a5f5"></span>Visitée</div>
         <div class="leg"><span class="dot" style="background:#90a4ae"></span>Inexplorée</div>
-        <div class="leg"><span class="dot" style="background:#546e7a;opacity:.55"></span>Verrouillée</div>
+        <div class="leg-sep"></div>
+        <div class="leg" title="CS requise (Coupe, Surf, Vol…)"><span class="dot" style="background:#ff6d00;opacity:.9"></span>💧 CS requise</div>
+        <div class="leg" title="Badge d'arène requis"><span class="dot" style="background:#8e24aa;opacity:.9"></span>🏅 Badge requis</div>
+        <div class="leg" title="Objet clé ou quête requise"><span class="dot" style="background:#4e342e;opacity:.9"></span>📜 Quête/Objet</div>
         <div class="leg-sep"></div>
         <div class="leg"><span class="poi-star">★</span>Arène</div>
         <div class="leg"><span class="poi-sq" style="background:#ef5350"></span>Centre Pkm</div>
@@ -72,10 +83,9 @@
             <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          <!-- Dessature + transparence pour zones locked -->
+          <!-- Filtre zones bloquées : légère transparence sans désaturation -->
           <filter id="f-lock">
-            <feColorMatrix type="saturate" values="0.1"/>
-            <feComponentTransfer><feFuncA type="linear" slope="0.38"/></feComponentTransfer>
+            <feComponentTransfer><feFuncA type="linear" slope="0.72"/></feComponentTransfer>
           </filter>
           <!-- Ombre douce pour labels -->
           <filter id="f-txt" x="-5%" y="-10%" width="110%" height="130%">
@@ -147,6 +157,7 @@ const KD = {  // KantoData
       lmin:  {{ zd.zone.recommended_level_min }},
       lmax:  {{ zd.zone.recommended_level_max }},
       why:   "{{ zd.reason|default:''|escapejs }}",
+      gymLock: "{{ zd.gym_lock|default:''|escapejs }}",
       desc:  "{{ zd.zone.description|truncatewords:18|escapejs }}",
       img:   "{{ zd.zone.name|zone_image_path }}",
     },{% endfor %}
@@ -331,14 +342,53 @@ const MapUI = (() => {
 
   // Couleur selon état
   const C = {
-    current:  '#4caf50',
-    visited:  '#42a5f5',
-    unknown:  '#90a4ae',
-    locked:   '#546e7a',
+    current:    '#4caf50',
+    visited:    '#42a5f5',
+    unknown:    '#90a4ae',
+    locked:       '#546e7a',   // générique
+    locked_hm:    '#ff6d00',   // bloqué par CS  — orange vif
+    locked_badge: '#8e24aa',   // bloqué par badge — violet
+    locked_item:  '#c62828',   // bloqué par objet clé — rouge
+    locked_story: '#4e342e',   // bloqué par flag/quête — brun foncé
   };
+
+  /**
+   * Catégorise la raison du blocage à partir du texte 'why'.
+   * Retourne 'hm' | 'badge' | 'item' | 'story' | 'generic'
+   */
+  function blockType(why) {
+    if (!why) return 'generic';
+    const w = why.toLowerCase();
+    if (w.includes('cs') || w.includes('coupe') || w.includes('surf') || w.includes('vol') || w.includes('force') || w.includes('flash')) return 'hm';
+    if (w.includes('badge')) return 'badge';
+    if (w.includes('objet')) return 'item';
+    if (w.includes('quête') || w.includes('condition') || w.includes('manquante')) return 'story';
+    return 'generic';
+  }
+
+  function lockedColor(why) {
+    switch (blockType(why)) {
+      case 'hm':    return C.locked_hm;
+      case 'badge': return C.locked_badge;
+      case 'item':  return C.locked_item;
+      case 'story': return C.locked_story;
+      default:      return C.locked;
+    }
+  }
+
+  function lockedIcon(why) {
+    switch (blockType(why)) {
+      case 'hm':    return '💧'; // CS
+      case 'badge': return '🏅'; // badge
+      case 'item':  return '🔑'; // objet clé
+      case 'story': return '📜'; // quête
+      default:      return '🔒';
+    }
+  }
+
   function color(z) {
     if (z.id === KD.curId) return C.current;
-    if (!z.ok)  return C.locked;
+    if (!z.ok)  return lockedColor(z.why);
     if (z.seen) return C.visited;
     return C.unknown;
   }
@@ -355,8 +405,8 @@ const MapUI = (() => {
       const l = ns('line');
       attrs(l, {
         x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y,
-        stroke: active ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.07)',
-        'stroke-width': active ? '2.2' : '1.2',
+        stroke: 'rgba(255,255,255,0.38)',
+        'stroke-width': '1.8',
         'stroke-dasharray': active ? '' : '5 4',
         'stroke-linecap': 'round',
       });
@@ -393,11 +443,38 @@ const MapUI = (() => {
       const c = ns('circle');
       attrs(c, {
         cx: p.x, cy: p.y, r, fill: col,
-        stroke: isCur ? '#fff' : 'rgba(255,255,255,0.55)',
-        'stroke-width': isCur ? '2.5' : '1.5',
+        stroke: isCur ? '#fff' : (!z.ok ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.55)'),
+        'stroke-width': isCur ? '2.5' : (!z.ok ? '2' : '1.5'),
+        'stroke-dasharray': (!z.ok) ? '3 2' : '',
       });
       if (isCur) c.setAttribute('filter','url(#glow-cur)');
       g.appendChild(c);
+
+      // Icône de blocage (petit texte SVG centré sur le nœud)
+      if (!z.ok) {
+        const icon = ns('text');
+        attrs(icon, {
+          x: p.x, y: p.y + 4,
+          'text-anchor': 'middle',
+          'font-size': Math.max(7, r - 2),
+          opacity: '0.85',
+        });
+        icon.textContent = lockedIcon(z.why);
+        g.appendChild(icon);
+      }
+
+      // Badge d'arène verrouillée sur la ville (petit cadenas médaille en coin)
+      if (z.gymLock && z.ok) {
+        const glock = ns('text');
+        attrs(glock, {
+          x: p.x + r + 1, y: p.y - r + 1,
+          'text-anchor': 'middle',
+          'font-size': 7,
+          opacity: '0.9',
+        });
+        glock.textContent = '🏅';
+        g.appendChild(glock);
+      }
 
       // POI
       let ox = p.x + r + 5;
@@ -447,15 +524,22 @@ const MapUI = (() => {
       g.addEventListener('mouseenter', () => { c.setAttribute('r', r+2.5); });
       g.addEventListener('mouseleave', () => { c.setAttribute('r', r); });
       // Curseur et tooltip selon accessibilité
-      if (z.ok && KD.adj.has(z.id) && z.id !== KD.curId) {
+      if (!z.ok) {
+        g.style.cursor = 'not-allowed';
+        const title = ns('title');
+        title.textContent = `${z.name} — ${z.why || 'Inaccessible'}`;
+        g.appendChild(title);
+      } else if (z.ok && KD.adj.has(z.id) && z.id !== KD.curId) {
         g.style.cursor = 'pointer';
         const title = ns('title');
-        title.textContent = `Double-clic pour voyager vers ${z.name}`;
+        const extra = z.gymLock ? ` · 🏅 ${z.gymLock}` : '';
+        title.textContent = `Double-clic pour voyager vers ${z.name}${extra}`;
         g.appendChild(title);
       } else if (z.ok) {
         g.style.cursor = 'pointer';
         const title = ns('title');
-        title.textContent = z.id === KD.curId ? z.name : `${z.name} — cliquer pour détails`;
+        const extra = z.gymLock ? ` · 🏅 ${z.gymLock}` : '';
+        title.textContent = z.id === KD.curId ? z.name : `${z.name} — cliquer pour détails${extra}`;
         g.appendChild(title);
       }
 
@@ -477,13 +561,23 @@ const MapUI = (() => {
     // Badge état
     const badge = isCur
       ? `<span class="badge bg-success"><i class="fas fa-map-marker-alt me-1"></i>${curLabel}</span>`
-      : z.seen
-        ? `<span class="badge bg-primary"><i class="fas fa-check me-1"></i>Visitée</span>`
-        : `<span class="badge bg-secondary">Inexplorée</span>`;
+      : !z.ok
+        ? (() => {
+            const bt = blockType(z.why);
+            const colors = { hm:'#e65100', badge:'#6a1a9a', item:'#bf360c', story:'#4e342e', generic:'#546e7a' };
+            const icons  = { hm:'fas fa-water', badge:'fas fa-medal', item:'fas fa-key', story:'fas fa-scroll', generic:'fas fa-lock' };
+            return `<span class="badge" style="background:${colors[bt]||'#546e7a'}">
+              <i class="${icons[bt]||'fas fa-lock'} me-1"></i>${z.why || 'Inaccessible'}
+            </span>`;
+          })()
+        : z.seen
+          ? `<span class="badge bg-primary"><i class="fas fa-check me-1"></i>Visitée</span>`
+          : `<span class="badge bg-secondary">Inexplorée</span>`;
 
     // POI
     let poi = '';
     if (z.gym)  poi += `<span class="badge bg-warning me-1"><i class="fas fa-trophy me-1"></i>Arène</span>`;
+    if (z.gymLock) poi += `<span class="badge me-1" style="background:#8e24aa" title="${z.gymLock}"><i class="fas fa-medal me-1"></i>Arène verrouillée</span>`;
     if (z.ctr)  poi += `<span class="badge bg-danger me-1"><i class="fas fa-hospital me-1"></i>Centre</span>`;
     if (z.shop) poi += `<span class="badge me-1" style="background:#ab47bc;color:#fff"><i class="fas fa-shopping-bag me-1"></i>Boutique</span>`;
     if (!z.safe) poi += `<span class="badge bg-secondary"><i class="fas fa-leaf me-1"></i>Sauvages</span>`;

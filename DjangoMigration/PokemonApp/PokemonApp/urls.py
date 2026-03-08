@@ -2,7 +2,7 @@
 URL configuration for PokemonApp project.
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from myPokemonApp import views
 from django.contrib.auth import views as auth_views
 
@@ -13,6 +13,7 @@ urlpatterns = [
     # Auth
     path('login/',  auth_views.LoginView.as_view(),  name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='account_logout'),
+    path('accounts/', include('allauth.urls')),
 
     # Dashboard
     path('', views.DashboardView.as_view(), name='home'),
@@ -30,9 +31,11 @@ urlpatterns = [
 
     # Mon équipe
     path('my-team/',               views.MyTeamView.as_view(),       name='MyTeamView'),
+    path('pc/',                    views.PCView.as_view(),            name='PCView'),
     path('api/reorder-party/',     views.reorder_party_api,          name='reorder_party'),
     path('api/send-to-pc/',        views.send_to_pc_api,             name='send_to_pc'),
     path('api/add-to-party/',      views.add_to_party_api,           name='add_to_party'),
+    path('api/rename-pokemon/',    views.rename_pokemon_api,         name='rename_pokemon'),
     path('api/pokemon/moves/',     views.get_pokemon_moves_api,      name='get_pokemon_moves'),
     path('api/pokemon/swap-move/',    views.swap_move_api,           name='swap_move'),
     path('api/pokemon/reorder-moves/', views.reorder_moves_api,     name='reorder_moves'),

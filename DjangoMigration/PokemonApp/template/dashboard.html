@@ -61,6 +61,28 @@
 </div>
 {% endif %}
 
+<!-- ── Indicateur de sauvegarde ───────────────────────────────────────────── -->
+{% if active_save %}
+<div class="d-flex align-items-center justify-content-between px-3 py-2 mb-3 rounded"
+     style="background:#f0f4ff;border:1px solid #d0d9f7;font-size:.8rem;">
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <span class="text-muted">
+      <i class="fas fa-save me-1 text-primary"></i>
+      <strong>Dernière sauvegarde :</strong>
+      {{ active_save.last_saved|timesince }} — <em>{{ active_save.current_location }}</em>
+    </span>
+    <span class="text-muted">
+      <i class="fas fa-clock me-1 text-secondary"></i>
+      <strong>Temps de jeu :</strong> {{ active_save.get_play_time_display }}
+    </span>
+  </div>
+  <a href="{% url 'save_select' %}" class="btn btn-xs btn-outline-primary btn-sm py-0 px-2"
+     style="font-size:.7rem;white-space:nowrap;">
+    <i class="fas fa-folder-open me-1"></i>Sauvegardes
+  </a>
+</div>
+{% endif %}
+
 <!-- ── Stats ─────────────────────────────────────────────────────────────── -->
 <div class="row mb-4">
 

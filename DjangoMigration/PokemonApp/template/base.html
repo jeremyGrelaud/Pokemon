@@ -197,6 +197,12 @@
                 Mon Équipe
               </a>
 
+              <a class="nav-link {% if request.resolver_match.url_name == 'PCView' %}active{% endif %}"
+                 href="{% url 'PCView' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-server"></i></div>
+                PC — Réserve
+              </a>
+
               {% if active_battle %}
               <a class="nav-link d-flex align-items-center justify-content-between {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}"
                  href="{% url 'BattleDetailView' active_battle.id %}">

@@ -454,8 +454,8 @@ def save_game_view(request, save_id):
     snapshot = create_game_snapshot(trainer, save)
     save.game_snapshot = snapshot
 
-    time_since_last = (timezone.now() - save.last_saved).seconds
-    save.play_time += time_since_last
+    time_since_last = int((timezone.now() - save.last_saved).total_seconds())
+    save.play_time += max(0, min(time_since_last, 7200))  # cap à 2h pour éviter les dérives
 
     if saving_to_active_slot:
         GameSave.objects.filter(trainer=trainer).update(is_active=False)
@@ -484,19 +484,18 @@ def auto_save_view(request, save_id):
     trainer = get_player_trainer(request.user)
     save    = get_object_or_404(GameSave, pk=save_id, trainer=trainer)
 
-    if request.POST.get('location'):
-        save.current_location = request.POST.get('location')
-
+    # Relire depuis la DB en premier pour avoir les données fraîches
     save.refresh_from_db()
 
+    # Appliquer la localisation APRÈS le refresh pour ne pas l'écraser
     if request.POST.get('location'):
         save.current_location = request.POST.get('location')
 
     snapshot = create_game_snapshot(trainer, save)
     save.game_snapshot = snapshot
 
-    time_since_last = (timezone.now() - save.last_saved).seconds
-    save.play_time += time_since_last
+    time_since_last = int((timezone.now() - save.last_saved).total_seconds())
+    save.play_time += max(0, min(time_since_last, 7200))  # cap à 2h
     save.save()
 
     return JsonResponse({'success': True, 'snapshot_created': True})

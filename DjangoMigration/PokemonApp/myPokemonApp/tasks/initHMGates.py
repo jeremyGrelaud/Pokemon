@@ -142,14 +142,11 @@ def init_hm_gates():
     logger.info("\n🌳  CS01 COUPE — Arbres bloquants")
     logger.info("-" * 40)
 
-    # Forêt de Jade : l'arbre à l'entrée sud (Route 2 → Forêt de Jade)
-    # Canoniquement la Coupe est nécessaire pour entrer dans la forêt depuis le sud.
-    # (En Gen 1, l'arbre dans la Forêt est optionnel — on contourne.
-    #  En revanche, l'arbre entre Route 2 SUD et Route 2 NORD/Jadielle en sortie est requis.)
-    _set_conn_hm(
-        'Route 2', 'Forêt de Jade', 'cut',
-        message="Un arbuste épais bloque l'entrée de la Forêt de Jade. CS01 Coupe est requise.",
-    )
+    # ── Route 2 / Forêt de Jade ───────────────────────────────────────────────
+    # Le chemin principal est : Bourg Palette → Route 1 → Jadielle → Route 2 → Forêt de Jade → Argenta.
+    # L'arbre Coupe canonique sur Route 2 est le RACCOURCI entre la sortie
+    # nord de Cave Taupiqueur et Jadielle (contournement de la Forêt).
+    _clear_conn_hm('Route 2', 'Forêt de Jade')
 
     # Cave Taupiqueur : entrée bloquée par un arbre (déjà partiellement configuré)
     _set_conn_hm(

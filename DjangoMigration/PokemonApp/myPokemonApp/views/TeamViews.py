@@ -13,6 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 from myPokemonApp.gameUtils import (
@@ -27,6 +28,7 @@ from myPokemonApp.gameUtils import (
 from myPokemonApp.models.PlayablePokemon import PlayablePokemon, PokemonMoveInstance
 from myPokemonApp.models.PokemonMove import PokemonMove
 from myPokemonApp.models.Trainer import Trainer
+from myPokemonApp.models.GameSave import GameSave
 
 
 
@@ -341,3 +343,124 @@ def reorder_moves_api(request):
     except Exception as e:
         logger.exception("Erreur inattendue dans TeamViews")
         return JsonResponse({'success': False, 'error': "Une erreur est survenue. Veuillez réessayer."}, status=400)
+
+@require_POST
+@login_required
+def rename_pokemon_api(request):
+    """Endpoint pour renommer (donner un surnom à) un Pokémon."""
+    try:
+        data = json.loads(request.body)
+        pokemon_id = int(data.get('pokemon_id', 0))
+        nickname = data.get('nickname', '').strip()
+
+        if len(nickname) > 12:
+            return JsonResponse({'success': False, 'error': 'Le surnom ne peut pas dépasser 12 caractères.'}, status=400)
+
+        trainer = get_player_trainer(request.user)
+        save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+        if not save:
+            return JsonResponse({'success': False, 'error': 'Aucune sauvegarde active.'}, status=400)
+
+        pokemon = get_object_or_404(PlayablePokemon, pk=pokemon_id)
+        if GameSave.objects.filter(trainer=pokemon.trainer, is_active=True).first()  != save:
+            return JsonResponse({'success': False, 'error': 'Ce Pokémon ne vous appartient pas.'}, status=403)
+
+        # Nickname vide = suppression du surnom
+        pokemon.nickname = nickname if nickname else None
+        pokemon.save(update_fields=['nickname'])
+
+        return JsonResponse({'success': True, 'nickname': pokemon.nickname or ''})
+
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'Données invalides.'}, status=400)
+    except Exception:
+        logger.exception("Erreur dans rename_pokemon_api")
+        return JsonResponse({'success': False, 'error': 'Une erreur est survenue.'}, status=500)
+# ============================================================================
+# PC DÉDIÉ
+# ============================================================================
+
+@method_decorator(login_required, name='dispatch')
+class PCView(generic.TemplateView):
+    """Interface dédiée au PC — Pokémon en réserve avec pagination + filtres backend."""
+    template_name = "trainer/pc.html"
+    PAGE_SIZE = 24
+
+    def get_context_data(self, **kwargs):
+        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+        context = super().get_context_data(**kwargs)
+        trainer  = get_or_create_player_trainer(self.request.user)
+        request  = self.request
+
+        # ── Paramètres GET ─────────────────────────────────────────────────
+        search     = request.GET.get('q', '').strip()
+        type_filter = request.GET.get('type', '').strip().lower()
+        sort        = request.GET.get('sort', 'dex')
+        page_num    = request.GET.get('page', 1)
+
+        # ── Queryset de base ───────────────────────────────────────────────
+        pc_qs = (
+            trainer.pokemon_team
+            .filter(is_in_party=False)
+            .select_related(
+                'species',
+                'species__primary_type',
+                'species__secondary_type',
+                'held_item',
+            )
+            .prefetch_related('pokemonmoveinstance_set__move__type')
+        )
+
+        # ── Filtres ────────────────────────────────────────────────────────
+        if search:
+            
+            pc_qs = pc_qs.filter(
+                Q(nickname__icontains=search) | Q(species__name__icontains=search)
+            )
+        if type_filter:
+            pc_qs = pc_qs.filter(
+                Q(species__primary_type__name__iexact=type_filter) |
+                Q(species__secondary_type__name__iexact=type_filter)
+            )
+
+        # ── Tri ────────────────────────────────────────────────────────────
+        sort_map = {
+            'dex':        ('species__pokedex_number', 'id'),
+            'level-desc': ('-level', 'id'),
+            'level-asc':  ('level', 'id'),
+            'name':       ('species__name', 'id'),
+        }
+        pc_qs = pc_qs.order_by(*sort_map.get(sort, ('species__pokedex_number', 'id')))
+
+        # ── Types pour les filtres (toujours calculé sur le PC complet) ───
+        all_pc = trainer.pokemon_team.filter(is_in_party=False).select_related('species__primary_type')
+        types_present = sorted({
+            p.species.primary_type.name
+            for p in all_pc
+            if p.species.primary_type
+        })
+
+        # ── Pagination ─────────────────────────────────────────────────────
+        paginator = Paginator(pc_qs, self.PAGE_SIZE)
+        try:
+            page_obj = paginator.page(page_num)
+        except PageNotAnInteger:
+            page_obj = paginator.page(1)
+        except EmptyPage:
+            page_obj = paginator.page(paginator.num_pages)
+
+        context.update({
+            'trainer':       trainer,
+            'pc_pokemon':    page_obj.object_list,  # seulement la page courante
+            'page_obj':      page_obj,
+            'paginator':     paginator,
+            'party':         trainer.party,
+            'party_count':   trainer.party_count,
+            'types_present': types_present,
+            # Paramètres courants pour les liens de pagination
+            'q':             search,
+            'type_filter':   type_filter,
+            'sort':          sort,
+            'pc_total':      paginator.count,
+        })
+        return context

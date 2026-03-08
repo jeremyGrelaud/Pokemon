@@ -295,6 +295,20 @@
       1px 1px 0 var(--px) rgba(0,0,0,.4);
   }
 
+  /* ── Liens secondaires ── */
+  .btn-poke-link {
+    display: block;
+    text-align: center;
+    margin-top: 10px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: .38rem;
+    color: var(--gb-dark);
+    text-decoration: none;
+    opacity: .7;
+    transition: opacity .15s;
+  }
+  .btn-poke-link:hover { opacity: 1; color: var(--gb-darkest); }
+
   /* ── Footer strip ── */
   .poke-card-footer {
     background: var(--gb-darkest);
@@ -354,6 +368,13 @@
           COMMENCER L'AVENTURE
         </button>
       </form>
+
+      <a class="btn-poke-link" href="{% url 'account_signup' %}">
+        Pas encore de compte ? S'inscrire
+      </a>
+      <a class="btn-poke-link" href="{% url 'account_reset_password' %}" style="margin-top:4px;">
+        Mot de passe oublié ?
+      </a>
     </div>
 
     <!-- Footer -->

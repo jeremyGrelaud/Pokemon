@@ -1011,11 +1011,44 @@ def scriptToInitializeDatabase():
         'ev_yield_special_attack', 'ev_yield_special_defense', 'ev_yield_speed',
     ]
 
+    # ── Ratios de genre Gen 1 ────────────────────────────────────────────────
+    # Sources : Bulbapedia (FRLG / Gen 3+).
+    GENDER_RATIOS = {
+        # Starters et leurs évolutions : 87.5 % mâle
+        'Bulbasaur':  0.875, 'Ivysaur':    0.875, 'Venusaur':   0.875,
+        'Charmander': 0.875, 'Charmeleon': 0.875, 'Charizard':  0.875,
+        'Squirtle':   0.875, 'Wartortle':  0.875, 'Blastoise':  0.875,
+
+        # Nidoran♀ ligne : 100 % femelle
+        'Nidoran♀': 0.0, 'Nidorina': 0.0, 'Nidoqueen': 0.0,
+
+        # Nidoran♂ ligne : 100 % mâle
+        'Nidoran♂': 1.0, 'Nidorino': 1.0, 'Nidoking':  1.0,
+
+        # Kangaskhan : 100 % femelle
+        'Kangaskhan': 0.0,
+
+        # Tauros : 100 % mâle
+        'Tauros': 1.0,
+
+        # Hitmonlee / Hitmonchan : 100 % mâle
+        'Hitmonlee': 1.0, 'Hitmonchan': 1.0,
+
+        # Sans genre (genderless)
+        'Magnemite':  -1, 'Magneton':   -1,
+        'Voltorb':    -1, 'Electrode':  -1,
+        'Staryu':     -1, 'Starmie':    -1,
+        'Ditto':      -1,
+        'Porygon':    -1,
+        'Articuno':   -1, 'Zapdos':     -1, 'Moltres':    -1,
+        'Mewtwo':     -1, 'Mew':        -1,
+    }
 
     pokemon_dict = {}
     for poke_data in pokemon_data:
         name, dex_num, primary, secondary, hp, atk, defense, sp_atk, sp_def, speed, catch, exp, ab1_name, ab2_name, hab_name = poke_data
-        growth_rate = GROWTH_RATES.get(name, 'medium_fast')
+        growth_rate  = GROWTH_RATES.get(name, 'medium_fast')
+        gender_ratio = GENDER_RATIOS.get(name, 0.5)
 
         pokemon, created = Pokemon.objects.get_or_create(
             pokedex_number=dex_num,
@@ -1032,6 +1065,7 @@ def scriptToInitializeDatabase():
                 'catch_rate': catch,
                 'base_experience': exp,
                 'growth_rate': growth_rate,
+                'gender_ratio': gender_ratio,
                 'ability_1':       abilities_dict.get(ab1_name) if ab1_name else None,
                 'ability_2':       abilities_dict.get(ab2_name) if ab2_name else None,
                 'hidden_ability':  abilities_dict.get(hab_name) if hab_name else None,
@@ -1072,6 +1106,12 @@ def scriptToInitializeDatabase():
                     ev_update_fields.append(field)
             if ev_update_fields:
                 pokemon.save(update_fields=ev_update_fields)
+
+            # ── Gender Ratio (idempotent) ───────────────────────────────────────
+            expected_ratio = GENDER_RATIOS.get(name, 0.5)
+            if pokemon.gender_ratio != expected_ratio:
+                pokemon.gender_ratio = expected_ratio
+                pokemon.save(update_fields=['gender_ratio'])
 
         pokemon_dict[name] = pokemon
         if created:

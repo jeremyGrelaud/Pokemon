@@ -38,6 +38,14 @@ class Pokemon(models.Model):
     catch_rate = models.IntegerField(default=45)
     base_experience = models.IntegerField()
     growth_rate = models.CharField(max_length=20, default='medium_fast')
+
+    # Ratio de genre : probabilité d'être mâle (0.0–1.0), ou -1 pour sans genre.
+    # Ex : 0.875 = 87.5% mâle (starters), 0.5 = 50/50, 0.0 = toujours femelle,
+    #      1.0 = toujours mâle, -1 = sans genre (Voltorb, Magnemite, légendaires…)
+    gender_ratio = models.FloatField(
+        default=0.5,
+        help_text="Probabilité d'être mâle (0.0-1.0) ou -1 pour sans genre.",
+    )
     
     # Sprite/Image
     sprite_url = models.URLField(blank=True, null=True)

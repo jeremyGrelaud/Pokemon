@@ -9,7 +9,9 @@ Endpoint secondaire : battle_learn_move_view (POST /battle/<pk>/learn-move/)
 """
 
 import logging
+import time
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
@@ -37,6 +39,25 @@ from myPokemonApp.views.AchievementViews import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Délai minimum entre deux actions de combat (en secondes)
+_BATTLE_ACTION_COOLDOWN = 1.0
+# Actions exclues du rate limiting (pas de tour de jeu)
+_NO_RATE_LIMIT_ACTIONS = frozenset({'confirm_evolution', 'confirm_capture'})
+
+
+def _check_rate_limit(user_id: int, battle_id: int) -> bool:
+    """
+    Retourne True si la requête doit être bloquée (trop rapide).
+    Utilise le cache Django pour tracker le timestamp de la dernière action.
+    """
+    key = f'battle_action:{user_id}:{battle_id}'
+    now = time.time()   # Unix timestamp — cohérent entre tous les workers
+    last = cache.get(key)
+    if last is not None and (now - last) < _BATTLE_ACTION_COOLDOWN:
+        return True
+    cache.set(key, now, timeout=int(_BATTLE_ACTION_COOLDOWN) + 2)
+    return False
 
 
 # =============================================================================
@@ -413,6 +434,14 @@ def battle_action_view(request, pk):
         return JsonResponse({'error': 'Not your battle'}, status=403)
 
     action_type = request.POST.get('action')
+
+    # ── Rate limiting : 1 action / seconde max (hors résolutions post-combat) ──
+    if action_type not in _NO_RATE_LIMIT_ACTIONS:
+        if _check_rate_limit(request.user.pk, pk):
+            return JsonResponse(
+                {'error': 'Trop vite ! Attendez un instant avant la prochaine action.'},
+                status=429,
+            )
 
     if not battle.is_active and action_type not in ('confirm_evolution', 'confirm_capture'):
         return JsonResponse({'error': 'Battle already ended'}, status=400)

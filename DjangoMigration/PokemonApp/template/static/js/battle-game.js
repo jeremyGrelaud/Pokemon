@@ -228,27 +228,96 @@ function showTeam() {
 // BATTLE ACTIONS
 // ============================================================================
 
+/**
+ * Gestion centralisée de l'état de chargement du combat.
+ * Affiche un overlay de chargement par-dessus l'action panel
+ * et désactive tous les boutons pour empêcher le double-clic.
+ * @param {boolean} loading  - true = verrouille, false = déverrouille
+ * @param {string}  label    - texte affiché dans le spinner (optionnel)
+ */
+function setBattleLoading(loading, label) {
+  const panel = document.getElementById('action-panel');
+  const overlayId = 'battle-loading-overlay';
+
+  if (loading) {
+    // Désactiver tous les boutons du panel
+    $(panel).find('button').prop('disabled', true);
+
+    // Créer l'overlay si inexistant
+    if (!document.getElementById(overlayId)) {
+      const txt = label || 'En cours…';
+      const ov = document.createElement('div');
+      ov.id = overlayId;
+      ov.style.cssText = [
+        'position:absolute',
+        'inset:0',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'flex-direction:column',
+        'gap:8px',
+        'background:rgba(0,0,0,0.55)',
+        'border-radius:inherit',
+        'z-index:999',
+        'pointer-events:all',
+        'color:#fff',
+        'font-size:.85rem',
+        'font-weight:600',
+        'letter-spacing:.03em',
+      ].join(';');
+      ov.innerHTML = `<i class="fas fa-spinner fa-spin fa-lg"></i><span>${txt}</span>`;
+
+      // Le panel doit être en position relative pour que l'overlay fonctionne
+      if (getComputedStyle(panel).position === 'static') {
+        panel.style.position = 'relative';
+      }
+      panel.appendChild(ov);
+    }
+  } else {
+    // Réactiver les boutons
+    $(panel).find('button').prop('disabled', false);
+    // Supprimer les boutons PP=0 qui doivent rester désactivés
+    $(panel).find('.move-btn').each(function() {
+      const ppText = $(this).find('.move-pp').text();
+      if (ppText && ppText.startsWith('PP: 0/')) $(this).prop('disabled', true);
+    });
+    const ov = document.getElementById(overlayId);
+    if (ov) ov.remove();
+  }
+}
+
+/**
+ * Gère une réponse d'erreur $.ajax de façon unifiée.
+ * Affiche le bon message selon le statut HTTP.
+ */
+function _handleActionError(xhr, fallbackMsg) {
+  if (xhr.status === 429) {
+    addBattleLog('⏳ Trop rapide ! Attendez un instant.');
+  } else {
+    addBattleLog(fallbackMsg || 'Erreur lors de l\'action.');
+  }
+  setBattleLoading(false);
+}
+
 function useMove(moveId) {
-  $('button').prop('disabled', true);
+  setBattleLoading(true, 'Attaque…');
   audioManager.playSFX('ui/confirm');
 
-  // Send to server immediately — no pre-emptive animations
   $.post(BATTLE_CONFIG.urls.action, {
     action: 'attack',
     move_id: moveId,
     csrfmiddlewaretoken: csrfToken
   })
   .done(function(data) {
-    // Play the correct attack sequence based on turn_info from server
+    setBattleLoading(false);
     playTurnAnimations(data, () => {
-      updateBattleState(data, true);  // HP déjà mis à jour à l'impact
+      updateBattleState(data, true);
       updateVolatileStates(data);
     });
   })
   .fail(function(xhr) {
     console.error('Attack failed:', xhr);
-    addBattleLog('Erreur lors de l\'attaque');
-    $('button').prop('disabled', false);
+    _handleActionError(xhr, 'Erreur lors de l\'attaque.');
   });
 }
 
@@ -438,7 +507,7 @@ function triggerEotHealFlash(side) {
 
 
 function switchPokemon(pokemonId) {
-  $('button').prop('disabled', true);
+  setBattleLoading(true, 'Changement…');
   
   $.post(BATTLE_CONFIG.urls.action, {
     action: 'switch',
@@ -446,7 +515,7 @@ function switchPokemon(pokemonId) {
     csrfmiddlewaretoken: csrfToken
   })
   .done(function(data) {
-    // Animate switch
+    setBattleLoading(false);
     $('#player-sprite').addClass('fade-out');
     setTimeout(() => {
       updateBattleState(data);
@@ -456,13 +525,12 @@ function switchPokemon(pokemonId) {
   })
   .fail(function(xhr) {
     console.error('Switch failed:', xhr);
-    addBattleLog('Erreur lors du changement');
-    $('button').prop('disabled', false);
+    _handleActionError(xhr, 'Erreur lors du changement.');
   });
 }
 
 function useItem(itemId) {
-  $('button').prop('disabled', true);
+  setBattleLoading(true, 'Utilisation…');
   
   $.post(BATTLE_CONFIG.urls.action, {
     action: 'item',
@@ -470,11 +538,12 @@ function useItem(itemId) {
     csrfmiddlewaretoken: csrfToken
   })
   .done(function(data) {
+    setBattleLoading(false);
     if (data.capture_attempt && data.capture_attempt.start_animation) {
-      // POKEBALL — lancer l'animation de capture
-      // Les boutons restent désactivés jusqu'à la fin de la séquence
-      initiateCaptureSequence(itemId);
-      return; // confirm_capture gérera la suite
+      // POKEBALL — on passe directement la réponse déjà reçue pour éviter
+      // un second POST identique à l'intérieur de initiateCaptureSequence
+      initiateCaptureSequence(itemId, data);
+      return;
     }
 
     // Objet normal (potion, antidote, réveil, etc.)
@@ -485,26 +554,32 @@ function useItem(itemId) {
     updateVolatileStates(data);
     if (!data.battle_ended) {
       loadItems();
-      $('button').prop('disabled', false);
     }
   })
   .fail(function(xhr) {
     console.error('Item use failed:', xhr);
-    addBattleLog("Erreur lors de l'utilisation de l'objet");
-    $('button').prop('disabled', false);
+    _handleActionError(xhr, 'Erreur lors de l\'utilisation de l\'objet.');
   });
 }
 
 function tryRun() {
-  if (!confirm('Voulez-vous vraiment fuir le combat ?')) {
-    return;
+  // Affiche la modale de confirmation au lieu de confirm() natif
+  if (typeof $('#flee-confirm-modal').modal === 'function') {
+    $('#flee-confirm-modal').modal('show');
+  } else {
+    _doFlee(); // fallback si la modale n'est pas disponible
   }
+}
+
+function _doFlee() {
+  setBattleLoading(true, 'Fuite…');
   
   $.post(BATTLE_CONFIG.urls.action, {
     action: 'flee',
     csrfmiddlewaretoken: csrfToken
   })
   .done(function(data) {
+    setBattleLoading(false);
     if (data.fled) {
       addBattleLog('Vous avez fui le combat !');
       setTimeout(() => {
@@ -517,7 +592,7 @@ function tryRun() {
   })
   .fail(function(xhr) {
     console.error('Flee failed:', xhr);
-    addBattleLog('Erreur');
+    _handleActionError(xhr, 'Erreur lors de la fuite.');
   });
 }
 
@@ -1666,13 +1741,13 @@ $(document).keydown(function(e) {
 // ============================================================================
 
 
-async function initiateCaptureSequence(itemId) {
+async function initiateCaptureSequence(itemId, captureData) {
   // Fermer le menu items
   showMainMenu();
 
   try {
-    // Demander au serveur les infos pour la capture (calcul shakes + résultat)
-    const response = await $.post(BATTLE_CONFIG.urls.action, {
+    // captureData est déjà disponible (passé par useItem) — pas de second POST
+    const response = captureData || await $.post(BATTLE_CONFIG.urls.action, {
       action: 'item',
       item_id: itemId,
       csrfmiddlewaretoken: csrfToken

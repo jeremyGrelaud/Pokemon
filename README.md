@@ -15,6 +15,8 @@ For education purpose only
 
 Roadmap :
 - After everything, implement different game mods ?
+- implement missing Abilites effects/logic
+- implement moves Abilites effects/logic
 
 
 # Setup

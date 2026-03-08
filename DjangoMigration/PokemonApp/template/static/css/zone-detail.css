@@ -52,7 +52,7 @@
   filter: drop-shadow(0 2px 8px rgba(0,0,0,.25));
 }
 .action-card__img--large { width: 90px; height: 90px; }
-.action-card__img--trainer { width: 72px; height: 72px; image-rendering: pixelated; }
+.action-card__img--trainer { width: 72px; height: 72px; }
 .action-card__img--glow-warn { filter: drop-shadow(0 0 10px #f39c12); }
 .action-card__img--defeated { filter: grayscale(60%); opacity: .7; }
 

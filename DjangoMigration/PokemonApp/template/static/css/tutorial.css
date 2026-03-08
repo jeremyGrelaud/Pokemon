@@ -149,7 +149,6 @@
   width: 80px;
   height: 80px;
   object-fit: contain;
-  image-rendering: pixelated;
   filter: drop-shadow(0 0 10px rgba(46,204,113,.35));
   animation: tut-float 3s ease-in-out infinite;
 }
@@ -276,7 +275,6 @@
   width: 22px;
   height: 22px;
   object-fit: contain;
-  image-rendering: pixelated;
 }
 .tut-tip-icon i {
   font-size: .9rem;
