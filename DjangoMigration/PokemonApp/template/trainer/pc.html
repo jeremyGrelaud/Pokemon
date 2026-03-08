@@ -156,6 +156,27 @@
   /* No result */
   .pc-no-result { grid-column:1/-1; text-align:center; padding:40px; color:#4a5568; font-size:.8rem; }
 
+  /* Deposit button on party slot */
+  .party-slot { position:relative; }
+  .btn-deposit {
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    background:#c62828; color:#fff; border:none; border-radius:4px;
+    width:22px; height:22px; font-size:.7rem; line-height:1;
+    cursor:pointer; opacity:0; transition:opacity .15s;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .party-slot:hover .btn-deposit { opacity:1; }
+  .party-slot.depositing { animation:pulseRed .4s ease; }
+  @keyframes pulseRed { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 14px #c6282888;} }
+
+  /* Clear filters */
+  .btn-clear-filters {
+    background:#c62828; color:#fff; border:none; border-radius:5px;
+    padding:5px 10px; font-size:.65rem; font-weight:700; cursor:pointer;
+    transition:opacity .15s;
+  }
+  .btn-clear-filters:hover { opacity:.85; }
+
   /* Breadcrumb */
   .pc-breadcrumb { padding:10px 20px 0; font-size:.75rem; }
 
@@ -219,7 +240,7 @@
     {% for pk in party %}
       {% with pct=pk.current_hp pmax=pk.max_hp %}
       {% with pct_val=pct|default:0 %}
-      <div class="party-slot">
+      <div class="party-slot" id="party-slot-{{ pk.id }}" title="Envoyer au PC">
         <img src="{% static 'img/sprites_gen5/' %}{% if pk.is_shiny %}shiny{% else %}normal{% endif %}/{{ pk.species.name|lowerPokemonFileNames }}.png"
              alt="{{ pk.species.name }}" loading="lazy">
         <div class="party-slot-info">
@@ -233,6 +254,8 @@
             {% endif %}
           </div>
         </div>
+        <button class="btn-deposit" data-action="deposit" data-id="{{ pk.id }}"
+                title="Envoyer au PC" aria-label="Envoyer {{ pk.nickname|default:pk.species.name }} au PC">⬇</button>
       </div>
       {% endwith %}
       {% endwith %}
@@ -274,6 +297,9 @@
         <option value="level-asc">Tri : Niveau ↑</option>
         <option value="name">Tri : Nom A→Z</option>
       </select>
+
+      <button class="btn-clear-filters" id="btn-clear-filters" style="display:none"
+              title="Réinitialiser les filtres">✕ Effacer</button>
     </div>
 
     {# Grid #}
@@ -409,6 +435,7 @@ document.addEventListener('click', function(e) {
   if (action === 'withdraw') withdrawPokemon(id, btn);
   if (action === 'rename')   startRename(id, btn.dataset.name || '');
   if (action === 'detail')   openDetail(id);
+  if (action === 'deposit')  depositPokemon(id, btn);
 });
 
 // ── Délégation d'événements sur la grille (évite les problèmes d'inline onclick) ──
@@ -420,10 +447,38 @@ document.addEventListener('click', function(e) {
   if (action === 'withdraw') withdrawPokemon(id, btn);
   if (action === 'rename')   startRename(id, btn.dataset.name || '');
   if (action === 'detail')   openDetail(id);
+  if (action === 'deposit')  depositPokemon(id, btn);
 });
 
 // ── Types → couleur barre de stat ──────────────────────────
 const STAT_COLORS = { hp:'#e53935', atk:'#ef6c00', def:'#1565c0', spa:'#6a1599', spd:'#00695c', spe:'#558b2f' };
+
+// ── Deposit (équipe → PC) ─────────────────────────────────
+async function depositPokemon(id, btn) {
+  const slot = document.getElementById('party-slot-' + id);
+  if (slot) slot.classList.add('depositing');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch('/api/send-to-pc/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
+      body: JSON.stringify({pokemon_id: id})
+    });
+    const d = await r.json();
+    if (d.success) {
+      showAlert(d.message || 'Pokémon envoyé au PC.', 'info');
+      setTimeout(() => location.reload(), 500);
+    } else {
+      showAlert(d.error || 'Erreur', 'danger');
+      if (slot) slot.classList.remove('depositing');
+      if (btn) btn.disabled = false;
+    }
+  } catch {
+    showAlert('Erreur réseau.', 'danger');
+    if (slot) slot.classList.remove('depositing');
+    if (btn) btn.disabled = false;
+  }
+}
 
 // ── Alert ──────────────────────────────────────────────────
 function showAlert(msg, type = 'success') {
@@ -439,6 +494,24 @@ function showAlert(msg, type = 'success') {
 let activeType = 'all';
 let activeSearch = '';
 let activeSort = 'dex';
+
+function updateClearBtn() {
+  const btn = document.getElementById('btn-clear-filters');
+  if (!btn) return;
+  btn.style.display = (activeSearch || activeType !== 'all') ? '' : 'none';
+}
+
+function clearFilters() {
+  activeSearch = '';
+  activeType = 'all';
+  document.getElementById('pc-search').value = '';
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  const allBtn = document.querySelector('.type-btn[data-type="all"]');
+  if (allBtn) allBtn.classList.add('active');
+  applyFilters();
+}
+
+document.getElementById('btn-clear-filters')?.addEventListener('click', clearFilters);
 
 function applyFilters() {
   const cards = document.querySelectorAll('.pc-card');
@@ -458,6 +531,7 @@ function applyFilters() {
   document.getElementById('pc-visible-count').textContent = visible + ' Pokémon';
   const noRes = document.getElementById('pc-no-result');
   if (noRes) noRes.style.display = visible === 0 ? '' : 'none';
+  updateClearBtn();
 }
 
 document.getElementById('pc-search').addEventListener('input', e => {
