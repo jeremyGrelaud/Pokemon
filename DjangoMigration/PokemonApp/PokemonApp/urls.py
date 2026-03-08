@@ -110,6 +110,7 @@ urlpatterns = [
     path('map/zone/<int:zone_id>/floor/<int:floor_number>/', views.floor_detail_view,      name='floor_detail'),
     path('map/zone/<int:zone_id>/floor/<int:floor_number>/encounter/', views.floor_wild_encounter_view, name='floor_encounter'),
     path('map/fly/',                                                   views.fly_view,                name='fly_view'),
+    path('map/use-repel/',                                             views.use_repel_view,          name='use_repel'),
 
     # Quêtes
     path('quests/',              views.quest_log_view,    name='quest_log'),

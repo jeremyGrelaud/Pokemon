@@ -568,6 +568,67 @@
           </div>
           {% endif %}
 
+          <!-- ── Widget Repousse ─────────────────────────────────────────── -->
+          {% if is_current and not zone.is_safe_zone %}
+          <div id="repel-widget" class="card shadow-sm mb-2" style="border:1px solid #2a5a2a;background:#0d1f0d;">
+            <div class="card-body py-2 px-3">
+
+              <!-- Repousse active -->
+              <div id="repel-active-block"
+                   style="{% if not active_repel %}display:none;{% endif %}">
+                <div class="d-flex align-items-center gap-2" style="margin-bottom:4px;">
+                  <span style="font-size:1rem;">🚫</span>
+                  <strong id="repel-active-name" style="font-size:.8rem;color:#81c784;">
+                    {{ active_repel.name|default:"" }}
+                  </strong>
+                </div>
+                <div style="font-size:.7rem;color:#aaa;margin-bottom:4px;">
+                  Traversées restantes :
+                  <strong id="repel-steps-left" style="color:#fff;">
+                    {{ active_repel.steps_left|default:"0" }}
+                  </strong>
+                  /
+                  <span id="repel-steps-max">{{ active_repel.steps_max|default:"0" }}</span>
+                </div>
+                <div style="background:#1a3a1a;border-radius:3px;height:5px;overflow:hidden;">
+                  <div id="repel-progress-bar"
+                       style="height:100%;background:#4caf50;border-radius:3px;transition:width .4s;
+                              width:{% if active_repel %}{% widthratio active_repel.steps_left active_repel.steps_max 100 %}{% else %}0{% endif %}%;"></div>
+                </div>
+              </div>
+
+              <!-- Pas de repousse active -->
+              <div id="repel-inactive-block"
+                   style="{% if active_repel %}display:none;{% endif %}">
+                {% if repel_items %}
+                  <div style="font-size:.72rem;color:#aaa;margin-bottom:6px;">
+                    <i class="fas fa-ban" style="color:#ef5350;"></i>
+                    Activer une Repousse pour éviter les combats
+                  </div>
+                  <div class="d-flex flex-column gap-1">
+                    {% for inv in repel_items %}
+                    <button class="btn btn-sm btn-outline-success repel-use-btn"
+                            data-inv-id="{{ inv.id }}"
+                            style="font-size:.7rem;text-align:left;padding:3px 8px;">
+                      <i class="fas fa-ban me-1"></i>
+                      {{ inv.item__name }}
+                      <span class="badge bg-secondary ms-1">×{{ inv.quantity }}</span>
+                    </button>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div style="font-size:.72rem;color:#555;">
+                    <i class="fas fa-ban" style="color:#666;"></i>
+                    Aucune Repousse en stock — achetez-en dans un PokéMart.
+                  </div>
+                {% endif %}
+              </div>
+
+            </div>
+          </div>
+          {% endif %}
+          <!-- /Widget Repousse -->
+
           <div class="card-header py-2 text-center">
             <strong><i class="fas fa-route p-2"></i> Zones Adjacentes</strong>
           </div>
@@ -634,6 +695,39 @@
 
 {% block js %}
 {{ block.super }}
+
+<script>
+// ── Widget Repousse — activation AJAX ─────────────────────────────────────
+document.querySelectorAll('.repel-use-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const invId = this.dataset.invId;
+    const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+    fetch('{% url "use_repel" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
+      body: `item_id=${encodeURIComponent(invId)}`
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return;
+
+      // Mettre à jour l'affichage
+      document.getElementById('repel-active-name').textContent  = data.name;
+      document.getElementById('repel-steps-left').textContent   = data.steps_left;
+      document.getElementById('repel-steps-max').textContent    = data.steps_max;
+      document.getElementById('repel-progress-bar').style.width = '100%';
+
+      document.getElementById('repel-inactive-block').style.display = 'none';
+      document.getElementById('repel-active-block').style.display   = '';
+
+      // Toast de confirmation
+      if (typeof showToast === 'function') showToast('success', data.message);
+    })
+    .catch(() => {});
+  });
+});
+</script>
 {% if zone.music %}
 <script>
 (function() {

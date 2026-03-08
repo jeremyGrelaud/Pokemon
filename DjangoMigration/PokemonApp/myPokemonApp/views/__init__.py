@@ -47,7 +47,8 @@ from myPokemonApp.views.MapViews import (
     zone_detail_view,
     travel_to_zone_view,
     wild_encounter_view,
-    fly_view
+    fly_view,
+    use_repel_view
 )
 
 # ── Étages ─────────────────────────────────────────────────────────────────────
