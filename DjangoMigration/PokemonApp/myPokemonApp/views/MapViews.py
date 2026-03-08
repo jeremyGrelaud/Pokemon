@@ -26,6 +26,12 @@ from myPokemonApp.gameUtils import (
 from myPokemonApp.questEngine import trigger_quest_event, check_rival_encounter, get_active_quests, can_access_floor
 from myPokemonApp.views.AchievementViews import trigger_achievements_after_zone_visit
 
+# Zones où un Ronflex bloque le passage et le flag story correspondant
+_SNORLAX_ZONES = {
+    'Route 12': 'snorlax_route12_awakened',
+    'Route 16': 'snorlax_route16_awakened',
+}
+
 logger = logging.getLogger(__name__)
 
 # ============================================================================
@@ -300,6 +306,19 @@ def zone_detail_view(request, zone_id):
         ).select_related('item').values('id', 'item__name', 'item__description', 'quantity')
     )
 
+    # ── Ronflex bloquant (Poké Flûte) ────────────────────────────────────────
+    snorlax_flag     = _SNORLAX_ZONES.get(zone.name)
+    save             = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+    snorlax_blocking = False
+    snorlax_awakened = False
+    has_poke_flute   = False
+    if snorlax_flag:
+        snorlax_awakened = bool(save and save.story_flags.get(snorlax_flag))
+        snorlax_blocking = not snorlax_awakened
+        has_poke_flute   = TrainerInventory.objects.filter(
+            trainer=trainer, item__name='Poké Flûte', quantity__gt=0
+        ).exists()
+
     return render(request, 'map/zone_detail.html', {
         'zone':               zone,
         'can_access':         can_access,
@@ -313,6 +332,9 @@ def zone_detail_view(request, zone_id):
         'current_zone':       player_location.current_zone,
         'active_repel':       active_repel,
         'repel_items':        repel_items,
+        'snorlax_blocking':   snorlax_blocking,
+        'snorlax_awakened':   snorlax_awakened,
+        'has_poke_flute':     has_poke_flute,
         'pokemon_center':     pokemon_center,
         'zone_shop':          zone_shop,
         'gym_leader':         gym_leader,
@@ -639,4 +661,80 @@ def use_repel_view(request):
         'name':       item.name,
         'steps_left': steps,
         'steps_max':  steps,
+    })
+
+
+# ── Poké Flûte ────────────────────────────────────────────────────────────────
+
+@login_required
+def use_poke_flute_view(request):
+    """
+    POST /map/use-poke-flute/
+    Body : zone_id=<int>
+
+    Utilise la Poké Flûte sur le Ronflex qui bloque la zone courante.
+    - Pose le story_flag correspondant (snorlax_route12_awakened ou snorlax_route16_awakened).
+    - Déclenche les quêtes liées à l'événement.
+    - La Poké Flûte n'est PAS consommée (objet clé non consommable).
+    Retourne JSON.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST requis'}, status=405)
+
+    trainer = get_player_trainer(request.user)
+    zone_id = request.POST.get('zone_id')
+    if not zone_id:
+        return JsonResponse({'error': 'zone_id manquant'}, status=400)
+
+    zone = get_object_or_404(Zone, pk=zone_id)
+
+    # Vérifier que le joueur est bien dans cette zone
+    player_location = get_player_location(trainer)
+    if player_location.current_zone != zone:
+        return JsonResponse({'error': "Vous n'êtes pas dans cette zone."}, status=403)
+
+    # Vérifier que cette zone a un Ronflex bloquant
+    snorlax_flag = _SNORLAX_ZONES.get(zone.name)
+    if not snorlax_flag:
+        return JsonResponse({'error': "Aucun Ronflex ne bloque cette zone."}, status=400)
+
+    # Vérifier que le joueur possède la Poké Flûte
+    has_flute = TrainerInventory.objects.filter(
+        trainer=trainer, item__name='Poké Flûte', quantity__gt=0
+    ).exists()
+    if not has_flute:
+        return JsonResponse({'error': "Vous ne possédez pas la Poké Flûte."}, status=400)
+
+    # Vérifier que le Ronflex n'a pas déjà été réveillé
+    save = GameSave.objects.filter(trainer=trainer, is_active=True).first()
+    if save and save.story_flags.get(snorlax_flag):
+        return JsonResponse({
+            'success': False,
+            'message': "Le Ronflex est déjà réveillé.",
+            'already_done': True,
+        })
+
+    # Poser le flag story et propager aux quêtes
+    from myPokemonApp.questEngine import set_story_flag_and_trigger
+    set_story_flag_and_trigger(trainer, snorlax_flag)
+
+    # Déclencher l'événement de quête use_item pour la Poké Flûte
+    quest_notifications = trigger_quest_event(
+        trainer, 'use_item',
+        item_name='Poké Flûte',
+        zone=zone,
+    )
+
+    rewards = []
+    for notif in quest_notifications:
+        msg = f"✅ Quête terminée : « {notif['title']} »"
+        if notif.get('reward_money'):
+            msg += f" (+{notif['reward_money']}₽)"
+        rewards.append(msg)
+
+    return JsonResponse({
+        'success':  True,
+        'message':  f"🎵 La mélodie de la Poké Flûte résonne… Le Ronflex se réveille et dégager la route !",
+        'zone_name': zone.name,
+        'rewards':  rewards,
     })
