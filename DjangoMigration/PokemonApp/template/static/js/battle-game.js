@@ -1811,39 +1811,171 @@ function showCaptureSuccessModal(captureData) {
   window.__battleInProgress = false;
 
   // Arrêter la musique
-  if (audioManager) {
-    audioManager.stopBGM();
+  if (audioManager) audioManager.stopBGM();
+
+  const p        = captureData.captured_pokemon;
+  const name     = p.nickname || p.name;
+  const isShiny  = p.is_shiny;
+  const spriteDir = isShiny ? 'shiny' : 'normal';
+  const spriteName = p.name.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+  // ── Badge genre ──────────────────────────────────────────────────────────
+  const genderHtml = p.gender === 'M'
+    ? '<span style="color:#6baed6;font-size:.85rem;margin-left:4px;">♂</span>'
+    : p.gender === 'F'
+      ? '<span style="color:#e06c9f;font-size:.85rem;margin-left:4px;">♀</span>'
+      : '';
+
+  // ── Badge talent ─────────────────────────────────────────────────────────
+  const abilityHtml = p.ability
+    ? `<span class="badge" style="background:#5c6bc0;color:#fff;font-size:.7rem;margin-left:6px;"
+            title="${p.is_hidden_ability ? 'Talent caché' : 'Talent'}">
+         ${p.is_hidden_ability ? '★ ' : '◆ '}${p.ability}
+       </span>`
+    : '';
+
+  // ── Badges type ───────────────────────────────────────────────────────────
+  const type1Html = p.primary_type
+    ? `<span class="badge badge-type-${p.primary_type.toLowerCase()}" style="font-size:.65rem;">${p.primary_type}</span>`
+    : '';
+  const type2Html = p.secondary_type
+    ? `<span class="badge badge-type-${p.secondary_type.toLowerCase()}" style="font-size:.65rem;margin-left:3px;">${p.secondary_type}</span>`
+    : '';
+
+  // ── Stats avec barre colorée (0-255) ─────────────────────────────────────
+  const STAT_COLORS = {
+    hp: '#4caf50', attack: '#ef5350', defense: '#42a5f5',
+    special_attack: '#ab47bc', special_defense: '#26c6da', speed: '#ffa726',
+  };
+  const STAT_LABELS = {
+    hp: 'PV', attack: 'Atk', defense: 'Def',
+    special_attack: 'Atk.Sp', special_defense: 'Def.Sp', speed: 'Vit',
+  };
+  const IV_LABELS = { hp: 'IV PV', attack: 'IV Atk', defense: 'IV Def',
+    special_attack: 'IV Atk.Sp', special_defense: 'IV Def.Sp', speed: 'IV Vit' };
+
+  function ivStars(val) {
+    if (val >= 31) return '<span style="color:#ffd700;">★★★</span>';
+    if (val >= 26) return '<span style="color:#c0c0c0;">★★☆</span>';
+    if (val >= 16) return '<span style="color:#cd7f32;">★☆☆</span>';
+    return '<span style="color:#666;">☆☆☆</span>';
   }
+
+  const statsRows = ['hp','attack','defense','special_attack','special_defense','speed'].map(key => {
+    const val   = p[key]      || 0;
+    const iv    = p[`iv_${key}`] ?? '?';
+    const color = STAT_COLORS[key];
+    const pct   = Math.min(100, Math.round(val / 255 * 100));
+    return `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span style="width:52px;font-size:.65rem;color:#aaa;text-align:right;flex-shrink:0;">${STAT_LABELS[key]}</span>
+        <span style="width:26px;font-size:.7rem;font-weight:700;color:#eee;text-align:right;flex-shrink:0;">${val}</span>
+        <div style="flex:1;background:#333;border-radius:3px;height:6px;overflow:hidden;">
+          <div style="width:${pct}%;background:${color};height:100%;border-radius:3px;"></div>
+        </div>
+        <span style="width:24px;font-size:.62rem;color:#aaa;text-align:right;flex-shrink:0;">${iv}</span>
+        <span style="width:38px;text-align:right;flex-shrink:0;">${ivStars(iv)}</span>
+      </div>`;
+  }).join('');
+
+  // ── Capacités ─────────────────────────────────────────────────────────────
+  const movesHtml = (p.moves || []).map(m => {
+    const typeClass = m.type ? `badge-type-${m.type.toLowerCase()}` : 'bg-secondary';
+    return `<span class="badge ${typeClass}" style="font-size:.62rem;margin:1px 2px;">${m.name}</span>`;
+  }).join('') || '<span style="color:#666;font-size:.7rem;">Aucune capacité</span>';
+
+  // ── Nature (couleur selon bonus/malus) ────────────────────────────────────
+  const natureHtml = p.nature
+    ? `<span style="font-size:.72rem;color:#ce93d8;">Nature : ${p.nature}</span>`
+    : '';
+
+  // ── Premier capturé badge ─────────────────────────────────────────────────
+  const firstCatchHtml = captureData.is_first_catch
+    ? `<div style="background:#1a3a1a;border:1px solid #4caf50;border-radius:6px;padding:4px 10px;
+                   display:inline-flex;align-items:center;gap:6px;font-size:.72rem;color:#81c784;margin-top:6px;">
+         <i class="fas fa-star"></i> Première capture !
+       </div>`
+    : '';
+
   const modal = `
     <div class="modal fade" id="capture-success-modal" tabindex="-1" data-backdrop="static">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-success">
-          <div class="modal-header bg-success text-white">
-            <h5 class="modal-title">
-              <i class="fas fa-trophy"></i> Pokémon Capturé !
-            </h5>
+      <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content" style="background:#1a1a2e;border:2px solid #4caf50;color:#eee;border-radius:12px;overflow:hidden;">
+
+          <!-- Header -->
+          <div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);padding:12px 18px;
+                      display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <i class="fas fa-pokeball" style="font-size:1.1rem;"></i>
+              <span style="font-weight:700;font-size:1rem;">Pokémon Capturé !</span>
+            </div>
+            <span style="font-size:.72rem;opacity:.7;">${p.pokeball_used || 'Poké Ball'}</span>
           </div>
-          <div class="modal-body text-center">
-            <i class="fas fa-check-circle fa-5x text-success mb-3"></i>
-            <h4>${captureData.captured_pokemon.name} capturé !</h4>
-            <p class="mb-2">Niveau ${captureData.captured_pokemon.level}</p>
-            ${captureData.is_first_catch ? '<p class="text-warning"><i class="fas fa-star"></i> Premier capturé !</p>' : ''}
-            <hr>
-            <p class="text-muted small">Le Pokémon a été envoyé dans votre PC</p>
+
+          <!-- Body -->
+          <div style="padding:16px;">
+
+            <!-- Sprite + infos principales -->
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+              <div style="position:relative;flex-shrink:0;">
+                <img src="/static/img/sprites_gen5/${spriteDir}/${spriteName}.png"
+                     alt="${p.name}"
+                     style="width:80px;height:80px;object-fit:contain;image-rendering:pixelated;"
+                     onerror="this.src='/static/img/pokeball.png'">
+                ${isShiny ? '<span style="position:absolute;top:0;right:0;font-size:.7rem;">✨</span>' : ''}
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:1.05rem;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;">
+                  ${name}${genderHtml}
+                  ${name !== p.name ? `<span style="font-size:.7rem;color:#888;margin-left:4px;">(${p.name})</span>` : ''}
+                </div>
+                <div style="margin:3px 0;">
+                  <span style="font-size:.75rem;color:#aaa;">Niv.</span>
+                  <span style="font-weight:700;font-size:.9rem;margin-left:2px;">${p.level}</span>
+                  ${type1Html}${type2Html}
+                </div>
+                <div style="margin:3px 0;">${abilityHtml}</div>
+                <div style="margin-top:4px;">${natureHtml}</div>
+                ${firstCatchHtml}
+              </div>
+            </div>
+
+            <!-- Stats -->
+            <div style="background:#12122a;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span style="font-size:.65rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;">Statistiques</span>
+                <span style="font-size:.6rem;color:#555;">stat · IV · qualité</span>
+              </div>
+              ${statsRows}
+            </div>
+
+            <!-- Capacités -->
+            <div style="background:#12122a;border-radius:8px;padding:8px 12px;">
+              <div style="font-size:.65rem;font-weight:700;color:#888;text-transform:uppercase;
+                          letter-spacing:.05em;margin-bottom:5px;">Capacités</div>
+              <div>${movesHtml}</div>
+            </div>
+
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-success" onclick="window.location.href=BATTLE_CONFIG.urls.returnZone">
-              <i class="fas fa-map-marker-alt"></i> Retour à la zone
+
+          <!-- Footer -->
+          <div style="padding:10px 16px;border-top:1px solid #2a2a4a;display:flex;gap:8px;justify-content:flex-end;">
+            <button type="button" class="btn btn-sm btn-outline-light"
+                    onclick="window.location.href=BATTLE_CONFIG.urls.returnZone"
+                    style="font-size:.8rem;">
+              <i class="fas fa-map-marker-alt me-1"></i>Retour à la zone
             </button>
-            <button type="button" class="btn btn-primary" onclick="window.location.href=BATTLE_CONFIG.urls.myTeam">
-              <i class="fas fa-laptop"></i> Voir le PC
+            <button type="button" class="btn btn-sm btn-success"
+                    onclick="window.location.href=BATTLE_CONFIG.urls.myTeam"
+                    style="font-size:.8rem;">
+              <i class="fas fa-laptop me-1"></i>Voir le PC
             </button>
           </div>
+
         </div>
       </div>
-    </div>
-  `;
-  
+    </div>`;
+
   $('body').append(modal);
   $('#capture-success-modal').modal('show');
 }
