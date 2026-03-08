@@ -236,12 +236,54 @@ def _capture_success(battle, opponent, ball_item, trainer, attempt, shakes):
     if is_first:
         message += " (Première capture !)"
 
+    # ── Sérialiser le Pokémon capturé avec toutes ses stats pour l'UI ────────
+    moves_data = [
+        {
+            'name': mi.move.name,
+            'type': mi.move.type.name if mi.move.type else '',
+        }
+        for mi in captured.pokemonmoveinstance_set.select_related('move', 'move__type').all()
+    ]
+
+    captured_data = {
+        'id':              captured.id,
+        'name':            captured.species.name,
+        'nickname':        captured.nickname,
+        'level':           captured.level,
+        'is_shiny':        captured.is_shiny,
+        'gender':          captured.gender,
+        'pokeball_used':   captured.pokeball_used,
+        # ── Stats ────────────────────────────────────────────────────────────
+        'hp':              captured.max_hp,
+        'attack':          captured.attack,
+        'defense':         captured.defense,
+        'special_attack':  captured.special_attack,
+        'special_defense': captured.special_defense,
+        'speed':           captured.speed,
+        # ── IVs ──────────────────────────────────────────────────────────────
+        'iv_hp':              captured.iv_hp,
+        'iv_attack':          captured.iv_attack,
+        'iv_defense':         captured.iv_defense,
+        'iv_special_attack':  captured.iv_special_attack,
+        'iv_special_defense': captured.iv_special_defense,
+        'iv_speed':           captured.iv_speed,
+        # ── Nature & talent ───────────────────────────────────────────────────
+        'nature':             captured.nature,
+        'ability':            captured.ability.name if captured.ability else None,
+        'is_hidden_ability':  captured.is_hidden_ability,
+        # ── Type(s) ───────────────────────────────────────────────────────────
+        'primary_type':   captured.species.primary_type.name if captured.species.primary_type else '',
+        'secondary_type': captured.species.secondary_type.name if captured.species.secondary_type else None,
+        # ── Capacités ─────────────────────────────────────────────────────────
+        'moves': moves_data,
+    }
+
     return {
         'success':                   True,
         'capture_rate':              attempt.capture_rate,
         'shakes':                    shakes,
         'message':                   message,
-        'captured_pokemon':          {'name': captured.species.name, 'level': captured.level},
+        'captured_pokemon':          captured_data,
         'is_first_catch':            is_first,
         'achievement_notifications': trigger_achievements_after_capture(trainer),
     }
