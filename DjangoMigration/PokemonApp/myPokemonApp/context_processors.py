@@ -65,11 +65,13 @@ def active_save(request):
                     to_attr='active_saves_list',
                 ),
                 # Équipe active — select_related('species') pour le nom + sprite
+                # + prefetch des moves pour vérifier can_fly sans requête supplémentaire
                 Prefetch(
                     'pokemon_team',
                     queryset=PlayablePokemon.objects
                         .filter(is_in_party=True)
                         .select_related('species')
+                        .prefetch_related('pokemonmoveinstance_set__move')
                         .order_by('party_position'),
                     to_attr='active_party',
                 ),
@@ -154,13 +156,13 @@ def active_save(request):
         trainer.active_battles_list[0] if trainer.active_battles_list else None
     )
 
-    # ── Vol (CS02) disponible ? — réutilise trainer_has_hm ──────────────────
-    can_fly = False
-    try:
-        from myPokemonApp.questEngine import trainer_has_hm
-        can_fly = trainer_has_hm(trainer, 'fly')
-    except Exception:
-        pass
+    # ── Vol (CS02) disponible ? — vérifié sur les données déjà prefetchées ──
+    _FLY_NAMES = {'vol', 'fly'}
+    can_fly = any(
+        mi.move.name.lower() in _FLY_NAMES
+        for p in trainer.active_party
+        for mi in p.pokemonmoveinstance_set.all()
+    )
 
     return {
         'active_save':          save,
