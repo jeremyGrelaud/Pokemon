@@ -1,5 +1,5 @@
 """
-Système de sauvegarde COMPLET avec snapshot v1.3
+Système de sauvegarde COMPLET avec snapshot v1.4
 =================================================
 
 Changements v1.0 → v1.1 :
@@ -19,6 +19,16 @@ v1.3 (Held Items) :
   - restore_game_snapshot() restaure le held_item de chaque Pokémon.
   - Les snapshots anciens (sans held_item_id) sont tolérés : pd.get('held_item_id')
     retourne None, ce qui équivaut à aucun objet tenu.
+
+v1.4 (Ability + champs manquants) :
+  - create_game_snapshot() inclut désormais pour chaque Pokémon :
+      · 'ability_id' / 'is_hidden_ability' (talent individuel)
+      · 'gender'          (M / F / N)
+      · 'caught_location' (lieu de capture)
+      · 'sleep_turns'     (tours de sommeil restants)
+      · 'source' dans chaque move (level / tm / hm / tutor / egg / other)
+  - restore_game_snapshot() restaure tous ces champs.
+  - Rétrocompatibilité totale : snapshots v1.0–v1.3 sont tolérés via .get().
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -59,7 +69,7 @@ def create_game_snapshot(trainer, save):
         dict JSON-serializable
     """
     snapshot = {
-        'version':    '1.1',
+        'version':    '1.4',
         'created_at': timezone.now().isoformat(),
 
         'trainer': {
@@ -121,6 +131,14 @@ def create_game_snapshot(trainer, save):
             'friendship':         pokemon.friendship,
             # ── Held item ────────────────────────────────────────────────
             'held_item_id':       pokemon.held_item_id,
+            # ── Ability ──────────────────────────────────────────────────
+            'ability_id':         pokemon.ability_id,
+            'is_hidden_ability':  pokemon.is_hidden_ability,
+            # ── Genre & capture ──────────────────────────────────────────
+            'gender':             pokemon.gender,
+            'caught_location':    pokemon.caught_location,
+            # ── Statut étendu ────────────────────────────────────────────
+            'sleep_turns':        pokemon.sleep_turns,
             'moves':              [],
         }
         for mi in pokemon.pokemonmoveinstance_set.all():
@@ -128,6 +146,7 @@ def create_game_snapshot(trainer, save):
                 'move_id':    mi.move.id,
                 'move_name':  mi.move.name,
                 'current_pp': mi.current_pp,
+                'source':     mi.source,
             })
         snapshot['pokemon_team'].append(pdata)
 
@@ -258,6 +277,14 @@ def restore_game_snapshot(trainer, snapshot, save=None):
             friendship=pd.get('friendship', 70),
             # ── Held item ────────────────────────────────────────────────
             held_item_id=pd.get('held_item_id'),
+            # ── Ability ──────────────────────────────────────────────────
+            ability_id=pd.get('ability_id'),
+            is_hidden_ability=pd.get('is_hidden_ability', False),
+            # ── Genre & capture ──────────────────────────────────────────
+            gender=pd.get('gender', 'M'),
+            caught_location=pd.get('caught_location'),
+            # ── Statut étendu ────────────────────────────────────────────
+            sleep_turns=pd.get('sleep_turns', 0),
         )
         restored._skip_learn_moves = True
         restored.save()
@@ -268,7 +295,10 @@ def restore_game_snapshot(trainer, snapshot, save=None):
                 PokemonMoveInstance.objects.get_or_create(
                     pokemon=restored,
                     move=move,
-                    defaults={'current_pp': md['current_pp']},
+                    defaults={
+                        'current_pp': md['current_pp'],
+                        'source':     md.get('source', 'level'),
+                    },
                 )
             except PokemonMove.DoesNotExist:
                 continue
