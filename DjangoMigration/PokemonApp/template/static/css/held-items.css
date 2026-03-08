@@ -32,7 +32,6 @@
 .held-item-badge img {
   width: 18px; height: 18px;
   object-fit: contain;
-  image-rendering: pixelated;
   flex-shrink: 0;
 }
 .held-item-consumable::after {
@@ -76,7 +75,7 @@
 }
 #held-item-modal .held-option:hover  { background: #eaf4fb; border-color: #3498db; }
 #held-item-modal .held-option.active { background: #d6eaf8; border-color: #2471a3; }
-#held-item-modal .held-option img    { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; }
+#held-item-modal .held-option img    { width: 30px; height: 30px; object-fit: contain; }
 #held-item-modal .opt-name  { font-weight: 700; font-size: .84rem; color: #2c3e50; }
 #held-item-modal .opt-desc  { font-size: .73rem; color: #7f8c8d; line-height: 1.3; }
 #held-item-modal .opt-qty   { margin-left: auto; font-size: .72rem; color: #e67e22; font-weight: 700; white-space: nowrap; }

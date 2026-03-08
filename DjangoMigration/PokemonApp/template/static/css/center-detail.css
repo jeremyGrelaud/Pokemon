@@ -171,7 +171,6 @@
   height: 64px;
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(255,255,255,.8));
-  image-rendering: pixelated;
 }
 .pokemon-heal-sprite.visible {
   opacity: 1;

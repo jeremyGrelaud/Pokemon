@@ -28,7 +28,7 @@
     cursor:default; transition:background .15s;
   }
   .party-slot:hover { background:#0f3460; }
-  .party-slot img { width:36px; height:36px; object-fit:contain; image-rendering:pixelated; }
+  .party-slot img { width:36px; height:36px; object-fit:contain;  }
   .party-slot-empty {
     opacity:.3; font-size:.7rem; color:#aaa;
     padding:9px 12px; border-bottom:1px solid #0f346033;
@@ -102,7 +102,7 @@
   .pc-card-shiny { position:absolute; top:6px; right:8px; font-size:.75rem; }
 
   .pc-sprite {
-    width:64px; height:64px; object-fit:contain; image-rendering:pixelated;
+    width:64px; height:64px; object-fit:contain; 
     filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));
     transition:transform .2s;
   }
@@ -177,6 +177,22 @@
   }
   .btn-clear-filters:hover { opacity:.85; }
 
+  /* Pagination */
+  .pc-pagination {
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    padding:14px 20px; flex-wrap:wrap;
+  }
+  .pg-btn {
+    min-width:32px; height:32px; padding:0 8px;
+    background:#16213e; border:1px solid #0f3460; border-radius:5px;
+    color:#e2e8f0; font-size:.72rem; cursor:pointer; transition:background .15s, border-color .15s;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pg-btn:hover  { background:#0f3460; border-color:#64b5f6; }
+  .pg-btn.active { background:#1565c0; border-color:#1565c0; color:#fff; font-weight:700; }
+  .pg-btn:disabled { opacity:.35; cursor:default; }
+  .pg-info { font-size:.7rem; color:#4a5568; padding:0 6px; }
+
   /* Breadcrumb */
   .pc-breadcrumb { padding:10px 20px 0; font-size:.75rem; }
 
@@ -198,7 +214,7 @@
     color:#888; font-size:1.2rem; cursor:pointer; line-height:1; padding:4px 8px;
   }
   .pc-detail-close:hover { color:#e94560; }
-  .pd-sprite { display:block; margin:0 auto 8px; width:96px; height:96px; object-fit:contain; image-rendering:pixelated; }
+  .pd-sprite { display:block; margin:0 auto 8px; width:96px; height:96px; object-fit:contain;  }
   .pd-name  { font-size:.95rem; font-weight:700; color:#e2e8f0; text-align:center; margin-bottom:2px; }
   .pd-nick  { font-size:.75rem; color:#888; text-align:center; margin-bottom:8px; }
   .pd-types { display:flex; gap:5px; justify-content:center; margin-bottom:10px; }
@@ -273,36 +289,37 @@
   {# ── Zone principale ───────────────────────────────────────── #}
   <main class="pc-main">
 
-    {# Toolbar #}
-    <div class="pc-toolbar">
+    {# Toolbar — filtres soumis en GET #}
+    <form method="get" id="pc-filter-form" class="pc-toolbar">
       <span class="pc-toolbar-title">💾 PC</span>
-      <span class="pc-count-badge" id="pc-visible-count">{{ pc_pokemon|length }} Pokémon</span>
+      <span class="pc-count-badge">{{ pc_total }} Pokémon</span>
 
-      <input type="text" class="pc-search" id="pc-search"
-             placeholder="Rechercher un Pokémon…" autocomplete="off">
+      <input type="text" class="pc-search" name="q" value="{{ q|default:'' }}"
+             placeholder="Rechercher un Pokémon…" autocomplete="off"
+             id="pc-search">
 
       {% if types_present %}
       <div class="type-filter-wrap" id="type-filters">
-        <button class="type-btn active" data-type="all"
-                style="background:#2d3748;color:#e2e8f0;">TOUS</button>
         {% for t in types_present %}
-          <button class="type-btn badge-type-{{ t|lower }}" data-type="{{ t|lower }}">{{ t }}</button>
+          <button type="submit" name="type" value="{{ t|lower }}"
+                  class="type-btn badge-type-{{ t|lower }} {% if type_filter == t|lower %}active{% endif %}">{{ t }}</button>
         {% endfor %}
       </div>
       {% endif %}
 
-      <select class="sort-select" id="pc-sort">
-        <option value="dex">Tri : N° Pokédex</option>
-        <option value="level-desc">Tri : Niveau ↓</option>
-        <option value="level-asc">Tri : Niveau ↑</option>
-        <option value="name">Tri : Nom A→Z</option>
+      <select class="sort-select" name="sort" id="pc-sort">
+        <option value="dex"        {% if sort == 'dex' %}selected{% endif %}>Tri : N° Pokédex</option>
+        <option value="level-desc" {% if sort == 'level-desc' %}selected{% endif %}>Tri : Niveau ↓</option>
+        <option value="level-asc"  {% if sort == 'level-asc' %}selected{% endif %}>Tri : Niveau ↑</option>
+        <option value="name"       {% if sort == 'name' %}selected{% endif %}>Tri : Nom A→Z</option>
       </select>
 
-      <button class="btn-clear-filters" id="btn-clear-filters" style="display:none"
-              title="Réinitialiser les filtres">✕ Effacer</button>
-    </div>
+      {% if q or type_filter or sort and sort != 'dex' %}
+      <a href="{% url 'PCView' %}" class="btn-clear-filters">✕ Effacer les filtres</a>
+      {% endif %}
+    </form>
 
-    {# Grid #}
+        {# Grid #}
     <div class="pc-grid" id="pc-grid">
       {% if pc_pokemon %}
         {% for pokemon in pc_pokemon %}
@@ -368,6 +385,34 @@
         {% endfor %}
 
     </div>{# /pc-grid #}
+    {# ── Pagination Django ── #}
+    {% if paginator.num_pages > 1 %}
+    <div class="pc-pagination">
+      {% if page_obj.has_previous %}
+        <a class="pg-btn" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&type={{ type_filter }}&sort={{ sort }}">‹</a>
+      {% else %}
+        <button class="pg-btn" disabled>‹</button>
+      {% endif %}
+
+      {% for p in paginator.page_range %}
+        {% if p == page_obj.number %}
+          <button class="pg-btn active">{{ p }}</button>
+        {% elif p == 1 or p == paginator.num_pages or p|add:"-2" <= page_obj.number and page_obj.number <= p|add:"2" %}
+          <a class="pg-btn" href="?page={{ p }}&q={{ q }}&type={{ type_filter }}&sort={{ sort }}">{{ p }}</a>
+        {% elif p == page_obj.number|add:"-3" or p == page_obj.number|add:"3" %}
+          <span class="pg-info">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <a class="pg-btn" href="?page={{ page_obj.next_page_number }}&q={{ q }}&type={{ type_filter }}&sort={{ sort }}">›</a>
+      {% else %}
+        <button class="pg-btn" disabled>›</button>
+      {% endif %}
+
+      <span class="pg-info">{{ page_obj.number }}/{{ paginator.num_pages }}</span>
+    </div>
+    {% endif %}
     <div class="pc-no-result" id="pc-no-result" style="display:none;padding:40px;text-align:center;color:#4a5568;font-size:.8rem;">
       Aucun Pokémon ne correspond à cette recherche.
     </div>
@@ -422,15 +467,15 @@ const PC_DATA = {
   {% endfor %}
 };
 
-const PARTY_COUNT    = {{ party_count }};
+let PARTY_COUNT    = {{ party_count }};
 const PARTY_FULL_MSG = "Votre équipe est complète (6/6)";
 const CSRF = "{{ csrf_token }}";
 
-// ── Délégation d'événements sur la grille ──
+// ── Délégation d'événements ────────────────────────────────
 document.addEventListener('click', function(e) {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
-  const id = parseInt(btn.dataset.id, 10);
+  const id     = parseInt(btn.dataset.id, 10);
   const action = btn.dataset.action;
   if (action === 'withdraw') withdrawPokemon(id, btn);
   if (action === 'rename')   startRename(id, btn.dataset.name || '');
@@ -438,22 +483,34 @@ document.addEventListener('click', function(e) {
   if (action === 'deposit')  depositPokemon(id, btn);
 });
 
-// ── Délégation d'événements sur la grille (évite les problèmes d'inline onclick) ──
-document.addEventListener('click', function(e) {
-  const btn = e.target.closest('[data-action]');
-  if (!btn) return;
-  const id = parseInt(btn.dataset.id, 10);
-  const action = btn.dataset.action;
-  if (action === 'withdraw') withdrawPokemon(id, btn);
-  if (action === 'rename')   startRename(id, btn.dataset.name || '');
-  if (action === 'detail')   openDetail(id);
-  if (action === 'deposit')  depositPokemon(id, btn);
+// ── Soumission auto de la recherche après pause frappe ─────
+document.getElementById('pc-search')?.addEventListener('input', function() {
+  clearTimeout(this._t);
+  this._t = setTimeout(() => this.closest('form').submit(), 450);
 });
 
-// ── Types → couleur barre de stat ──────────────────────────
-const STAT_COLORS = { hp:'#e53935', atk:'#ef6c00', def:'#1565c0', spa:'#6a1599', spd:'#00695c', spe:'#558b2f' };
+// ── Soumettre le formulaire au changement de tri ───────────
+document.getElementById('pc-sort')?.addEventListener('change', function() {
+  this.closest('form').submit();
+});
 
-// ── Deposit (équipe → PC) ─────────────────────────────────
+// ── Alert ──────────────────────────────────────────────────
+function showAlert(msg, type = 'success') {
+  const el = document.getElementById('pc-alert');
+  el.className = `alert alert-${type} mx-3 mt-2 mb-0`;
+  el.textContent = msg;
+  el.classList.remove('d-none');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add('d-none'), 3500);
+}
+
+// ── Party count ────────────────────────────────────────────
+function updatePartyCount() {
+  const title = document.querySelector('.pc-sidebar-title');
+  if (title) title.textContent = `Équipe active (${PARTY_COUNT}/6)`;
+}
+
+// ── Deposit (équipe → PC) ──────────────────────────────────
 async function depositPokemon(id, btn) {
   const slot = document.getElementById('party-slot-' + id);
   if (slot) slot.classList.add('depositing');
@@ -466,8 +523,11 @@ async function depositPokemon(id, btn) {
     });
     const d = await r.json();
     if (d.success) {
+      PARTY_COUNT--;
+      updatePartyCount();
       showAlert(d.message || 'Pokémon envoyé au PC.', 'info');
-      setTimeout(() => location.reload(), 500);
+      if (slot) { slot.classList.add('depositing'); setTimeout(() => { slot.remove(); }, 400); }
+      setTimeout(() => location.reload(), 800);
     } else {
       showAlert(d.error || 'Erreur', 'danger');
       if (slot) slot.classList.remove('depositing');
@@ -480,97 +540,10 @@ async function depositPokemon(id, btn) {
   }
 }
 
-// ── Alert ──────────────────────────────────────────────────
-function showAlert(msg, type = 'success') {
-  const el = document.getElementById('pc-alert');
-  el.className = `alert alert-${type} mx-3 mt-2 mb-0`;
-  el.textContent = msg;
-  el.classList.remove('d-none');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.add('d-none'), 3500);
-}
-
-// ── Filtre / recherche / tri ───────────────────────────────
-let activeType = 'all';
-let activeSearch = '';
-let activeSort = 'dex';
-
-function updateClearBtn() {
-  const btn = document.getElementById('btn-clear-filters');
-  if (!btn) return;
-  btn.style.display = (activeSearch || activeType !== 'all') ? '' : 'none';
-}
-
-function clearFilters() {
-  activeSearch = '';
-  activeType = 'all';
-  document.getElementById('pc-search').value = '';
-  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-  const allBtn = document.querySelector('.type-btn[data-type="all"]');
-  if (allBtn) allBtn.classList.add('active');
-  applyFilters();
-}
-
-document.getElementById('btn-clear-filters')?.addEventListener('click', clearFilters);
-
-function applyFilters() {
-  const cards = document.querySelectorAll('.pc-card');
-  let visible = 0;
-  cards.forEach(c => {
-    const name    = c.dataset.name   || '';
-    const species = c.dataset.species|| '';
-    const type1   = c.dataset.type1  || '';
-    const type2   = c.dataset.type2  || '';
-    const matchSearch = !activeSearch ||
-      name.includes(activeSearch) || species.includes(activeSearch);
-    const matchType = activeType === 'all' || type1 === activeType || type2 === activeType;
-    const show = matchSearch && matchType;
-    c.style.display = show ? '' : 'none';
-    if (show) visible++;
-  });
-  document.getElementById('pc-visible-count').textContent = visible + ' Pokémon';
-  const noRes = document.getElementById('pc-no-result');
-  if (noRes) noRes.style.display = visible === 0 ? '' : 'none';
-  updateClearBtn();
-}
-
-document.getElementById('pc-search').addEventListener('input', e => {
-  activeSearch = e.target.value.toLowerCase().trim();
-  applyFilters();
-});
-
-document.querySelectorAll('.type-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeType = btn.dataset.type;
-    applyFilters();
-  });
-});
-
-document.getElementById('pc-sort').addEventListener('change', e => {
-  activeSort = e.target.value;
-  sortGrid();
-});
-
-function sortGrid() {
-  const grid  = document.getElementById('pc-grid');
-  const cards = [...grid.querySelectorAll('.pc-card')];
-  cards.sort((a, b) => {
-    if (activeSort === 'dex')        return +a.dataset.dex - +b.dataset.dex;
-    if (activeSort === 'level-desc') return +b.dataset.level - +a.dataset.level;
-    if (activeSort === 'level-asc')  return +a.dataset.level - +b.dataset.level;
-    if (activeSort === 'name')       return a.dataset.name.localeCompare(b.dataset.name);
-    return 0;
-  });
-  cards.forEach(c => grid.appendChild(c));
-}
-
-// ── Withdraw ───────────────────────────────────────────────
+// ── Withdraw (PC → équipe) ─────────────────────────────────
 async function withdrawPokemon(id, btn) {
   if (PARTY_COUNT >= 6) { showAlert(PARTY_FULL_MSG, 'warning'); return; }
-  btn.disabled = true;
-  btn.textContent = '…';
+  if (btn) btn.disabled = true;
   try {
     const r = await fetch('/api/add-to-party/', {
       method:'POST',
@@ -579,21 +552,20 @@ async function withdrawPokemon(id, btn) {
     });
     const d = await r.json();
     if (d.success) {
-      const card = document.getElementById('pc-card-' + id);
-      card.classList.add('withdrawing');
-      setTimeout(() => card.remove(), 450);
+      PARTY_COUNT++;
+      updatePartyCount();
       showAlert(d.message || 'Pokémon ajouté à l\'équipe !', 'success');
-      // Mettre à jour sidebar (rechargement léger)
-      setTimeout(() => location.reload(), 600);
+      const card = document.getElementById('pc-card-' + id);
+      if (card) { card.classList.add('withdrawing'); setTimeout(() => { card.remove(); }, 450); }
+      setTimeout(() => location.reload(), 900);
     } else {
       showAlert(d.error || 'Erreur', 'danger');
-      btn.disabled = false;
-      btn.textContent = '⬆ Équipe';
+      if (btn) btn.disabled = false;
     }
-  } catch { btn.disabled = false; btn.textContent = '⬆ Équipe'; }
+  } catch { if (btn) btn.disabled = false; }
 }
 
-// ── Rename inline ─────────────────────────────────────────
+// ── Rename inline ──────────────────────────────────────────
 function startRename(id, currentName) {
   const nameEl = document.querySelector(`#pc-card-${id} .pc-card-name`);
   const nickEl = document.querySelector(`#pc-card-${id} .pc-card-nick`);
@@ -619,7 +591,7 @@ function startRename(id, currentName) {
         const newName = d.nickname || PC_DATA[id]?.name || val;
         nameEl.textContent = newName;
         if (PC_DATA[id]) PC_DATA[id].nick = d.nickname || '';
-        showAlert('Renommé en ' + (d.nickname || PC_DATA[id].name), 'success');
+        showAlert('Renommé en ' + (d.nickname || PC_DATA[id]?.name), 'success');
       } else {
         nameEl.textContent = currentName;
         showAlert(d.error || 'Erreur', 'danger');
@@ -635,31 +607,29 @@ function startRename(id, currentName) {
   inp.addEventListener('blur', commit);
 }
 
-// ── Detail panel ──────────────────────────────────────────
+// ── Detail panel ───────────────────────────────────────────
+const STAT_COLORS = { hp:'#e53935', atk:'#ef6c00', def:'#1565c0', spa:'#6a1599', spd:'#00695c', spe:'#558b2f' };
+
 function openDetail(id) {
   const d = PC_DATA[String(id)];
   if (!d) return;
   const folder = d.shiny ? 'shiny' : 'normal';
   const spriteUrl = `/static/img/sprites_gen5/${folder}/${d.species_slug}.png`;
   const typeClass = t => t ? `badge badge-type-${t.toLowerCase()}` : '';
-
   const statDefs = [
-    {key:'hp',lbl:'PV'},    {key:'atk',lbl:'Attaque'}, {key:'def',lbl:'Défense'},
-    {key:'spa',lbl:'Atq Sp.'},{key:'spd',lbl:'Déf Sp.'},  {key:'spe',lbl:'Vitesse'},
+    {key:'hp',lbl:'PV'},{key:'atk',lbl:'Attaque'},{key:'def',lbl:'Défense'},
+    {key:'spa',lbl:'Atq Sp.'},{key:'spd',lbl:'Déf Sp.'},{key:'spe',lbl:'Vitesse'},
   ];
   const maxStat = Math.max(...Object.values(d.stats), 1);
-
   const statsHtml = statDefs.map(({key,lbl}) => {
     const val = d.stats[key] || 0;
     const pct = Math.round(val / maxStat * 100);
-    const col = STAT_COLORS[key] || '#888';
     return `<div class="pd-stat-row">
       <span class="pd-stat-label">${lbl}</span>
-      <div class="pd-stat-bar"><div class="pd-stat-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="pd-stat-bar"><div class="pd-stat-fill" style="width:${pct}%;background:${STAT_COLORS[key]}"></div></div>
       <span class="pd-stat-val">${val}</span>
     </div>`;
   }).join('');
-
   const movesHtml = d.moves.length
     ? d.moves.map(m => `<div class="pd-move">
         <span class="badge badge-type-${m.type}" style="font-size:.6rem">${m.type}</span>
@@ -667,7 +637,6 @@ function openDetail(id) {
         <span class="pd-move-pp">${m.pp}/${m.maxPp} PP</span>
       </div>`).join('')
     : '<p style="color:#4a5568;font-size:.75rem">Aucune capacité</p>';
-
   const hpPct = d.hp_max > 0 ? Math.round(d.hp_cur / d.hp_max * 100) : 0;
   const hpCol = hpPct < 25 ? '#e53935' : hpPct < 50 ? '#ffb300' : '#4caf50';
 
@@ -680,20 +649,16 @@ function openDetail(id) {
       ${d.type2 ? `<span class="${typeClass(d.type2)}">${d.type2}</span>` : ''}
     </div>
     <div class="pd-nature">Nature : ${d.nature} &bull; Niv. ${d.level}</div>
-
     <hr class="pd-divider">
     <div style="font-size:.65rem;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">PV</div>
     <div style="background:#0d1b2a;border-radius:4px;height:8px;margin-bottom:12px">
       <div style="width:${hpPct}%;height:100%;border-radius:4px;background:${hpCol};transition:width .4s"></div>
     </div>
-
     <div style="font-size:.65rem;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Statistiques</div>
     ${statsHtml}
-
     <hr class="pd-divider">
     <div style="font-size:.65rem;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Capacités</div>
     ${movesHtml}
-
     <div class="pd-actions">
       <button class="pd-action-btn pd-withdraw" id="pd-btn-withdraw">⬆ Ajouter à l'équipe</button>
       <button class="pd-action-btn pd-rename"   id="pd-btn-rename">✏ Renommer</button>
@@ -701,17 +666,8 @@ function openDetail(id) {
          style="text-align:center;text-decoration:none;display:block">📖 Fiche Pokédex</a>
     </div>
   `;
-
-  // Câblage sans inline onclick (évite les bugs avec apostrophes dans les noms)
-  document.getElementById('pd-btn-withdraw').addEventListener('click', function() {
-    withdrawPokemon(d.id, this);
-  });
-  document.getElementById('pd-btn-rename').addEventListener('click', function() {
-    closeDetail();
-    startRename(d.id, d.nick || d.name);
-  });
-
-
+  document.getElementById('pd-btn-withdraw').addEventListener('click', function() { withdrawPokemon(d.id, this); });
+  document.getElementById('pd-btn-rename').addEventListener('click', function() { closeDetail(); startRename(d.id, d.nick || d.name); });
   document.getElementById('detail-panel').classList.add('open');
   document.getElementById('detail-overlay').classList.add('open');
 }
