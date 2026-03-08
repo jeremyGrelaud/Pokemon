@@ -280,6 +280,41 @@ def init_hm_gates():
             logger.info(f"  🔓 Zone [LIBRE   ] {z_name}")
 
     # =========================================================================
+    # RONFLEX — Blocages par Poké Flûte (required_flag sur ZoneConnection)
+    # =========================================================================
+    # Route 12 : Lavanville ↔ Route 12  (Ronflex bloque la descente vers Parmanie)
+    # Route 16 : Céladopole ↔ Route 16  (Ronflex bloque l'accès à la Route du Vélo)
+    # Strategy : on stocke le flag dans passage_message via un préfixe spécial
+    # MAIS le ZoneConnection.required_flag est le champ canonique.
+    logger.info("\n😴  RONFLEX — Portes Poké Flûte")
+    logger.info("-" * 40)
+
+    _SNORLAX_CONNS = [
+        ('Lavanville',   'Route 12', 'snorlax_route12_awakened',
+         "Un Ronflex endormi barre la Route 12. Jouez de la Poké Flûte pour le réveiller."),
+        ('Céladopole',   'Route 16', 'snorlax_route16_awakened',
+         "Un Ronflex endormi barre la Route du Vélo. Jouez de la Poké Flûte pour le réveiller."),
+    ]
+
+    for from_name, to_name, flag, msg in _SNORLAX_CONNS:
+        from_z = _zone(from_name)
+        to_z   = _zone(to_name)
+        if not from_z or not to_z:
+            continue
+        conn = ZoneConnection.objects.filter(from_zone=from_z, to_zone=to_z).first()
+        if not conn:
+            conn = ZoneConnection.objects.filter(from_zone=to_z, to_zone=from_z).first()
+        if not conn:
+            conn, _ = ZoneConnection.objects.get_or_create(
+                from_zone=from_z, to_zone=to_z,
+                defaults={'is_bidirectional': True}
+            )
+        conn.required_flag   = flag
+        conn.passage_message = msg
+        conn.save(update_fields=['required_flag', 'passage_message'])
+        logger.info(f"  😴 Ronflex [{flag}] {from_name} ↔ {to_name}")
+
+    # =========================================================================
     # RAPPORT FINAL
     # =========================================================================
     logger.info("\n" + "═" * 60)
