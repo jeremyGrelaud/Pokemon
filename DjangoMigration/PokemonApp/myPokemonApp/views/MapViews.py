@@ -38,7 +38,9 @@ def map_view(request):
     trainer         = get_player_trainer(request.user)
     player_location = get_player_location(trainer)   # crée si absent
 
-    all_zones = Zone.objects.all()
+    all_zones = Zone.objects.select_related(
+        'required_badge', 'required_item', 'required_quest'
+    ).all()
 
     # Zones ayant une arène : on croise GymLeader.gym_city avec le dict de traductions
     gym_cities      = set(GymLeader.objects.values_list('gym_city', flat=True))
@@ -50,17 +52,68 @@ def map_view(request):
     incoming_ids    = set(ZoneConnection.objects.filter(to_zone=current_zone, is_bidirectional=True).values_list('from_zone_id', flat=True))
     connected_zone_ids = list(outgoing_ids | incoming_ids)
 
-    accessible_zones = [
-        {
+    # ── Pré-calcul : arènes verrouillées par badge → associer à leur ville ──────
+    # Les arènes (type building) n'ont pas de coordonnées POS sur la carte.
+    # On reporte leur verrouillage badge sur la ville parente pour qu'il soit visible.
+    city_gym_locks = {}  # {city_zone_id: reason_str}
+    arena_connections = ZoneConnection.objects.filter(
+        to_zone__zone_type='building',
+        is_bidirectional=True,
+    ).select_related('from_zone', 'to_zone', 'to_zone__required_badge')
+    for conn in arena_connections:
+        arena = conn.to_zone
+        if not arena.name.startswith('Arène'):
+            continue
+        can_enter, reason = arena.is_accessible_by(trainer)
+        if not can_enter and conn.from_zone.zone_type == 'city':
+            city_gym_locks[conn.from_zone.id] = reason
+
+    # ── Pré-calcul : zones bloquées par connexion CS (Zone.required_hm absent) ─
+    # Une zone peut être entièrement inatteignable parce que toutes les connexions
+    # entrantes exigent une CS que le trainer n'a pas — même si la zone elle-même
+    # n'a pas de required_hm.
+    from myPokemonApp.questEngine import trainer_has_hm as _has_hm, HM_MOVE_NAMES
+    all_incoming = {}  # {zone_id: [(passable, reason), ...]}
+    for conn in ZoneConnection.objects.exclude(required_hm='').select_related('from_zone', 'to_zone'):
+        passable, reason = conn.is_passable_by(trainer)
+        for zid in ([conn.to_zone_id] + ([conn.from_zone_id] if conn.is_bidirectional else [])):
+            all_incoming.setdefault(zid, []).append((passable, reason))
+
+    def _connection_block_reason(zone_id):
+        """
+        Si TOUTES les connexions CS entrantes sont bloquées pour cette zone,
+        retourne la raison du premier blocage. Sinon None.
+        """
+        entries = all_incoming.get(zone_id)
+        if not entries:
+            return None
+        blocked = [(p, r) for p, r in entries if not p]
+        if len(blocked) == len(entries):  # toutes bloquées
+            return blocked[0][1]
+        return None
+
+    accessible_zones = []
+    for zone in all_zones:
+        can_access, reason = zone.is_accessible_by(trainer)
+
+        # Si accessible via la zone elle-même, vérifier les connexions entrantes
+        if can_access and zone.zone_type != 'building':
+            conn_block = _connection_block_reason(zone.id)
+            if conn_block:
+                can_access = False
+                reason = conn_block
+
+        # Badge d'arène à reporter sur la ville
+        gym_lock = city_gym_locks.get(zone.id, '')
+
+        accessible_zones.append({
             'zone':       zone,
             'accessible': can_access,
             'reason':     reason,
+            'gym_lock':   gym_lock,
             'visited':    player_location.visited_zones.filter(id=zone.id).exists(),
             'has_gym':    zone.name in zones_with_gym,
-        }
-        for zone in all_zones
-        for can_access, reason in [zone.is_accessible_by(trainer)]
-    ]
+        })
 
     # Si le joueur est dans une arène, pointer le point vert sur la ville parente
     map_zone = current_zone
