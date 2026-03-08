@@ -235,52 +235,72 @@ function showTeam() {
  * @param {boolean} loading  - true = verrouille, false = déverrouille
  * @param {string}  label    - texte affiché dans le spinner (optionnel)
  */
+// Timer pour le délai d'affichage de l'overlay de chargement.
+// L'overlay ne s'affiche que si la requête prend plus de LOADING_DELAY ms,
+// évitant le flash noir sur les réponses rapides.
+let _loadingTimer = null;
+const LOADING_DELAY = 150; // ms avant d'afficher l'overlay
+
 function setBattleLoading(loading, label) {
-  const panel = document.getElementById('action-panel');
+  const panel     = document.getElementById('action-panel');
   const overlayId = 'battle-loading-overlay';
 
   if (loading) {
-    // Désactiver tous les boutons du panel
+    // Désactiver les boutons immédiatement (bloque le double-clic)
     $(panel).find('button').prop('disabled', true);
 
-    // Créer l'overlay si inexistant
-    if (!document.getElementById(overlayId)) {
-      const txt = label || 'En cours…';
-      const ov = document.createElement('div');
-      ov.id = overlayId;
-      ov.style.cssText = [
-        'position:absolute',
-        'inset:0',
-        'display:flex',
-        'align-items:center',
-        'justify-content:center',
-        'flex-direction:column',
-        'gap:8px',
-        'background:rgba(0,0,0,0.55)',
-        'border-radius:inherit',
-        'z-index:999',
-        'pointer-events:all',
-        'color:#fff',
-        'font-size:.85rem',
-        'font-weight:600',
-        'letter-spacing:.03em',
-      ].join(';');
-      ov.innerHTML = `<i class="fas fa-spinner fa-spin fa-lg"></i><span>${txt}</span>`;
+    // N'afficher l'overlay qu'après LOADING_DELAY ms — pas de flash si réponse rapide
+    _loadingTimer = setTimeout(() => {
+      _loadingTimer = null;
+      if (!document.getElementById(overlayId)) {
+        const ov  = document.createElement('div');
+        ov.id = overlayId;
+        ov.style.cssText = [
+          'position:absolute',
+          'inset:0',
+          'display:flex',
+          'align-items:center',
+          'justify-content:center',
+          'flex-direction:column',
+          'gap:8px',
+          'background:rgba(0,0,0,0.55)',
+          'border-radius:inherit',
+          'z-index:999',
+          'pointer-events:all',
+          'color:#fff',
+          'font-size:.85rem',
+          'font-weight:600',
+          'letter-spacing:.03em',
+          'opacity:0',
+          'transition:opacity 0.15s ease',
+        ].join(';');
+        ov.innerHTML = `<i class="fas fa-spinner fa-spin fa-lg"></i><span>${label || 'En cours\u2026'}</span>`;
 
-      // Le panel doit être en position relative pour que l'overlay fonctionne
-      if (getComputedStyle(panel).position === 'static') {
-        panel.style.position = 'relative';
+        if (getComputedStyle(panel).position === 'static') {
+          panel.style.position = 'relative';
+        }
+        panel.appendChild(ov);
+        // Fade-in doux
+        requestAnimationFrame(() => { ov.style.opacity = '1'; });
       }
-      panel.appendChild(ov);
-    }
+    }, LOADING_DELAY);
+
   } else {
+    // Annuler l'affichage différé si la réponse est arrivée avant le délai
+    if (_loadingTimer !== null) {
+      clearTimeout(_loadingTimer);
+      _loadingTimer = null;
+    }
+
     // Réactiver les boutons
     $(panel).find('button').prop('disabled', false);
-    // Supprimer les boutons PP=0 qui doivent rester désactivés
+    // Garder désactivés les moves à PP=0
     $(panel).find('.move-btn').each(function() {
       const ppText = $(this).find('.move-pp').text();
       if (ppText && ppText.startsWith('PP: 0/')) $(this).prop('disabled', true);
     });
+
+    // Supprimer l'overlay s'il est déjà affiché
     const ov = document.getElementById(overlayId);
     if (ov) ov.remove();
   }

@@ -287,6 +287,19 @@ def zone_detail_view(request, zone_id):
     # Quêtes actives pour sidebar
     active_quests = get_active_quests(trainer)[:3]
 
+    # ── Repousse active en session ────────────────────────────────────────────
+    active_repel = request.session.get('active_repel')
+
+    # ── Repousses disponibles dans l'inventaire (hors combat) ────────────────
+    from myPokemonApp.models.Trainer import TrainerInventory as TI
+    repel_items = list(
+        TI.objects.filter(
+            trainer=trainer,
+            item__name__in=['Repel', 'Super Repel', 'Max Repel'],
+            quantity__gt=0,
+        ).select_related('item').values('id', 'item__name', 'item__description', 'quantity')
+    )
+
     return render(request, 'map/zone_detail.html', {
         'zone':               zone,
         'can_access':         can_access,
@@ -298,6 +311,8 @@ def zone_detail_view(request, zone_id):
         'floors_data':        floors_data,
         'unassigned_trainers': unassigned_with_status,
         'current_zone':       player_location.current_zone,
+        'active_repel':       active_repel,
+        'repel_items':        repel_items,
         'pokemon_center':     pokemon_center,
         'zone_shop':          zone_shop,
         'gym_leader':         gym_leader,
@@ -396,8 +411,30 @@ def travel_to_zone_view(request, zone_id):
         except Exception as exc:
             logger.warning("Impossible de mettre à jour la position dans la save : %s", exc)
 
-        # ── Wild battle aléatoire en traversant (20%) ─────────────────────
-        if not zone.is_safe_zone and zone.wild_spawns.exists() and random.random() < 0.20:
+        # ── Wild battle aléatoire en traversant ──────────────────────────
+        # Taux selon le type de zone (grass=35%, cave=45%, water=40%)
+        zone_encounter_rates = {
+            'route':    0.35,
+            'cave':     0.45,
+            'forest':   0.40,
+            'water':    0.40,
+        }
+        encounter_chance = zone_encounter_rates.get(zone.zone_type, 0.25)
+
+        # Vérifier si une Repousse est active en session
+        repel_active = False
+        repel_session = request.session.get('active_repel')
+        if repel_session and repel_session.get('steps_left', 0) > 0:
+            repel_active = True
+            repel_session['steps_left'] -= 1
+            if repel_session['steps_left'] <= 0:
+                request.session.pop('active_repel', None)
+                messages.info(request, f"🚫 La {repel_session['name']} n'a plus d'effet !")
+            else:
+                request.session['active_repel'] = repel_session
+            request.session.modified = True
+
+        if not repel_active and not zone.is_safe_zone and zone.wild_spawns.exists() and random.random() < encounter_chance:
 
             active_battle = Battle.objects.filter(player_trainer=trainer, is_active=True).first()
             if not active_battle:
@@ -409,10 +446,16 @@ def travel_to_zone_view(request, zone_id):
 
                     battle, msg = start_battle(trainer, wild_pokemon=wild_pokemon)
                     if battle:
-                        messages.warning(
-                            request,
-                            f"⚡ En traversant la route, un {wild_species.name} sauvage (Niv.{level}) surgit !"
+                        zone_flavors = {
+                            'cave':   f"⚡ Dans l'obscurité de {zone.name}, un {wild_species.name} sauvage (Niv.{level}) surgit !",
+                            'forest': f"🌿 Une branche craque ! Un {wild_species.name} sauvage (Niv.{level}) bondit devant vous !",
+                            'water':  f"🌊 Les eaux s'agitent ! Un {wild_species.name} sauvage (Niv.{level}) émerge !",
+                        }
+                        flavor = zone_flavors.get(
+                            zone.zone_type,
+                            f"⚡ En traversant {zone.name}, un {wild_species.name} sauvage (Niv.{level}) surgit !"
                         )
+                        messages.warning(request, flavor)
                         return redirect('BattleGameView', pk=battle.id)
 
     else:
@@ -538,3 +581,62 @@ def wild_encounter_view(request, zone_id):
 
     messages.success(request, f"Un {wild_species.name} sauvage de niveau {level} apparaît !")
     return redirect('BattleGameView', pk=battle.id)
+
+
+# ── Repousse ──────────────────────────────────────────────────────────────────
+
+# Nombre de voyages (traversées de zone) que chaque repousse bloque.
+_REPEL_STEPS = {
+    'Repel':       5,
+    'Super Repel': 10,
+    'Max Repel':   15,
+}
+
+
+@login_required
+def use_repel_view(request):
+    """
+    POST /map/use-repel/
+    Body : item_id=<int>
+
+    Active une Repousse depuis l'inventaire (hors combat).
+    Stocke l'état en session Django : { name, steps_left }.
+    Retourne JSON pour la mise à jour inline de la zone.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST requis'}, status=405)
+
+    trainer = get_player_trainer(request.user)
+    item_id = request.POST.get('item_id')
+    if not item_id:
+        return JsonResponse({'error': 'item_id manquant'}, status=400)
+
+    inv = get_object_or_404(TrainerInventory, pk=item_id, trainer=trainer)
+    item = inv.item
+
+    steps = _REPEL_STEPS.get(item.name)
+    if steps is None:
+        return JsonResponse({'error': "Cet objet n'est pas une Repousse."}, status=400)
+
+    # Consommer 1 exemplaire
+    inv.quantity -= 1
+    if inv.quantity <= 0:
+        inv.delete()
+    else:
+        inv.save(update_fields=['quantity'])
+
+    # Activer en session
+    request.session['active_repel'] = {
+        'name':       item.name,
+        'steps_left': steps,
+        'steps_max':  steps,
+    }
+    request.session.modified = True
+
+    return JsonResponse({
+        'success':    True,
+        'message':    f"🚫 {item.name} activée ! Efficace pendant {steps} traversées de zone.",
+        'name':       item.name,
+        'steps_left': steps,
+        'steps_max':  steps,
+    })
