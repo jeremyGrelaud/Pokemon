@@ -203,6 +203,12 @@
                 PC — Réserve
               </a>
 
+              <a class="nav-link {% if request.resolver_match.url_name == 'trade_center' %}active{% endif %}"
+                 href="{% url 'trade_center' %}">
+                <div class="sb-nav-link-icon"><i class="fas fa-handshake"></i></div>
+                Centre d'échange
+              </a>
+
               {% if active_battle %}
               <a class="nav-link d-flex align-items-center justify-content-between {% if 'Battle' in request.resolver_match.url_name %}active{% endif %}"
                  href="{% url 'BattleDetailView' active_battle.id %}">

@@ -113,6 +113,9 @@ urlpatterns = [
     path('map/use-repel/',                                             views.use_repel_view,          name='use_repel'),
     path('map/use-poke-flute/',                                        views.use_poke_flute_view,     name='use_poke_flute'),
 
+    # Centre d'échange NPC
+    path('team/trade-center/',                                         views.trade_center_view,       name='trade_center'),
+
     # Quêtes
     path('quests/',              views.quest_log_view,    name='quest_log'),
     path('quests/widget/',       views.quest_widget_view, name='quest_widget'),

@@ -449,6 +449,30 @@ class PlayablePokemon(models.Model):
         
         return evolutions.first() if evolutions.exists() else None
     
+    def check_trade_evolution(self):
+        """
+        Vérifie si ce Pokémon peut évoluer par échange (NPC trade center).
+        Retourne (can_evolve: bool, evolution: PokemonEvolution | None).
+        Certaines évolutions par échange nécessitent un objet tenu (ex : Métal Coat → Scizor).
+        Dans ce cas l'objet tenu doit être présent dans held_item.
+        """
+        print(f"Poke :{self}")
+        from .PokemonEvolution import PokemonEvolution
+        evolutions = PokemonEvolution.objects.filter(
+            pokemon=self.species,
+            method='trade',
+        ).select_related('required_item', 'evolves_to')
+
+        for evo in evolutions:
+            if evo.required_item is None:
+                # Évolution par échange simple (Kadabra → Alakazam, Machoke → Machamp…)
+                return True, evo
+            # Évolution par échange avec objet tenu
+            if self.held_item and self.held_item == evo.required_item:
+                return True, evo
+
+        return False, None
+
     def check_stone_evolution(self, stone_item):
         """Vérifie si le Pokémon peut évoluer avec une pierre"""
         from .PokemonEvolution import PokemonEvolution

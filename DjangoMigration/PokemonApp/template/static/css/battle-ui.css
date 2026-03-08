@@ -106,7 +106,6 @@
 .trainer-intro-sprite {
   height: 280px;
   width: auto;
-  image-rendering: pixelated;
   image-rendering: crisp-edges;
   object-fit: contain;
 }
@@ -396,7 +395,7 @@
 }
 .evo-sprite-reveal-anim { animation: evoReveal .9s ease-out forwards; }
 .evo-result-sprite {
-  width: 100px; height: 100px; object-fit: contain; image-rendering: pixelated;
+  width: 100px; height: 100px; object-fit: contain;
 }
 @keyframes evoBounce {
   0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); }

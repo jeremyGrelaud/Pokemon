@@ -1206,6 +1206,11 @@ def scriptToInitializeDatabase():
             ("stone", None, "Thunder Stone", "Jolteon"),
             ("stone", None, "Fire Stone", "Flareon"),
         ],
+        # ── Évolutions par échange (Gen 1) ────────────────────────────────
+        "Kadabra":  [("trade", None, None, "Alakazam")],
+        "Machoke":  [("trade", None, None, "Machamp")],
+        "Haunter":  [("trade", None, None, "Gengar")],
+        "Graveler": [("trade", None, None, "Golem")],
     }
 
     # Dictionnaire pour mapper les noms d'objets à leurs instances

@@ -1940,7 +1940,7 @@ function showCaptureSuccessModal(captureData) {
               <div style="position:relative;flex-shrink:0;">
                 <img src="/static/img/sprites_gen5/${spriteDir}/${spriteName}.png"
                      alt="${p.name}"
-                     style="width:80px;height:80px;object-fit:contain;image-rendering:pixelated;"
+                     style="width:80px;height:80px;object-fit:contain;"
                      onerror="this.src='/static/img/pokeball.png'">
                 ${isShiny ? '<span style="position:absolute;top:0;right:0;font-size:.7rem;">✨</span>' : ''}
               </div>
