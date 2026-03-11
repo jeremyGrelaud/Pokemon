@@ -29,6 +29,7 @@ def serialize_pokemon(pokemon, include_moves=False):
         'max_hp':       pokemon.max_hp,
         'status':       pokemon.status_condition,
         'is_shiny':     pokemon.is_shiny,
+        'dex_number':   pokemon.species.pokedex_number,
     }
 
     if include_moves:

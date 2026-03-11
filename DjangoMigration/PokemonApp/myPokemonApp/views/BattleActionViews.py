@@ -183,7 +183,37 @@ def _handle_flee(request, battle, trainer, response_data):
         response_data['battle_ended'] = True
         response_data['result']       = 'fled'
     else:
-        response_data['log'] = ['Échec dans la fuite !']
+        # Fuite échouée : l'adversaire attaque quand même
+        turn_before     = battle.current_turn
+        opponent_action = get_opponent_ai_action(battle)
+        battle.execute_action(
+            battle.opponent_pokemon,
+            battle.player_pokemon,
+            opponent_action,
+        )
+        battle.current_turn += 1
+        battle.save(update_fields=['battle_state'])
+
+        # Récupérer les logs du tour adverse
+        opp_logs = [
+            entry['message'] for entry in battle.battle_log
+            if entry.get('turn') in (turn_before, turn_before + 1)
+        ]
+        if not opp_logs:
+            opp_logs = [entry['message'] for entry in battle.battle_log[-5:]]
+
+        response_data['log'] = ['Impossible de fuir !'] + opp_logs
+
+        # Vérifier si le joueur est K.O. après l'attaque adverse
+        is_ended, winner, end_message = check_battle_end(battle)
+        if is_ended:
+            _save_hp_snapshot(battle)
+            battle.is_active = False
+            battle.winner    = winner
+            battle.save(update_fields=['is_active', 'winner', 'battle_state'])
+            response_data['battle_ended'] = True
+            response_data['result']       = 'defeat'
+            response_data['log'].append(end_message)
 
 
 def _handle_switch(request, battle, trainer, response_data):
