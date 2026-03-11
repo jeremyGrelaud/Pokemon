@@ -542,35 +542,39 @@ export class BattleScene extends Phaser.Scene {
       }
       draw(baseColor)
 
-      // ── Nom du move ────────────────────────────────────
-      const nameTxt = this.add.text(btnW / 2, 6, move.name, {
-        fontSize: '8px', color: noPP ? '#aa6666' : '#ffffff',
-        fontFamily: '"Press Start 2P"', align: 'center',
-        wordWrap: { width: btnW - 6 },
-      }).setOrigin(0.5, 0)
+      // btnH ≈ 39px — 3 bandes proportionnelles
+      // ┌─────────────────────────────────┐
+      // │ 1    40  [cat]         100 %    │  ← ~18% = y≈7
+      // │        EMBER                    │  
+      // │ [FIRE]              PP 5/25     │  ← ~84% = y≈33
+      // └─────────────────────────────────┘
 
-      // ── Badge type + icône catégorie ───────────────────
-      const TYPE_BADGE_W = 38
-      const CAT_ICON_W   = 20
-      const ROW2_Y       = btnH - 24
-      const totalBadgeW  = TYPE_BADGE_W + 3 + CAT_ICON_W
-      const badgeStartX  = (btnW - totalBadgeW) / 2
+      const ROW1_MID = Math.round(btnH * 0.18)
+      const ROW2_MID = Math.round(btnH * 0.52)
+      const ROW3_MID = Math.round(btnH * 0.84)
 
-      const typeBg = this.add.graphics()
-      typeBg.fillStyle(baseColor, 1)
-      typeBg.fillRoundedRect(badgeStartX, ROW2_Y, TYPE_BADGE_W, 11, 3)
-      typeBg.lineStyle(1, 0xffffff, 0.25)
-      typeBg.strokeRoundedRect(badgeStartX, ROW2_Y, TYPE_BADGE_W, 11, 3)
-      const typeLbl = this.add.text(badgeStartX + TYPE_BADGE_W / 2, ROW2_Y + 5.5,
-        (move.type ?? '').toUpperCase(), {
-          fontSize: '6px', color: '#fff', fontFamily: '"Press Start 2P"',
-        }).setOrigin(0.5)
+      // ── LIGNE 1 : hint + puissance + catIcon + précision ──────
+      const hint = this.add.text(4, ROW1_MID, `${i + 1}`, {
+        fontSize: '6px', color: 'rgba(255,255,255,0.28)',
+        fontFamily: '"Press Start 2P"',
+      }).setOrigin(0, 0.5)
 
-      const catIconX = badgeStartX + TYPE_BADGE_W + 3
-      const catKey   = `cat-icon-${move.category}`
-      const catUrl   = `/static/img/movesTypesSprites/move-${move.category}.png`
-      const catImg   = this.add.image(catIconX + CAT_ICON_W / 2, ROW2_Y + 5.5, '__DEFAULT')
-        .setDisplaySize(CAT_ICON_W, 11).setOrigin(0.5)
+      const powerStr = move.power != null ? `${move.power}` : '—'
+      const powerTxt = this.add.text(16, ROW1_MID, powerStr, {
+        fontSize: '6px', color: 'rgba(255,255,255,0.65)',
+        fontFamily: '"Press Start 2P"',
+      }).setOrigin(0, 0.5)
+
+      const accStr = move.accuracy != null ? `${move.accuracy} %` : '—'
+      const accTxt = this.add.text(btnW - 4, ROW1_MID, accStr, {
+        fontSize: '6px', color: 'rgba(255,255,255,0.65)',
+        fontFamily: '"Press Start 2P"',
+      }).setOrigin(1, 0.5)
+
+      const catKey = `cat-icon-${move.category}`
+      const catUrl = `/static/img/movesTypesSprites/move-${move.category}.png`
+      const catImg = this.add.image(btnW / 2, ROW1_MID, '__DEFAULT')
+        .setDisplaySize(14, 8).setOrigin(0.5)
       if (!this.textures.exists(catKey)) {
         this.load.image(catKey, catUrl)
         this.load.once('complete', () => {
@@ -583,31 +587,39 @@ export class BattleScene extends Phaser.Scene {
         this.textures.get(catKey).setFilter(Phaser.Textures.FilterMode.LINEAR)
       }
 
-      // ── Puissance | précision  +  PP ──────────────────
-      const ROW3_Y      = btnH - 11
-      const ppColor     = move.current_pp === 0            ? '#e74c3c'
-                        : move.current_pp <= move.max_pp * 0.25 ? '#f39c12'
-                        : 'rgba(255,255,255,0.8)'
-      const powerStr    = move.power    != null ? `${move.power}`    : '—'
-      const accuracyStr = move.accuracy != null ? `${move.accuracy}` : '—'
+      // ── LIGNE 2 : nom du move aligné au milieu (sur 1 ligne) ───
+      const maxChars = Math.floor((btnW - 8) / 6.5)
+      const moveName = move.name.length > maxChars
+        ? move.name.slice(0, maxChars - 1) + '…'
+        : move.name
+      const nameTxt = this.add.text(btnW / 2, ROW2_MID, moveName, {
+        fontSize: '8px', color: noPP ? '#aa6666' : '#ffffff',
+        fontFamily: '"Press Start 2P"',
+      }).setOrigin(0.5, 0.5)
 
-      const statsTxt = this.add.text(4, ROW3_Y,
-        `${powerStr} | ${accuracyStr}`, {
-          fontSize: '7px', color: 'rgba(255,255,255,0.6)',
-          fontFamily: '"Press Start 2P"',
-        }).setOrigin(0, 0.5)
+      // ── LIGNE 3 : badge type (gauche) + PP (droite) ───────────
+      const TYPE_BADGE_W = 34
+      const TYPE_BADGE_H = 10
 
-      const ppTxt = this.add.text(btnW - 4, ROW3_Y,
-        `${move.current_pp}/${move.max_pp}`, {
-          fontSize: '7px', color: ppColor,
+      const typeBg = this.add.graphics()
+      typeBg.fillStyle(baseColor, 1)
+      typeBg.fillRoundedRect(4, ROW3_MID - TYPE_BADGE_H / 2, TYPE_BADGE_W, TYPE_BADGE_H, 3)
+      typeBg.lineStyle(1, 0xffffff, 0.25)
+      typeBg.strokeRoundedRect(4, ROW3_MID - TYPE_BADGE_H / 2, TYPE_BADGE_W, TYPE_BADGE_H, 3)
+      const typeLbl = this.add.text(4 + TYPE_BADGE_W / 2, ROW3_MID,
+        (move.type ?? '').toUpperCase(), {
+          fontSize: '6px', color: '#fff', fontFamily: '"Press Start 2P"',
+        }).setOrigin(0.5)
+
+      const ppColor = move.current_pp === 0                 ? '#e74c3c'
+                    : move.current_pp <= move.max_pp * 0.25 ? '#f39c12'
+                    : 'rgba(255,255,255,0.85)'
+
+      const ppTxt = this.add.text(btnW - 4, ROW3_MID,
+        `PP ${move.current_pp}/${move.max_pp}`, {
+          fontSize: '6px', color: ppColor,
           fontFamily: '"Press Start 2P"',
         }).setOrigin(1, 0.5)
-
-      // Hint touche clavier
-      const hint = this.add.text(btnW - 3, 3, `${i + 1}`, {
-        fontSize: '6px', color: 'rgba(255,255,255,0.28)',
-        fontFamily: '"Press Start 2P"',
-      }).setOrigin(1, 0)
 
       const zone = this.add.zone(0, 0, btnW, btnH).setOrigin(0)
         .setInteractive({ useHandCursor: !noPP })
@@ -622,7 +634,7 @@ export class BattleScene extends Phaser.Scene {
         })
 
       const container = this.add.container(x, y,
-        [bg, nameTxt, typeBg, typeLbl, catImg, statsTxt, ppTxt, hint, zone]
+        [bg, hint, catImg, powerTxt, accTxt, nameTxt, typeBg, typeLbl, ppTxt, zone]
       ).setDepth(12)
       items.push(container)
       this.moveButtons.push(container)
