@@ -109,7 +109,7 @@ export const mapApi = {
 export const battleApi = {
   /** État initial du combat */
   getState(battleId: number): Promise<BattleResponse> {
-    return request<BattleResponse>(`/api/battle/state/${battleId}/`)
+    return request<BattleResponse>(`/api/phaser/battle/state/${battleId}/`)
   },
 
   /** Attaque — Django lit request.POST → form data */
