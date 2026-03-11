@@ -81,6 +81,7 @@ export class BattleScene extends Phaser.Scene {
   private movesPanel!:    Phaser.GameObjects.Container
   private bagPanel!:      Phaser.GameObjects.Container
   private switchPanel!:   Phaser.GameObjects.Container
+  private moveTooltip!:   Phaser.GameObjects.Container
   private moveButtons:    Phaser.GameObjects.Container[] = []
 
   private waitingForInput = false
@@ -429,6 +430,7 @@ export class BattleScene extends Phaser.Scene {
     // ── Panel SAC et SWITCH (construits à la demande) ─────────
     this.bagPanel    = this.add.container(0, 0).setDepth(12).setVisible(false)
     this.switchPanel = this.add.container(0, 0).setDepth(12).setVisible(false)
+    this.moveTooltip = this.add.container(0, 0).setDepth(30).setVisible(false)
   }
 
   // 4 boutons : Combat / Pokémon / Sac / Fuite
@@ -497,83 +499,138 @@ export class BattleScene extends Phaser.Scene {
     const moves  = this.state.player_pokemon.moves ?? []
     const startX = W * 0.36
     const cols   = 2
-    const btnW   = (W * 0.62) / 2 - 5
-    const btnH   = Math.min(44, (panelH - 32) / 2 - 4)
+    const btnW   = (W - startX - 8) / 2 - 2
+    const btnH   = Math.min(44, (panelH - 28) / 2 - 3)
     const gap    = 4
 
     // Bouton retour
     const backBg = this.add.graphics()
     const drawBack = (c: number) => {
-      backBg.clear()
-      backBg.fillStyle(c, 1)
-      backBg.fillRoundedRect(0, 0, W * 0.62, 18, 4)
+      backBg.clear(); backBg.fillStyle(c, 1)
+      backBg.fillRoundedRect(0, 0, (btnW * 2 + gap), 18, 4)
     }
     drawBack(0x34495e)
-    const backLabel = this.add.text((W * 0.62) / 2, 9, '← RETOUR', {
+    const backLabel = this.add.text((btnW * 2 + gap) / 2, 9, '← RETOUR', {
       fontSize: '8px', color: '#ccc', fontFamily: '"Press Start 2P"',
     }).setOrigin(0.5)
-    const backZone = this.add.zone(0, 0, W * 0.62, 18).setOrigin(0)
+    const backZone = this.add.zone(0, 0, btnW * 2 + gap, 18).setOrigin(0)
       .setInteractive({ useHandCursor: true })
-      .on('pointerover',  () => drawBack(0x4a6278))
-      .on('pointerout',   () => drawBack(0x34495e))
-      .on('pointerdown',  () => { this.sfxCancel(); this.showActionPanel() })
-    items.push(this.add.container(startX, panelY + 6, [backBg, backLabel, backZone]).setDepth(12))
+      .on('pointerover', () => drawBack(0x4a6278))
+      .on('pointerout',  () => drawBack(0x34495e))
+      .on('pointerdown', () => { this.sfxCancel(); this._hideMoveTooltip(); this.showActionPanel() })
+    items.push(this.add.container(startX, panelY + 4, [backBg, backLabel, backZone]).setDepth(12))
 
-    // Boutons de moves
+    // Grille 2×2
     moves.slice(0, 4).forEach((move, i) => {
       const col = i % cols
       const row = Math.floor(i / cols)
       const x   = startX + col * (btnW + gap)
-      const y   = panelY + 28 + row * (btnH + gap)
-      const baseColor  = TYPE_COLORS[move.type?.toLowerCase() ?? ''] ?? 0x607d8b
-      const hoverColor = Phaser.Display.Color.IntegerToColor(baseColor).lighten(15).color
+      const y   = panelY + 26 + row * (btnH + gap)
+
+      const typeKey    = move.type?.toLowerCase() ?? ''
+      const baseColor  = TYPE_COLORS[typeKey] ?? 0x607d8b
+      const hoverColor = Phaser.Display.Color.IntegerToColor(baseColor).lighten(18).color
+      const noPP       = move.current_pp === 0
 
       const bg = this.add.graphics()
       const draw = (c: number) => {
         bg.clear()
-        bg.fillStyle(c, 1)
-        bg.fillRoundedRect(0, 0, btnW, btnH, 6)
-        bg.lineStyle(1, 0xffffff, 0.2)
-        bg.strokeRoundedRect(0, 0, btnW, btnH, 6)
+        bg.fillStyle(noPP ? 0x3a2020 : c, 1)
+        bg.fillRoundedRect(0, 0, btnW, btnH, 5)
+        bg.lineStyle(1, noPP ? 0xe74c3c : 0xffffff, noPP ? 0.4 : 0.2)
+        bg.strokeRoundedRect(0, 0, btnW, btnH, 5)
       }
       draw(baseColor)
 
-      const nameTxt = this.add.text(btnW / 2, btnH / 2 - 7, move.name, {
-        fontSize: '9px', color: '#fff',
-        fontFamily: '"Inter", "Segoe UI", sans-serif',
-        fontStyle: 'bold', align: 'center',
-      }).setOrigin(0.5)
+      // ── Nom du move ────────────────────────────────────
+      const nameTxt = this.add.text(btnW / 2, 6, move.name, {
+        fontSize: '8px', color: noPP ? '#aa6666' : '#ffffff',
+        fontFamily: '"Press Start 2P"', align: 'center',
+        wordWrap: { width: btnW - 6 },
+      }).setOrigin(0.5, 0)
 
-      const ppTxt = this.add.text(btnW / 2, btnH / 2 + 7,
-        `PP ${move.current_pp}/${move.max_pp}`, {
-          fontSize: '9px', color: 'rgba(255,255,255,0.85)',
-          fontFamily: '"Inter", "Segoe UI", sans-serif', align: 'center',
-      }).setOrigin(0.5)
+      // ── Badge type + icône catégorie ───────────────────
+      const TYPE_BADGE_W = 38
+      const CAT_ICON_W   = 20
+      const ROW2_Y       = btnH - 24
+      const totalBadgeW  = TYPE_BADGE_W + 3 + CAT_ICON_W
+      const badgeStartX  = (btnW - totalBadgeW) / 2
 
-      const typeTxt = this.add.text(5, 3, (move.type ?? '').toUpperCase(), {
-        fontSize: '8px', color: 'rgba(255,255,255,0.75)',
-        fontFamily: '"Inter", "Segoe UI", sans-serif', fontStyle: 'bold',
-      })
+      const typeBg = this.add.graphics()
+      typeBg.fillStyle(baseColor, 1)
+      typeBg.fillRoundedRect(badgeStartX, ROW2_Y, TYPE_BADGE_W, 11, 3)
+      typeBg.lineStyle(1, 0xffffff, 0.25)
+      typeBg.strokeRoundedRect(badgeStartX, ROW2_Y, TYPE_BADGE_W, 11, 3)
+      const typeLbl = this.add.text(badgeStartX + TYPE_BADGE_W / 2, ROW2_Y + 5.5,
+        (move.type ?? '').toUpperCase(), {
+          fontSize: '6px', color: '#fff', fontFamily: '"Press Start 2P"',
+        }).setOrigin(0.5)
 
-      // Hint touche — coin bas-droit
-      const hint = this.add.text(btnW - 5, btnH - 5, `${i + 1}`, {
-        fontSize: '7px', color: 'rgba(255,255,255,0.4)',
+      const catIconX = badgeStartX + TYPE_BADGE_W + 3
+      const catKey   = `cat-icon-${move.category}`
+      const catUrl   = `/static/img/movesTypesSprites/move-${move.category}.png`
+      const catImg   = this.add.image(catIconX + CAT_ICON_W / 2, ROW2_Y + 5.5, '__DEFAULT')
+        .setDisplaySize(CAT_ICON_W, 11).setOrigin(0.5)
+      if (!this.textures.exists(catKey)) {
+        this.load.image(catKey, catUrl)
+        this.load.once('complete', () => {
+          catImg.setTexture(catKey)
+          this.textures.get(catKey).setFilter(Phaser.Textures.FilterMode.LINEAR)
+        })
+        this.load.start()
+      } else {
+        catImg.setTexture(catKey)
+        this.textures.get(catKey).setFilter(Phaser.Textures.FilterMode.LINEAR)
+      }
+
+      // ── Puissance | précision  +  PP ──────────────────
+      const ROW3_Y      = btnH - 11
+      const ppColor     = move.current_pp === 0            ? '#e74c3c'
+                        : move.current_pp <= move.max_pp * 0.25 ? '#f39c12'
+                        : 'rgba(255,255,255,0.8)'
+      const powerStr    = move.power    != null ? `${move.power}`    : '—'
+      const accuracyStr = move.accuracy != null ? `${move.accuracy}` : '—'
+
+      const statsTxt = this.add.text(4, ROW3_Y,
+        `${powerStr} | ${accuracyStr}`, {
+          fontSize: '7px', color: 'rgba(255,255,255,0.6)',
+          fontFamily: '"Press Start 2P"',
+        }).setOrigin(0, 0.5)
+
+      const ppTxt = this.add.text(btnW - 4, ROW3_Y,
+        `${move.current_pp}/${move.max_pp}`, {
+          fontSize: '7px', color: ppColor,
+          fontFamily: '"Press Start 2P"',
+        }).setOrigin(1, 0.5)
+
+      // Hint touche clavier
+      const hint = this.add.text(btnW - 3, 3, `${i + 1}`, {
+        fontSize: '6px', color: 'rgba(255,255,255,0.28)',
         fontFamily: '"Press Start 2P"',
-      }).setOrigin(1, 1)
+      }).setOrigin(1, 0)
 
       const zone = this.add.zone(0, 0, btnW, btnH).setOrigin(0)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerover',  () => draw(hoverColor))
-        .on('pointerout',   () => draw(baseColor))
-        .on('pointerdown',  () => { if (this.waitingForInput) { this.sfxConfirm(); void this.executeMove(move.id) } })
+        .setInteractive({ useHandCursor: !noPP })
+        .on('pointerover',  () => {
+          if (!noPP) draw(hoverColor)
+          this._showMoveTooltip(move, x, y, btnW, btnH)
+        })
+        .on('pointerout',   () => { draw(baseColor); this._hideMoveTooltip() })
+        .on('pointerdown',  () => {
+          if (!this.waitingForInput || noPP) return
+          this.sfxConfirm(); this._hideMoveTooltip(); void this.executeMove(move.id)
+        })
 
-      const container = this.add.container(x, y, [bg, typeTxt, nameTxt, ppTxt, hint, zone]).setDepth(12)
+      const container = this.add.container(x, y,
+        [bg, nameTxt, typeBg, typeLbl, catImg, statsTxt, ppTxt, hint, zone]
+      ).setDepth(12)
       items.push(container)
       this.moveButtons.push(container)
     })
 
     return this.add.container(0, 0, items).setDepth(12)
   }
+
 
   // ─────────────────────────────────────────────────────────────
   // RACCOURCIS CLAVIER  1/2/3/4  (= &/é/"/'  sur AZERTY)
@@ -610,6 +667,60 @@ export class BattleScene extends Phaser.Scene {
         if (move) { this.sfxConfirm(); void this.executeMove(move.id) }
       }
     })
+  }
+
+  // ── Tooltip moves — affiche uniquement l'effet au survol ──────
+  private _showMoveTooltip(move: MoveData, btnX: number, btnY: number, btnW: number, _btnH: number): void {
+    this.moveTooltip.removeAll(true)
+
+    const effectText = move.effect
+      ? (move.effect_chance && move.effect_chance > 0
+          ? `${move.effect} (${move.effect_chance}%)`
+          : move.effect)
+      : null
+
+    // Pas d'effet connu → on n'affiche rien
+    if (!effectText) return
+
+    const W    = this.cameras.main.width
+    const TW   = 160
+    const PAD  = 7
+
+    // Calcul hauteur selon le texte (wordWrap ~22 chars par ligne, 10px/ligne)
+    const charsPerLine = Math.floor((TW - PAD * 2) / 5.5)
+    const lines        = Math.ceil(effectText.length / charsPerLine)
+    const TH           = PAD * 2 + 8 + lines * 10
+
+    let tx = btnX + btnW / 2 - TW / 2
+    tx = Phaser.Math.Clamp(tx, 4, W - TW - 4)
+    const ty = btnY - TH - 8
+
+    const bg = this.add.graphics()
+    bg.fillStyle(0x0d0d1a, 0.95)
+    bg.fillRoundedRect(0, 0, TW, TH, 5)
+    bg.lineStyle(1, 0x4a4a8a, 0.9)
+    bg.strokeRoundedRect(0, 0, TW, TH, 5)
+    // Flèche vers le bas
+    bg.fillStyle(0x0d0d1a, 0.95)
+    bg.fillTriangle(TW / 2 - 5, TH, TW / 2 + 5, TH, TW / 2, TH + 6)
+    bg.lineStyle(1, 0x4a4a8a, 0.9)
+    bg.strokeTriangle(TW / 2 - 5, TH, TW / 2 + 5, TH, TW / 2, TH + 6)
+
+    const txt = this.add.text(PAD, PAD, effectText, {
+      fontSize: '8px', color: '#ccccff',
+      fontFamily: '"Press Start 2P"',
+      wordWrap: { width: TW - PAD * 2 },
+      lineSpacing: 2,
+    })
+
+    this.moveTooltip.add([bg, txt])
+    this.moveTooltip.setPosition(tx, ty)
+    this.moveTooltip.setVisible(true)
+  }
+
+  private _hideMoveTooltip(): void {
+    this.moveTooltip.setVisible(false)
+    this.moveTooltip.removeAll(true)
   }
 
   private showActionPanel(): void {

@@ -71,6 +71,9 @@ export interface MoveData {
   type: string
   category: 'physical' | 'special' | 'status'
   power: number | null
+  accuracy: number | null
+  effect: string | null
+  effect_chance: number | null
   current_pp: number
   max_pp: number
 }
