@@ -771,7 +771,12 @@ export class BattleScene extends Phaser.Scene {
       } else {
         const evo = (response as any).pending_evolution as PendingEvolution | undefined
         if (evo) await this._launchEvolution(evo)
-        this.showActionPanel()
+        // Switch forcé si le Pokémon joueur est K.O.
+        if (response.player_pokemon.current_hp <= 0) {
+          await this.showForcedSwitchPanel()
+        } else {
+          this.showActionPanel()
+        }
       }
     } catch (err) {
       console.error('Erreur de combat:', err)
@@ -1071,7 +1076,12 @@ export class BattleScene extends Phaser.Scene {
       this._renderStatuses(response)
       this.animateHit()   // fallback K.O.
 
-      this.showActionPanel()
+      if (this.playerFainted) {
+        await new Promise<void>(r => this.time.delayedCall(850, r))
+        await this.showForcedSwitchPanel()
+      } else {
+        this.showActionPanel()
+      }
     } catch (err) {
       console.error('Erreur fuite:', err)
       this.showActionPanel()
@@ -1461,7 +1471,144 @@ export class BattleScene extends Phaser.Scene {
   // PANEL SWITCH POKÉMON
   // ─────────────────────────────────────────────────────────────
 
-  private async showSwitchPanel(): Promise<void> {
+  /** Switch forcé : le Pokémon joueur vient de tomber K.O. — pas de retour possible */
+  private async showForcedSwitchPanel(): Promise<void> {
+    this.waitingForInput = true
+    this.actionPanel.setVisible(false)
+    this.movesPanel.setVisible(false)
+    this.bagPanel.setVisible(false)
+    this.switchPanel.removeAll(true)
+
+    // Message d'urgence dans le log
+    this.showLog(`${this.state.player_pokemon.name}\nest K.O. !\nChoisissez un\nremplaçant !`)
+
+    try {
+      const { team } = await battleApi.getTeam(this.trainerId)
+      this._buildForcedSwitchButtons(team)
+    } catch {
+      this.showLog('Erreur chargement\nde l\'équipe.')
+    }
+
+    this.switchPanel.setVisible(true)
+  }
+
+  private _buildForcedSwitchButtons(
+    team: { id: number; name: string; species_name: string; current_hp: number; max_hp: number; level: number; status: string | null }[]
+  ): void {
+    const W      = this.cameras.main.width
+    const H      = this.cameras.main.height
+    const panelH = 112
+    const panelY = H - panelH
+    const startX = W * 0.36
+    const totalW = W - startX - 4
+    const cols   = 2
+    const gap    = 3
+    const btnW   = (totalW - gap) / 2
+
+    // Bandeau d'urgence rouge en lieu du bouton retour
+    const urgBg = this.add.graphics()
+    urgBg.fillStyle(0x7b1c1c, 1)
+    urgBg.fillRoundedRect(startX, panelY + 2, totalW, 18, 4)
+    urgBg.lineStyle(1, 0xe74c3c, 0.8)
+    urgBg.strokeRoundedRect(startX, panelY + 2, totalW, 18, 4)
+    this.switchPanel.add(urgBg)
+
+    const urgLabel = this.add.text(startX + totalW / 2, panelY + 11,
+      '⚠ Choisissez un remplaçant !', {
+        fontSize: '7px', color: '#ff6b6b',
+        fontFamily: '"Press Start 2P"',
+      }).setOrigin(0.5).setDepth(14)
+    this.switchPanel.add(urgLabel)
+
+    const ITEMS_Y = panelY + 24
+    const ITEMS_H = panelY + panelH - ITEMS_Y - 2
+    const itemH   = Math.floor((ITEMS_H - gap * 2) / 3)
+
+    const activePokemonId = this.state.player_pokemon.id
+
+    team.slice(0, 6).forEach((poke, i) => {
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      const x   = startX + col * (btnW + gap)
+      const y   = ITEMS_Y + row * (itemH + gap)
+
+      const isActive = poke.id === activePokemonId   // le K.O.
+      const isKo     = poke.current_hp <= 0
+      const disabled = isKo                           // seul critère : PV à 0
+
+      const hpRatio   = poke.current_hp / poke.max_hp
+      const hpColor   = isKo ? '#666' : hpRatio > 0.5 ? '#2ecc71' : hpRatio > 0.25 ? '#f39c12' : '#e74c3c'
+      // K.O. actuel affiché en rouge foncé, K.O. autres en gris, disponibles en bleu
+      const baseColor = isActive ? 0x5a1a1a : isKo ? 0x332222 : 0x2c3e7a
+      const hoverColor = 0x3d5aad
+
+      const bg = this.add.graphics()
+      const draw = (c: number) => {
+        bg.clear()
+        bg.fillStyle(c, 1)
+        bg.fillRoundedRect(0, 0, btnW, itemH, 4)
+        // Bordure rouge sur le K.O. actuel, normale sinon
+        bg.lineStyle(1, isActive ? 0xe74c3c : 0xffffff, disabled ? 0.1 : 0.15)
+        bg.strokeRoundedRect(0, 0, btnW, itemH, 4)
+      }
+      draw(baseColor)
+
+      const ICON_PX    = Math.min(20, itemH - 2)
+      const fileName   = this._spriteFileName(poke.species_name)
+      const speciesKey = `switch-icon-${fileName}`
+      const spriteEl   = this.add.image(ICON_PX / 2 + 3, itemH / 2, '__DEFAULT')
+        .setDisplaySize(ICON_PX, ICON_PX).setOrigin(0.65).setAlpha(disabled ? 0.3 : 1)
+
+      const applyAndSmooth = (key: string) => {
+        spriteEl.setTexture(key)
+        this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR)
+      }
+      if (this.textures.exists(speciesKey)) {
+        applyAndSmooth(speciesKey)
+      } else {
+        this.load.image(speciesKey, `/static/img/sprites_icons/${fileName}.png`)
+        this.load.once('complete', () => applyAndSmooth(speciesKey))
+        this.load.once('loaderror', () => {
+          this.load.image(speciesKey, `/static/img/sprites_gen5/normal/${fileName}.png`)
+          this.load.once('complete', () => applyAndSmooth(speciesKey))
+          this.load.start()
+        })
+        this.load.start()
+      }
+
+      const textX      = ICON_PX + 8
+      const maxNameLen = Math.floor((btnW - textX - 4) / 6)
+      const displayName = poke.name.length > maxNameLen ? poke.name.slice(0, maxNameLen) + '…' : poke.name
+
+      const nameLabel = this.add.text(textX, itemH / 2 - 6,
+        `${displayName}  Nv.${poke.level}`, {
+          fontSize: '9px', color: disabled ? '#666' : '#fff',
+          fontFamily: '"Inter", "Segoe UI", sans-serif', fontStyle: 'bold',
+        }).setOrigin(0, 0.5)
+
+      const hpLabel = this.add.text(textX, itemH / 2 + 6,
+        isKo ? 'K.O.' : `PV ${poke.current_hp}/${poke.max_hp}`, {
+          fontSize: '8px', color: hpColor,
+          fontFamily: '"Inter", "Segoe UI", sans-serif',
+        }).setOrigin(0, 0.5)
+
+      const zone = this.add.zone(0, 0, btnW, itemH).setOrigin(0)
+        .setInteractive({ useHandCursor: !disabled })
+        .on('pointerover', () => { if (!disabled) draw(hoverColor) })
+        .on('pointerout',  () => draw(baseColor))
+        .on('pointerdown', () => {
+          if (!this.waitingForInput || disabled) return
+          this.sfxConfirm()
+          void this.executeSwitchPokemon(poke.id)
+        })
+
+      this.switchPanel.add(
+        this.add.container(x, y, [bg, spriteEl, nameLabel, hpLabel, zone]).setDepth(13)
+      )
+    })
+  }
+
+   private async showSwitchPanel(): Promise<void> {
     if (!this.waitingForInput) return
     this.actionPanel.setVisible(false)
     this.movesPanel.setVisible(false)
