@@ -190,9 +190,10 @@ def phaser_player_location(request):
     )
 
     return JsonResponse({
-        'current_zone_id':       player_location.current_zone_id,
-        'current_zone_name':     player_location.current_zone.name,
-        'visited_zone_ids':      visited_ids,
+        'trainer_id':             trainer.id,
+        'current_zone_id':        player_location.current_zone_id,
+        'current_zone_name':      player_location.current_zone.name,
+        'visited_zone_ids':       visited_ids,
         'last_pokemon_center_id': player_location.last_pokemon_center_id,
     })
 
