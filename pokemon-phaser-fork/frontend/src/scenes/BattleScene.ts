@@ -1247,8 +1247,9 @@ export class BattleScene extends Phaser.Scene {
     const panelY = H - panelH
     const startX = W * 0.36
     const panelW = W - startX - 4
-    const itemH  = 24
-    const gap    = 3
+    const TAB_H  = 24   // hauteur onglets — assez pour "Press Start 2P" 7px
+    const itemH  = 22
+    const gap    = 2
 
     // ── Fond du panel ──────────────────────────────────────────
     const bg = this.add.graphics()
@@ -1271,20 +1272,20 @@ export class BattleScene extends Phaser.Scene {
       const active = tab.key === this.bagTab
       const tabBg  = this.add.graphics()
       tabBg.fillStyle(active ? tab.color : 0x2c2c4a, 1)
-      tabBg.fillRoundedRect(tx + 1, panelY + 1, tabW - 2, 18, 4)
+      tabBg.fillRoundedRect(tx + 1, panelY + 1, tabW - 2, TAB_H - 1, 4)
       if (active) {
         tabBg.lineStyle(1, 0xffffff, 0.3)
-        tabBg.strokeRoundedRect(tx + 1, panelY + 1, tabW - 2, 18, 4)
+        tabBg.strokeRoundedRect(tx + 1, panelY + 1, tabW - 2, TAB_H - 1, 4)
       }
       this.bagPanel.add(tabBg)
 
-      const tabLabel = this.add.text(tx + tabW / 2, panelY + 10, tab.label, {
+      const tabLabel = this.add.text(tx + tabW / 2, panelY + TAB_H / 2 + 1, tab.label, {
         fontSize: '7px', color: active ? '#ffffff' : '#aaaacc',
         fontFamily: '"Press Start 2P"',
       }).setOrigin(0.5).setDepth(14)
       this.bagPanel.add(tabLabel)
 
-      const tabZone = this.add.zone(tx, panelY, tabW, 20).setOrigin(0)
+      const tabZone = this.add.zone(tx, panelY, tabW, TAB_H).setOrigin(0)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
           this.sfxConfirm()
@@ -1297,8 +1298,8 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Liste d'items ──────────────────────────────────────────
     const filtered = this._bagTabItems()
-    const listY    = panelY + 22
-    const listH    = panelH - 22
+    const listY    = panelY + TAB_H + 2
+    const listH    = panelH - TAB_H - 2
 
     if (filtered.length === 0) {
       const empty = this.add.text(startX + panelW / 2, listY + listH / 2, 'Aucun objet', {
