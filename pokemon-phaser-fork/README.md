@@ -5,6 +5,13 @@ interactive en **Phaser 3 + TypeScript**, tout en réutilisant intégralement le
 
 ---
 
+
+## TODO
+
+- les animations de switchOut de pokemon ont lieu après l'animation d'attaque du pokemon adverse
+
+
+
 ## Architecture
 
 ```

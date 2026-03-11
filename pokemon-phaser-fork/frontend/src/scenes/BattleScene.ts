@@ -1202,6 +1202,12 @@ export class BattleScene extends Phaser.Scene {
   // PANEL SAC
   // ─────────────────────────────────────────────────────────────
 
+  // ── État interne du sac ──────────────────────────────────────
+  private bagTab: 'heal' | 'ball' | 'battle' = 'heal'
+  private bagScrollOffset = 0
+  private bagAllItems: BattleItem[] = []
+  private BAG_VISIBLE_ROWS = 3
+
   private async showBagPanel(): Promise<void> {
     if (!this.waitingForInput) return
     this.actionPanel.setVisible(false)
@@ -1209,80 +1215,229 @@ export class BattleScene extends Phaser.Scene {
     this.switchPanel.setVisible(false)
     this.showLog('Choisissez\nun objet.')
 
-    // Vider et reconstruire
-    this.bagPanel.removeAll(true)
-
     try {
       const { items } = await battleApi.getItems(this.trainerId)
-      this.buildItemButtons(items)
+      this.bagAllItems    = items
+      this.bagScrollOffset = 0
+      this.bagTab         = 'heal'
+      this._rebuildBagPanel()
     } catch {
       this.showLog('Erreur chargement\ndu sac.')
       this.showActionPanel()
       return
     }
-
-    this.bagPanel.setVisible(true)
   }
 
-  private buildItemButtons(items: BattleItem[]): void {
-    const W = this.cameras.main.width
-    const H = this.cameras.main.height
+  private _bagTabItems(): BattleItem[] {
+    return this.bagAllItems.filter(item => {
+      if (this.bagTab === 'heal')   return item.item_type === 'potion' || item.item_type === 'medicine'
+      if (this.bagTab === 'ball')   return item.item_type === 'pokeball'
+      if (this.bagTab === 'battle') return item.item_type === 'battle'
+      return false
+    })
+  }
+
+  private _rebuildBagPanel(): void {
+    this.bagPanel.removeAll(true)
+    this.bagPanel.setVisible(true)
+
+    const W      = this.cameras.main.width
+    const H      = this.cameras.main.height
     const panelH = 112
     const panelY = H - panelH
     const startX = W * 0.36
-    const btnW   = W * 0.62
-    const itemH  = 28
+    const panelW = W - startX - 4
+    const itemH  = 24
     const gap    = 3
 
-    const backEl = this.makeBackButton(startX, panelY + 6, btnW, () => this.showActionPanel())
-    this.bagPanel.add(backEl)
+    // ── Fond du panel ──────────────────────────────────────────
+    const bg = this.add.graphics()
+    bg.fillStyle(0x1a1a2e, 0.97)
+    bg.fillRoundedRect(startX, panelY, panelW, panelH, 6)
+    bg.lineStyle(1, 0x3a3a6a, 0.8)
+    bg.strokeRoundedRect(startX, panelY, panelW, panelH, 6)
+    this.bagPanel.add(bg)
 
-    items.slice(0, 3).forEach((item, i) => {
-      const y = panelY + 28 + i * (itemH + gap)
-      const bg = this.add.graphics()
-      const isUsable = item.item_type === 'potion' || item.item_type === 'pokeball' || item.item_type === 'battle'
-      const color = isUsable ? 0x27ae60 : 0x7f8c8d
+    // ── Onglets ────────────────────────────────────────────────
+    const tabs: Array<{ key: typeof this.bagTab; label: string; color: number }> = [
+      { key: 'heal',   label: '💊 Soins',  color: 0x16a085 },
+      { key: 'ball',   label: '⚾ Balls',  color: 0xe74c3c },
+      { key: 'battle', label: '⚔️ Combat', color: 0x8e44ad },
+    ]
+    const tabW = panelW / tabs.length
 
-      const draw = (c: number) => {
-        bg.clear()
-        bg.fillStyle(c, 1)
-        bg.fillRoundedRect(0, 0, btnW, itemH, 4)
-        bg.lineStyle(1, 0xffffff, 0.15)
-        bg.strokeRoundedRect(0, 0, btnW, itemH, 4)
+    tabs.forEach((tab, i) => {
+      const tx     = startX + i * tabW
+      const active = tab.key === this.bagTab
+      const tabBg  = this.add.graphics()
+      tabBg.fillStyle(active ? tab.color : 0x2c2c4a, 1)
+      tabBg.fillRoundedRect(tx + 1, panelY + 1, tabW - 2, 18, 4)
+      if (active) {
+        tabBg.lineStyle(1, 0xffffff, 0.3)
+        tabBg.strokeRoundedRect(tx + 1, panelY + 1, tabW - 2, 18, 4)
       }
-      draw(color)
+      this.bagPanel.add(tabBg)
 
-      // Sprite item
-      const iconKey = `item-icon-${item.id}`
-      const iconUrl = this.getItemSpriteUrl(item)
-      const spriteEl = this.add.image(itemH / 2, itemH / 2, '__DEFAULT').setDisplaySize(22, 22).setOrigin(0.5)
-      if (!this.textures.exists(iconKey)) {
-        this.load.image(iconKey, iconUrl)
-        this.load.once('complete', () => { spriteEl.setTexture(iconKey) })
-        this.load.once('loaderror', () => {})
-        this.load.start()
-      } else {
-        spriteEl.setTexture(iconKey)
-      }
+      const tabLabel = this.add.text(tx + tabW / 2, panelY + 10, tab.label, {
+        fontSize: '7px', color: active ? '#ffffff' : '#aaaacc',
+        fontFamily: '"Press Start 2P"',
+      }).setOrigin(0.5).setDepth(14)
+      this.bagPanel.add(tabLabel)
 
-      const label = this.add.text(itemH + 6, itemH / 2,
-        `${item.name}  ×${item.quantity}`, {
-          fontSize: '9px', color: '#fff',
-          fontFamily: '"Inter", "Segoe UI", sans-serif',
-        }).setOrigin(0, 0.5)
-
-      const zone = this.add.zone(0, 0, btnW, itemH).setOrigin(0)
-        .setInteractive({ useHandCursor: isUsable })
-        .on('pointerover',  () => isUsable && draw(0x2ecc71))
-        .on('pointerout',   () => draw(color))
-        .on('pointerdown',  () => {
-          if (!this.waitingForInput || !isUsable) return
+      const tabZone = this.add.zone(tx, panelY, tabW, 20).setOrigin(0)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => {
           this.sfxConfirm()
-          void this.executeUseItem(item)
+          this.bagTab = tab.key
+          this.bagScrollOffset = 0
+          this._rebuildBagPanel()
         })
-
-      this.bagPanel.add(this.add.container(startX, y, [bg, spriteEl, label, zone]).setDepth(13))
+      this.bagPanel.add(tabZone)
     })
+
+    // ── Liste d'items ──────────────────────────────────────────
+    const filtered = this._bagTabItems()
+    const listY    = panelY + 22
+    const listH    = panelH - 22
+
+    if (filtered.length === 0) {
+      const empty = this.add.text(startX + panelW / 2, listY + listH / 2, 'Aucun objet', {
+        fontSize: '8px', color: '#666688', fontFamily: '"Press Start 2P"',
+      }).setOrigin(0.5).setDepth(14)
+      this.bagPanel.add(empty)
+    } else {
+      const visible   = filtered.slice(this.bagScrollOffset, this.bagScrollOffset + this.BAG_VISIBLE_ROWS)
+      const canUp     = this.bagScrollOffset > 0
+      const canDown   = this.bagScrollOffset + this.BAG_VISIBLE_ROWS < filtered.length
+
+      visible.forEach((item, i) => {
+        const iy = listY + i * (itemH + gap) + 2
+        this._buildBagItemRow(item, startX + 4, iy, panelW - 8, itemH)
+      })
+
+      // Flèches scroll
+      if (canUp || canDown) {
+        if (canUp) {
+          const upBtn = this.add.text(startX + panelW - 14, listY + 2, '▲', {
+            fontSize: '9px', color: '#ffffff99', fontFamily: 'sans-serif',
+          }).setDepth(15).setInteractive({ useHandCursor: true })
+            .on('pointerover', () => upBtn.setColor('#ffffff'))
+            .on('pointerout',  () => upBtn.setColor('#ffffff99'))
+            .on('pointerdown', () => {
+              this.bagScrollOffset = Math.max(0, this.bagScrollOffset - 1)
+              this._rebuildBagPanel()
+            })
+          this.bagPanel.add(upBtn)
+        }
+        if (canDown) {
+          const downBtn = this.add.text(startX + panelW - 14, listY + listH - 14, '▼', {
+            fontSize: '9px', color: '#ffffff99', fontFamily: 'sans-serif',
+          }).setDepth(15).setInteractive({ useHandCursor: true })
+            .on('pointerover', () => downBtn.setColor('#ffffff'))
+            .on('pointerout',  () => downBtn.setColor('#ffffff99'))
+            .on('pointerdown', () => {
+              this.bagScrollOffset = Math.min(filtered.length - this.BAG_VISIBLE_ROWS, this.bagScrollOffset + 1)
+              this._rebuildBagPanel()
+            })
+          this.bagPanel.add(downBtn)
+        }
+
+        // Compteur pages
+        const pageText = this.add.text(startX + panelW / 2, listY + listH - 6,
+          `${this.bagScrollOffset + 1}-${Math.min(this.bagScrollOffset + this.BAG_VISIBLE_ROWS, filtered.length)} / ${filtered.length}`, {
+            fontSize: '6px', color: '#888899', fontFamily: '"Press Start 2P"',
+          }).setOrigin(0.5).setDepth(14)
+        this.bagPanel.add(pageText)
+      }
+    }
+
+    // ── Bouton retour ──────────────────────────────────────────
+    // Molette de scroll sur le panel sac
+    const canvas = this.game.canvas
+    const onBagWheel = (e: WheelEvent) => {
+      const rect  = canvas.getBoundingClientRect()
+      const cx    = (e.clientX - rect.left) * (canvas.width / rect.width)
+      const cy    = (e.clientY - rect.top)  * (canvas.height / rect.height)
+      if (cx >= startX && cy >= panelY) {
+        e.preventDefault()
+        const filtered2 = this._bagTabItems()
+        if (e.deltaY > 0 && this.bagScrollOffset + this.BAG_VISIBLE_ROWS < filtered2.length)
+          this.bagScrollOffset++
+        else if (e.deltaY < 0 && this.bagScrollOffset > 0)
+          this.bagScrollOffset--
+        else return
+        this._rebuildBagPanel()
+      }
+    }
+    canvas.addEventListener('wheel', onBagWheel, { passive: false })
+    // Retirer le listener quand on quitte le panel
+    this.bagPanel.once('destroy', () => canvas.removeEventListener('wheel', onBagWheel))
+
+    const backEl = this.makeBackButton(startX + 2, panelY + panelH - 14, 48, () => {
+      canvas.removeEventListener('wheel', onBagWheel)
+      this.showActionPanel()
+    })
+    this.bagPanel.add(backEl)
+  }
+
+  private _buildBagItemRow(item: BattleItem, x: number, y: number, w: number, h: number): void {
+    const isUsable = item.item_type === 'potion' || item.item_type === 'medicine'
+                  || item.item_type === 'pokeball' || item.item_type === 'battle'
+    const baseColor  = isUsable ? 0x1e3a2e : 0x2a2a3a
+    const hoverColor = isUsable ? 0x27ae60 : 0x2a2a3a
+
+    const rowBg = this.add.graphics()
+    const draw  = (c: number) => {
+      rowBg.clear()
+      rowBg.fillStyle(c, 1)
+      rowBg.fillRoundedRect(0, 0, w, h, 3)
+      rowBg.lineStyle(1, isUsable ? 0x27ae60 : 0x3a3a5a, 0.5)
+      rowBg.strokeRoundedRect(0, 0, w, h, 3)
+    }
+    draw(baseColor)
+
+    // Icône item
+    const iconKey = `item-icon-${item.id}`
+    const iconUrl = this.getItemSpriteUrl(item)
+    const icon    = this.add.image(h / 2, h / 2, '__DEFAULT').setDisplaySize(h - 4, h - 4).setOrigin(0.5)
+    if (!this.textures.exists(iconKey)) {
+      this.load.image(iconKey, iconUrl)
+      this.load.once('complete', () => {
+        icon.setTexture(iconKey)
+        this.textures.get(iconKey).setFilter(Phaser.Textures.FilterMode.LINEAR)
+      })
+      this.load.once('loaderror', () => {})
+      this.load.start()
+    } else {
+      icon.setTexture(iconKey)
+      this.textures.get(iconKey).setFilter(Phaser.Textures.FilterMode.LINEAR)
+    }
+
+    // Nom
+    const nameText = this.add.text(h + 4, h / 2 - 3, item.name, {
+      fontSize: '7px', color: isUsable ? '#ffffff' : '#666688',
+      fontFamily: '"Press Start 2P"',
+    }).setOrigin(0, 0.5)
+
+    // Quantité — alignée à droite
+    const qtyText = this.add.text(w - 14, h / 2, `×${item.quantity}`, {
+      fontSize: '8px', color: isUsable ? '#f1c40f' : '#555566',
+      fontFamily: '"Press Start 2P"',
+    }).setOrigin(1, 0.5)
+
+    const hitZone = this.add.zone(0, 0, w, h).setOrigin(0)
+      .setInteractive({ useHandCursor: isUsable })
+      .on('pointerover',  () => { if (isUsable) draw(hoverColor) })
+      .on('pointerout',   () => draw(baseColor))
+      .on('pointerdown',  () => {
+        if (!this.waitingForInput || !isUsable) return
+        this.sfxConfirm()
+        if (item.item_type === 'pokeball') void this.executeBallThrow(item)
+        else void this.executeUseItem(item)
+      })
+
+    const row = this.add.container(x, y, [rowBg, icon, nameText, qtyText, hitZone]).setDepth(13)
+    this.bagPanel.add(row)
   }
 
   private getItemSpriteUrl(item: BattleItem): string {
