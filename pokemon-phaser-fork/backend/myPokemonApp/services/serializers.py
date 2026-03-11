@@ -20,6 +20,10 @@ def serialize_pokemon(pokemon, include_moves=False):
 
     Utilisé dans build_battle_response() et GetTrainerTeam().
     """
+    types = [pokemon.species.primary_type.name.lower()]
+    if pokemon.species.secondary_type:
+        types.append(pokemon.species.secondary_type.name.lower())
+
     data = {
         'id':           pokemon.id,
         'name':         pokemon.nickname or pokemon.species.name,
@@ -29,6 +33,7 @@ def serialize_pokemon(pokemon, include_moves=False):
         'max_hp':       pokemon.max_hp,
         'status':       pokemon.status_condition,
         'is_shiny':     pokemon.is_shiny,
+        'types':        types,
     }
 
     if include_moves:

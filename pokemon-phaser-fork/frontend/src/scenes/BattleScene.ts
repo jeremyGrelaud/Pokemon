@@ -38,6 +38,34 @@ const TYPE_COLORS: Record<string, number> = {
   dark:     0x705848, steel:    0xb8b8d0,
 }
 
+// ── Table d'efficacité des types (Gen 2+) ────────────────────
+// TYPE_CHART[moveType][defenderType] = multiplicateur
+const TYPE_CHART: Record<string, Record<string, number>> = {
+  normal:   { rock: 0.5, ghost: 0, steel: 0.5 },
+  fire:     { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
+  water:    { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 },
+  electric: { water: 2, electric: 0.5, grass: 0.5, ground: 0, flying: 2, dragon: 0.5 },
+  grass:    { fire: 0.5, water: 2, grass: 0.5, poison: 0.5, ground: 2, flying: 0.5, bug: 0.5, rock: 2, dragon: 0.5, steel: 0.5 },
+  ice:      { water: 0.5, grass: 2, ice: 0.5, ground: 2, flying: 2, dragon: 2, steel: 0.5 },
+  fighting: { normal: 2, ice: 2, poison: 0.5, flying: 0.5, psychic: 0.5, bug: 0.5, rock: 2, ghost: 0, dark: 2, steel: 2 },
+  poison:   { grass: 2, poison: 0.5, ground: 0.5, rock: 0.5, ghost: 0.5, steel: 0 },
+  ground:   { fire: 2, electric: 2, grass: 0.5, poison: 2, flying: 0, bug: 0.5, rock: 2, steel: 2 },
+  flying:   { electric: 0.5, grass: 2, fighting: 2, bug: 2, rock: 0.5, steel: 0.5 },
+  psychic:  { fighting: 2, poison: 2, psychic: 0.5, dark: 0, steel: 0.5 },
+  bug:      { fire: 0.5, grass: 2, fighting: 0.5, flying: 0.5, psychic: 2, ghost: 0.5, dark: 2, steel: 0.5 },
+  rock:     { fire: 2, ice: 2, fighting: 0.5, ground: 0.5, flying: 2, bug: 2, steel: 0.5 },
+  ghost:    { normal: 0, psychic: 2, ghost: 2, dark: 0.5 },
+  dragon:   { dragon: 2, steel: 0.5 },
+  dark:     { fighting: 0.5, psychic: 2, ghost: 2, dark: 0.5, steel: 0.5 },
+  steel:    { fire: 0.5, water: 0.5, electric: 0.5, ice: 2, rock: 2, steel: 0.5 },
+}
+
+/** Calcule le multiplicateur d'efficacité d'un move contre des types défenseurs */
+function getTypeEffectiveness(moveType: string, defenderTypes: string[]): number {
+  const chart = TYPE_CHART[moveType.toLowerCase()] ?? {}
+  return defenderTypes.reduce((mult, dt) => mult * (chart[dt.toLowerCase()] ?? 1), 1)
+}
+
 // ── Mapping zone_type → background Django ────────────────────
 const ZONE_BG: Record<string, string> = {
   forest:   'bg-forest',
@@ -590,7 +618,37 @@ export class BattleScene extends Phaser.Scene {
         this.textures.get(catKey).setFilter(Phaser.Textures.FilterMode.LINEAR)
       }
 
-      // ── LIGNE 3 : nom du move centré ──────────────────────────
+      // ── LIGNE 3 : efficacité (gauche) + nom du move (centré) ──
+      const oppTypes = this.state.opponent_pokemon.types ?? []
+      const moveType = move.type?.toLowerCase() ?? ''
+      const effectiveness = move.category !== 'status' && oppTypes.length > 0
+        ? getTypeEffectiveness(moveType, oppTypes)
+        : null
+
+      // Badge efficacité — affiché seulement si ≠ 1× et move offensif
+      let effBadge: Phaser.GameObjects.Container | null = null
+      if (effectiveness !== null && effectiveness !== 1) {
+        const { label, color } =
+          effectiveness === 0    ? { label: '0×',    color: 0x555555 } :
+          effectiveness >= 4     ? { label: '4×',    color: 0xe74c3c } :
+          effectiveness >= 2     ? { label: '2×',    color: 0xe67e22 } :
+          effectiveness <= 0.25  ? { label: '¼×',    color: 0x2980b9 } :
+                                   { label: '½×',    color: 0x3498db }
+
+        const BADGE_H = 10, PAD = 3
+        const badgeW  = label.length * 5 + PAD * 2
+
+        const effBg = this.add.graphics()
+        effBg.fillStyle(color, 1)
+        effBg.fillRoundedRect(0, -BADGE_H / 2, badgeW, BADGE_H, 3)
+
+        const effTxt = this.add.text(badgeW / 2, 0, label, {
+          fontSize: '6px', color: '#fff', fontFamily: '"Press Start 2P"',
+        }).setOrigin(0.5, 0.5)
+
+        effBadge = this.add.container(4, ROW3_MID, [effBg, effTxt])
+      }
+
       const maxChars = Math.floor((btnW - 8) / 6.5)
       const moveName = move.name.length > maxChars
         ? move.name.slice(0, maxChars - 1) + '…'
@@ -636,9 +694,10 @@ export class BattleScene extends Phaser.Scene {
           this.sfxConfirm(); this._hideMoveTooltip(); void this.executeMove(move.id)
         })
 
-      const container = this.add.container(x, y,
-        [bg, hint, catImg, powerTxt, accTxt, nameTxt, typeBg, typeLbl, ppTxt, zone]
-      ).setDepth(12)
+      const children: Phaser.GameObjects.GameObject[] = [bg, hint, catImg, powerTxt, accTxt, nameTxt, typeBg, typeLbl, ppTxt, zone]
+      if (effBadge) children.splice(5, 0, effBadge)
+
+      const container = this.add.container(x, y, children).setDepth(12)
       items.push(container)
       this.moveButtons.push(container)
     })
