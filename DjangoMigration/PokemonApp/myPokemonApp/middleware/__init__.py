@@ -1,1 +1,0 @@
-# myPokemonApp/middleware/__init__.py

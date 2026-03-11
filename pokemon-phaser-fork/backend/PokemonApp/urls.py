@@ -125,5 +125,5 @@ urlpatterns = [
     path('achievements/',        views.achievements_list_view,   name='achievements_list'),
     path('achievements/widget/', views.achievements_widget_view, name='achievements_widget'),
 
-    path('api/phaser/', include('myPokemonApp.views.api.phaser_urls')),
+    path('api/phaser/', include('myPokemonApp.views.phaser_urls')),
 ]
