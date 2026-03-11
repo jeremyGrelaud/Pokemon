@@ -1,0 +1,25 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   quest-log.css  –  Journal de quêtes
+   ═══════════════════════════════════════════════════════════════════════════ */
+.quest-item       { transition: background .15s; }
+.quest-item:hover { background: #f8f9fc; }
+.quest-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff3cd;
+  border-radius: 50%;
+}
+.objective-box {
+  background: #e8f4fd;
+  border-left: 3px solid #0d6efd;
+  border-radius: 0 4px 4px 0;
+  padding: 6px 10px;
+  font-size: .85rem;
+  color: #333;
+}
+.quest-done        { opacity: .8; transition: opacity .15s, background .15s; }
+.quest-done:hover  { opacity: 1; background: #f0fff4; }
+.quest-locked      { opacity: .5; }

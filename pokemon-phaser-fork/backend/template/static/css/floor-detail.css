@@ -1,0 +1,9 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   floor-detail.css  –  Détail d'un étage de donjon
+   ═══════════════════════════════════════════════════════════════════════════ */
+.current-floor-indicator {
+  background: linear-gradient(135deg, #4e73df, #2e59d9);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px;
+}

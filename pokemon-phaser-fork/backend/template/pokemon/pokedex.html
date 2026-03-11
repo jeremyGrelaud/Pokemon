@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load static %}
+{% load django_tables2 %}
+{% load custom_filters %}
+
+{% block title %}
+<title>Pokédex - Pokémon Gen 1</title>
+{% endblock title %}
+
+{% block css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/pokedex.css' %}">
+{% endblock css %}
+
+{% block content %}
+
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+    <li class="breadcrumb-item active">Pokédex</li>
+  </ol>
+</nav>
+
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0" style="color:#333;">
+    <i class="fas fa-book" style="color:#c0392b;"></i> Pokédex
+  </h1>
+  <div>
+    <span class="badge bg-success text-white me-1">{{ total_caught }} capturés</span>
+    <span class="text-muted">/ {{ total_count }} Pokémon</span>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card shadow mb-4">
+  <div class="card-body">
+    <form method="GET" id="filterForm">
+      <div class="row g-2">
+
+        <!-- Search -->
+        <div class="col-md-4">
+          <div class="input-group">
+            <input type="text" class="form-control" name="searchQuery"
+                   placeholder="Nom ou numéro..." value="{{ searchQuery }}">
+            <button class="btn btn-danger" type="submit">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Type -->
+        <div class="col-md-2">
+          <select class="form-select" name="typeFilter" onchange="this.form.submit()">
+            <option value="">Tous les types</option>
+            {% for type in types %}
+            <option value="{{ type.name }}" {% if typeFilter == type.name %}selected{% endif %}>
+              {{ type.name|capfirst }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Génération -->
+        <div class="col-md-2">
+          <select class="form-select" name="genFilter" onchange="this.form.submit()">
+            <option value="all" {% if genFilter == 'all' %}selected{% endif %}>Toutes géné.</option>
+            <option value="gen1" {% if genFilter == 'gen1' %}selected{% endif %}>Gen 1</option>
+          </select>
+        </div>
+
+        <!-- Filtre capturé -->
+        <div class="col-md-3">
+          <div class="btn-group btn-group-sm w-100" role="group">
+            <a href="?searchQuery={{ searchQuery }}&typeFilter={{ typeFilter }}&genFilter={{ genFilter }}&caughtFilter=all"
+               class="btn {% if caughtFilter == 'all' or not caughtFilter %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+              Tous
+            </a>
+            <a href="?searchQuery={{ searchQuery }}&typeFilter={{ typeFilter }}&genFilter={{ genFilter }}&caughtFilter=caught"
+               class="btn {% if caughtFilter == 'caught' %}btn-success{% else %}btn-outline-success{% endif %}">
+              <i class="fas fa-check"></i> Capturés
+            </a>
+            <a href="?searchQuery={{ searchQuery }}&typeFilter={{ typeFilter }}&genFilter={{ genFilter }}&caughtFilter=missing"
+               class="btn {% if caughtFilter == 'missing' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+              <i class="fas fa-times"></i> Manquants
+            </a>
+          </div>
+        </div>
+
+        <!-- Reset -->
+        <div class="col-md-1">
+          {% if searchQuery or typeFilter or genFilter != 'all' or caughtFilter != 'all' %}
+          <a href="{% url 'PokemonOverView' %}" class="btn btn-light w-100" title="Réinitialiser">
+            <i class="fas fa-times"></i>
+          </a>
+          {% endif %}
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3 d-flex align-items-center justify-content-between">
+    <h6 class="m-0 section-title">Liste des Pokémon</h6>
+    {% if caughtFilter == 'caught' %}
+    <span class="badge bg-success text-white">{{ total_caught }} capturés</span>
+    {% elif caughtFilter == 'missing' %}
+    <span class="badge bg-danger text-white">{{ total_count|add:"-"|add:total_caught }} manquants</span>
+    {% endif %}
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive pokedex-table">
+      {% optimized_render_table table 'table.html' pageObjects %}
+    </div>
+  </div>
+</div>
+
+<a href="{% url 'home' %}" class="text-decoration-none" style="color:#c0392b;">
+  &larr; Retour au Dashboard
+</a>
+
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+<script>
+document.querySelectorAll('select[name="typeFilter"], select[name="genFilter"]').forEach(function(sel) {
+  sel.addEventListener('change', function() { document.getElementById('filterForm').submit(); });
+});
+</script>
+{% endblock js %}

@@ -1,0 +1,83 @@
+.battle-scene {
+  transform-origin: top center !important;
+}
+
+/* Le wrapper ne doit PAS clipper la scène pendant un scale < 1 */
+.battle-wrapper {
+  overflow: visible;
+}
+
+/* ============================================================================
+   BATTLE SCENE — MODE COMPACT 960×540
+   Activé dynamiquement via JS : .battle-scene.scene-compact
+   ============================================================================ */
+
+/* ── Canvas 960px ─────────────────────────────────────────────────────────── */
+.battle-scene.scene-compact {
+  width: 960px;
+  /* height reste 540px — ratio 16:9 conservé */
+}
+
+/* ── Sprites Pokémon ──────────────────────────────────────────────────────── */
+
+/* ── Repositionnement des sides pour le canvas 960px ─────────────────────── */
+/*  Ratio 960/1280 = 0.75 */
+.battle-scene.scene-compact .opponent-side {
+  margin-right: 150px;
+  margin-top: 90px;
+}
+
+.battle-scene.scene-compact .player-side {
+  margin-left: 150px;
+}
+
+/* ── Info bars ────────────────────────────────────────────────────────────── */
+.battle-scene.scene-compact .info-bar {
+  width: 260px;
+}
+
+/* ── Animations d'entrée : translateX réduit pour le canvas 960px ─────────── */
+.battle-scene.scene-compact .slide-in-opponent {
+  animation: slide-in-opponent-compact 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.battle-scene.scene-compact .slide-in-player {
+  animation: slide-in-player-compact 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes slide-in-opponent-compact {
+  from {
+    transform: translateX(220px) translateY(-80px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-player-compact {
+  from {
+    transform: translateX(-220px) translateY(80px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ── Attack lunge : course réduite sur 960px ──────────────────────────────── */
+@keyframes attack-lunge-compact {
+  0%   { transform: translateX(0) scale(1); }
+  40%  { transform: translateX(60px) scale(1.12); }
+  60%  { transform: translateX(60px) scale(1.12); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes attack-lunge-player-compact {
+  0%   { transform: translateX(0) scale(1); }
+  40%  { transform: translateX(-60px) scale(1.12); }
+  60%  { transform: translateX(-60px) scale(1.12); }
+  100% { transform: translateX(0) scale(1); }
+}

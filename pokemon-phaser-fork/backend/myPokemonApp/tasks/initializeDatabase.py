@@ -1,0 +1,1263 @@
+#!/usr/bin/python3
+"""
+Script d'initialisation de la base de données Pokémon Gen 1
+Corrigé pour la nouvelle architecture de modèles
+"""
+
+
+from myPokemonApp.models import (
+    Pokemon, 
+    PokemonType, 
+    PokemonMove, 
+    PokemonLearnableMove, 
+    PokemonEvolution,
+    Item,
+    Ability,
+)
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+
+def scriptToInitializeDatabase():
+    """
+    Initialise la base de données avec tous les Pokémon de la Gen 1,
+    leurs types, capacités, évolutions et capacités apprises
+    """
+    
+    logging.info("="*60)
+    logging.info("INITIALISATION DE LA BASE DE DONNÉES POKÉMON")
+    logging.info("="*60)
+    
+    # ============================================================================
+    # ÉTAPE 1: CRÉER LES TYPES
+    # ============================================================================
+    
+    logging.info("\n[*] Création des types Pokémon...")
+    
+    types_list = [
+        'normal', 'fire', 'water', 'electric', 'grass', 'ice',
+        'fighting', 'poison', 'ground', 'flying', 'psychic',
+        'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
+    ]
+    
+    types_dict = {}
+    for type_name in types_list:
+        type_obj, created = PokemonType.objects.get_or_create(name=type_name)
+        types_dict[type_name] = type_obj
+        if created:
+            logging.info(f"  [+] Type créé: {type_name}")
+    
+    logging.info(f"[+] {len(types_dict)} types créés/vérifiés")
+    
+    
+    # ============================================================================
+    # ÉTAPE 2: DÉFINIR LES EFFICACITÉS DE TYPES
+    # ============================================================================
+    
+    logging.info("\n[*] Configuration des efficacités de types...")
+    
+    # Format: {type_attaquant: [types_faibles_contre_lui]}
+    type_effectiveness = {
+        'normal': [],
+        'fire': ['grass', 'ice', 'bug', 'steel'],
+        'water': ['fire', 'ground', 'rock'],
+        'electric': ['water', 'flying'],
+        'grass': ['water', 'ground', 'rock'],
+        'ice': ['grass', 'ground', 'flying', 'dragon'],
+        'fighting': ['normal', 'ice', 'rock', 'dark', 'steel'],
+        'poison': ['grass', 'fairy'],
+        'ground': ['fire', 'electric', 'poison', 'rock', 'steel'],
+        'flying': ['grass', 'fighting', 'bug'],
+        'psychic': ['fighting', 'poison'],
+        'bug': ['grass', 'psychic', 'dark'],
+        'rock': ['fire', 'ice', 'flying', 'bug'],
+        'ghost': ['psychic', 'ghost'],
+        'dragon': ['dragon'],
+        'dark': ['psychic', 'ghost'],
+        'steel': ['ice', 'rock', 'fairy'],
+        'fairy': ['fighting', 'dragon', 'dark']
+    }
+    
+    for attacking_type_name, effective_against_names in type_effectiveness.items():
+        attacking_type = types_dict[attacking_type_name]
+        for defending_type_name in effective_against_names:
+            defending_type = types_dict[defending_type_name]
+            attacking_type.strong_against.add(defending_type)
+    
+    logging.info("[+] Efficacités de types configurées")
+    
+    
+    # ============================================================================
+    # ÉTAPE 2b: CRÉER LES TALENTS (ABILITIES)
+    # ============================================================================
+
+    logging.info("\n[*] Création des talents...")
+
+    # Format: (name, description, effect_tag, trigger)
+    # Le champ trigger est informatif ; Battle.py appelle tous les hooks sur chaque ability.
+    abilities_data = [
+        # --- Starters ---
+        ("Overgrow",     "Booste les attaques Plante à moins d'1/3 des HP.",           "overgrow",     "on_attack"),
+        ("Blaze",        "Booste les attaques Feu à moins d'1/3 des HP.",              "blaze",        "on_attack"),
+        ("Torrent",      "Booste les attaques Eau à moins d'1/3 des HP.",              "torrent",      "on_attack"),
+        # --- Défensifs / Immunités ---
+        ("Levitate",     "Immunité aux attaques Sol.",                                 "levitate",     "on_damage_taken"),
+        ("Flash Fire",   "Absorbe les attaques Feu et booste ses propres attaques.",   "flash_fire",   "on_damage_taken"),
+        ("Volt Absorb",  "Absorbe les attaques Électrik et régénère des HP.",          "volt_absorb",  "on_damage_taken"),
+        ("Water Absorb", "Absorbe les attaques Eau et régénère des HP.",               "water_absorb", "on_damage_taken"),
+        ("Dry Skin",     "Absorbe l'Eau ; soigné sous la pluie, blessé au soleil.",    "dry_skin",     "on_damage_taken"),
+        ("Sturdy",       "Survit toujours avec 1 HP si frappé depuis les HP max.",     "sturdy",       "on_damage_taken"),
+        ("Marvel Scale", "Augmente la Défense si un statut est infligé.",              "marvel_scale", "on_damage_taken"),
+        ("Thick Fat",    "Réduit les dégâts Feu et Glace de 50 %.",                    "thick_fat",    "on_damage_taken"),
+        ("Static",       "20 % de chance de paralyser au contact.",                    "static",       "on_damage_taken"),
+        ("Flame Body",   "30 % de chance de brûler au contact.",                       "flame_body",   "on_damage_taken"),
+        ("Poison Point", "30 % de chance d'empoisonner au contact.",                   "poison_point", "on_damage_taken"),
+        ("Effect Spore", "30 % de chance de statut au contact.",                       "effect_spore", "on_damage_taken"),
+        ("Cute Charm",   "30 % de chance de fasciner au contact.",                     "cute_charm",   "on_damage_taken"),
+        ("Rough Skin",   "Inflige 1/16 des HP de dégâts au contact.",                  "rough_skin",   "on_damage_taken"),
+        ("Iron Barbs",   "Inflige 1/16 des HP de dégâts au contact.",                  "iron_barbs",   "on_damage_taken"),
+        ("Liquid Ooze",  "Transforme les drains en dégâts pour l'attaquant.",          "liquid_ooze",  "on_damage_taken"),
+        ("Shell Armor",  "Immunité aux coups critiques.",                              "shell_armor",  "on_damage_taken"),
+        ("Battle Armor", "Immunité aux coups critiques.",                              "battle_armor", "on_damage_taken"),
+        ("Soundproof",   "Immunité aux attaques sonores.",                             "soundproof",   "on_damage_taken"),
+        ("Filter",       "Réduit les dégâts super efficaces de 25 %.",                 "filter",       "on_damage_taken"),
+        ("Solid Rock",   "Réduit les dégâts super efficaces de 25 %.",                 "solid_rock",   "on_damage_taken"),
+        ("Damp",         "Empêche les explosions.",                                    "damp",         "on_damage_taken"),
+        ("Rock Head",    "Supprime les dégâts de recul.",                              "rock_head",    "on_damage_taken"),
+        ("Magic Guard",  "Immunité à tous les dégâts indirects.",                      "magic_guard",  "on_damage_taken"),
+        ("Clear Body",   "Les stats ne peuvent pas être baissées par l'adversaire.",   "clear_body",   "on_damage_taken"),
+        ("White Smoke",  "Les stats ne peuvent pas être baissées par l'adversaire.",   "white_smoke",  "on_damage_taken"),
+        ("Hyper Cutter", "L'Attaque ne peut pas être baissée.",                        "hyper_cutter", "on_damage_taken"),
+        ("Keen Eye",     "La précision ne peut pas être baissée.",                     "keen_eye",     "on_damage_taken"),
+        # --- Switch-in ---
+        ("Intimidate",   "Baisse l'Attaque de l'adversaire à l'entrée.",               "intimidate",   "on_switch_in"),
+        ("Drought",      "Déclenche le soleil 5 tours à l'entrée.",                    "drought",      "on_switch_in"),
+        ("Drizzle",      "Déclenche la pluie 5 tours à l'entrée.",                     "drizzle",      "on_switch_in"),
+        ("Sand Stream",  "Déclenche la tempête de sable 5 tours à l'entrée.",          "sand_stream",  "on_switch_in"),
+        ("Snow Warning", "Déclenche la grêle 5 tours à l'entrée.",                     "snow_warning", "on_switch_in"),
+        ("Trace",        "Copie le talent de l'adversaire à l'entrée.",                "trace",        "on_switch_in"),
+        ("Download",     "Booste l'Attaque ou l'Atq Spé selon la défense adverse.",    "download",     "on_switch_in"),
+        ("Forewarn",     "Révèle l'attaque la plus puissante de l'adversaire.",        "forewarn",     "on_switch_in"),
+        ("Anticipation", "Frémit si l'adversaire a une attaque super efficace.",       "anticipation", "on_switch_in"),
+        ("Frisk",        "Révèle l'objet tenu par l'adversaire.",                      "frisk",        "on_switch_in"),
+        # --- Switch-out ---
+        ("Natural Cure", "Guérit le statut au retrait du combat.",                     "natural_cure", "on_switch_out"),
+        ("Regenerator",  "Régénère 1/3 des HP au retrait du combat.",                  "regenerator",  "on_switch_out"),
+        # --- Modificateurs de stats ---
+        ("Guts",         "Booste l'Attaque de 50 % si un statut est infligé.",         "guts",         "modify_stat"),
+        ("Hustle",       "Booste l'Attaque physique de 50 % mais baisse la précision.","hustle",       "modify_stat"),
+        ("Huge Power",   "Double la stat d'Attaque.",                                  "huge_power",   "modify_stat"),
+        ("Pure Power",   "Double la stat d'Attaque.",                                  "pure_power",   "modify_stat"),
+        ("Swift Swim",   "Double la Vitesse sous la pluie.",                           "swift_swim",   "modify_stat"),
+        ("Chlorophyll",  "Double la Vitesse au soleil.",                               "chlorophyll",  "modify_stat"),
+        ("Sand Rush",    "Double la Vitesse sous la tempête de sable.",                "sand_rush",    "modify_stat"),
+        ("Slush Rush",   "Double la Vitesse sous la grêle.",                           "slush_rush",   "modify_stat"),
+        ("Defiant",      "Booste fortement l'Attaque si une stat est baissée.",        "defiant",      "modify_stat"),
+        ("Competitive",  "Booste fortement l'Atq Spé si une stat est baissée.",       "competitive",  "modify_stat"),
+        # --- Fin de tour ---
+        ("Speed Boost",  "Augmente la Vitesse d'un cran à chaque tour.",               "speed_boost",  "end_of_turn"),
+        ("Rain Dish",    "Régénère 1/16 des HP max sous la pluie.",                    "rain_dish",    "end_of_turn"),
+        ("Poison Heal",  "Régénère 1/8 des HP ; le poison ne fait plus de dégâts.",    "poison_heal",  "end_of_turn"),
+        ("Shed Skin",    "30 % de chance de guérir le statut à la fin du tour.",       "shed_skin",    "end_of_turn"),
+        ("Solar Power",  "Booste l'Atq Spé au soleil (dégâts en fin de tour).",        "solar_power",  "end_of_turn"),
+        ("Ice Body",     "Régénère 1/16 des HP sous la grêle.",                        "ice_body",     "end_of_turn"),
+        ("Hydration",    "Guérit le statut sous la pluie.",                            "hydration",    "end_of_turn"),
+        # --- Attaque ---
+        ("Swarm",        "Booste les attaques Insecte à moins d'1/3 des HP.",          "swarm",        "on_attack"),
+        ("Technician",   "Booste de 50 % les attaques dont la puissance ≤ 60.",        "technician",   "on_attack"),
+        ("Iron Fist",    "Booste les attaques de poing de 20 %.",                      "iron_fist",    "on_attack"),
+        ("Tinted Lens",  "Les attaques peu efficaces font x2 dégâts.",                 "tinted_lens",  "on_attack"),
+        ("Reckless",     "Booste les attaques à recul de 20 %.",                       "reckless",     "on_attack"),
+        ("Sheer Force",  "Booste les attaques à effets secondaires de 30 %.",          "sheer_force",  "on_attack"),
+        ("Serene Grace", "Double la chance des effets secondaires.",                   "serene_grace", "on_attack"),
+        ("Adaptability", "Le STAB passe de x1.5 à x2.",                               "adaptability", "on_attack"),
+        ("Mold Breaker", "Ignore le talent défensif de l'adversaire.",                 "mold_breaker", "on_attack"),
+        ("Analytic",     "Booste de 30 % si le Pokémon attaque en second.",            "analytic",     "on_attack"),
+        ("Stench",       "10 % de chance de faire reculer l'adversaire.",              "stench",       "on_attack"),
+        # --- Statut ---
+        ("Immunity",     "Immunité au poison.",                                        "immunity",     "on_status"),
+        ("Insomnia",     "Immunité au sommeil.",                                       "insomnia",     "on_status"),
+        ("Vital Spirit", "Immunité au sommeil.",                                       "vital_spirit", "on_status"),
+        ("Limber",       "Immunité à la paralysie.",                                   "limber",       "on_status"),
+        ("Oblivious",    "Immunité à la fascination et aux provocations.",             "oblivious",    "on_status"),
+        ("Own Tempo",    "Immunité à la confusion.",                                   "own_tempo",    "on_status"),
+        ("Synchronize",  "Transmet le statut infligé à l'adversaire.",                 "synchronize",  "on_status"),
+        ("Water Veil",   "Immunité à la brûlure.",                                     "water_veil",   "on_status"),
+        ("Magma Armor",  "Immunité au gel.",                                            "magma_armor",  "on_status"),
+        ("Inner Focus",  "Immunité au recul.",                                         "inner_focus",  "on_status"),
+        # --- Capture ---
+        ("Illuminate",   "Augmente le taux de rencontres sauvages.",                   "illuminate",   "on_capture"),
+        # --- Passifs non encore codés ---
+        ("Arena Trap",   "Empêche l'adversaire de fuir (hors vol).",                   None,           "passive"),
+        ("Color Change", "Change de type pour celui de la dernière attaque reçue.",    None,           "passive"),
+        ("Compound Eyes","Augmente la précision des attaques.",                        None,           "passive"),
+        ("Magnet Pull",  "Empêche les Pokémon Acier de fuir.",                         None,           "passive"),
+        ("Pickup",       "Ramasse les objets tenus abandonnés.",                       None,           "passive"),
+        ("Pressure",     "L'adversaire perd 2 PP supplémentaires à chaque attaque.",   None,           "passive"),
+        ("Run Away",     "Permet de fuir à tous les coups face aux sauvages.",         None,           "passive"),
+        ("Sand Veil",    "Augmente l'Esquive sous la tempête de sable.",               None,           "modify_stat"),
+        ("Snow Cloak",   "Augmente l'Esquive sous la grêle.",                          None,           "modify_stat"),
+        ("Shadow Tag",   "Empêche l'adversaire de fuir.",                              None,           "passive"),
+        ("Truant",       "N'attaque qu'un tour sur deux.",                             None,           "passive"),
+    ]
+
+    abilities_dict = {}
+    for name, description, effect_tag, trigger in abilities_data:
+        ability, created = Ability.objects.get_or_create(
+            name=name,
+            defaults={
+                'description': description,
+                'effect_tag':  effect_tag,
+                'trigger':     trigger,
+            }
+        )
+        abilities_dict[name] = ability
+        if created:
+            logging.info(f"  [+] Talent créé: {name}")
+
+    logging.info(f"[+] {len(abilities_dict)} talents créés/vérifiés")
+
+    
+    logging.info("\n[*] Création des capacités...")
+    
+    # Liste des capacités avec leurs caractéristiques
+    # Format: (nom, type, catégorie, puissance, précision, pp, priorité, effet, chance_effet, statut_infligé)
+    moves_data = [
+        # Capacités classiques
+        ('Egg Bomb', 'normal', 'physical', 100, 75, 10, 0, None, 0, None),
+        ('Surf', 'water', 'special', 90, 100, 15, 0, None, 0, None),
+        ('Psychic', 'psychic', 'special', 90, 100, 10, 0, 'lower_special_defense', 10, None),
+        ('Thrash', 'normal', 'physical', 120, 100, 10, 0, 'rampage', 100, None),
+        ('Dig', 'ground', 'physical', 80, 100, 10, 0, 'dig', 100, None),
+        ('Petal Dance', 'grass', 'special', 120, 100, 10, 0, 'confusion_after', 100, None),
+        ('Bind', 'normal', 'physical', 15, 85, 20, 0, 'trap', 100, None),
+        ('Growth', 'normal', 'status', 0, 100, 20, 0, 'raise_special_attack', 100, None),
+        ('Bubble Beam', 'water', 'special', 65, 100, 20, 0, 'lower_speed', 10, None),
+        ('Dizzy Punch', 'normal', 'physical', 70, 100, 10, 0, 'confuse', 20, None),
+        ('Supersonic', 'normal', 'status', 0, 55, 20, 0, 'confuse', 100, None),
+        ('Psych Up', 'normal', 'status', 0, 100, 10, 0, 'copy_stat_changes', 100, None),
+        ('Defense Curl', 'normal', 'status', 0, 100, 40, 0, 'raise_defense', 100, None),
+        ('Stun Spore', 'grass', 'status', 0, 75, 30, 0, None, 0, 'paralysis'),
+        ('Self-Destruct', 'normal', 'physical', 200, 100, 5, 0, 'faint_user', 100, None),
+        ('Astonish', 'ghost', 'physical', 30, 100, 15, 0, 'flinch', 30, None),
+        ('Confusion', 'psychic', 'special', 50, 100, 25, 0, 'confuse', 10, None),
+        ('Low Sweep', 'fighting', 'physical', 65, 100, 20, 0, 'lower_speed', 100, None),
+        ('Sonic Boom', 'normal', 'special', 1, 90, 20, 0, 'fixed_damage_20', 100, None),
+        ('Leech Life', 'bug', 'physical', 80, 100, 10, 0, 'drain', 100, None),
+        ('Aurora Beam', 'ice', 'special', 65, 100, 20, 0, 'lower_attack', 10, None),
+        ('Harden', 'normal', 'status', 0, 100, 30, 0, 'raise_defense', 100, None),
+        ('Shadow Punch', 'ghost', 'physical', 60, 100, 20, 0, 'never_miss', 100, None),
+        ('Night Shade', 'ghost', 'special', 1, 100, 15, 0, 'level_damage', 100, None),
+        ('Sky Attack', 'flying', 'physical', 140, 90, 5, 0, 'charge_turn', 30, 'flinch'),
+        ('Transform', 'normal', 'status', 0, 100, 10, 0, 'transform', 100, None),
+        ('Spore', 'grass', 'status', 0, 100, 15, 0, None, 0, 'sleep'),
+        ('Fire Blast', 'fire', 'special', 110, 85, 5, 0, None, 10, 'burn'),
+        ('Teleport', 'psychic', 'status', 0, 100, 20, -6, 'flee', 100, None),
+        ('High Jump Kick', 'fighting', 'physical', 130, 90, 10, 0, 'crash', 100, None),
+        ('Karate Chop', 'fighting', 'physical', 50, 100, 25, 0, 'high_crit', 100, None),
+        ('Slam', 'normal', 'physical', 80, 75, 20, 0, None, 0, None),
+        ('Take Down', 'normal', 'physical', 90, 85, 20, 0, 'recoil', 100, None),
+        ('Power Gem', 'rock', 'special', 80, 100, 20, 0, None, 0, None),
+        ('Disable', 'normal', 'status', 0, 100, 20, 0, 'disable', 100, None),
+        ('Vice Grip', 'normal', 'physical', 55, 100, 30, 0, None, 0, None),
+        ('Lovely Kiss', 'normal', 'status', 0, 75, 10, 0, None, 0, 'sleep'),
+        ('Smokescreen', 'normal', 'status', 0, 100, 20, 0, 'lower_accuracy', 100, None),
+        ('Rage', 'normal', 'physical', 20, 100, 20, 0, 'raise_attack_on_hit', 100, None),
+        ('Vine Whip', 'grass', 'physical', 45, 100, 25, 0, None, 0, None),
+        ('Dream Eater', 'psychic', 'special', 100, 100, 15, 0, 'drain_sleep', 100, None),
+        ('Pin Missile', 'bug', 'physical', 25, 95, 20, 0, 'multi_hit', 100, None),
+        ('Clamp', 'water', 'physical', 35, 85, 15, 0, 'trap', 100, None),
+        ('Scratch', 'normal', 'physical', 40, 100, 35, 0, None, 0, None),
+        ('Tail Whip', 'normal', 'status', 0, 100, 30, 0, 'lower_defense', 100, None),
+        ('Sing', 'normal', 'status', 0, 55, 15, 0, None, 0, 'sleep'),
+        ('Slash', 'normal', 'physical', 70, 100, 20, 0, 'high_crit', 100, None),
+        ('Water Gun', 'water', 'special', 40, 100, 25, 0, None, 0, None),
+        ('Meditate', 'psychic', 'status', 0, 100, 40, 0, 'raise_attack', 100, None),
+        ('Belly Drum', 'normal', 'status', 0, 100, 10, 0, 'max_attack_half_hp', 100, None),
+        ('Super Fang', 'normal', 'physical', 1, 90, 10, 0, 'half_hp', 100, None),
+        ('Barrage', 'normal', 'physical', 15, 85, 20, 0, 'multi_hit', 100, None),
+        ('Peck', 'flying', 'physical', 35, 100, 35, 0, None, 0, None),
+        ('Flamethrower', 'fire', 'special', 90, 100, 15, 0, None, 10, 'burn'),
+        ('Whirlwind', 'normal', 'status', 0, 100, 20, -6, 'force_switch', 100, None),
+        ('Haze', 'ice', 'status', 0, 100, 30, 0, 'reset_stats', 100, None),
+        ('Fire Spin', 'fire', 'special', 35, 85, 15, 0, 'trap', 100, None),
+        ('Tackle', 'normal', 'physical', 40, 100, 35, 0, None, 0, None),
+        ('Solar Beam', 'grass', 'special', 120, 100, 10, 0, 'charge_turn', 100, None),
+        ('String Shot', 'bug', 'status', 0, 95, 40, 0, 'lower_speed', 100, None),
+        ('Metronome', 'normal', 'status', 0, 100, 10, 0, 'random_move', 100, None),
+        ('Thunder Wave', 'electric', 'status', 0, 90, 20, 0, None, 0, 'paralysis'),
+        ('Skull Bash', 'normal', 'physical', 130, 100, 10, 0, 'charge_turn', 100, None),
+        ('Hypnosis', 'psychic', 'status', 0, 60, 20, 0, None, 0, 'sleep'),
+        ('Stomp', 'normal', 'physical', 65, 100, 20, 0, 'flinch', 30, None),
+        ('Sweet Scent', 'normal', 'status', 0, 100, 20, 0, 'lower_evasion', 100, None),
+        ('Hyper Beam', 'normal', 'special', 150, 90, 5, 0, 'recharge', 100, None),
+        ('Ice Beam', 'ice', 'special', 90, 100, 10, 0, None, 10, 'freeze'),
+        ('Cross Chop', 'fighting', 'physical', 100, 80, 5, 0, 'high_crit', 100, None),
+        ('Fury Attack', 'normal', 'physical', 15, 85, 20, 0, 'multi_hit', 100, None),
+        ('Double Slap', 'normal', 'physical', 15, 85, 10, 0, 'multi_hit', 100, None),
+        ('Confuse Ray', 'ghost', 'status', 0, 100, 10, 0, 'confuse', 100, None),
+        ('Conversion', 'normal', 'status', 0, 100, 30, 0, 'change_type', 100, None),
+        ('Assurance', 'dark', 'physical', 60, 100, 10, 0, 'double_power_if_hit', 100, None),
+        ('Bone Rush', 'ground', 'physical', 25, 90, 10, 0, 'multi_hit', 100, None),
+        ('Bone Club', 'ground', 'physical', 65, 85, 20, 0, 'flinch', 10, None),
+        ('Horn Attack', 'normal', 'physical', 65, 100, 25, 0, None, 0, None),
+        ('Screech', 'normal', 'status', 0, 85, 40, 0, 'sharply_lower_defense', 100, None),
+        ('Dragon Rage', 'dragon', 'special', 1, 100, 10, 0, 'fixed_40', 100, None),
+        ('Bug Bite', 'bug', 'physical', 60, 100, 20, 0, 'consume_berry', 100, None),
+        ('Amnesia', 'psychic', 'status', 0, 100, 20, 0, 'sharply_raise_special_defense', 100, None),
+        ('Body Slam', 'normal', 'physical', 85, 100, 15, 0, None, 30, 'paralysis'),
+        ('Ember', 'fire', 'special', 40, 100, 25, 0, None, 10, 'burn'),
+        ('Giga Drain', 'grass', 'special', 75, 100, 10, 0, 'drain', 100, None),
+        ('Sand Attack', 'ground', 'status', 0, 100, 15, 0, 'lower_accuracy', 100, None),
+        ('Kinesis', 'psychic', 'status', 0, 80, 15, 0, 'lower_accuracy', 100, None),
+        ('Blizzard', 'ice', 'special', 110, 70, 5, 0, None, 10, 'freeze'),
+        ('Comet Punch', 'normal', 'physical', 18, 85, 15, 0, 'multi_hit', 100, None),
+        ('Fury Swipes', 'normal', 'physical', 18, 80, 15, 0, 'multi_hit', 100, None),
+        ('Leer', 'normal', 'status', 0, 100, 30, 0, 'lower_defense', 100, None),
+        ('Poison Powder', 'poison', 'status', 0, 75, 35, 0, None, 0, 'poison'),
+        ('Psychic', 'psychic', 'special', 90, 100, 10, 0, 'lower_special_defense', 10, None),
+        ('Future Sight', 'psychic', 'special', 120, 100, 10, 0, 'future_sight', 100, None),
+        ('Submission', 'fighting', 'physical', 80, 80, 20, 0, 'recoil', 100, None),
+        ('Withdraw', 'water', 'status', 0, 100, 40, 0, 'raise_defense', 100, None),
+        ('Inferno', 'fire', 'special', 100, 50, 5, 0, None, 100, 'burn'),
+        ('Bubble', 'water', 'special', 40, 100, 30, 0, 'lower_speed', 10, None),
+        ('Disarming Voice', 'fairy', 'special', 40, 100, 15, 0, None, 0, None),
+        ('Mirror Move', 'flying', 'status', 0, 100, 20, 0, 'mirror_move', 100, None),
+        ('Thunder Shock', 'electric', 'special', 40, 100, 30, 0, None, 10, 'paralysis'),
+        ('Lick', 'ghost', 'physical', 30, 100, 30, 0, None, 30, 'paralysis'),
+        ('Water Pulse', 'water', 'special', 60, 100, 20, 0, 'confuse', 20, None),
+        ('Focus Energy', 'normal', 'status', 0, 100, 30, 0, 'focus_energy', 100, None),
+        ('Swift', 'normal', 'special', 60, 100, 20, 0, 'never_miss', 100, None),
+        ('Thunderbolt', 'electric', 'special', 90, 100, 15, 0, None, 10, 'paralysis'),
+        ('Soft-Boiled', 'normal', 'status', 0, 100, 10, 0, 'heal_half', 100, None),
+        ('Drill Peck', 'flying', 'physical', 80, 100, 20, 0, None, 0, None),
+        ('Mud-Slap', 'ground', 'special', 20, 100, 10, 0, 'lower_accuracy', 100, None),
+        ('Gunk Shot', 'poison', 'physical', 120, 80, 5, 0, None, 30, 'poison'),
+        ('Mega Punch', 'normal', 'physical', 80, 85, 20, 0, None, 0, None),
+        ('Leaf Storm', 'grass', 'special', 130, 90, 5, 0, 'sharply_lower_special_attack', 100, None),
+        ('Leech Seed', 'grass', 'status', 0, 90, 10, 0, 'leech_seed', 100, None),
+        ('Scary Face', 'normal', 'status', 0, 100, 10, 0, 'lower_speed', 100, None),
+        ('Double Kick', 'fighting', 'physical', 30, 100, 30, 0, 'two_hit', 100, None),
+        ('Headbutt', 'normal', 'physical', 70, 100, 15, 0, 'flinch', 30, None),
+        ('Growl', 'normal', 'status', 0, 100, 40, 0, 'lower_attack', 100, None),
+        ('Twister', 'dragon', 'special', 40, 100, 20, 0, 'flinch', 20, None),
+        ('Gust', 'flying', 'special', 40, 100, 35, 0, None, 0, None),
+        ('Poison Sting', 'poison', 'physical', 15, 100, 35, 0, None, 30, 'poison'),
+        ('Foresight', 'normal', 'status', 0, 100, 40, 0, 'foresight', 100, None),
+        ('Dynamic Punch', 'fighting', 'physical', 100, 50, 5, 0, 'confuse', 100, None),
+        ('Hydro Pump', 'water', 'special', 110, 80, 5, 0, None, 0, None),
+        ('Sunny Day', 'fire', 'status', 0, 100, 5, 0, 'sunny_day', 100, None),
+        ('Powder Snow', 'ice', 'special', 40, 100, 25, 0, None, 10, 'freeze'),
+        ('Absorb', 'grass', 'special', 20, 100, 25, 0, 'drain', 100, None),
+        ('Smog', 'poison', 'special', 30, 70, 20, 0, None, 40, 'poison'),
+        ('Rollout', 'rock', 'physical', 30, 90, 20, 0, 'rollout', 100, None),
+        ('Earthquake', 'ground', 'physical', 100, 100, 10, 0, None, 0, None),
+        ('Sludge', 'poison', 'special', 65, 100, 20, 0, None, 30, 'poison'),
+        ('Bite', 'dark', 'physical', 60, 100, 25, 0, 'flinch', 30, None),
+        ('Hyper Fang', 'normal', 'physical', 80, 90, 15, 0, 'flinch', 10, None),
+        ('Glare', 'normal', 'status', 0, 100, 30, 0, None, 0, 'paralysis'),
+        ('Light Screen', 'psychic', 'status', 0, 100, 30, 0, 'light_screen', 100, None),
+        ('Sleep Powder', 'grass', 'status', 0, 75, 15, 0, None, 0, 'sleep'),
+        ('Pound', 'normal', 'physical', 40, 100, 35, 0, None, 0, None),
+        ('Aqua Tail', 'water', 'physical', 90, 90, 10, 0, None, 0, None),
+        ('Magnet Bomb', 'steel', 'physical', 60, 100, 20, 0, 'never_miss', 100, None),
+        ('Fissure', 'ground', 'physical', 1, 30, 5, 0, 'ohko', 100, None),
+        ('Megahorn', 'bug', 'physical', 120, 85, 10, 0, None, 0, None),
+        ('Splash', 'normal', 'status', 0, 100, 40, 0, 'no_effect', 100, None),
+        ('Razor Leaf', 'grass', 'physical', 55, 95, 25, 0, 'high_crit', 100, None),
+        ('Psycho Cut', 'psychic', 'physical', 70, 100, 20, 0, 'high_crit', 100, None),
+        ('Crush Claw', 'normal', 'physical', 75, 95, 10, 0, 'lower_defense', 50, None),
+        ('Mega Drain', 'grass', 'special', 40, 100, 15, 0, 'drain', 100, None),
+        ('Superpower', 'fighting', 'physical', 120, 100, 5, 0, 'lower_attack_defense', 100, None),
+        ('Acid', 'poison', 'special', 40, 100, 30, 0, 'lower_defense', 10, None),
+        ('Poison Gas', 'poison', 'status', 0, 90, 40, 0, None, 0, 'poison'),
+        ('Ingrain', 'grass', 'status', 0, 100, 20, 0, 'ingrain', 100, None),
+        ('Charm', 'fairy', 'status', 0, 100, 20, 0, 'lower_attack', 100, None),
+        ('Mud Shot', 'ground', 'special', 55, 95, 15, 0, 'lower_speed', 100, None),
+        ('Mist', 'ice', 'status', 0, 100, 30, 0, 'prevent_stat_lower', 100, None),
+        ('Magnitude', 'ground', 'physical', 1, 100, 30, 0, 'random_power', 100, None),
+        ('Air Cutter', 'flying', 'special', 60, 95, 25, 0, 'high_crit', 100, None),
+        ('Roar', 'normal', 'status', 0, 100, 20, -6, 'force_switch', 100, None),
+        ('Crabhammer', 'water', 'physical', 100, 90, 10, 0, 'high_crit', 100, None),
+        ('Twineedle', 'bug', 'physical', 25, 100, 20, 0, None, 20, 'poison'),
+        ('Barrier', 'psychic', 'status', 0, 100, 20, 0, 'sharply_raise_defense', 100, None),
+        ('Seismic Toss', 'fighting', 'physical', 1, 100, 20, 0, 'level_damage', 100, None),
+        ('Double-Edge', 'normal', 'physical', 120, 100, 15, 0, 'recoil', 100, None),
+        ('Wing Attack', 'flying', 'physical', 60, 100, 35, 0, None, 0, None),
+        ('Recover', 'normal', 'status', 0, 100, 10, 0, 'heal_half', 100, None),
+        ('Jump Kick', 'fighting', 'physical', 100, 95, 10, 0, 'crash', 100, None),
+        ('Horn Drill', 'normal', 'physical', 1, 30, 5, 0, 'ohko', 100, None),
+        ('Explosion', 'normal', 'physical', 250, 100, 5, 0, 'self_destruct', 100, None),
+        ('Rolling Kick', 'fighting', 'physical', 60, 85, 15, 0, 'flinch', 30, None),
+        ('Rapid Spin', 'normal', 'physical', 20, 100, 40, 0, 'raise_speed', 100, None),
+        ('Agility', 'psychic', 'status', 0, 100, 30, 0, 'sharply_raise_speed', 100, None),
+        ('Fire Punch', 'fire', 'physical', 75, 100, 15, 0, None, 10, 'burn'),
+        ('Psybeam', 'psychic', 'special', 65, 100, 20, 0, 'confuse', 10, None),
+        ('Minimize', 'normal', 'status', 0, 100, 10, 0, 'raise_evasion', 100, None),
+        ('Low Kick', 'fighting', 'physical', 50, 100, 20, 0, None, 30, None),
+        ('Guillotine', 'normal', 'physical', 1, 30, 5, 0, 'ohko', 100, None),
+        ('Dragon Claw', 'dragon', 'physical', 80, 100, 15, 0, None, 0, None),
+        ('Quick Attack', 'normal', 'physical', 40, 100, 30, 1, None, 0, None),
+        # New moves
+        ('Brick Break', 'fighting', 'physical', 75, 100, 15, 0, 'break_barrier', 100, None),
+        ('Bulk Up', 'fighting', 'status', 0, 100, 20, 0, 'raise_attack_defense', 100, None),
+        ('Bullet Punch', 'steel', 'physical', 40, 100, 30, 1, None, 0, None),
+        ('Close Combat', 'fighting', 'physical', 120, 100, 5, 0, 'lower_defense_special_defense', 100, None),
+        ('Drain Punch', 'fighting', 'physical', 75, 100, 10, 0, 'drain', 100, None),
+        ('Earth Power', 'ground', 'special', 90, 100, 10, 0, 'lower_special_defense', 10, None),
+        ('Energy Ball', 'grass', 'special', 90, 100, 10, 0, 'lower_special_defense', 10, None),
+        ('Facade', 'normal', 'physical', 70, 100, 20, 0, 'double_power_if_statused', 100, None),
+        ('Fake Out', 'normal', 'physical', 40, 100, 10, 3, 'flinch', 100, None),
+        ('Flame Charge', 'fire', 'physical', 50, 100, 20, 0, 'raise_speed', 100, None),
+        ('Flare Blitz', 'fire', 'physical', 120, 100, 15, 0, 'recoil', 10, 'burn'),
+        ('Giga Impact', 'normal', 'physical', 150, 90, 5, 0, 'recharge', 100, None),
+        ('Ice Punch', 'ice', 'physical', 75, 100, 15, 0, None, 10, 'freeze'),
+        ('Iron Head', 'steel', 'physical', 80, 100, 15, 0, 'flinch', 30, None),
+        ('Knock Off', 'dark', 'physical', 65, 100, 20, 0, 'remove_item', 100, None),
+        ('Leaf Blade', 'grass', 'physical', 90, 100, 15, 0, 'high_crit', 100, None),
+        ('Mach Punch', 'fighting', 'physical', 40, 100, 30, 1, None, 0, None),
+        ('Play Rough', 'fairy', 'physical', 90, 90, 10, 0, 'lower_attack', 10, None),
+        ('Power Whip', 'grass', 'physical', 120, 85, 10, 0, None, 0, None),
+        ('Rock Slide', 'rock', 'physical', 75, 90, 10, 0, 'flinch', 30, None),
+        ('Shadow Claw', 'ghost', 'physical', 70, 100, 15, 0, 'high_crit', 100, None),
+        ('Stone Edge', 'rock', 'physical', 100, 80, 5, 0, 'high_crit', 100, None),
+        ('Thunder Punch', 'electric', 'physical', 75, 100, 15, 0, None, 10, 'paralysis'),
+        ('U-turn', 'bug', 'physical', 70, 100, 20, 0, 'switch_out', 100, None),
+        ('Waterfall', 'water', 'physical', 80, 100, 15, 0, 'flinch', 20, None),
+        ('Wild Charge', 'electric', 'physical', 90, 100, 15, 0, 'recoil', 100, None),
+        ('X-Scissor', 'bug', 'physical', 80, 100, 15, 0, None, 0, None),
+        ('Zen Headbutt', 'psychic', 'physical', 80, 90, 15, 0, 'flinch', 20, None),
+        ('Air Slash', 'flying', 'special', 75, 95, 15, 0, 'flinch', 30, None),
+        ('Aura Sphere', 'fighting', 'special', 80, 100, 20, 0, 'never_miss', 100, None),
+        ('Blast Burn', 'fire', 'special', 150, 90, 5, 0, 'recharge', 100, None),
+        ('Dark Pulse', 'dark', 'special', 80, 100, 15, 0, 'flinch', 20, None),
+        ('Dragon Pulse', 'dragon', 'special', 85, 100, 10, 0, None, 0, None),
+        ('Draco Meteor', 'dragon', 'special', 130, 90, 5, 0, 'sharply_lower_special_attack', 100, None),
+        ('Focus Blast', 'fighting', 'special', 120, 70, 5, 0, 'lower_special_defense', 10, None),
+        ('Frost Breath', 'ice', 'special', 60, 90, 20, 0, 'always_crit', 100, 'freeze'),
+        ('Hydro Cannon', 'water', 'special', 150, 90, 5, 0, 'recharge', 100, None),
+        ('Hyper Voice', 'normal', 'special', 90, 100, 10, 0, 'sound_based', 100, None),
+        ('Ice Shard', 'ice', 'physical', 40, 100, 30, 1, None, 0, None),
+        ('Moonblast', 'fairy', 'special', 95, 100, 15, 0, 'lower_sp_atk', 30, None),
+        ('Overheat', 'fire', 'special', 130, 90, 5, 0, 'sharply_lower_special_attack', 100, None),
+        ('Shadow Ball', 'ghost', 'special', 80, 100, 15, 0, 'lower_special_defense', 20, None),
+        ('Sludge Wave', 'poison', 'special', 95, 100, 10, 0, None, 10, 'poison'),
+        ('Thunder', 'electric', 'special', 110, 70, 10, 0, None, 30, 'paralysis'),
+        ('Tri Attack', 'normal', 'special', 80, 100, 10, 0, 'tri_attack', 20, None),
+        ('Calm Mind', 'psychic', 'status', 0, 100, 20, 0, 'raise_special_attack_special_defense', 100, None),
+        ('Cosmic Power', 'psychic', 'status', 0, 100, 20, 0, 'raise_defense_special_defense', 100, None),
+        ('Dragon Dance', 'dragon', 'status', 0, 100, 20, 0, 'raise_attack_speed', 100, None),
+        ('Hone Claws', 'dark', 'status', 0, 100, 15, 0, 'raise_attack_accuracy', 100, None),
+        ('Iron Defense', 'steel', 'status', 0, 100, 15, 0, 'sharply_raise_defense', 100, None),
+        ('Nasty Plot', 'dark', 'status', 0, 100, 20, 0, 'sharply_raise_special_attack', 100, None),
+        ('Protect', 'normal', 'status', 0, 100, 10, 4, 'protect', 100, None),
+        ('Rain Dance', 'water', 'status', 0, 100, 5, 0, 'rain_dance', 100, None),
+        ('Reflect', 'psychic', 'status', 0, 100, 20, 0, 'reflect', 100, None),
+        ('Rest', 'psychic', 'status', 0, 100, 10, 0, 'heal_sleep', 100, None),
+        ('Roost', 'flying', 'status', 0, 100, 10, 0, 'heal_half', 100, None),
+        ('Sandstorm', 'rock', 'status', 0, 100, 10, 0, 'sandstorm', 100, None),
+        ('Swords Dance', 'normal', 'status', 0, 100, 20, 0, 'sharply_raise_attack', 100, None),
+        ('Tailwind', 'flying', 'status', 0, 100, 15, 0, 'tailwind', 100, None),
+        ('Toxic Spikes', 'poison', 'status', 0, 100, 20, 0, 'toxic_spikes', 100, None),
+        ('Trick Room', 'psychic', 'status', 0, 100, 5, -7, 'trick_room', 100, None),
+        ('Will-O-Wisp', 'fire', 'status', 0, 85, 15, 0, None, 0, 'burn'),
+        ('Acupressure', 'normal', 'status', 0, 100, 30, 0, 'raise_random_stat_sharply', 100, None),
+        ('Baton Pass', 'normal', 'status', 0, 100, 40, 0, 'baton_pass', 100, None),
+        ('Bestow', 'normal', 'status', 0, 100, 15, 0, 'give_item', 100, None),
+        ('Block', 'normal', 'status', 0, 100, 5, 0, 'block', 100, None),
+        ('Camouflage', 'normal', 'status', 0, 100, 20, 0, 'camouflage', 100, None),
+        ('Captivate', 'normal', 'status', 0, 100, 20, 0, 'lower_special_attack_opponent', 100, None),
+        ('Confide', 'normal', 'status', 0, 100, 20, 0, 'lower_special_attack', 100, None),
+        ('Copycat', 'normal', 'status', 0, 100, 20, 0, 'copy_last_move', 100, None),
+        ('Defog', 'flying', 'status', 0, 100, 15, 0, 'clear_weather_hazards', 100, None),
+        ('Destiny Bond', 'ghost', 'status', 0, 100, 5, -5, 'destiny_bond', 100, None),
+        ('Detect', 'fighting', 'status', 0, 100, 5, 4, 'protect', 100, None),
+        ('Double Team', 'normal', 'status', 0, 100, 15, 0, 'raise_evasion', 100, None),
+        ('Echoed Voice', 'normal', 'special', 40, 100, 15, 0, 'increase_power_repeated', 100, None),
+        ('Electroweb', 'electric', 'special', 55, 95, 15, 0, 'lower_speed', 100, None),
+        ('Embargo', 'dark', 'status', 0, 100, 15, 0, 'embargo', 100, None),
+        ('Encore', 'normal', 'status', 0, 100, 5, 0, 'encore', 100, None),
+        ('Endure', 'normal', 'status', 0, 100, 10, 4, 'endure', 100, None),
+        ('Fairy Lock', 'fairy', 'status', 0, 100, 10, 0, 'fairy_lock', 100, None),
+        ('Feather Dance', 'flying', 'status', 0, 100, 15, 0, 'sharply_lower_attack', 100, None),
+        ('Feint', 'normal', 'physical', 30, 100, 10, 2, 'break_protect', 100, None),
+        ('Follow Me', 'normal', 'status', 0, 100, 20, 3, 'redirect_attacks', 100, None),
+        ('Foul Play', 'dark', 'physical', 95, 100, 15, 0, 'use_opponent_attack', 100, None),
+        ('Freeze-Dry', 'ice', 'special', 70, 100, 20, 0, 'super_effective_water', 10, 'freeze'),
+        ('Grassy Terrain', 'grass', 'status', 0, 100, 10, 0, 'grassy_terrain', 100, None),
+        ('Gravity', 'psychic', 'status', 0, 100, 5, 0, 'gravity', 100, None),
+        ('Heal Bell', 'normal', 'status', 0, 100, 5, 0, 'cure_team_status', 100, None),
+        ('Heal Pulse', 'psychic', 'status', 0, 100, 10, 0, 'heal_target_50', 100, None),
+        ('Helping Hand', 'normal', 'status', 0, 100, 20, 5, 'boost_ally_power', 100, None),
+        ('Hold Hands', 'normal', 'status', 0, 100, 40, 0, 'double_evasion', 100, None),
+        ('Howl', 'normal', 'status', 0, 100, 40, 0, 'raise_attack', 100, None),
+        ('Hyperspace Hole', 'psychic', 'special', 80, 100, 5, 0, 'bypass_protect', 100, None),
+        ('Icy Wind', 'ice', 'special', 55, 95, 15, 0, 'lower_speed', 100, None),
+        ('Imprison', 'psychic', 'status', 0, 100, 10, 0, 'imprison', 100, None),
+        ('Incinerate', 'fire', 'special', 60, 100, 15, 0, 'destroy_berry', 100, None),
+        ('Instruct', 'psychic', 'status', 0, 100, 15, 0, 'instruct', 100, None),
+        ('Ion Deluge', 'electric', 'status', 0, 100, 5, 0, 'ion_deluge', 100, None),
+        ('King\'s Shield', 'steel', 'status', 0, 100, 10, 4, 'protect_lower_attack', 100, None),
+        ('Laser Focus', 'normal', 'status', 0, 100, 30, 0, 'guarantee_crit_next', 100, None),
+        ('Lucky Chant', 'normal', 'status', 0, 100, 30, 0, 'lucky_chant', 100, None),
+        ('Magic Room', 'psychic', 'status', 0, 100, 10, 0, 'magic_room', 100, None),
+        ('Mat Block', 'fighting', 'status', 0, 100, 10, 4, 'protect_ally', 100, None),
+        ('Me First', 'normal', 'status', 0, 100, 20, 0, 'use_move_first', 100, None),
+        ('Misty Terrain', 'fairy', 'status', 0, 100, 10, 0, 'misty_terrain', 100, None),
+        ('Nature Power', 'normal', 'status', 0, 100, 20, 0, 'nature_power', 100, None),
+        ('Nightmare', 'ghost', 'status', 0, 100, 15, 0, 'nightmare', 100, None),
+        ('Pain Split', 'normal', 'status', 0, 100, 20, 0, 'pain_split', 100, None),
+        ('Photon Geyser', 'psychic', 'special', 100, 100, 5, 0, 'use_higher_stat', 100, None),
+        ('Pluck', 'flying', 'physical', 60, 100, 20, 0, 'steal_berry', 100, None),
+        ('Power Split', 'psychic', 'status', 0, 100, 10, 0, 'power_split', 100, None),
+        ('Power Trick', 'psychic', 'status', 0, 100, 10, 0, 'swap_attack_defense', 100, None),
+        ('Psychic Terrain', 'psychic', 'status', 0, 100, 10, 0, 'psychic_terrain', 100, None),
+        ('Quash', 'dark', 'status', 0, 100, 15, 0, 'delay_opponent_move', 100, None),
+        ('Quick Guard', 'fighting', 'status', 0, 100, 15, 3, 'protect_priority', 100, None),
+        ('Rage Powder', 'bug', 'status', 0, 100, 20, 2, 'redirect_attacks', 100, None),
+        ('Recycle', 'normal', 'status', 0, 100, 10, 0, 'recycle_item', 100, None),
+        ('Reflect Type', 'normal', 'status', 0, 100, 15, 0, 'reflect_type', 100, None),
+        ('Relic Song', 'normal', 'special', 75, 100, 10, 0, 'maybe_sleep', 10, None),
+        ('Retaliate', 'normal', 'physical', 70, 100, 5, 0, 'double_power_if_ally_fainted', 100, None),
+        ('Revelation Dance', 'normal', 'special', 90, 100, 15, 0, 'use_user_type', 100, None),
+        ('Rototiller', 'ground', 'status', 0, 100, 10, 0, 'raise_special_attack_special_defense', 100, None),
+        ('Sacred Fire', 'fire', 'physical', 100, 95, 5, 0, None, 50, 'burn'),
+        ('Scald', 'water', 'special', 80, 100, 15, 0, None, 30, 'burn'),
+        ('Shell Smash', 'normal', 'status', 0, 100, 15, 0, 'raise_attack_special_attack_speed_sharply_lower_defense_special_defense', 100, None),
+        ('Shift Gear', 'steel', 'status', 0, 100, 10, 0, 'raise_attack_speed_sharply', 100, None),
+        ('Signal Beam', 'bug', 'special', 75, 100, 15, 0, 'confuse', 10, None),
+        ('Simple Beam', 'normal', 'status', 0, 100, 15, 0, 'simple_beam', 100, None),
+        ('Skill Swap', 'psychic', 'status', 0, 100, 10, 0, 'skill_swap', 100, None),
+        ('Slack Off', 'normal', 'status', 0, 100, 10, 0, 'heal_half', 100, None),
+        ('Smack Down', 'rock', 'physical', 50, 100, 15, 0, 'remove_flying_type', 100, None),
+        ('Snarl', 'dark', 'special', 55, 95, 15, 0, 'lower_special_attack', 100, None),
+        ('Snatch', 'dark', 'status', 0, 100, 10, 4, 'snatch', 100, None),
+        ('Spite', 'ghost', 'status', 0, 100, 10, 0, 'lower_move_pp', 100, None),
+        ('Spotlight', 'normal', 'status', 0, 100, 15, 3, 'redirect_attacks', 100, None),
+        ('Stealth Rock', 'rock', 'status', 0, 100, 20, 0, 'stealth_rock', 100, None),
+        ('Sticky Web', 'bug', 'status', 0, 100, 20, 0, 'sticky_web', 100, None),
+        ('Storm Throw', 'fighting', 'physical', 60, 100, 10, 0, 'always_crit', 100, None),
+        ('Struggle Bug', 'bug', 'special', 50, 100, 20, 0, 'lower_special_attack', 100, None),
+        ('Synchronoise', 'psychic', 'special', 120, 100, 10, 0, 'sync_type_damage', 100, None),
+        ('Tail Slap', 'normal', 'physical', 25, 85, 10, 0, 'multi_hit', 100, None),
+        ('Tar Shot', 'rock', 'status', 0, 100, 15, 0, 'lower_speed', 100, None),
+        ('Taunt', 'dark', 'status', 0, 100, 20, 0, 'taunt', 100, None),
+        ('Tearful Look', 'normal', 'status', 0, 100, 20, 0, 'lower_attack_special_attack', 100, None),
+        ('Telekinesis', 'psychic', 'status', 0, 100, 15, 0, 'telekinesis', 100, None),
+        ('Throat Chop', 'dark', 'physical', 80, 100, 15, 0, 'prevent_sound_moves', 100, None),
+        ('Torment', 'dark', 'status', 0, 100, 15, 0, 'torment', 100, None),
+        ('Toxic Thread', 'poison', 'status', 0, 100, 20, 0, 'lower_speed', 100, 'poison'),
+        ('Trick', 'psychic', 'status', 0, 100, 10, 0, 'swap_items', 100, None),
+        ('Uproar', 'normal', 'special', 90, 100, 10, 0, 'uproar', 100, None),
+        ('Venom Drench', 'poison', 'status', 0, 100, 20, 0, 'venom_drench', 100, None),
+        ('Wide Guard', 'rock', 'status', 0, 100, 10, 3, 'protect_ally_multi', 100, None),
+        ('Wonder Room', 'psychic', 'status', 0, 100, 10, 0, 'wonder_room', 100, None),
+        ('Work Up', 'normal', 'status', 0, 100, 30, 0, 'raise_attack_special_attack', 100, None),
+        ('Worry Seed', 'grass', 'status', 0, 100, 10, 0, 'worry_seed', 100, None),
+        ('Wrap', 'normal', 'physical', 15, 90, 20, 0, 'trap', 100, None),
+        ('Wring Out', 'normal', 'special', 1, 100, 5, 0, 'more_damage_if_hp', 100, None),
+        ('Zen Headbutt', 'psychic', 'physical', 80, 90, 15, 0, 'flinch', 20, None),
+        ('Sludge Bomb', 'poison', 'special', 90, 100, 10, 0, None, 30, 'poison'),
+        ('Icicle Spear', 'ice', 'physical', 25, 100, 30, 0, 'multi_hit', 100, None),
+        ('Mean Look', 'normal', 'status', 0, 100, 5, 0, 'block', 100, None),
+        ('Curse', 'ghost', 'status', 0, 100, 10, 0, 'curse', 100, None),
+        ('Spark', 'electric', 'physical', 65, 100, 20, 0, None, 30, 'paralysis'),
+        ('SmokeScreen', 'normal', 'status', 0, 100, 20, 0, 'lower_accuracy', 100, None),
+        ('Rock Throw', 'rock', 'physical', 50, 90, 15, 0, None, 0, None),
+        ('Rock Blast', 'rock', 'physical', 50, 90, 15, 0, None, 0, None),
+        ('Struggle', 'normal', 'physical', 50, 100, 1, 0, 'recoil_25', 100, None),
+    ]
+
+    moves_dict = {}
+    for move_data in moves_data:
+        name, type_name, category, power, accuracy, pp, priority, effect, effect_chance, inflicts_status = move_data
+        
+        move, created = PokemonMove.objects.get_or_create(
+            name=name,
+            defaults={
+                'type': types_dict[type_name],
+                'category': category,
+                'power': power,
+                'accuracy': accuracy,
+                'pp': pp,
+                'max_pp': pp,
+                'priority': priority,
+                'effect': effect,
+                'effect_chance': effect_chance,
+                'inflicts_status': inflicts_status
+            }
+        )
+        moves_dict[name] = move
+        if created:
+            logging.info(f"  [+] Capacité créée: {name}")
+    
+    logging.info(f"[+] {len(moves_dict)} capacités créées/vérifiées")
+    
+    
+    # ============================================================================
+    # ÉTAPE 4: CRÉER LES POKÉMON
+    # ============================================================================
+    
+    logging.info("\n[*] Création des Pokémon...")
+    
+    # Données des Pokémon
+    # Format: (nom, numéro_pokedex, type_primaire, type_secondaire,
+    #          hp, atk, def, sp_atk, sp_def, speed, taux_capture, exp_base,
+    #          ability_1, ability_2, hidden_ability)
+    pokemon_data = [
+        ("Abra",        63,  "psychic", None,      25,  20,  15, 105,  55,  90, 200,  62, "Synchronize", "Inner Focus",  "Magic Guard"),
+        ("Aerodactyl",  142, "rock",    "flying",  80, 105,  65,  60,  75, 130,  45, 180, "Rock Head",   "Pressure",     "Unnerve"),
+        ("Alakazam",    65,  "psychic", None,      55,  50,  45, 135,  95, 120,  50, 250, "Synchronize", "Inner Focus",  "Magic Guard"),
+        ("Arbok",       24,  "poison",  None,      60,  95,  69,  65,  79,  80,  90, 157, "Intimidate",  "Shed Skin",    "Unnerve"),
+        ("Arcanine",    59,  "fire",    None,      90, 110,  80, 100,  80,  95,  75, 194, "Intimidate",  "Flash Fire",   "Justified"),
+        ("Articuno",    144, "ice",     "flying",  90,  85, 100,  95, 125,  85,   3, 290, "Pressure",    None,           "Snow Cloak"),
+        ("Beedrill",    15,  "bug",     "poison",  65,  90,  40,  45,  80,  75,  45, 198, "Swarm",       None,           "Sniper"),
+        ("Bellsprout",  69,  "grass",   "poison",  50,  75,  35,  70,  30,  40, 255,  60, "Chlorophyll", None,           "Gluttony"),
+        ("Blastoise",   9,   "water",   None,      79,  83, 100,  85, 105,  78,  45, 265, "Torrent",     None,           "Rain Dish"),
+        ("Bulbasaur",   1,   "grass",   "poison",  45,  49,  49,  65,  65,  45,  45,  64, "Overgrow",    None,           "Chlorophyll"),
+        ("Butterfree",  12,  "bug",     "flying",  60,  45,  50,  90,  80,  70,  45, 198, "Compound Eyes", None,         "Tinted Lens"),
+        ("Caterpie",    10,  "bug",     None,      45,  30,  35,  20,  20,  45, 255,  39, "Shield Dust", None,           "Run Away"),
+        ("Chansey",     113, "normal",  None,     250,   5,   5,  35, 105,  50,  30, 395, "Natural Cure", "Serene Grace", "Healer"),
+        ("Charizard",   6,   "fire",    "flying",  78,  84,  78, 109,  85, 100,  45, 267, "Blaze",       None,           "Solar Power"),
+        ("Charmander",  4,   "fire",    None,      39,  52,  43,  60,  50,  65,  45,  62, "Blaze",       None,           "Solar Power"),
+        ("Charmeleon",  5,   "fire",    None,      58,  64,  58,  80,  65,  80,  45, 142, "Blaze",       None,           "Solar Power"),
+        ("Clefable",    36,  "fairy",   None,      95,  70,  73,  95,  90,  60,  25, 242, "Cute Charm",  "Magic Guard",  "Friend Guard"),
+        ("Clefairy",    35,  "fairy",   None,      70,  45,  48,  60,  65,  35, 150, 113, "Cute Charm",  "Magic Guard",  "Friend Guard"),
+        ("Cloyster",    91,  "water",   "ice",     50,  95, 180,  85,  45,  70,  60, 184, "Shell Armor", "Skill Link",   "Overcoat"),
+        ("Cubone",      104, "ground",  None,      50,  50,  95,  40,  50,  35, 190,  64, "Rock Head",   "Lightningrod",  "Battle Armor"),
+        ("Dewgong",     87,  "water",   "ice",     90,  70,  80,  70,  95,  70,  75, 166, "Thick Fat",   "Hydration",    "Ice Body"),
+        ("Diglett",     50,  "ground",  None,      10,  55,  25,  35,  45,  95, 255,  53, "Sand Veil",   "Arena Trap",   "Sand Force"),
+        ("Ditto",       132, "normal",  None,      48,  48,  48,  48,  48,  48,  35, 101, "Limber",      None,           "Imposter"),
+        ("Dodrio",      85,  "normal",  "flying",  60, 110,  70,  60,  60, 100,  45, 165, "Run Away",    "Early Bird",   "Tangled Feet"),
+        ("Doduo",       84,  "normal",  "flying",  35,  85,  45,  35,  35,  75, 190,  62, "Run Away",    "Early Bird",   "Tangled Feet"),
+        ("Dragonair",   148, "dragon",  None,      61,  84,  65,  70,  70,  70,  45, 147, "Shed Skin",   None,           "Marvel Scale"),
+        ("Dragonite",   149, "dragon",  "flying",  91, 134,  95, 100, 100,  80,  45, 300, "Inner Focus", None,           "Multiscale"),
+        ("Dratini",     147, "dragon",  None,      41,  64,  45,  50,  50,  50,  45,  60, "Shed Skin",   None,           "Marvel Scale"),
+        ("Drowzee",     96,  "psychic", None,      60,  48,  45,  43,  90,  42, 190,  66, "Insomnia",    "Forewarn",     "Inner Focus"),
+        ("Dugtrio",     51,  "ground",  None,      35, 100,  50,  50,  70, 120,  50, 149, "Sand Veil",   "Arena Trap",   "Sand Force"),
+        ("Eevee",       133, "normal",  None,      55,  55,  50,  45,  65,  55,  45,  65, "Run Away",    "Adaptability", "Anticipation"),
+        ("Ekans",       23,  "poison",  None,      35,  60,  44,  40,  54,  55, 255,  58, "Intimidate",  "Shed Skin",    "Unnerve"),
+        ("Electabuzz",  125, "electric", None,     65,  83,  57,  95,  85, 105,  45, 172, "Static",      None,           "Vital Spirit"),
+        ("Electrode",   101, "electric", None,     60,  50,  70,  80,  80, 150,  60, 172, "Soundproof",  "Static",       "Aftermath"),
+        ("Exeggcute",   102, "grass",   "psychic", 60,  40,  80,  60,  45,  40,  90,  65, "Chlorophyll", None,           "Harvest"),
+        ("Exeggutor",   103, "grass",   "psychic", 95,  95,  85, 125,  75,  55,  45, 186, "Chlorophyll", None,           "Harvest"),
+        ("Farfetch'd",  83,  "normal",  "flying",  52,  90,  55,  58,  62,  60,  45, 132, "Keen Eye",    "Inner Focus",  "Defiant"),
+        ("Fearow",      22,  "normal",  "flying",  65,  90,  65,  61,  61, 100,  90, 155, "Keen Eye",    None,           "Sniper"),
+        ("Flareon",     136, "fire",    None,      65, 130,  60,  95, 110,  65,  45, 184, "Flash Fire",  None,           "Guts"),
+        ("Gastly",      92,  "ghost",   "poison",  30,  35,  30, 100,  35,  80, 190,  62, "Levitate",    None,           None),
+        ("Gengar",      94,  "ghost",   "poison",  60,  65,  60, 130,  75, 110,  45, 250, "Levitate",    None,           "Cursed Body"),
+        ("Geodude",     74,  "rock",    "ground",  40,  80, 100,  30,  30,  20, 255,  60, "Rock Head",   "Sturdy",       "Sand Veil"),
+        ("Gloom",       44,  "grass",   "poison",  60,  65,  70,  85,  75,  40, 120, 138, "Chlorophyll", None,           "Stench"),
+        ("Golbat",      42,  "poison",  "flying",  75,  80,  70,  65,  75,  90,  90, 159, "Inner Focus", None,           "Infiltrator"),
+        ("Goldeen",     118, "water",   None,      45,  67,  60,  35,  50,  63, 225,  64, "Swift Swim",  "Water Veil",   "Lightning Rod"),
+        ("Golduck",     55,  "water",   None,      80,  82,  78,  95,  80,  85,  75, 175, "Damp",        "Cloud Nine",   "Swift Swim"),
+        ("Golem",       76,  "rock",    "ground",  80, 120, 130,  55,  65,  45,  45, 248, "Rock Head",   "Sturdy",       "Sand Veil"),
+        ("Graveler",    75,  "rock",    "ground",  55,  95, 115,  45,  45,  35, 120, 137, "Rock Head",   "Sturdy",       "Sand Veil"),
+        ("Grimer",      88,  "poison",  None,      80,  80,  50,  40,  50,  25, 190,  65, "Stench",      "Sticky Hold",  "Poison Touch"),
+        ("Growlithe",   58,  "fire",    None,      55,  70,  45,  70,  50,  60, 190,  70, "Intimidate",  "Flash Fire",   "Justified"),
+        ("Gyarados",    130, "water",   "flying",  95, 125,  79,  60, 100,  81,  45, 189, "Intimidate",  None,           "Moxie"),
+        ("Haunter",     93,  "ghost",   "poison",  45,  50,  45, 115,  55,  95,  90, 142, "Levitate",    None,           None),
+        ("Hitmonchan",  107, "fighting", None,     50, 105,  79,  35, 110,  76,  45, 159, "Keen Eye",    "Iron Fist",    "Inner Focus"),
+        ("Hitmonlee",   106, "fighting", None,     50, 120,  53,  35, 110,  87,  45, 159, "Limber",      "Reckless",     "Unburden"),
+        ("Horsea",      116, "water",   None,      30,  40,  70,  70,  25,  60, 225,  59, "Swift Swim",  "Sniper",       "Damp"),
+        ("Hypno",       97,  "psychic", None,      85,  73,  70,  73, 115,  67,  75, 169, "Insomnia",    "Forewarn",     "Inner Focus"),
+        ("Ivysaur",     2,   "grass",   "poison",  60,  62,  63,  80,  80,  60,  45, 142, "Overgrow",    None,           "Chlorophyll"),
+        ("Jigglypuff",  39,  "normal",  "fairy",  115,  45,  20,  45,  25,  20, 170,  95, "Cute Charm",  "Competitive",  "Friend Guard"),
+        ("Jolteon",     135, "electric", None,     65,  65,  60, 110,  95, 130,  45, 184, "Volt Absorb", None,           "Quick Feet"),
+        ("Jynx",        124, "ice",     "psychic", 65,  50,  35, 115,  95,  95,  45, 159, "Oblivious",   "Forewarn",     "Dry Skin"),
+        ("Kabutops",    141, "rock",    "water",   60, 115, 105,  65,  70,  80,  45, 173, "Swift Swim",  "Battle Armor", "Weak Armor"),
+        ("Kabuto",      140, "rock",    "water",   30,  80,  90,  55,  45,  55,  45,  71, "Swift Swim",  "Battle Armor", "Weak Armor"),
+        ("Kadabra",     64,  "psychic", None,      40,  35,  30, 120,  70, 105, 100, 140, "Synchronize", "Inner Focus",  "Magic Guard"),
+        ("Kakuna",      14,  "bug",     "poison",  45,  25,  50,  25,  25,  35, 120,  72, "Shed Skin",   None,           None),
+        ("Kangaskhan",  115, "normal",  None,     105,  95,  80,  40,  80,  90,  45, 172, "Early Bird",  "Scrappy",      "Inner Focus"),
+        ("Kingler",     99,  "water",   None,      55, 130, 115,  50,  50,  75,  60, 166, "Hyper Cutter", "Shell Armor", "Sheer Force"),
+        ("Koffing",     109, "poison",  None,      40,  65,  95,  60,  45,  35, 190,  68, "Levitate",    None,           "Stench"),
+        ("Krabby",      98,  "water",   None,      30, 105,  90,  25,  25,  50, 225,  65, "Hyper Cutter", "Shell Armor", "Sheer Force"),
+        ("Lapras",      131, "water",   "ice",    130,  85,  80,  85,  95,  60,  45, 187, "Water Absorb", "Shell Armor", "Hydration"),
+        ("Lickitung",   108, "normal",  None,      90,  55,  75,  60,  75,  30,  45,  77, "Own Tempo",   "Oblivious",    "Cloud Nine"),
+        ("Machamp",     68,  "fighting", None,     90, 130,  80,  65,  85,  55,  45, 253, "Guts",        "No Guard",     "Steadfast"),
+        ("Machoke",     67,  "fighting", None,     80, 100,  70,  50,  60,  45,  90, 142, "Guts",        "No Guard",     "Steadfast"),
+        ("Machop",      66,  "fighting", None,     70,  80,  50,  35,  35,  35, 180,  61, "Guts",        "No Guard",     "Steadfast"),
+        ("Magikarp",    129, "water",   None,      20,  10,  55,  15,  20,  80, 255,  40, "Swift Swim",  None,           "Rattled"),
+        ("Magmar",      126, "fire",    None,      65,  95,  57, 100,  85,  93,  45, 173, "Flame Body",  None,           "Vital Spirit"),
+        ("Magnemite",   81,  "electric", "steel",  25,  35,  70,  95,  55,  45, 190,  65, "Magnet Pull", "Sturdy",       "Analytic"),
+        ("Magneton",    82,  "electric", "steel",  50,  60,  95, 120,  70,  70,  60, 163, "Magnet Pull", "Sturdy",       "Analytic"),
+        ("Mankey",      56,  "fighting", None,     40,  80,  35,  35,  45,  70, 190,  61, "Vital Spirit", "Anger Point", "Defiant"),
+        ("Marowak",     105, "ground",  None,      60,  80, 110,  50,  80,  45,  75, 149, "Rock Head",   "Lightningrod",  "Battle Armor"),
+        ("Meowth",      52,  "normal",  None,      40,  45,  35,  40,  40,  90, 255,  58, "Pickup",      "Technician",   "Unnerve"),
+        ("Metapod",     11,  "bug",     None,      50,  20,  55,  25,  25,  30, 120,  72, "Shed Skin",   None,           None),
+        ("Mew",         151, "psychic", None,     100, 100, 100, 100, 100, 100,  45, 300, "Synchronize", None,           None),
+        ("Mewtwo",      150, "psychic", None,     106, 110,  90, 154,  90, 130,   3, 340, "Pressure",    None,           "Unnerve"),
+        ("Moltres",     146, "fire",    "flying",  90, 100,  90, 125,  85,  90,   3, 290, "Pressure",    None,           "Flame Body"),
+        ("Mr. Mime",    122, "psychic", "fairy",   40,  45,  65, 100, 120,  90,  45, 161, "Soundproof",  "Filter",       "Technician"),
+        ("Muk",         89,  "poison",  None,     105, 105,  75,  65, 100,  50,  75, 175, "Stench",      "Sticky Hold",  "Poison Touch"),
+        ("Nidoking",    34,  "poison",  "ground",  81, 102,  77,  85,  75,  85,  45, 253, "Poison Point", "Rivalry",     "Sheer Force"),
+        ("Nidoqueen",   31,  "poison",  "ground",  90,  92,  87,  75,  85,  76,  45, 253, "Poison Point", "Rivalry",     "Sheer Force"),
+        ("Nidoran♀",    29,  "poison",  None,      55,  47,  52,  40,  40,  41, 235,  55, "Poison Point", "Rivalry",     "Hustle"),
+        ("Nidoran♂",    32,  "poison",  None,      46,  57,  40,  40,  40,  50, 235,  55, "Poison Point", "Rivalry",     "Hustle"),
+        ("Nidorina",    30,  "poison",  None,      70,  62,  67,  55,  55,  56, 120, 128, "Poison Point", "Rivalry",     "Hustle"),
+        ("Nidorino",    33,  "poison",  None,      61,  72,  57,  55,  55,  65, 120, 128, "Poison Point", "Rivalry",     "Hustle"),
+        ("Ninetales",   38,  "fire",    None,      73,  76,  75,  81, 100, 100,  75, 177, "Flash Fire",  None,           "Drought"),
+        ("Oddish",      43,  "grass",   "poison",  45,  50,  55,  75,  65,  30, 255,  64, "Chlorophyll", None,           "Run Away"),
+        ("Omanyte",     138, "rock",    "water",   35,  40, 100,  90,  55,  35,  45,  71, "Swift Swim",  "Shell Armor",  "Weak Armor"),
+        ("Omastar",     139, "rock",    "water",   70,  60, 125, 115,  70,  55,  45, 173, "Swift Swim",  "Shell Armor",  "Weak Armor"),
+        ("Onix",        95,  "rock",    "ground",  35,  45, 160,  30,  45,  70,  45,  77, "Rock Head",   "Sturdy",       "Weak Armor"),
+        ("Paras",       46,  "bug",     "grass",   35,  70,  55,  45,  55,  25, 190,  57, "Effect Spore", "Dry Skin",    "Damp"),
+        ("Parasect",    47,  "bug",     "grass",   60,  95,  80,  60,  80,  30,  75, 142, "Effect Spore", "Dry Skin",    "Damp"),
+        ("Persian",     53,  "normal",  None,      65,  70,  60,  65,  65, 115,  90, 154, "Limber",      "Technician",   "Unnerve"),
+        ("Pidgeot",     18,  "normal",  "flying",  83,  80,  75,  70,  70, 101,  45, 240, "Keen Eye",    "Tangled Feet", "Big Pecks"),
+        ("Pidgeotto",   17,  "normal",  "flying",  63,  60,  55,  50,  50,  71, 120, 122, "Keen Eye",    "Tangled Feet", "Big Pecks"),
+        ("Pidgey",      16,  "normal",  "flying",  40,  45,  40,  35,  35,  56, 255,  50, "Keen Eye",    "Tangled Feet", "Big Pecks"),
+        ("Pikachu",     25,  "electric", None,     35,  55,  40,  50,  50,  90, 190, 112, "Static",      None,           "Lightning Rod"),
+        ("Pinsir",      127, "bug",     None,      65, 125, 100,  55,  70,  85,  45, 175, "Hyper Cutter", "Mold Breaker", "Moxie"),
+        ("Poliwag",     60,  "water",   None,      40,  50,  40,  40,  40,  90, 255,  60, "Water Absorb", "Damp",        "Swift Swim"),
+        ("Poliwhirl",   61,  "water",   None,      65,  65,  65,  50,  50,  90, 120, 135, "Water Absorb", "Damp",        "Swift Swim"),
+        ("Poliwrath",   62,  "water",   "fighting", 90, 95,  95,  70,  90,  70,  45, 255, "Water Absorb", "Damp",        "Swift Swim"),
+        ("Ponyta",      77,  "fire",    None,      50,  85,  55,  65,  65,  90, 190,  82, "Run Away",    "Flash Fire",   "Flame Body"),
+        ("Porygon",     137, "normal",  None,      65,  60,  70,  85,  75,  40,  45,  79, "Trace",       "Download",     "Analytic"),
+        ("Primeape",    57,  "fighting", None,     65, 105,  60,  60,  70,  95,  75, 159, "Vital Spirit", "Anger Point", "Defiant"),
+        ("Psyduck",     54,  "water",   None,      50,  52,  48,  65,  50,  55, 190,  64, "Damp",        "Cloud Nine",   "Swift Swim"),
+        ("Raichu",      26,  "electric", None,     60,  90,  55,  90,  80, 110,  75, 243, "Static",      None,           "Lightning Rod"),
+        ("Rapidash",    78,  "fire",    None,      65, 100,  70,  80,  80, 105,  60, 175, "Run Away",    "Flash Fire",   "Flame Body"),
+        ("Raticate",    20,  "normal",  None,      55,  81,  60,  50,  70,  97, 127, 145, "Run Away",    "Guts",         "Hustle"),
+        ("Rattata",     19,  "normal",  None,      30,  56,  35,  25,  35,  72, 255,  51, "Run Away",    "Guts",         "Hustle"),
+        ("Rhydon",      112, "ground",  "rock",   105, 130, 120,  45,  45,  40,  60, 170, "Lightning Rod", "Rock Head",  "Reckless"),
+        ("Rhyhorn",     111, "ground",  "rock",    80,  85,  95,  30,  30,  25, 120,  69, "Lightning Rod", "Rock Head",  "Reckless"),
+        ("Sandshrew",   27,  "ground",  None,      50,  75,  85,  20,  30,  40, 255,  60, "Sand Veil",   None,           "Sand Rush"),
+        ("Sandslash",   28,  "ground",  None,      75, 100, 110,  45,  55,  65,  90, 158, "Sand Veil",   None,           "Sand Rush"),
+        ("Scyther",     123, "bug",     "flying",  70, 110,  80,  55,  80, 105,  45, 100, "Swarm",       "Technician",   "Steadfast"),
+        ("Seadra",      117, "water",   None,      55,  65,  95,  95,  45,  85,  75, 154, "Poison Point", "Sniper",      "Damp"),
+        ("Seaking",     119, "water",   None,      80,  92,  65,  65,  80,  68,  60, 158, "Swift Swim",  "Water Veil",   "Lightning Rod"),
+        ("Seel",        86,  "water",   None,      65,  45,  55,  45,  70,  45, 190,  65, "Thick Fat",   "Hydration",    "Ice Body"),
+        ("Shellder",    90,  "water",   None,      30,  65, 100,  45,  25,  40, 190,  61, "Shell Armor", "Skill Link",   "Overcoat"),
+        ("Slowbro",     80,  "water",   "psychic", 95,  75, 110, 100,  80,  30,  75, 172, "Oblivious",   "Own Tempo",    "Regenerator"),
+        ("Slowpoke",    79,  "water",   "psychic", 90,  65,  65,  40,  40,  15, 190,  63, "Oblivious",   "Own Tempo",    "Regenerator"),
+        ("Snorlax",     143, "normal",  None,     160, 110,  65,  65, 110,  30,  25, 189, "Immunity",    "Thick Fat",    "Gluttony"),
+        ("Spearow",     21,  "normal",  "flying",  40,  60,  30,  31,  31,  70, 255,  52, "Keen Eye",    None,           "Sniper"),
+        ("Squirtle",    7,   "water",   None,      44,  48,  65,  50,  64,  43,  45,  63, "Torrent",     None,           "Rain Dish"),
+        ("Starmie",     121, "water",   "psychic", 60,  75,  85, 100,  85, 115,  60, 182, "Illuminate",  "Natural Cure", "Analytic"),
+        ("Staryu",      120, "water",   None,      30,  45,  55,  70,  55,  85, 225,  68, "Illuminate",  "Natural Cure", "Analytic"),
+        ("Tangela",     114, "grass",   None,      65,  55, 115, 100,  40,  60,  45,  87, "Chlorophyll", "Leaf Guard",   "Regenerator"),
+        ("Tauros",      128, "normal",  None,      75, 100,  95,  40,  70, 110,  45, 172, "Intimidate",  "Anger Point",  "Sheer Force"),
+        ("Tentacool",   72,  "water",   "poison",  40,  40,  35,  50, 100,  70, 190,  67, "Clear Body",  "Liquid Ooze",  "Rain Dish"),
+        ("Tentacruel",  73,  "water",   "poison",  80,  70,  65,  80, 120, 100,  60, 180, "Clear Body",  "Liquid Ooze",  "Rain Dish"),
+        ("Vaporeon",    134, "water",   None,     130,  65,  60, 110,  95,  65,  45, 184, "Water Absorb", None,          "Hydration"),
+        ("Venomoth",    49,  "bug",     "poison",  70,  65,  60,  90,  75,  90,  75, 158, "Shield Dust", "Tinted Lens",  "Wonder Skin"),
+        ("Venonat",     48,  "bug",     "poison",  60,  55,  50,  40,  55,  45, 190,  61, "Compound Eyes", "Tinted Lens", "Run Away"),
+        ("Venusaur",    3,   "grass",   "poison",  80,  82,  83, 100, 100,  80,  45, 263, "Overgrow",    None,           "Chlorophyll"),
+        ("Victreebel",  71,  "grass",   "poison",  80, 105,  65, 100,  70,  70,  45, 245, "Chlorophyll", None,           "Gluttony"),
+        ("Vileplume",   45,  "grass",   "poison",  75,  80,  85, 110,  90,  50,  45, 245, "Chlorophyll", None,           "Effect Spore"),
+        ("Voltorb",     100, "electric", None,     40,  30,  50,  55,  55, 100, 190,  66, "Soundproof",  "Static",       "Aftermath"),
+        ("Vulpix",      37,  "fire",    None,      38,  41,  40,  50,  65,  65, 190,  60, "Flash Fire",  None,           "Drought"),
+        ("Wartortle",   8,   "water",   None,      59,  63,  80,  65,  80,  58,  45, 142, "Torrent",     None,           "Rain Dish"),
+        ("Weedle",      13,  "bug",     "poison",  40,  35,  30,  20,  20,  50, 255,  39, "Shield Dust", None,           "Run Away"),
+        ("Weepinbell",  70,  "grass",   "poison",  65,  90,  50,  85,  45,  55, 120, 137, "Chlorophyll", None,           "Gluttony"),
+        ("Weezing",     110, "poison",  None,      65,  90, 120,  85,  70,  60,  60, 173, "Levitate",    None,           "Stench"),
+        ("Wigglytuff",  40,  "normal",  "fairy",  140,  70,  45,  85,  50,  45,  50, 196, "Cute Charm",  "Competitive",  "Frisk"),
+        ("Zapdos",      145, "electric", "flying", 90,  90,  85, 125,  90, 100,   3, 290, "Pressure",    None,           "Static"),
+        ("Zubat",       41,  "poison",  "flying",  40,  45,  35,  30,  40,  55, 255,  49, "Inner Focus", None,           "Infiltrator"),
+    ]
+    
+    # Table des groupes de croissance par Pokémon Gen 1
+    # Sources : Bulbapedia FRLG / Gen 3
+    GROWTH_RATES = {
+        # ── Erratic (600 000 XP) ─────────────────────────────────────────────
+        # (aucun Pokémon Gen 1 n'est dans ce groupe — réservé Gen 2+)
+
+        # ── Fast (800 000 XP) ─────────────────────────────────────────────────
+        'Caterpie': 'fast', 'Metapod': 'fast', 'Butterfree': 'fast',
+        'Weedle': 'fast', 'Kakuna': 'fast', 'Beedrill': 'fast',
+        'Pikachu': 'fast', 'Raichu': 'fast',
+        'Clefairy': 'fast', 'Clefable': 'fast',
+        'Jigglypuff': 'fast', 'Wigglytuff': 'fast',
+        'Abra': 'fast', 'Kadabra': 'fast', 'Alakazam': 'fast',
+        'Gastly': 'fast', 'Haunter': 'fast', 'Gengar': 'fast',
+        'Mr. Mime': 'fast',
+        'Scyther': 'fast',
+        'Jynx': 'fast',
+        'Electabuzz': 'fast',
+        'Magmar': 'fast',
+        'Pinsir': 'fast',
+        'Eevee': 'fast', 'Vaporeon': 'fast', 'Jolteon': 'fast', 'Flareon': 'fast',
+        'Porygon': 'fast',
+        'Ditto': 'fast',
+
+        # ── Medium Slow (1 059 860 XP) ────────────────────────────────────────
+        'Bulbasaur': 'medium_slow', 'Ivysaur': 'medium_slow', 'Venusaur': 'medium_slow',
+        'Charmander': 'medium_slow', 'Charmeleon': 'medium_slow', 'Charizard': 'medium_slow',
+        'Squirtle': 'medium_slow', 'Wartortle': 'medium_slow', 'Blastoise': 'medium_slow',
+        'Oddish': 'medium_slow', 'Gloom': 'medium_slow', 'Vileplume': 'medium_slow',
+        'Paras': 'medium_slow', 'Parasect': 'medium_slow',
+        'Venonat': 'medium_slow', 'Venomoth': 'medium_slow',
+        'Diglett': 'medium_slow', 'Dugtrio': 'medium_slow',
+        'Psyduck': 'medium_slow', 'Golduck': 'medium_slow',
+        'Mankey': 'medium_slow', 'Primeape': 'medium_slow',
+        'Machop': 'medium_slow', 'Machoke': 'medium_slow', 'Machamp': 'medium_slow',
+        'Bellsprout': 'medium_slow', 'Weepinbell': 'medium_slow', 'Victreebel': 'medium_slow',
+        'Tentacool': 'medium_slow', 'Tentacruel': 'medium_slow',
+        'Exeggcute': 'medium_slow', 'Exeggutor': 'medium_slow',
+        'Cubone': 'medium_slow', 'Marowak': 'medium_slow',
+        'Hitmonlee': 'medium_slow', 'Hitmonchan': 'medium_slow',
+        'Lickitung': 'medium_slow',
+        'Koffing': 'medium_slow', 'Weezing': 'medium_slow',
+        'Chansey': 'medium_slow',
+        'Tangela': 'medium_slow',
+        'Scyther': 'medium_slow',   # override Fast → Medium Slow en Gen 3
+        'Onix': 'medium_slow',
+        'Kabuto': 'medium_slow', 'Kabutops': 'medium_slow',
+        'Omanyte': 'medium_slow', 'Omastar': 'medium_slow',
+        'Dratini': 'medium_slow', 'Dragonair': 'medium_slow', 'Dragonite': 'medium_slow',
+
+        # ── Medium Fast (1 000 000 XP) — la majorité ─────────────────────────
+        'Pidgey': 'medium_fast', 'Pidgeotto': 'medium_fast', 'Pidgeot': 'medium_fast',
+        'Rattata': 'medium_fast', 'Raticate': 'medium_fast',
+        'Spearow': 'medium_fast', 'Fearow': 'medium_fast',
+        'Ekans': 'medium_fast', 'Arbok': 'medium_fast',
+        'Sandshrew': 'medium_fast', 'Sandslash': 'medium_fast',
+        'Vulpix': 'medium_fast', 'Ninetales': 'medium_fast',
+        'Zubat': 'medium_fast', 'Golbat': 'medium_fast',
+        'Meowth': 'medium_fast', 'Persian': 'medium_fast',
+        'Growlithe': 'medium_fast', 'Arcanine': 'medium_fast',
+        'Poliwag': 'medium_fast', 'Poliwhirl': 'medium_fast', 'Poliwrath': 'medium_fast',
+        'Geodude': 'medium_fast', 'Graveler': 'medium_fast', 'Golem': 'medium_fast',
+        'Ponyta': 'medium_fast', 'Rapidash': 'medium_fast',
+        'Slowpoke': 'medium_fast', 'Slowbro': 'medium_fast',
+        'Magnemite': 'medium_fast', 'Magneton': 'medium_fast',
+        'Doduo': 'medium_fast', 'Dodrio': 'medium_fast',
+        'Seel': 'medium_fast', 'Dewgong': 'medium_fast',
+        'Grimer': 'medium_fast', 'Muk': 'medium_fast',
+        'Shellder': 'medium_fast', 'Cloyster': 'medium_fast',
+        'Drowzee': 'medium_fast', 'Hypno': 'medium_fast',
+        'Krabby': 'medium_fast', 'Kingler': 'medium_fast',
+        'Voltorb': 'medium_fast', 'Electrode': 'medium_fast',
+        'Rhyhorn': 'medium_fast', 'Rhydon': 'medium_fast',
+        'Kangaskhan': 'medium_fast',
+        'Horsea': 'medium_fast', 'Seadra': 'medium_fast',
+        'Goldeen': 'medium_fast', 'Seaking': 'medium_fast',
+        'Staryu': 'medium_fast', 'Starmie': 'medium_fast',
+        'Tauros': 'medium_fast',
+        'Magikarp': 'medium_fast', 'Gyarados': 'medium_fast',
+        'Lapras': 'medium_fast',
+        'Aerodactyl': 'medium_fast',
+
+        # ── Slow (1 250 000 XP) — légendaires et espèces puissantes ──────────
+        'Nidoran♀': 'slow', 'Nidorina': 'slow', 'Nidoqueen': 'slow',
+        'Nidoran♂': 'slow', 'Nidorino': 'slow', 'Nidoking': 'slow',
+        'Snorlax': 'slow',
+        'Articuno': 'slow', 'Zapdos': 'slow', 'Moltres': 'slow',
+        'Mewtwo': 'slow',
+        'Mew': 'slow',
+    }
+
+    # ── Dict EV yields ─────────────────────────────────────────────────────────────────
+    # Format : { 'Nom': { 'ev_yield_<stat>': valeur, ... } }
+    # Source : FRLG / Bulbapedia Gen 3+
+    EV_YIELDS = {
+        'Bulbasaur':   {'ev_yield_special_attack': 1},
+        'Ivysaur':     {'ev_yield_special_attack': 1, 'ev_yield_special_defense': 1},
+        'Venusaur':    {'ev_yield_special_attack': 2, 'ev_yield_special_defense': 1},
+        'Charmander':  {'ev_yield_speed': 1},
+        'Charmeleon':  {'ev_yield_speed': 1, 'ev_yield_attack': 1},
+        'Charizard':   {'ev_yield_speed': 3},
+        'Squirtle':    {'ev_yield_defense': 1},
+        'Wartortle':   {'ev_yield_defense': 1, 'ev_yield_special_defense': 1},
+        'Blastoise':   {'ev_yield_defense': 1, 'ev_yield_special_defense': 2},
+        'Caterpie':    {'ev_yield_hp': 1},
+        'Metapod':     {'ev_yield_defense': 1},
+        'Butterfree':  {'ev_yield_special_attack': 2, 'ev_yield_special_defense': 1},
+        'Weedle':      {'ev_yield_speed': 1},
+        'Kakuna':      {'ev_yield_defense': 1},
+        'Beedrill':    {'ev_yield_attack': 2, 'ev_yield_speed': 1},
+        'Pidgey':      {'ev_yield_speed': 1},
+        'Pidgeotto':   {'ev_yield_speed': 1, 'ev_yield_attack': 1},
+        'Pidgeot':     {'ev_yield_speed': 3},
+        'Rattata':     {'ev_yield_speed': 1},
+        'Raticate':    {'ev_yield_speed': 2},
+        'Spearow':     {'ev_yield_speed': 1},
+        'Fearow':      {'ev_yield_speed': 2},
+        'Ekans':       {'ev_yield_attack': 1},
+        'Arbok':       {'ev_yield_attack': 2},
+        'Pikachu':     {'ev_yield_speed': 2},
+        'Raichu':      {'ev_yield_speed': 3},
+        'Sandshrew':   {'ev_yield_defense': 1},
+        'Sandslash':   {'ev_yield_defense': 2},
+        'Nidoran♀':   {'ev_yield_hp': 1},
+        'Nidorina':    {'ev_yield_hp': 2},
+        'Nidoqueen':   {'ev_yield_hp': 3},
+        'Nidoran♂':   {'ev_yield_attack': 1},
+        'Nidorino':    {'ev_yield_attack': 2},
+        'Nidoking':    {'ev_yield_attack': 3},
+        'Clefairy':    {'ev_yield_hp': 2},
+        'Clefable':    {'ev_yield_hp': 3},
+        'Vulpix':      {'ev_yield_special_attack': 1},
+        'Ninetales':   {'ev_yield_special_attack': 2, 'ev_yield_speed': 1},
+        'Jigglypuff':  {'ev_yield_hp': 2},
+        'Wigglytuff':  {'ev_yield_hp': 3},
+        'Zubat':       {'ev_yield_speed': 1},
+        'Golbat':      {'ev_yield_speed': 2},
+        'Oddish':      {'ev_yield_special_attack': 1},
+        'Gloom':       {'ev_yield_special_attack': 1, 'ev_yield_special_defense': 1},
+        'Vileplume':   {'ev_yield_special_attack': 2, 'ev_yield_special_defense': 1},
+        'Paras':       {'ev_yield_attack': 1},
+        'Parasect':    {'ev_yield_attack': 2, 'ev_yield_defense': 1},
+        'Venonat':     {'ev_yield_special_defense': 1},
+        'Venomoth':    {'ev_yield_special_attack': 2, 'ev_yield_special_defense': 1},
+        'Diglett':     {'ev_yield_speed': 1},
+        'Dugtrio':     {'ev_yield_speed': 2},
+        'Meowth':      {'ev_yield_speed': 1},
+        'Persian':     {'ev_yield_speed': 2},
+        'Psyduck':     {'ev_yield_special_attack': 1},
+        'Golduck':     {'ev_yield_special_attack': 2},
+        'Mankey':      {'ev_yield_attack': 1},
+        'Primeape':    {'ev_yield_attack': 2},
+        'Growlithe':   {'ev_yield_attack': 1},
+        'Arcanine':    {'ev_yield_attack': 2, 'ev_yield_speed': 1},
+        'Poliwag':     {'ev_yield_speed': 1},
+        'Poliwhirl':   {'ev_yield_speed': 2},
+        'Poliwrath':   {'ev_yield_defense': 1, 'ev_yield_special_defense': 1},
+        'Abra':        {'ev_yield_special_attack': 1},
+        'Kadabra':     {'ev_yield_special_attack': 2},
+        'Alakazam':    {'ev_yield_special_attack': 3},
+        'Machop':      {'ev_yield_attack': 1},
+        'Machoke':     {'ev_yield_attack': 2},
+        'Machamp':     {'ev_yield_attack': 3},
+        'Bellsprout':  {'ev_yield_attack': 1},
+        'Weepinbell':  {'ev_yield_attack': 2},
+        'Victreebel':  {'ev_yield_attack': 3},
+        'Tentacool':   {'ev_yield_special_defense': 1},
+        'Tentacruel':  {'ev_yield_special_defense': 2},
+        'Geodude':     {'ev_yield_defense': 1},
+        'Graveler':    {'ev_yield_defense': 2},
+        'Golem':       {'ev_yield_defense': 3},
+        'Ponyta':      {'ev_yield_speed': 1},
+        'Rapidash':    {'ev_yield_speed': 2},
+        'Slowpoke':    {'ev_yield_hp': 1},
+        'Slowbro':     {'ev_yield_defense': 1, 'ev_yield_special_attack': 1},
+        'Magnemite':   {'ev_yield_special_attack': 1},
+        'Magneton':    {'ev_yield_special_attack': 2},
+        'Doduo':       {'ev_yield_attack': 1},
+        'Dodrio':      {'ev_yield_attack': 2},
+        'Seel':        {'ev_yield_special_defense': 1},
+        'Dewgong':     {'ev_yield_special_defense': 2},
+        'Grimer':      {'ev_yield_hp': 1},
+        'Muk':         {'ev_yield_hp': 2},
+        'Shellder':    {'ev_yield_defense': 1},
+        'Cloyster':    {'ev_yield_defense': 2},
+        'Gastly':      {'ev_yield_special_attack': 1},
+        'Haunter':     {'ev_yield_special_attack': 2},
+        'Gengar':      {'ev_yield_special_attack': 3},
+        'Onix':        {'ev_yield_defense': 1},
+        'Drowzee':     {'ev_yield_special_defense': 1},
+        'Hypno':       {'ev_yield_special_defense': 2},
+        'Krabby':      {'ev_yield_attack': 1},
+        'Kingler':     {'ev_yield_attack': 2},
+        'Voltorb':     {'ev_yield_speed': 1},
+        'Electrode':   {'ev_yield_speed': 2},
+        'Exeggcute':   {'ev_yield_special_attack': 1},
+        'Exeggutor':   {'ev_yield_special_attack': 2},
+        'Cubone':      {'ev_yield_defense': 1},
+        'Marowak':     {'ev_yield_defense': 2},
+        'Hitmonlee':   {'ev_yield_attack': 2},
+        'Hitmonchan':  {'ev_yield_special_defense': 2},
+        'Lickitung':   {'ev_yield_hp': 1},
+        'Koffing':     {'ev_yield_defense': 1},
+        'Weezing':     {'ev_yield_defense': 2},
+        'Rhyhorn':     {'ev_yield_defense': 1},
+        'Rhydon':      {'ev_yield_attack': 2},
+        'Chansey':     {'ev_yield_hp': 2},
+        'Tangela':     {'ev_yield_defense': 1},
+        'Kangaskhan':  {'ev_yield_hp': 2},
+        'Horsea':      {'ev_yield_special_attack': 1},
+        'Seadra':      {'ev_yield_special_attack': 2},
+        'Goldeen':     {'ev_yield_attack': 1},
+        'Seaking':     {'ev_yield_attack': 2},
+        'Staryu':      {'ev_yield_speed': 1},
+        'Starmie':     {'ev_yield_speed': 2},
+        'Mr. Mime':    {'ev_yield_special_defense': 2},
+        'Scyther':     {'ev_yield_attack': 1, 'ev_yield_speed': 1},
+        'Jynx':        {'ev_yield_special_attack': 2},
+        'Electabuzz':  {'ev_yield_special_attack': 2},
+        'Magmar':      {'ev_yield_special_attack': 2},
+        'Pinsir':      {'ev_yield_attack': 2},
+        'Tauros':      {'ev_yield_attack': 1, 'ev_yield_speed': 1},
+        'Magikarp':    {'ev_yield_speed': 1},
+        'Gyarados':    {'ev_yield_attack': 2},
+        'Lapras':      {'ev_yield_hp': 2},
+        'Ditto':       {'ev_yield_hp': 1},
+        'Eevee':       {'ev_yield_hp': 1},
+        'Vaporeon':    {'ev_yield_hp': 2},
+        'Jolteon':     {'ev_yield_speed': 2},
+        'Flareon':     {'ev_yield_attack': 2},
+        'Porygon':     {'ev_yield_special_attack': 1},
+        'Omanyte':     {'ev_yield_defense': 1},
+        'Omastar':     {'ev_yield_defense': 1, 'ev_yield_special_attack': 1},
+        'Kabuto':      {'ev_yield_defense': 1},
+        'Kabutops':    {'ev_yield_attack': 2},
+        'Aerodactyl':  {'ev_yield_speed': 2},
+        'Snorlax':     {'ev_yield_hp': 2},
+        'Articuno':    {'ev_yield_special_defense': 3},
+        'Zapdos':      {'ev_yield_special_attack': 3},
+        'Moltres':     {'ev_yield_special_attack': 3},
+        'Dratini':     {'ev_yield_attack': 1},
+        'Dragonair':   {'ev_yield_attack': 2},
+        'Dragonite':   {'ev_yield_attack': 3},
+        'Mewtwo':      {'ev_yield_special_attack': 3},
+        'Mew':         {'ev_yield_hp': 3},
+    }
+
+    _EV_FIELDS = [
+        'ev_yield_hp', 'ev_yield_attack', 'ev_yield_defense',
+        'ev_yield_special_attack', 'ev_yield_special_defense', 'ev_yield_speed',
+    ]
+
+    # ── Ratios de genre Gen 1 ────────────────────────────────────────────────
+    # Sources : Bulbapedia (FRLG / Gen 3+).
+    GENDER_RATIOS = {
+        # Starters et leurs évolutions : 87.5 % mâle
+        'Bulbasaur':  0.875, 'Ivysaur':    0.875, 'Venusaur':   0.875,
+        'Charmander': 0.875, 'Charmeleon': 0.875, 'Charizard':  0.875,
+        'Squirtle':   0.875, 'Wartortle':  0.875, 'Blastoise':  0.875,
+
+        # Nidoran♀ ligne : 100 % femelle
+        'Nidoran♀': 0.0, 'Nidorina': 0.0, 'Nidoqueen': 0.0,
+
+        # Nidoran♂ ligne : 100 % mâle
+        'Nidoran♂': 1.0, 'Nidorino': 1.0, 'Nidoking':  1.0,
+
+        # Kangaskhan : 100 % femelle
+        'Kangaskhan': 0.0,
+
+        # Tauros : 100 % mâle
+        'Tauros': 1.0,
+
+        # Hitmonlee / Hitmonchan : 100 % mâle
+        'Hitmonlee': 1.0, 'Hitmonchan': 1.0,
+
+        # Sans genre (genderless)
+        'Magnemite':  -1, 'Magneton':   -1,
+        'Voltorb':    -1, 'Electrode':  -1,
+        'Staryu':     -1, 'Starmie':    -1,
+        'Ditto':      -1,
+        'Porygon':    -1,
+        'Articuno':   -1, 'Zapdos':     -1, 'Moltres':    -1,
+        'Mewtwo':     -1, 'Mew':        -1,
+    }
+
+    pokemon_dict = {}
+    for poke_data in pokemon_data:
+        name, dex_num, primary, secondary, hp, atk, defense, sp_atk, sp_def, speed, catch, exp, ab1_name, ab2_name, hab_name = poke_data
+        growth_rate  = GROWTH_RATES.get(name, 'medium_fast')
+        gender_ratio = GENDER_RATIOS.get(name, 0.5)
+
+        pokemon, created = Pokemon.objects.get_or_create(
+            pokedex_number=dex_num,
+            defaults={
+                'name': name,
+                'primary_type': types_dict[primary],
+                'secondary_type': types_dict[secondary] if secondary else None,
+                'base_hp': hp,
+                'base_attack': atk,
+                'base_defense': defense,
+                'base_special_attack': sp_atk,
+                'base_special_defense': sp_def,
+                'base_speed': speed,
+                'catch_rate': catch,
+                'base_experience': exp,
+                'growth_rate': growth_rate,
+                'gender_ratio': gender_ratio,
+                'ability_1':       abilities_dict.get(ab1_name) if ab1_name else None,
+                'ability_2':       abilities_dict.get(ab2_name) if ab2_name else None,
+                'hidden_ability':  abilities_dict.get(hab_name) if hab_name else None,
+            }
+        )
+
+        # Mettre à jour les champs si le Pokémon existe déjà
+        update_fields = []
+        if not created:
+            if pokemon.growth_rate != growth_rate:
+                pokemon.growth_rate = growth_rate
+                update_fields.append('growth_rate')
+
+            # Mise à jour des talents (idempotente)
+            new_ab1 = abilities_dict.get(ab1_name) if ab1_name else None
+            new_ab2 = abilities_dict.get(ab2_name) if ab2_name else None
+            new_hab = abilities_dict.get(hab_name) if hab_name else None
+            if pokemon.ability_1 != new_ab1:
+                pokemon.ability_1 = new_ab1
+                update_fields.append('ability_1')
+            if pokemon.ability_2 != new_ab2:
+                pokemon.ability_2 = new_ab2
+                update_fields.append('ability_2')
+            if pokemon.hidden_ability != new_hab:
+                pokemon.hidden_ability = new_hab
+                update_fields.append('hidden_ability')
+
+            if update_fields:
+                pokemon.save(update_fields=update_fields)
+
+            # ── EV Yields (idempotent) ──────────────────────────────────────────
+            target_yields = EV_YIELDS.get(name, {})
+            ev_update_fields = []
+            for field in _EV_FIELDS:
+                expected = target_yields.get(field, 0)
+                if getattr(pokemon, field) != expected:
+                    setattr(pokemon, field, expected)
+                    ev_update_fields.append(field)
+            if ev_update_fields:
+                pokemon.save(update_fields=ev_update_fields)
+
+            # ── Gender Ratio (idempotent) ───────────────────────────────────────
+            expected_ratio = GENDER_RATIOS.get(name, 0.5)
+            if pokemon.gender_ratio != expected_ratio:
+                pokemon.gender_ratio = expected_ratio
+                pokemon.save(update_fields=['gender_ratio'])
+
+        pokemon_dict[name] = pokemon
+        if created:
+            logging.info(f"  [+] Pokémon créé: #{dex_num:03d} {name}")
+    
+    logging.info(f"[+] {len(pokemon_dict)} Pokémon créés/vérifiés")
+
+    # ============================================================================
+    # ÉTAPE X: CRÉER LES ÉVOLUTIONS DES POKÉMON
+    # ============================================================================
+
+    logging.info("\n[*] Création des évolutions Pokémon...")
+
+    # Common evolution items in Gen 1
+    common_evolution_items = {
+        "Fire Stone": "fire_stone",
+        "Water Stone": "water_stone",
+        "Thunder Stone": "thunder_stone",
+        "Leaf Stone": "leaf_stone",
+        "Moon Stone": "moon_stone",
+    }
+
+    # Evolution data for Gen 1 Pokémon
+    # Format: (method, level, required_item, evolved_name)
+    pokemon_evolution_data = {
+        "Bulbasaur": [("level", 16, None, "Ivysaur")],
+        "Ivysaur": [("level", 32, None, "Venusaur")],
+        "Charmander": [("level", 16, None, "Charmeleon")],
+        "Charmeleon": [("level", 36, None, "Charizard")],
+        "Squirtle": [("level", 16, None, "Wartortle")],
+        "Wartortle": [("level", 36, None, "Blastoise")],
+        "Caterpie": [("level", 7, None, "Metapod")],
+        "Metapod": [("level", 10, None, "Butterfree")],
+        "Weedle": [("level", 7, None, "Kakuna")],
+        "Kakuna": [("level", 10, None, "Beedrill")],
+        "Pidgey": [("level", 18, None, "Pidgeotto")],
+        "Pidgeotto": [("level", 36, None, "Pidgeot")],
+        "Rattata": [("level", 20, None, "Raticate")],
+        "Spearow": [("level", 20, None, "Fearow")],
+        "Ekans": [("level", 22, None, "Arbok")],
+        "Pikachu": [("stone", None, "Thunder Stone", "Raichu")],
+        "Sandshrew": [("level", 22, None, "Sandslash")],
+        "Nidoran♀": [("level", 16, None, "Nidorina")],
+        "Nidorina": [("stone", None, "Moon Stone", "Nidoqueen")],
+        "Nidoran♂": [("level", 16, None, "Nidorino")],
+        "Nidorino": [("stone", None, "Moon Stone", "Nidoking")],
+        "Clefairy": [("stone", None, "Moon Stone", "Clefable")],
+        "Vulpix": [("stone", None, "Fire Stone", "Ninetales")],
+        "Jigglypuff": [("stone", None, "Moon Stone", "Wigglytuff")],
+        "Zubat": [("level", 22, None, "Golbat")],
+        "Oddish": [("level", 21, None, "Gloom")],
+        "Gloom": [("stone", None, "Leaf Stone", "Vileplume")],
+        "Paras": [("level", 24, None, "Parasect")],
+        "Venonat": [("level", 31, None, "Venomoth")],
+        "Diglett": [("level", 26, None, "Dugtrio")],
+        "Meowth": [("level", 28, None, "Persian")],
+        "Psyduck": [("level", 33, None, "Golduck")],
+        "Mankey": [("level", 28, None, "Primeape")],
+        "Poliwag": [("level", 25, None, "Poliwhirl")],
+        "Poliwhirl": [("stone", None, "Water Stone", "Poliwrath")],
+        "Abra": [("level", 16, None, "Kadabra")],
+        "Machop": [("level", 28, None, "Machoke")],
+        "Bellsprout": [("level", 21, None, "Weepinbell")],
+        "Weepinbell": [("stone", None, "Leaf Stone", "Victreebel")],
+        "Tentacool": [("level", 30, None, "Tentacruel")],
+        "Geodude": [("level", 25, None, "Graveler")],
+        "Ponyta": [("level", 40, None, "Rapidash")],
+        "Slowpoke": [("level", 37, None, "Slowbro")],
+        "Magnemite": [("level", 30, None, "Magneton")],
+        "Doduo": [("level", 31, None, "Dodrio")],
+        "Seel": [("level", 34, None, "Dewgong")],
+        "Grimer": [("level", 38, None, "Muk")],
+        "Shellder": [("level", 36, None, "Cloyster")],
+        "Gastly": [("level", 25, None, "Haunter")],
+        "Drowzee": [("level", 26, None, "Hypno")],
+        "Krabby": [("level", 28, None, "Kingler")],
+        "Voltorb": [("level", 30, None, "Electrode")],
+        "Exeggcute": [("stone", None, "Leaf Stone", "Exeggutor")],
+        "Cubone": [("level", 28, None, "Marowak")],
+        "Koffing": [("level", 35, None, "Weezing")],
+        "Rhyhorn": [("level", 42, None, "Rhydon")],
+        "Horsea": [("level", 32, None, "Seadra")],
+        "Goldeen": [("level", 33, None, "Seaking")],
+        "Staryu": [("stone", None, "Water Stone", "Starmie")],
+        "Magikarp": [("level", 20, None, "Gyarados")],
+        "Omanyte": [("level", 40, None, "Omastar")],
+        "Kabuto": [("level", 40, None, "Kabutops")],
+        "Dratini": [("level", 30, None, "Dragonair")],
+        "Dragonair": [("level", 55, None, "Dragonite")],
+        "Eevee": [
+            ("stone", None, "Water Stone", "Vaporeon"),
+            ("stone", None, "Thunder Stone", "Jolteon"),
+            ("stone", None, "Fire Stone", "Flareon"),
+        ],
+        # ── Évolutions par échange (Gen 1) ────────────────────────────────
+        "Kadabra":  [("trade", None, None, "Alakazam")],
+        "Machoke":  [("trade", None, None, "Machamp")],
+        "Haunter":  [("trade", None, None, "Gengar")],
+        "Graveler": [("trade", None, None, "Golem")],
+    }
+
+    # Dictionnaire pour mapper les noms d'objets à leurs instances
+    item_dict = {}
+    for item_name in common_evolution_items.values():
+        item_obj, created = Item.objects.get_or_create(name=item_name)
+        item_dict[item_name] = item_obj
+        if created:
+            logging.info(f"  [+] Objet créé: {item_name}")
+
+    for pokemon_name, evolutions in pokemon_evolution_data.items():
+        try:
+            pokemon = Pokemon.objects.get(name=pokemon_name)
+            for method, level, required_item_name, evolved_name in evolutions:
+                evolved_pokemon = Pokemon.objects.get(name=evolved_name)
+                required_item = item_dict.get(common_evolution_items.get(required_item_name)) if required_item_name else None
+
+                PokemonEvolution.objects.get_or_create(
+                    pokemon=pokemon,
+                    evolves_to=evolved_pokemon,
+                    method=method,
+                    level=level,
+                    required_item=required_item
+                )
+                logging.info(f"  [+] Évolution créée: {pokemon_name} -> {evolved_name} (Méthode: {method}, Niveau: {level}, Objet: {required_item_name})")
+        except Pokemon.DoesNotExist as e:
+            logging.warning(f"  [!] Pokémon non trouvé: {e}")
+
+
+    logging.info(f"[+] Évolution des Pokémon configurée")
+
+
+
+    # ============================================================================
+    # ÉTAPE Y: CAPACITÉS APPRISES PAR LES POKÉMON
+    # ============================================================================
+    # ⚠️  Cette étape est maintenant gérée par initLearnableMovesGen9.py
+    # Les learnsets Gen 9 sont plus équilibrés.
+    
+    
+    logging.info("\n" + "="*60)
+    logging.info("[✓] INITIALISATION DE LA BASE TERMINÉE AVEC SUCCÈS")
+    logging.info("="*60)
+    
+    return pokemon_dict, moves_dict, types_dict
+
+
+# Point d'entrée pour Django shell
+if __name__ == '__main__':
+    scriptToInitializeDatabase()

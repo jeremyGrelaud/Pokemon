@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %} {% load custom_filters %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/shop-list.css' %}" rel="stylesheet" />
+{% endblock css %}
+
+{% block title %}
+<title>Boutiques - Pokémon Gen 1</title>
+{% endblock title %}
+
+{% block content %}
+
+<!-- En-tête -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0">
+    <i class="fas fa-shopping-cart text-primary me-2"></i>Boutiques Pokémon
+  </h1>
+  <span class="badge bg-warning text-dark px-3 py-2 fs-6">
+    <i class="fas fa-coins me-1"></i>{{ trainer.money }}₽
+  </span>
+</div>
+
+<!-- Alerte zone courante -->
+{% if current_zone %}
+<div class="alert alert-info d-flex align-items-center mb-4"
+     style="border-left: 4px solid #0dcaf0;">
+  <i class="fas fa-map-marker-alt fa-2x me-3 text-info flex-shrink-0"></i>
+  <div>
+    <strong>Vous êtes à : {{ current_zone.name }}</strong>
+    <p class="mb-0 mt-1 small text-muted">
+      Seule la boutique de votre ville actuelle est accessible. Voyagez pour en visiter d'autres.
+    </p>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info mb-4">
+  <i class="fas fa-info-circle me-2"></i>
+  <strong>Astuce :</strong> Certains objets ne sont disponibles qu'après avoir obtenu des badges.
+</div>
+{% endif %}
+
+<!-- Grille des boutiques -->
+<div class="row">
+  {% for entry in shops %}
+  {% with shop=entry.shop is_local=entry.is_local %}
+  <div class="col-lg-4 col-md-6 mb-4">
+    <div class="card h-100 shadow-sm border-0 {% if is_local %}shop-card{% else %}shop-card-greyed{% endif %}">
+
+      <!-- Header -->
+      <div class="card-header text-white {% if is_local %}shop-header-local{% else %}bg-secondary{% endif %}">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 fw-bold">
+            <i class="fas fa-store me-2"></i>{{ shop.name }}
+          </h5>
+          {% if not is_local %}
+          <span class="badge bg-light text-secondary">
+            <i class="fas fa-map-marker-alt me-1"></i>Autre ville
+          </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-body">
+        <!-- Illustration -->
+        <div class="text-center mb-3">
+          <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}"
+               alt="{{ shop.name }}"
+               style="width:100px; height:100px; {% if not is_local %}filter:grayscale(100%) opacity(.35);{% endif %}">
+        </div>
+
+        <!-- Localisation & type -->
+        <div class="mb-3">
+          <p class="mb-2 small">
+            <i class="fas fa-map-marker-alt {% if is_local %}text-danger{% else %}text-muted{% endif %} me-1"></i>
+            <strong>Localisation :</strong> {{ shop.location }}
+          </p>
+          <p class="mb-2 small">
+            <i class="fas fa-tag text-success me-1"></i>
+            <strong>Type :</strong>
+            <span class="badge bg-secondary ms-1">{{ shop.get_shop_type_display }}</span>
+          </p>
+          {% if shop.description %}
+          <p class="text-muted small mb-0 fst-italic">
+            <i class="fas fa-quote-left me-1 opacity-50"></i>{{ shop.description|truncatewords:15 }}
+          </p>
+          {% endif %}
+        </div>
+
+        <!-- Compteur articles -->
+        <div class="p-2 bg-light rounded text-center mb-3">
+          <span class="h5 mb-0 fw-bold {% if is_local %}text-primary{% else %}text-muted{% endif %}">
+            {{ shop.inventory.count }}
+          </span>
+          <small class="text-muted d-block" style="font-size:.75rem;">articles disponibles</small>
+        </div>
+
+        <!-- Message vendeur -->
+        {% if shop.shopkeeper_greeting %}
+        <div class="p-2 bg-light rounded border-start border-3 {% if is_local %}border-primary{% else %}border-secondary{% endif %} mb-3">
+          <small class="text-muted fst-italic">"{{ shop.shopkeeper_greeting }}"</small>
+        </div>
+        {% endif %}
+
+        <!-- Avertissement hors zone -->
+        {% if not is_local %}
+        <div class="alert alert-secondary py-2 text-center mb-0 small">
+          <i class="fas fa-map-marker-alt me-1"></i>
+          Voyagez à <strong>{{ shop.location }}</strong> pour accéder.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Bouton -->
+      <div class="card-footer bg-transparent border-0 pb-3 px-3">
+        {% if is_local %}
+        <div class="d-grid">
+          <a href="{% url 'ShopDetailView' shop.id %}" class="btn btn-primary">
+            <i class="fas fa-shopping-cart me-2"></i>Visiter la Boutique
+          </a>
+        </div>
+        {% else %}
+        <div class="d-grid">
+          <button class="btn btn-secondary" disabled>
+            <i class="fas fa-map-marker-alt me-2"></i>Pas dans cette ville
+          </button>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+  {% endwith %}
+  {% empty %}
+  <div class="col-12">
+    <div class="card shadow">
+      <div class="card-body text-center py-5">
+        <i class="fas fa-store-slash fa-4x text-muted mb-3 d-block"></i>
+        <h4 class="text-muted">Aucune boutique disponible</h4>
+        <p class="text-muted mb-0">Les boutiques apparaîtront bientôt !</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Encart conseils d'achat -->
+{% if shops %}
+<div class="card shadow border-0 mt-2 mb-4">
+  <div class="card-header bg-warning text-dark fw-bold">
+    <i class="fas fa-star me-2"></i>Conseils d'Achat
+  </div>
+  <div class="card-body">
+    <div class="row text-center">
+      <div class="col-md-4 mb-3 mb-md-0">
+        <i class="fas fa-flask fa-3x text-danger mb-2 d-block"></i>
+        <h6 class="fw-bold">Potions</h6>
+        <p class="small text-muted mb-0">Indispensables pour soigner vos Pokémon en combat</p>
+      </div>
+      <div class="col-md-4 mb-3 mb-md-0">
+        <i class="fas fa-circle fa-3x text-primary mb-2 d-block"></i>
+        <h6 class="fw-bold">Poké Balls</h6>
+        <p class="small text-muted mb-0">Capturez de nouveaux Pokémon pour compléter votre Pokédex</p>
+      </div>
+      <div class="col-md-4">
+        <i class="fas fa-gem fa-3x text-success mb-2 d-block"></i>
+        <h6 class="fw-bold">Pierres d'Évolution</h6>
+        <p class="small text-muted mb-0">Faites évoluer certains Pokémon spéciaux</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="mb-4">
+  <a href="{% url 'home' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left me-1"></i>Retour au Dashboard
+  </a>
+</div>
+
+{% endblock content %}

@@ -1,0 +1,881 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}<title>{{ zone.name }}</title>{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'map_view' %}">Carte</a></li>
+      <li class="breadcrumb-item active">{{ zone.name }}</li>
+    </ol>
+  </nav>
+
+  <div class="row">
+    <!-- ── Colonne principale ─────────────────────────────────────── -->
+    <div class="col-lg-8 col-xl-9">
+
+      <div class="card">
+        <!-- Header avec image de zone -->
+        <div class="card-header bg-primary text-white p-0 position-relative" style="overflow:hidden; min-height:180px;">
+          <img src="{% static 'img/mapSprites/Kanto/' %}{{ zone.name|zone_image_path }}"
+              alt="{{ zone.name }}"
+              class="w-100"
+              style="object-fit:cover; max-height:220px; opacity:0.55;"
+              onerror="this.style.display='none';">
+          <div class="position-absolute w-100 p-3" style="bottom:0; background: linear-gradient(transparent, rgba(0,0,0,0.6));">
+            <h2 class="mb-0 text-white">
+              <i class="fas fa-map-marker-alt"></i> {{ zone.name }}
+            </h2>
+            <p class="mb-0 text-white-50">{{ zone.get_zone_type_display }}</p>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <p>{{ zone.description }}</p>
+
+          <div class="mb-3">
+            <span class="badge bg-info">
+              Niveau recommandé: {{ zone.recommended_level_min }}-{{ zone.recommended_level_max }}
+            </span>
+            {% if is_current %}
+            <span class="badge bg-success">
+              <i class="fas fa-check"></i> Vous êtes ici
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- ══════════════════════════════════════════════════════════════
+               ACTIONS — uniquement si le joueur est dans cette zone
+          ══════════════════════════════════════════════════════════════════ -->
+          {% if is_current %}
+          <div class="zone-actions mb-4">
+
+            <!-- ── Hautes Herbes (hero card pleine largeur) ──────────────── -->
+            {% if not zone.is_safe_zone and not zone.has_floors %}
+            <a href="{% url 'wild_encounter' zone.id %}?type=grass"
+               class="action-card action-card--grass action-card--hero">
+              <div class="action-card__bg"></div>
+              <div class="action-card__inner">
+                <div class="action-card__icon-wrap">
+                  <img src="{% static 'img/mapSprites/Kanto/Tall_Grass.png' %}"
+                       alt="Hautes herbes"
+                       class="action-card__img action-card__img--large"
+                       onerror="this.style.display='none';">
+                </div>
+                <div class="action-card__text">
+                  <div class="action-card__title">Hautes Herbes</div>
+                  <div class="action-card__subtitle">
+                    Partez à la rencontre de Pokémon sauvages dans la zone
+                  </div>
+                </div>
+                <div class="action-card__cta">
+                  <i class="fas fa-search me-2"></i>Chercher un Pokémon
+                  <i class="fas fa-arrow-right ms-2 action-card__arrow"></i>
+                </div>
+              </div>
+            </a>
+            {% endif %}
+
+            <!-- ── Grille des autres actions ─────────────────────────────── -->
+            <div class="action-grid mt-3">
+
+              <!-- Centre Pokémon -->
+              {% if zone.has_pokemon_center %}
+              {% if pokemon_center %}
+              <a href="{% url 'PokemonCenterDetailView' pokemon_center.id %}"
+                 class="action-card action-card--center {% if team_needs_healing %}action-card--urgent{% endif %}">
+              {% else %}
+              <a href="{% url 'PokemonCenterListView' %}"
+                 class="action-card action-card--center">
+              {% endif %}
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
+                    <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}"
+                         alt="Centre Pokémon"
+                         class="action-card__img {% if team_needs_healing %}action-card__img--glow-warn{% endif %}"
+                         onerror="this.style.display='none';">
+                  </div>
+                  <div class="action-card__text">
+                    <div class="action-card__title">Centre Pokémon</div>
+                    {% if team_needs_healing %}
+                    <div class="action-card__alert">
+                      <i class="fas fa-exclamation-triangle me-1"></i>Équipe affaiblie !
+                    </div>
+                    {% endif %}
+                    <div class="action-card__subtitle">
+                      {% if pokemon_center %}{{ pokemon_center.nurse_name }}{% else %}Soignez votre équipe gratuitement{% endif %}
+                    </div>
+                  </div>
+                  <div class="action-card__cta">
+                    <i class="fas fa-heartbeat me-2"></i>
+                    {% if team_needs_healing %}Soigner l'équipe !{% else %}Entrer au centre{% endif %}
+                  </div>
+                </div>
+              </a>
+              {% endif %}
+
+              <!-- Pokemart / Boutique -->
+              {% if zone.has_shop %}
+              {% if zone_shop %}
+              <a href="{% url 'ShopDetailView' zone_shop.id %}" class="action-card action-card--shop">
+              {% else %}
+              <a href="{% url 'ShopListView' %}" class="action-card action-card--shop">
+              {% endif %}
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
+                    <img src="{% static 'img/mapSprites/Kanto/pokeMart.png' %}"
+                         alt="Pokemart"
+                         class="action-card__img"
+                         onerror="this.style.display='none';">
+                  </div>
+                  <div class="action-card__text">
+                    <div class="action-card__title">Pokemart</div>
+                    <div class="action-card__subtitle">
+                      {% if zone_shop %}{{ zone_shop.name }}{% else %}Achetez objets et équipements{% endif %}
+                    </div>
+                  </div>
+                  <div class="action-card__cta">
+                    <i class="fas fa-store me-2"></i>Entrer dans la boutique
+                  </div>
+                </div>
+              </a>
+              {% endif %}
+
+              <!-- Arène / Gym Leader (affiché uniquement depuis la ville, pas depuis l'arène elle-même) -->
+              {% if gym_leader and not is_gym_zone %}
+              {% if gym_zone %}
+              {# Ville avec zone arène : pointer vers l'arène #}
+              <a href="{% if gym_leader_defeated %}#{% else %}{% url 'travel_to_zone' gym_zone.id %}{% endif %}"
+                 class="action-card action-card--gym {% if gym_leader_defeated %}action-card--done{% endif %}"
+                 {% if gym_leader_defeated %}style="pointer-events:none;"{% endif %}>
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}"
+                         alt="{{ gym_leader.trainer.username }}"
+                         class="action-card__img action-card__img--trainer {% if gym_leader_defeated %}action-card__img--defeated{% endif %}"
+                         onerror="this.style.display='none';">
+                  </div>
+                  <div class="action-card__text">
+                    <div class="action-card__title">Arène Pokémon</div>
+                    <div class="action-card__subtitle">
+                      <strong>{{ gym_leader.trainer.username }}</strong> — {{ gym_leader.badge_name }}
+                    </div>
+                    {% if gym_leader_defeated %}
+                    <span class="action-card__badge-won">
+                      <i class="fas fa-medal me-1"></i>Badge obtenu
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning text-dark" style="font-size:.7rem;">
+                      <i class="fas fa-door-open me-1"></i>Entrer dans l'arène
+                    </span>
+                    {% endif %}
+                  </div>
+                  <div class="action-card__cta">
+                    {% if gym_leader_defeated %}
+                    <i class="fas fa-check me-2"></i>Déjà vaincu
+                    {% else %}
+                    <i class="fas fa-fist-raised me-2"></i>Accéder à l'Arène
+                    {% endif %}
+                  </div>
+                </div>
+              </a>
+              {% else %}
+              {# Fallback sans zone arène : combat direct #}
+              <a href="{% if gym_leader_defeated %}#{% else %}{% url 'battle_challenge_gym' gym_leader.id %}{% endif %}"
+                 class="action-card action-card--gym {% if gym_leader_defeated %}action-card--done{% endif %}"
+                 {% if gym_leader_defeated %}style="pointer-events:none;"{% endif %}>
+                <div class="action-card__inner">
+                  <div class="action-card__icon-wrap">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}"
+                         alt="{{ gym_leader.trainer.username }}"
+                         class="action-card__img action-card__img--trainer {% if gym_leader_defeated %}action-card__img--defeated{% endif %}"
+                         onerror="this.style.display='none';">
+                  </div>
+                  <div class="action-card__text">
+                    <div class="action-card__title">Arène Pokémon</div>
+                    <div class="action-card__subtitle">
+                      <strong>{{ gym_leader.trainer.username }}</strong> — {{ gym_leader.badge_name }}
+                    </div>
+                    {% if gym_leader_defeated %}
+                    <span class="action-card__badge-won">
+                      <i class="fas fa-medal me-1"></i>Badge obtenu
+                    </span>
+                    {% endif %}
+                  </div>
+                  <div class="action-card__cta">
+                    {% if gym_leader_defeated %}
+                    <i class="fas fa-check me-2"></i>Déjà vaincu
+                    {% else %}
+                    <i class="fas fa-fist-raised me-2"></i>Défier l'Arène
+                    {% endif %}
+                  </div>
+                </div>
+              </a>
+              {% endif %}
+              {% endif %}
+
+            </div>{# /action-grid #}
+          </div>{# /zone-actions #}
+          {% endif %}
+
+          <!-- ══════════════════════════════════════════════════════════════
+               POKÉMON SAUVAGES — box stylisée
+          ══════════════════════════════════════════════════════════════════ -->
+          {% if wild_spawns and not zone.has_floors %}
+          <div class="wild-box mb-4">
+            <div class="wild-box__header">
+              <i class="fas fa-paw me-2"></i>Pokémon Sauvages
+            </div>
+            <div class="wild-box__body">
+              {% for spawn in wild_spawns %}
+              <div class="wild-row">
+                <div class="wild-row__sprite">
+                  <img src="{% static 'img/sprites_gen5/normal/' %}{{ spawn.pokemon.name|lowerPokemonFileNames }}.png"
+                       alt="{{ spawn.pokemon.name }}"
+                       onerror="this.style.display='none';">
+                </div>
+                <div class="wild-row__info">
+                  <span class="wild-row__name">{{ spawn.pokemon.name }}</span>
+                  <span class="wild-row__types">
+                    <span class="type-chip type-{{ spawn.pokemon.primary_type.name|lower }}">
+                      {{ spawn.pokemon.primary_type.name|upper }}
+                    </span>
+                    {% if spawn.pokemon.secondary_type %}
+                    <span class="type-chip type-{{ spawn.pokemon.secondary_type.name|lower }}">
+                      {{ spawn.pokemon.secondary_type.name|upper }}
+                    </span>
+                    {% endif %}
+                  </span>
+                </div>
+                <div class="wild-row__level">
+                  Niv. {{ spawn.level_min }}–{{ spawn.level_max }}
+                </div>
+                <div class="wild-row__rate">
+                  <div class="wild-rate-bar">
+                    <div class="wild-rate-fill
+                      {% if spawn.spawn_rate >= 50 %}wild-rate--high
+                      {% elif spawn.spawn_rate >= 20 %}wild-rate--mid
+                      {% else %}wild-rate--low{% endif %}"
+                      style="width:{{ spawn.spawn_rate }}%"></div>
+                  </div>
+                  <span class="wild-rate-pct">{{ spawn.spawn_rate }}%</span>
+                </div>
+                {% if not zone.is_safe_zone and is_current %}
+                <div class="wild-row__cta">
+                  <i class="fas fa-chevron-right"></i>
+                </div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- ══ Bloc Champion (affiché uniquement dans la zone arène) ══ -->
+          {% if is_gym_zone and gym_leader %}
+          <div class="card border-warning mb-4">
+            <div class="card-header bg-warning text-dark py-2 d-flex align-items-center justify-content-between">
+              <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Champion d'Arène</h5>
+              {% if gym_leader_defeated %}
+              <span class="badge bg-success"><i class="fas fa-medal me-1"></i>Badge obtenu</span>
+              {% else %}
+              <span class="badge bg-dark">Badge {{ gym_leader.badge_order }}/8</span>
+              {% endif %}
+            </div>
+            <div class="card-body d-flex align-items-center" style="gap:16px;">
+              <img src="{% static 'img/trainer_sprites/' %}{{ gym_leader.trainer|trainer_sprite_path }}"
+                   alt="{{ gym_leader.trainer.username }}"
+                   style="width:80px;height:80px;object-fit:contain;flex-shrink:0;{% if gym_leader_defeated %}filter:grayscale(80%);opacity:.7;{% endif %}"
+                   onerror="this.style.display='none';">
+              <div class="flex-grow-1">
+                <div class="fw-bold fs-5">{{ gym_leader.trainer.username }}</div>
+                <div class="text-muted">{{ gym_leader.gym_name }} — {{ gym_leader.badge_name }}</div>
+                <div class="mt-1">
+                  <span class="badge bg-secondary">{{ gym_leader.specialty_type.name|upper }}</span>
+                </div>
+                {% if gym_leader.trainer.intro_text %}
+                <p class="fst-italic text-muted mt-2 mb-0" style="font-size:.9rem;">"{{ gym_leader.trainer.intro_text }}"</p>
+                {% endif %}
+              </div>
+              {% if is_current %}
+              <div class="flex-shrink-0">
+                {% if gym_leader_defeated %}
+                <span class="btn btn-success disabled"><i class="fas fa-check me-1"></i>Vaincu</span>
+                {% else %}
+                <a href="{% url 'battle_challenge_gym' gym_leader.id %}" class="btn btn-warning btn-lg fw-bold">
+                  <i class="fas fa-fist-raised me-1"></i>Défier !
+                </a>
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Rencontre Rival -->
+          {% if rival_encounter %}
+          <div class="card border-danger mb-4">
+            <div class="card-header bg-danger text-white py-2 d-flex align-items-center justify-content-between">
+              <h5 class="mb-0"><i class="fas fa-user-ninja"></i> Rival — {{ rival_encounter.rival.username }} !</h5>
+              <span class="badge bg-light text-danger">COMBAT REQUIS</span>
+            </div>
+            <div class="card-body">
+              {% if rival_encounter.pre_battle_text %}
+              <blockquote class="blockquote mb-3">
+                <p class="mb-0 fst-italic">"{{ rival_encounter.pre_battle_text }}"</p>
+                <footer class="blockquote-footer mt-2">{{ rival_encounter.rival.username }}</footer>
+              </blockquote>
+              {% endif %}
+              {% if is_current %}
+              <a href="{% url 'battle_create_trainer' rival_encounter.rival.id %}" class="btn btn-danger">
+                <i class="fas fa-fist-raised"></i> Affronter {{ rival_encounter.rival.username }} !
+              </a>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Dresseurs -->
+          {% if trainers %}
+          <h4><i class="fas fa-users"></i> Dresseurs</h4>
+          <div class="list-group mb-4">
+            {% for entry in trainers %}
+            {% with npc=entry.npc is_defeated=entry.is_defeated can_rebattle=entry.can_rebattle %}
+            {% if is_defeated and not can_rebattle %}
+            <div class="list-group-item list-group-item-action disabled" style="opacity:.55;cursor:default;">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                    alt="{{ npc.get_full_title }}"
+                    style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;filter:grayscale(100%);"
+                    onerror="this.style.display='none';">
+                <div class="flex-grow-1">
+                  <strong>{{ npc.get_full_title }}</strong>
+                  {% if npc.is_battle_required %}
+                  <span class="badge bg-danger ms-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
+                  {% endif %}
+                  <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
+                </div>
+                <span class="badge bg-secondary align-self-center"><i class="fas fa-check"></i> Vaincu</span>
+              </div>
+            </div>
+            {% elif is_defeated and can_rebattle %}
+            <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                    alt="{{ npc.get_full_title }}"
+                    style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;"
+                    onerror="this.style.display='none';">
+                <div class="flex-grow-1">
+                  <strong>{{ npc.get_full_title }}</strong>
+                  {% if npc.is_battle_required %}
+                  <span class="badge bg-danger ms-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
+                  {% endif %}
+                  <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
+                </div>
+                <span class="badge bg-warning align-self-center"><i class="fas fa-redo"></i> Revancher</span>
+              </div>
+            </a>
+            {% else %}
+            <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                    alt="{{ npc.get_full_title }}"
+                    style="width:48px;height:48px;object-fit:contain;margin-right:12px;flex-shrink:0;"
+                    onerror="this.style.display='none';">
+                <div class="flex-grow-1">
+                  <strong>{{ npc.get_full_title }}</strong>
+                  {% if npc.is_battle_required %}
+                  <span class="badge bg-warning ms-1"><i class="fas fa-exclamation-triangle"></i> Obligatoire</span>
+                  {% endif %}
+                  <br><small class="text-muted">{{ npc.intro_text|truncatewords:10 }}</small>
+                </div>
+                <span class="badge bg-danger align-self-center"><i class="fas fa-fist-raised"></i> Combattre</span>
+              </div>
+            </a>
+            {% endif %}
+            {% endwith %}
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Dresseurs par étage -->
+          {% if floors_data %}
+          <h4><i class="fas fa-building"></i> Étages & Dresseurs</h4>
+          {% for fd in floors_data %}
+          <div class="card mb-3 {% if not fd.accessible %}border-secondary{% endif %}">
+            <div class="card-header d-flex align-items-center justify-content-between py-2
+                        {% if fd.accessible %}bg-dark text-white{% else %}bg-secondary text-white{% endif %}">
+              <span>
+                <i class="fas fa-layer-group me-1"></i>
+                {% if fd.floor.floor_number == 0 %}Rez-de-chaussée
+                {% elif fd.floor.floor_number > 0 %}Étage {{ fd.floor.floor_number }}
+                {% else %}Sous-sol {{ fd.floor.floor_number|stringformat:"d"|slice:"1:" }}
+                {% endif %}
+                {% if fd.floor.name %} — {{ fd.floor.name }}{% endif %}
+              </span>
+              {% if not fd.accessible %}
+              <span class="badge bg-light text-dark"><i class="fas fa-lock me-1"></i>{{ fd.reason }}</span>
+              {% elif is_current %}
+              <a href="{% url 'floor_detail' zone.id fd.floor.floor_number %}" class="btn btn-sm btn-outline-light">
+                <i class="fas fa-arrow-right"></i> Explorer
+              </a>
+              {% endif %}
+            </div>
+            {% if fd.accessible %}
+            <div class="card-body p-2">
+              {% if fd.trainers %}
+              <div class="list-group list-group-flush">
+                {% for entry in fd.trainers %}
+                {% with npc=entry.npc is_defeated=entry.is_defeated can_rebattle=entry.can_rebattle %}
+                {% if is_defeated and not can_rebattle %}
+                <div class="list-group-item disabled py-2 px-3" style="opacity:.55;">
+                  <div class="d-flex align-items-center">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                         style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;filter:grayscale(100%);"
+                         onerror="this.style.display='none';">
+                    <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
+                    <span class="badge bg-secondary"><i class="fas fa-check"></i> Vaincu</span>
+                  </div>
+                </div>
+                {% elif is_defeated and can_rebattle %}
+                <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action py-2 px-3">
+                  <div class="d-flex align-items-center">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                         style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
+                         onerror="this.style.display='none';">
+                    <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
+                    <span class="badge bg-warning"><i class="fas fa-redo"></i> Revancher</span>
+                  </div>
+                </a>
+                {% else %}
+                <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action py-2 px-3">
+                  <div class="d-flex align-items-center">
+                    <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                         style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
+                         onerror="this.style.display='none';">
+                    <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong><br><small class="text-muted">{{ npc.intro_text|truncatewords:8 }}</small></div>
+                    <span class="badge bg-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
+                  </div>
+                </a>
+                {% endif %}
+                {% endwith %}
+                {% endfor %}
+              </div>
+              {% else %}
+              <p class="text-muted small mb-0 p-2"><i class="fas fa-info-circle"></i> Aucun dresseur à cet étage.</p>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% endif %}
+
+          <!-- Dresseurs non assignés (fallback) -->
+          {% if unassigned_trainers %}
+          <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.85rem;">
+            <i class="fas fa-exclamation-triangle"></i>
+            Ces dresseurs ne sont pas encore assignés à un étage précis.
+            Re-exécutez <code>initNPCTrainersComplete</code> pour corriger leurs locations.
+          </div>
+          <div class="list-group mb-4">
+            {% for entry in unassigned_trainers %}
+            {% with npc=entry.npc is_defeated=entry.is_defeated can_rebattle=entry.can_rebattle %}
+            {% if is_defeated and not can_rebattle %}
+            <div class="list-group-item disabled py-2 px-3" style="opacity:.55;">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                     style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;filter:grayscale(100%);"
+                     onerror="this.style.display='none';">
+                <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong></div>
+                <span class="badge bg-secondary"><i class="fas fa-check"></i> Vaincu</span>
+              </div>
+            </div>
+            {% else %}
+            <a href="{% url 'battle_create_trainer' npc.id %}" class="list-group-item list-group-item-action py-2 px-3">
+              <div class="d-flex align-items-center">
+                <img src="{% static 'img/trainer_sprites/' %}{{ npc|trainer_sprite_path }}"
+                     style="width:40px;height:40px;object-fit:contain;margin-right:10px;flex-shrink:0;"
+                     onerror="this.style.display='none';">
+                <div class="flex-grow-1"><strong>{{ npc.get_full_title }}</strong></div>
+                <span class="badge bg-danger"><i class="fas fa-fist-raised"></i> Combattre</span>
+              </div>
+            </a>
+            {% endif %}
+            {% endwith %}
+            {% endfor %}
+          </div>
+          {% endif %}
+
+        </div>{# /card-body #}
+      </div>{# /card #}
+    </div>{# /col principal #}
+
+    <!-- ── Colonne minimap ─────────────────────────────────────────── -->
+    <div class="col-lg-4 col-xl-3 mt-3 mt-lg-0">
+      <div class="zone-minimap-panel">
+        <div class="card shadow-sm">
+          <div class="card-header py-2 text-center">
+            <strong><i class="fas fa-map-marked-alt"></i> Position sur la carte</strong>
+          </div>
+          <div class="card-body p-2 text-center">
+            {% with minimap=zone.name|zone_minimap_path %}
+            <img src="{% static 'img/mapSprites/Kanto/' %}{{ minimap }}"
+                 alt="Localisation {{ zone.name }}"
+                 class="img-fluid minimap-gif">
+            {% endwith %}
+            <p class="text-muted small mt-2 mb-0">
+              <i class="fas fa-map-marker-alt text-danger"></i>
+              <strong>{{ zone.name }}</strong>
+            </p>
+          </div>
+
+          {% if active_quests %}
+          <div class="card-header py-2 text-center">
+            <strong><i class="fas fa-scroll text-warning"></i> Quêtes en cours</strong>
+          </div>
+          <div class="p-2">
+            {% for progress in active_quests %}
+            <div class="d-flex align-items-start mb-2">
+              <span style="width:8px;height:8px;border-radius:50%;background:#f6c23e;flex-shrink:0;margin-top:5px;margin-right:8px;display:inline-block;"></span>
+              <div>
+                <div class="fw-bold" style="font-size:.8rem;">{{ progress.quest.title }}</div>
+                {% if progress.quest.objective_text %}
+                <div class="text-muted" style="font-size:.72rem;">{{ progress.quest.objective_text }}</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            <a href="{% url 'quest_log' %}" class="btn btn-outline-warning btn-block btn-sm mt-1">
+              Journal complet
+            </a>
+          </div>
+          {% endif %}
+
+          {% if can_fly and is_current %}
+          <div class="fly-sidebar-widget">
+            <a href="{% url 'fly_view' %}" class="fly-sidebar-link">
+              <span class="fly-sidebar-icon"><i class="fas fa-dove"></i></span>
+              <span class="fly-sidebar-content">
+                <span class="fly-sidebar-title">CS02 Vol</span>
+                <span class="fly-sidebar-sub">Voyager rapidement</span>
+              </span>
+              <i class="fas fa-arrow-right fly-sidebar-arrow"></i>
+            </a>
+          </div>
+          {% endif %}
+
+          <!-- ── Widget Repousse ─────────────────────────────────────────── -->
+          {% if is_current and not zone.is_safe_zone %}
+          <div id="repel-widget" class="card shadow-sm mb-2" style="border:1px solid #2a5a2a;background:#0d1f0d;">
+            <div class="card-body py-2 px-3">
+
+              <!-- Repousse active -->
+              <div id="repel-active-block"
+                   style="{% if not active_repel %}display:none;{% endif %}">
+                <div class="d-flex align-items-center gap-2" style="margin-bottom:4px;">
+                  <span style="font-size:1rem;">🚫</span>
+                  <strong id="repel-active-name" style="font-size:.8rem;color:#81c784;">
+                    {{ active_repel.name|default:"" }}
+                  </strong>
+                </div>
+                <div style="font-size:.7rem;color:#aaa;margin-bottom:4px;">
+                  Traversées restantes :
+                  <strong id="repel-steps-left" style="color:#fff;">
+                    {{ active_repel.steps_left|default:"0" }}
+                  </strong>
+                  /
+                  <span id="repel-steps-max">{{ active_repel.steps_max|default:"0" }}</span>
+                </div>
+                <div style="background:#1a3a1a;border-radius:3px;height:5px;overflow:hidden;">
+                  <div id="repel-progress-bar"
+                       style="height:100%;background:#4caf50;border-radius:3px;transition:width .4s;
+                              width:{% if active_repel %}{% widthratio active_repel.steps_left active_repel.steps_max 100 %}{% else %}0{% endif %}%;"></div>
+                </div>
+              </div>
+
+              <!-- Pas de repousse active -->
+              <div id="repel-inactive-block"
+                   style="{% if active_repel %}display:none;{% endif %}">
+                {% if repel_items %}
+                  <div style="font-size:.72rem;color:#aaa;margin-bottom:6px;">
+                    <i class="fas fa-ban" style="color:#ef5350;"></i>
+                    Activer une Repousse pour éviter les combats
+                  </div>
+                  <div class="d-flex flex-column gap-1">
+                    {% for inv in repel_items %}
+                    <button class="btn btn-sm btn-outline-success repel-use-btn"
+                            data-inv-id="{{ inv.id }}"
+                            style="font-size:.7rem;text-align:left;padding:3px 8px;">
+                      <i class="fas fa-ban me-1"></i>
+                      {{ inv.item__name }}
+                      <span class="badge bg-secondary ms-1">×{{ inv.quantity }}</span>
+                    </button>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div style="font-size:.72rem;color:#555;">
+                    <i class="fas fa-ban" style="color:#666;"></i>
+                    Aucune Repousse en stock — achetez-en dans un PokéMart.
+                  </div>
+                {% endif %}
+              </div>
+
+            </div>
+          </div>
+          {% endif %}
+          <!-- /Widget Repousse -->
+
+          <!-- ── Widget Poké Flûte / Ronflex ───────────────────────────── -->
+          {% if snorlax_blocking or snorlax_awakened %}
+          <div class="card shadow-sm mb-2"
+               style="border:1px solid {% if snorlax_blocking %}#b71c1c{% else %}#2e7d32{% endif %};
+                      background:{% if snorlax_blocking %}#1a0505{% else %}#051a05{% endif %};">
+            <div class="card-body py-2 px-3">
+
+              {% if snorlax_blocking %}
+                <!-- Ronflex bloquant -->
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <span style="font-size:1.3rem;">😴</span>
+                  <div>
+                    <div style="font-size:.8rem;font-weight:700;color:#ef9a9a;">
+                      Ronflex bloque la route !
+                    </div>
+                    <div style="font-size:.7rem;color:#aaa;">
+                      Un Ronflex endormi barre complètement le passage.
+                    </div>
+                  </div>
+                </div>
+
+                {% if has_poke_flute %}
+                  <button id="poke-flute-btn"
+                          class="btn btn-sm w-100"
+                          style="background:#e53935;color:#fff;border:none;font-size:.75rem;">
+                    <i class="fas fa-music me-1"></i> Jouer de la Poké Flûte
+                  </button>
+                {% else %}
+                  <div style="font-size:.7rem;color:#888;text-align:center;padding:4px 0;">
+                    <i class="fas fa-music me-1" style="color:#555;"></i>
+                    Obtenez la Poké Flûte pour réveiller le Ronflex.
+                  </div>
+                {% endif %}
+
+              {% else %}
+                <!-- Ronflex réveillé -->
+                <div class="d-flex align-items-center gap-2">
+                  <span style="font-size:1.1rem;">✅</span>
+                  <div style="font-size:.75rem;color:#a5d6a7;">
+                    Le Ronflex a été réveillé — le passage est libre.
+                  </div>
+                </div>
+              {% endif %}
+
+            </div>
+          </div>
+          {% endif %}
+          <!-- /Widget Poké Flûte -->
+
+          <div class="card-header py-2 text-center">
+            <strong><i class="fas fa-route p-2"></i> Zones Adjacentes</strong>
+          </div>
+          <div class="row p-2">
+            {% for conn in connections %}
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <img src="{% static 'img/mapSprites/Kanto/' %}{{ conn.to_zone.name|zone_image_path }}"
+                    alt="{{ conn.to_zone.name }}"
+                    class="card-img-top"
+                    style="height:80px; object-fit:cover; opacity:0.75;"
+                    onerror="this.style.display='none';">
+                <div class="card-body py-2">
+                  <h6 class="mb-1">{{ conn.to_zone.name }}</h6>
+                  {% if is_current %}
+                    {% if conn.is_passable %}
+                    <a href="{% url 'travel_to_zone' conn.to_zone.id %}" class="btn btn-sm btn-primary">
+                      <i class="fas fa-arrow-right"></i> Voyager
+                    </a>
+                    {% else %}
+                    <div class="hm-gate-block mt-1">
+                      <i class="fas fa-lock hm-gate-icon"></i>
+                      <span class="hm-gate-msg">{{ conn.block_reason }}</span>
+                    </div>
+                    {% endif %}
+                  {% else %}
+                  <small class="text-muted">Revenez ici pour voyager</small>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+        </div>
+      </div>
+    </div>{# /col minimap #}
+
+  </div>{# /row #}
+</div>{# /container-fluid #}
+
+{% if zone.music %}
+<div id="zone-bgm-player" class="zone-bgm-widget" title="Musique de zone">
+  <button id="bgm-toggle" class="bgm-btn" aria-label="Lecture / Pause">
+    <i class="fas fa-music" id="bgm-icon"></i>
+  </button>
+  <div class="bgm-info">
+    <span id="bgm-zone-name" class="bgm-zone-name">{{ zone.name }}</span>
+    <div class="bgm-progress-wrap">
+      <div id="bgm-progress-bar" class="bgm-progress-bar"></div>
+    </div>
+  </div>
+  <input id="bgm-volume" type="range" min="0" max="100" value="30"
+         class="bgm-volume" title="Volume" aria-label="Volume">
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block css %}
+  {{ block.super }}
+  <link href="{% static 'css/zone-detail.css'%}" rel="stylesheet" />
+{% endblock css %}
+
+{% block js %}
+{{ block.super }}
+
+<script>
+// ── Widget Repousse — activation AJAX ─────────────────────────────────────
+document.querySelectorAll('.repel-use-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const invId = this.dataset.invId;
+    const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+    fetch('{% url "use_repel" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
+      body: `item_id=${encodeURIComponent(invId)}`
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return;
+
+      // Mettre à jour l'affichage
+      document.getElementById('repel-active-name').textContent  = data.name;
+      document.getElementById('repel-steps-left').textContent   = data.steps_left;
+      document.getElementById('repel-steps-max').textContent    = data.steps_max;
+      document.getElementById('repel-progress-bar').style.width = '100%';
+
+      document.getElementById('repel-inactive-block').style.display = 'none';
+      document.getElementById('repel-active-block').style.display   = '';
+
+      // Toast de confirmation
+      if (typeof showToast === 'function') showToast('success', data.message);
+    })
+    .catch(() => {});
+  });
+});
+</script>
+{% if zone.music %}
+<script>
+(function() {
+  const TRACK = '{% static "sounds/bgm/kanto/" %}{{ zone.music }}.mp3';
+  const STORAGE_KEY_VOL = 'zoneBgmVolume';
+  const widget   = document.getElementById('zone-bgm-player');
+  const toggleBtn= document.getElementById('bgm-toggle');
+  const icon     = document.getElementById('bgm-icon');
+  const progress = document.getElementById('bgm-progress-bar');
+  const volumeEl = document.getElementById('bgm-volume');
+  let audio = null, playing = false;
+  const savedVol = parseFloat(localStorage.getItem(STORAGE_KEY_VOL) ?? '30');
+  volumeEl.value = savedVol;
+  function buildAudio() {
+    if (audio) audio.pause();
+    audio = new Audio(TRACK);
+    audio.loop = true;
+    audio.volume = volumeEl.value / 100;
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) progress.style.width = (audio.currentTime / audio.duration * 100) + '%';
+    });
+    audio.addEventListener('error', () => { widget.style.display = 'none'; });
+  }
+  function play() {
+    if (!audio) buildAudio();
+    audio.play().then(() => {
+      playing = true; icon.className = 'fas fa-pause';
+      toggleBtn.classList.remove('paused'); widget.classList.remove('bgm-idle');
+    }).catch(() => {});
+  }
+  function pause() {
+    if (audio) audio.pause();
+    playing = false; icon.className = 'fas fa-music';
+    toggleBtn.classList.add('paused'); widget.classList.add('bgm-idle');
+  }
+  toggleBtn.addEventListener('click', () => playing ? pause() : play());
+  volumeEl.addEventListener('input', () => {
+    const vol = volumeEl.value / 100;
+    if (audio) audio.volume = vol;
+    localStorage.setItem(STORAGE_KEY_VOL, volumeEl.value);
+  });
+  buildAudio(); widget.classList.add('bgm-idle'); play();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && audio) audio.volume = Math.min(audio.volume, 0.1);
+    else if (!document.hidden && audio && playing) audio.volume = volumeEl.value / 100;
+  });
+
+  // Lancer dès le chargement
+  start();
+})();
+
+// ── Widget Poké Flûte — réveil du Ronflex ────────────────────────────────
+(function() {
+  const btn = document.getElementById('poke-flute-btn');
+  if (!btn) return;
+  btn.addEventListener('click', function() {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Mélodie en cours…';
+    const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    fetch('{% url "use_poke_flute" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
+      body: `zone_id={{ zone.id }}`
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        if (typeof showToast === 'function') showToast('success', data.message);
+        // Remplacer le widget entièrement
+        const widget = btn.closest('.card');
+        if (widget) {
+          widget.style.border = '1px solid #2e7d32';
+          widget.style.background = '#051a05';
+          widget.querySelector('.card-body').innerHTML = `
+            <div class="d-flex align-items-center gap-2">
+              <span style="font-size:1.1rem;">✅</span>
+              <div style="font-size:.75rem;color:#a5d6a7;">
+                Le Ronflex s'en va — le passage est libre !
+              </div>
+            </div>`;
+        }
+        // Afficher les récompenses de quête éventuelles
+        if (data.rewards && data.rewards.length) {
+          data.rewards.forEach(msg => {
+            if (typeof showToast === 'function') showToast('success', msg);
+          });
+        }
+      } else {
+        if (typeof showToast === 'function') showToast('error', data.message || 'Erreur.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-music me-1"></i> Jouer de la Poké Flûte';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-music me-1"></i> Jouer de la Poké Flûte';
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock js %}

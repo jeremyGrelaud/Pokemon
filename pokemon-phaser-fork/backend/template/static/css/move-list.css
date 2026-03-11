@@ -1,0 +1,62 @@
+/* ── Liens sans soulignement ────────────────────────────────────────── */
+.moves-table .move-link {
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+}
+.moves-table .move-link:hover { color: #c0392b; }
+
+/* ── En-têtes triables ──────────────────────────────────────────────── */
+.moves-table thead a {
+  color: #5a5c69;
+  font-weight: 600;
+  text-decoration: none;
+}
+.moves-table thead a:hover { color: #c0392b; }
+
+/* ── Badge type pill ────────────────────────────────────────────────── */
+.badge-type-pill {
+  display: inline-block;
+  padding: .28em .75em;
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+
+/* ── Colonnes numériques centrées ───────────────────────────────────── */
+.moves-table td:nth-child(4),
+.moves-table td:nth-child(5),
+.moves-table td:nth-child(6),
+.moves-table th:nth-child(4),
+.moves-table th:nth-child(5),
+.moves-table th:nth-child(6) {
+  text-align: center;
+}
+
+/* ── Pagination ─────────────────────────────────────────────────────── */
+.pagination .page-item.active .page-link {
+  background-color: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+.pagination .page-link { color: #c0392b; }
+.pagination .page-link:hover { color: #96281b; }
+
+.section-title { color: #c0392b; font-weight: 700; }
+
+.result-count {
+  background: #f8f9fa;
+  border: 1px solid #e3e6f0;
+  border-radius: 8px;
+  padding: 4px 14px;
+  font-size: .82rem;
+  color: #5a5c69;
+}
+
+/* ── Bouton catégorie actif : icône blanchie ────────────────────────── */
+.cat-btn-img { width:18px; height:18px; object-fit:contain; }
+.btn-danger   .cat-btn-img,
+.btn-primary  .cat-btn-img,
+.btn-success  .cat-btn-img { filter: brightness(10); }

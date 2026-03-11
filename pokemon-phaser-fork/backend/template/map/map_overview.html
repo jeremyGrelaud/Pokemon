@@ -1,0 +1,780 @@
+{% extends "base.html" %}
+{% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/map-overview.css' %}" rel="stylesheet" />
+{% endblock css %}
+{% load custom_filters %}
+
+{% block title %}<title>Carte de Kanto</title>{% endblock %}
+
+{% block content %}
+<div class="kanto-map-page">
+
+  <!-- ── Breadcrumb ───────────────────────────────────────────────────────── -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+      <li class="breadcrumb-item active">Carte de Kanto</li>
+    </ol>
+  </nav>
+
+  <!-- ── En-tête ──────────────────────────────────────────────────────────── -->
+  <div class="map-header d-flex align-items-center justify-content-between mb-2">
+    <div>
+      <h1 class="map-title mb-0"><i class="fas fa-map"></i> Carte de Kanto</h1>
+      <small class="text-muted">
+        {{ zones|length }} zones &nbsp;·&nbsp;
+        <i class="fas fa-map-marker-alt text-success"></i>
+        <strong class="text-light">
+          {% if map_zone.id != current_zone.id %}
+            {{ map_zone.name }} <span class="text-muted" style="font-weight:400;font-size:.85em;">({{ current_zone.name }})</span>
+          {% else %}
+            {{ current_zone.name }}
+          {% endif %}
+        </strong>
+      </small>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button class="btn btn-sm btn-outline-success" onclick="MapUI.focusCurrent()">
+        <i class="fas fa-crosshairs"></i> Ma position
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="MapUI.resetView()">
+        <i class="fas fa-compress-arrows-alt"></i> Vue globale
+      </button>
+      {% if can_fly %}
+      <a href="{% url 'fly_view' %}" class="btn btn-sm btn-primary fly-map-btn">
+        <i class="fas fa-dove me-1"></i>Vol
+        <span class="badge bg-light text-primary ms-1" style="font-size:.65rem;">CS02</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+
+
+  <!-- ── Corps ────────────────────────────────────────────────────────────── -->
+  <div class="map-body">
+
+    <!-- Canvas SVG avec image Kanto en fond -->
+    <div class="map-canvas-wrap">
+      <!-- Légende flottante sur la carte -->
+      <div class="map-legend-overlay">
+        <div class="leg"><span class="dot" style="background:#4caf50;box-shadow:0 0 4px rgba(76,175,80,.8)"></span>Position</div>
+        <div class="leg"><span class="dot" style="background:#42a5f5"></span>Visitée</div>
+        <div class="leg"><span class="dot" style="background:#90a4ae"></span>Inexplorée</div>
+        <div class="leg-sep"></div>
+        <div class="leg" title="CS requise (Coupe, Surf, Vol…)"><span class="dot" style="background:#ff6d00;opacity:.9"></span>💧 CS requise</div>
+        <div class="leg" title="Badge d'arène requis"><span class="dot" style="background:#8e24aa;opacity:.9"></span>🏅 Badge requis</div>
+        <div class="leg" title="Objet clé ou quête requise"><span class="dot" style="background:#4e342e;opacity:.9"></span>📜 Quête/Objet</div>
+        <div class="leg-sep"></div>
+        <div class="leg"><span class="poi-star">★</span>Arène</div>
+        <div class="leg"><span class="poi-sq" style="background:#ef5350"></span>Centre Pkm</div>
+        <div class="leg"><span class="poi-sq" style="background:#ab47bc"></span>Boutique</div>
+        <div class="leg-sep"></div>
+        <div class="leg leg-hint"><i class="fas fa-scroll fa-xs"></i>&nbsp;Scroll = zoom</div>
+        <div class="leg leg-hint"><i class="fas fa-hand-paper fa-xs"></i>&nbsp;Glisser = nav</div>
+        <div class="leg leg-hint"><i class="fas fa-mouse fa-xs"></i>&nbsp;2× clic = voyager</div>
+      </div>
+      <svg id="kantoSvg" viewBox="70 10 900 660" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- Glow vert pour position courante -->
+          <filter id="glow-cur" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <!-- Filtre zones bloquées : légère transparence sans désaturation -->
+          <filter id="f-lock">
+            <feComponentTransfer><feFuncA type="linear" slope="0.72"/></feComponentTransfer>
+          </filter>
+          <!-- Ombre douce pour labels -->
+          <filter id="f-txt" x="-5%" y="-10%" width="110%" height="130%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="rgba(0,0,0,0.9)"/>
+          </filter>
+        </defs>
+
+        <!-- ════ IMAGE KANTO ════ -->
+        <image href="{% static 'img/mapSprites/Kanto/Full_Kanto_Map.png' %}"
+               x="0" y="0" width="1000" height="707"
+               preserveAspectRatio="xMidYMid slice"/>
+
+        <!-- Voile très léger pour faire ressortir les overlays -->
+        <rect width="1000" height="707" fill="rgba(0,0,0,0.12)"/>
+
+        <!-- Couches (ordre : connexions < nœuds < labels) -->
+        <g id="g-conn"></g>
+        <g id="g-nodes"></g>
+        <g id="g-labels"></g>
+
+        <!-- Rose des vents (coin haut-droit, hors zone dense) -->
+        <g transform="translate(960,42)">
+          <circle r="28" fill="rgba(5,15,25,0.78)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+          <text y="-16" text-anchor="middle" fill="#eceff1" font-size="9.5" font-family="'Courier New',monospace" font-weight="700">N</text>
+          <text y="20"  text-anchor="middle" fill="#eceff1" font-size="9.5" font-family="'Courier New',monospace" font-weight="700">S</text>
+          <text x="-17" y="4"  text-anchor="middle" fill="#eceff1" font-size="9.5" font-family="'Courier New',monospace" font-weight="700">O</text>
+          <text x="17"  y="4"  text-anchor="middle" fill="#eceff1" font-size="9.5" font-family="'Courier New',monospace" font-weight="700">E</text>
+          <line x1="0" y1="-11" x2="0" y2="11" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+          <line x1="-11" y1="0" x2="11" y2="0" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+          <polygon points="0,-11 -3.5,-3 0,-6.5 3.5,-3" fill="#ef5350"/>
+          <polygon points="0,11  -3.5,3  0,6.5  3.5,3"  fill="rgba(255,255,255,0.35)"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- ── Panneau détail ─────────────────────────────────────────────────── -->
+    <div class="map-panel">
+      <div id="panel-empty" class="panel-empty">
+        <img src="{% static 'img/pokeball.png' %}" style="width:36px;opacity:.2;margin-bottom:10px">
+        <p class="text-muted small mb-0">Cliquez sur une<br>zone pour explorer</p>
+      </div>
+      <div id="panel-detail" class="d-none panel-scroll"></div>
+    </div>
+
+  </div><!-- /map-body -->
+</div><!-- /kanto-map-page -->
+
+<script>
+const KD = {  // KantoData
+  curId:   {{ map_zone.id|default:current_zone.id|default:"null" }},
+  realId:  {{ current_zone.id|default:"null" }},
+  curName: "{{ current_zone.name|default:''|escapejs }}",
+  static:  "{% static '' %}",
+  urlZone: "{% url 'zone_detail'    0 %}".replace('/0/','/'),
+  urlGo:   "{% url 'travel_to_zone' 0 %}".replace('/0/','/'),
+  // IDs des zones directement connectées (adjacentes) à la zone courante
+  adj: new Set([{% for cid in connected_zone_ids %}{{ cid }},{% endfor %}]),
+  zones: [
+    {% for zd in zones %}{
+      id:    {{ zd.zone.id }},
+      name:  "{{ zd.zone.name|escapejs }}",
+      type:  "{{ zd.zone.zone_type }}",
+      ok:    {{ zd.accessible|yesno:"true,false" }},
+      seen:  {{ zd.visited|yesno:"true,false" }},
+      gym:   {{ zd.has_gym|yesno:"true,false" }},
+      ctr:   {{ zd.zone.has_pokemon_center|yesno:"true,false" }},
+      shop:  {{ zd.zone.has_shop|yesno:"true,false" }},
+      safe:  {{ zd.zone.is_safe_zone|yesno:"true,false" }},
+      lmin:  {{ zd.zone.recommended_level_min }},
+      lmax:  {{ zd.zone.recommended_level_max }},
+      why:   "{{ zd.reason|default:''|escapejs }}",
+      gymLock: "{{ zd.gym_lock|default:''|escapejs }}",
+      desc:  "{{ zd.zone.description|truncatewords:18|escapejs }}",
+      img:   "{{ zd.zone.name|zone_image_path }}",
+    },{% endfor %}
+  ],
+};
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  POSITIONS CALÉES SUR LA CARTE KANTO OFFICIELLE (viewBox 1000×707)
+// ══════════════════════════════════════════════════════════════════════════════
+const POS_OLD = {
+  // Villes
+  "Plateau Indigo":        { x:  55, y:  39 },
+  "Argenta":               { x: 117, y: 163 },
+  "Jadielle":              { x: 117, y: 276 },
+  "Bourg Palette":         { x: 117, y: 378 },
+  "Azuria":                { x: 348, y: 120 },
+  "Safrania":              { x: 435, y: 246 },
+  "Céladopole":            { x: 315, y: 255 },
+  "Carmin sur Mer":        { x: 507, y: 304 },
+  "Lavanville":            { x: 592, y: 189 },
+  "Parmanie":              { x: 362, y: 373 },
+  "Cramois'Île":           { x: 162, y: 481 },
+  // Routes axe gauche
+  "Route 22":              { x:  58, y: 276 },
+  "Route 23":              { x:  58, y: 212 },
+  "Chemin de la Victoire": { x:  58, y: 141 },
+  "Route 1":               { x: 117, y: 329 },
+  "Route 2":               { x: 117, y: 223 },
+  "Forêt de Jade":         { x: 152, y: 191 },
+  "Route 3":               { x: 205, y: 163 },
+  "Mont Sélénite":         { x: 268, y: 131 },
+  "Route 4":               { x: 318, y: 120 },
+  // Nord Azuria
+  "Route 24":              { x: 348, y:  69 },
+  "Route 25":              { x: 455, y:  51 },
+  "Grottes Inconnues":     { x: 418, y: 110 },
+  // Est
+  "Route 9":               { x: 478, y: 145 },
+  "Tunnel Roche":          { x: 535, y: 163 },
+  "Route 10":              { x: 565, y: 184 },
+  "Centrale":              { x: 512, y: 168 },
+  "Tour Pokémon":          { x: 672, y: 187 },
+  // Centre
+  "Route 5":               { x: 393, y: 182 },
+  "Route 6":               { x: 470, y: 276 },
+  "Route 7":               { x: 375, y: 251 },
+  "Route 8":               { x: 515, y: 216 },
+  "Route 11":              { x: 604, y: 269 },
+  "Route 12":              { x: 632, y: 317 },
+  "Route 13":              { x: 592, y: 362 },
+  "Route 14":              { x: 525, y: 375 },
+  "Route 15":              { x: 444, y: 375 },
+  // Ouest
+  "Route 16":              { x: 245, y: 265 },
+  "Route 17":              { x: 245, y: 322 },
+  "Route 18":              { x: 245, y: 373 },
+  "Zone Safari":           { x: 295, y: 410 },
+  // Maritime
+  "Route 19":              { x: 295, y: 445 },
+  "Îles Écume":            { x: 215, y: 474 },
+  "Route 20":              { x: 162, y: 495 },
+  "Route 21":              { x: 117, y: 431 },
+};
+
+
+const POS = {
+  // Villes
+  "Plateau Indigo":        { x: 128, y:  36 },
+  "Argenta":               { x: 249, y: 146 },
+  "Jadielle":              { x: 241, y: 326 },
+  "Bourg Palette":         { x: 236, y: 464 },
+  "Azuria":                { x: 648, y: 130 },
+  "Safrania":              { x: 650, y: 253 },
+  "Céladopole":            { x: 476, y: 243 },
+  "Carmin sur Mer":        { x: 646, y: 396 },
+  "Lavanville":            { x: 884, y: 259 },
+  "Parmanie":              { x: 504, y: 537 },
+  "Cramois'Île":           { x: 233, y: 650 },
+
+  // Routes axe gauche
+  "Route 22":              { x: 150, y: 326 },
+  "Route 23":              { x: 123, y: 278 },
+  "Chemin de la Victoire": { x: 124, y: 170 },
+  "Route 1":               { x: 243, y: 404 },
+  "Route 2":               { x: 250, y: 278 },
+  "Forêt de Jade":         { x: 234, y: 222 },
+  "Route 3":               { x: 350, y: 145 },
+  "Mont Sélénite":         { x: 431, y: 132 },
+  "Route 4":               { x: 521, y: 130 },
+
+  // Nord Azuria
+  "Route 24":              { x: 651, y:  45 },
+  "Route 25":              { x: 757, y:  43 },
+  "Grottes Inconnues":     { x: 604, y:  96 },
+
+  // Est
+  "Route 9":               { x: 772, y: 118 },
+  "Tunnel Roche":          { x: 884, y: 117 },
+  "Route 10":              { x: 893, y: 194 },
+  "Centrale":              { x: 869, y: 165 },
+  "Tour Pokémon":          { x: 910, y: 236 },
+
+  // Centre
+  "Route 5":               { x: 647, y: 181 },
+  "Route 6":               { x: 649, y: 327 },
+  "Route 7":               { x: 562, y: 250 },
+  "Route 8":               { x: 778, y: 253 },
+  "Route 11":              { x: 800, y: 387 },
+  "Route 12":              { x: 898, y: 391 },
+  "Route 13":              { x: 805, y: 491 },
+  "Route 14":              { x: 730, y: 517 },
+  "Route 15":              { x: 643, y: 542 },
+
+  // Ouest
+  "Route 16":              { x: 361, y: 243 },
+  "Route 17":              { x: 355, y: 383 },
+  "Route 18":              { x: 356, y: 534 },
+  "Zone Safari":           { x: 500, y: 439 },
+  "Cave Taupiqueur":       { x: 710, y: 380 },
+  "Île Nuptiale":          { x: 675, y:  80 },
+  // Bâtiments (rattachés à leur ville)
+  "SS Anne":               { x: 646, y: 440 },
+  "Quartier Général Rocket": { x: 508, y: 279 },
+  "Sylphe SARL":           { x: 692, y: 230 },
+  "Manoir Pokémon":        { x: 205, y: 650 },
+
+  // Maritime
+  "Route 19":              { x: 491, y: 653 },
+  "Îles Écume":            { x: 387, y: 660 },
+  "Route 20":              { x: 309, y: 661 },
+  "Route 21":              { x: 234, y: 558 },
+};
+
+const EDGES = [
+  ["Bourg Palette","Route 1"],["Route 1","Jadielle"],
+  ["Jadielle","Route 2"],["Route 2","Forêt de Jade"],["Forêt de Jade","Argenta"],
+  ["Argenta","Route 3"],["Route 3","Mont Sélénite"],
+  ["Mont Sélénite","Route 4"],["Route 4","Azuria"],
+  ["Azuria","Route 24"],["Route 24","Route 25"],
+  ["Azuria","Grottes Inconnues"],
+  ["Azuria","Route 9"],["Route 9","Tunnel Roche"],
+  ["Tunnel Roche","Route 10"],["Route 10","Lavanville"],
+  ["Route 10","Centrale"],["Route 9","Centrale"],
+  ["Lavanville","Tour Pokémon"],
+  ["Azuria","Route 5"],["Route 5","Safrania"],
+  ["Safrania","Route 6"],["Route 6","Carmin sur Mer"],
+  ["Carmin sur Mer","Route 11"],["Route 11","Route 12"],
+  ["Route 12","Lavanville"],["Route 12","Route 13"],
+  ["Route 13","Route 14"],["Route 14","Route 15"],["Route 15","Parmanie"],
+  ["Safrania","Route 7"],["Route 7","Céladopole"],
+  ["Safrania","Route 8"],["Route 8","Lavanville"],
+  ["Céladopole","Route 16"],["Route 16","Route 17"],
+  ["Route 17","Route 18"],["Route 18","Parmanie"],
+  ["Parmanie","Zone Safari"],
+  ["Parmanie","Route 19"],["Route 19","Îles Écume"],
+  ["Îles Écume","Route 20"],["Route 20","Cramois'Île"],
+  ["Cramois'Île","Route 21"],["Route 21","Bourg Palette"],
+  ["Jadielle","Route 22"],
+  ["Route 22","Route 23"],
+  ["Route 23","Chemin de la Victoire"],["Chemin de la Victoire","Plateau Indigo"],
+  ["Carmin sur Mer","Cave Taupiqueur"],["Cave Taupiqueur","Route 2"],
+  ["Route 24","Île Nuptiale"],
+  ["Carmin sur Mer","SS Anne"],
+  ["Céladopole","Quartier Général Rocket"],
+  ["Safrania","Sylphe SARL"],
+  ["Cramois'Île","Manoir Pokémon"],
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+const MapUI = (() => {
+  const svg    = document.getElementById('kantoSvg');
+  const gConn  = document.getElementById('g-conn');
+  const gNodes = document.getElementById('g-nodes');
+  const gLab   = document.getElementById('g-labels');
+  const pEmpty  = document.getElementById('panel-empty');
+  const pDetail = document.getElementById('panel-detail');
+
+  const byName = {};
+  KD.zones.forEach(z => byName[z.name] = z);
+
+  // Couleur selon état
+  const C = {
+    current:    '#4caf50',
+    visited:    '#42a5f5',
+    unknown:    '#90a4ae',
+    locked:       '#546e7a',   // générique
+    locked_hm:    '#ff6d00',   // bloqué par CS  — orange vif
+    locked_badge: '#8e24aa',   // bloqué par badge — violet
+    locked_item:  '#c62828',   // bloqué par objet clé — rouge
+    locked_story: '#4e342e',   // bloqué par flag/quête — brun foncé
+  };
+
+  /**
+   * Catégorise la raison du blocage à partir du texte 'why'.
+   * Retourne 'hm' | 'badge' | 'item' | 'story' | 'generic'
+   */
+  function blockType(why) {
+    if (!why) return 'generic';
+    const w = why.toLowerCase();
+    if (w.includes('cs') || w.includes('coupe') || w.includes('surf') || w.includes('vol') || w.includes('force') || w.includes('flash')) return 'hm';
+    if (w.includes('badge')) return 'badge';
+    if (w.includes('objet')) return 'item';
+    if (w.includes('quête') || w.includes('condition') || w.includes('manquante')) return 'story';
+    return 'generic';
+  }
+
+  function lockedColor(why) {
+    switch (blockType(why)) {
+      case 'hm':    return C.locked_hm;
+      case 'badge': return C.locked_badge;
+      case 'item':  return C.locked_item;
+      case 'story': return C.locked_story;
+      default:      return C.locked;
+    }
+  }
+
+  function lockedIcon(why) {
+    switch (blockType(why)) {
+      case 'hm':    return '💧'; // CS
+      case 'badge': return '🏅'; // badge
+      case 'item':  return '🔑'; // objet clé
+      case 'story': return '📜'; // quête
+      default:      return '🔒';
+    }
+  }
+
+  function color(z) {
+    if (z.id === KD.curId) return C.current;
+    if (!z.ok)  return lockedColor(z.why);
+    if (z.seen) return C.visited;
+    return C.unknown;
+  }
+  function radius(z) {
+    return { city:12, cave:9, forest:9, building:8 }[z.type] || 6;
+  }
+
+  // ── Connexions ────────────────────────────────────────────────────────────
+  function buildConnections() {
+    EDGES.forEach(([a, b]) => {
+      const pa = POS[a], pb = POS[b]; if (!pa||!pb) return;
+      const za = byName[a], zb = byName[b];
+      const active = za && zb && za.ok && zb.ok;
+      const l = ns('line');
+      attrs(l, {
+        x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y,
+        stroke: 'rgba(255,255,255,0.38)',
+        'stroke-width': '1.8',
+        'stroke-dasharray': active ? '' : '5 4',
+        'stroke-linecap': 'round',
+      });
+      gConn.appendChild(l);
+    });
+  }
+
+  // ── Nœuds ─────────────────────────────────────────────────────────────────
+  function buildNodes() {
+    KD.zones.forEach(z => {
+      const p = POS[z.name]; if (!p) return;
+      const r = radius(z), col = color(z), isCur = z.id === KD.curId;
+
+      const g = ns('g');
+      g.setAttribute('class','zn');
+      g.dataset.id   = z.id;
+      g.dataset.name = z.name;
+      g.style.cursor = 'pointer';
+      if (!z.ok) g.setAttribute('filter','url(#f-lock)');
+
+      // Pulse halo position courante
+      if (isCur) {
+        const h = ns('circle');
+        attrs(h, { cx: p.x, cy: p.y, r: r+9, fill:'rgba(76,175,80,0.2)', class:'pulse' });
+        g.appendChild(h);
+      }
+
+      // Ombre portée
+      const sh = ns('circle');
+      attrs(sh, { cx: p.x+1, cy: p.y+1, r, fill:'rgba(0,0,0,0.6)' });
+      g.appendChild(sh);
+
+      // Cercle principal
+      const c = ns('circle');
+      attrs(c, {
+        cx: p.x, cy: p.y, r, fill: col,
+        stroke: isCur ? '#fff' : (!z.ok ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.55)'),
+        'stroke-width': isCur ? '2.5' : (!z.ok ? '2' : '1.5'),
+        'stroke-dasharray': (!z.ok) ? '3 2' : '',
+      });
+      if (isCur) c.setAttribute('filter','url(#glow-cur)');
+      g.appendChild(c);
+
+      // Icône de blocage (petit texte SVG centré sur le nœud)
+      if (!z.ok) {
+        const icon = ns('text');
+        attrs(icon, {
+          x: p.x, y: p.y + 4,
+          'text-anchor': 'middle',
+          'font-size': Math.max(7, r - 2),
+          opacity: '0.85',
+        });
+        icon.textContent = lockedIcon(z.why);
+        g.appendChild(icon);
+      }
+
+      // Badge d'arène verrouillée sur la ville (petit cadenas médaille en coin)
+      if (z.gymLock && z.ok) {
+        const glock = ns('text');
+        attrs(glock, {
+          x: p.x + r + 1, y: p.y - r + 1,
+          'text-anchor': 'middle',
+          'font-size': 7,
+          opacity: '0.9',
+        });
+        glock.textContent = '🏅';
+        g.appendChild(glock);
+      }
+
+      // POI
+      let ox = p.x + r + 5;
+      if (z.gym)  { g.appendChild(mkText(ox, p.y - r + 6, '★', '#ffd600', 10)); ox += 10; }
+      if (z.ctr)  { g.appendChild(mkPoiCenter(ox + 5.5, p.y - r));              ox += 14; }
+      if (z.shop) { g.appendChild(mkPoiShop(ox + 5.5,   p.y - r)); }
+
+      // Label (villes, grottes, forêts, bâtiments, position courante)
+      if (['city','cave','forest','building'].includes(z.type) || isCur) {
+        const lbl = z.name.length > 14 ? z.name.slice(0,13)+'…' : z.name;
+        const tw  = lbl.length * 5.3;
+        const bg  = ns('rect');
+        attrs(bg, {
+          x: p.x - tw/2 - 2, y: p.y + r + 3,
+          width: tw + 4, height: 13,
+          fill:'rgba(0,0,0,0.68)', rx: 2,
+        });
+        gLab.appendChild(bg);
+        const t = ns('text');
+        attrs(t, {
+          x: p.x, y: p.y + r + 13,
+          'text-anchor':'middle',
+          fill: isCur ? '#c8e6c9' : z.seen ? '#90caf9' : '#e0e0e0',
+          'font-size': 9,
+          'font-weight': isCur ? 700 : 500,
+          'font-family':"'Courier New',monospace",
+        });
+        t.textContent = lbl;
+        gLab.appendChild(t);
+      }
+
+      // Interactions
+      g.addEventListener('click', () => openPanel(z));
+
+      // Double-clic → voyager directement (zones accessibles et adjacentes)
+      g.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        if (z.id === KD.curId) {
+          window.location.href = `${KD.urlZone}${KD.realId}/`;
+        } else if (z.ok && KD.adj.has(z.id)) {
+          window.location.href = `${KD.urlGo}${z.id}/`;
+        } else if (z.ok) {
+          openPanel(z); // accessible mais non adjacent : ouvre le panel
+        }
+      });
+
+      g.addEventListener('mouseenter', () => { c.setAttribute('r', r+2.5); });
+      g.addEventListener('mouseleave', () => { c.setAttribute('r', r); });
+      // Curseur et tooltip selon accessibilité
+      if (!z.ok) {
+        g.style.cursor = 'not-allowed';
+        const title = ns('title');
+        title.textContent = `${z.name} — ${z.why || 'Inaccessible'}`;
+        g.appendChild(title);
+      } else if (z.ok && KD.adj.has(z.id) && z.id !== KD.curId) {
+        g.style.cursor = 'pointer';
+        const title = ns('title');
+        const extra = z.gymLock ? ` · 🏅 ${z.gymLock}` : '';
+        title.textContent = `Double-clic pour voyager vers ${z.name}${extra}`;
+        g.appendChild(title);
+      } else if (z.ok) {
+        g.style.cursor = 'pointer';
+        const title = ns('title');
+        const extra = z.gymLock ? ` · 🏅 ${z.gymLock}` : '';
+        title.textContent = z.id === KD.curId ? z.name : `${z.name} — cliquer pour détails${extra}`;
+        g.appendChild(title);
+      }
+
+      gNodes.appendChild(g);
+    });
+  }
+
+  // ── Panneau latéral ───────────────────────────────────────────────────────
+  function openPanel(z) {
+    pEmpty.classList.add('d-none');
+    pDetail.classList.remove('d-none');
+
+    const isCur = z.id === KD.curId;
+    const isAdj = KD.adj.has(z.id);   // Zone directement adjacente ?
+    const curLabel = (KD.realId !== KD.curId && isCur)
+      ? `Vous êtes ici (${KD.curName})`
+      : 'Vous êtes ici';
+
+    // Badge état
+    const badge = isCur
+      ? `<span class="badge bg-success"><i class="fas fa-map-marker-alt me-1"></i>${curLabel}</span>`
+      : !z.ok
+        ? (() => {
+            const bt = blockType(z.why);
+            const colors = { hm:'#e65100', badge:'#6a1a9a', item:'#bf360c', story:'#4e342e', generic:'#546e7a' };
+            const icons  = { hm:'fas fa-water', badge:'fas fa-medal', item:'fas fa-key', story:'fas fa-scroll', generic:'fas fa-lock' };
+            return `<span class="badge" style="background:${colors[bt]||'#546e7a'}">
+              <i class="${icons[bt]||'fas fa-lock'} me-1"></i>${z.why || 'Inaccessible'}
+            </span>`;
+          })()
+        : z.seen
+          ? `<span class="badge bg-primary"><i class="fas fa-check me-1"></i>Visitée</span>`
+          : `<span class="badge bg-secondary">Inexplorée</span>`;
+
+    // POI
+    let poi = '';
+    if (z.gym)  poi += `<span class="badge bg-warning me-1"><i class="fas fa-trophy me-1"></i>Arène</span>`;
+    if (z.gymLock) poi += `<span class="badge me-1" style="background:#8e24aa" title="${z.gymLock}"><i class="fas fa-medal me-1"></i>Arène verrouillée</span>`;
+    if (z.ctr)  poi += `<span class="badge bg-danger me-1"><i class="fas fa-hospital me-1"></i>Centre</span>`;
+    if (z.shop) poi += `<span class="badge me-1" style="background:#ab47bc;color:#fff"><i class="fas fa-shopping-bag me-1"></i>Boutique</span>`;
+    if (!z.safe) poi += `<span class="badge bg-secondary"><i class="fas fa-leaf me-1"></i>Sauvages</span>`;
+
+    // Direction
+    const dirHtml = buildDir(z);
+
+    // ── Boutons ──────────────────────────────────────────────────────────────
+    let btns = '';
+    if (isCur) {
+      btns = `<a href="${KD.urlZone}${KD.realId}/" class="btn btn-success btn-sm btn-block mt-3">
+        <i class="fas fa-map-marker-alt me-1"></i>Voir ma zone
+      </a>`;
+    } else if (z.ok) {
+      btns = `<a href="${KD.urlZone}${z.id}/" class="btn btn-outline-info btn-sm btn-block mt-3">
+        <i class="fas fa-eye me-1"></i>Voir la zone
+      </a>`;
+      if (isAdj) {
+        // Zone adjacente → bouton Voyager
+        btns += `<a href="${KD.urlGo}${z.id}/" class="btn btn-primary btn-sm btn-block mt-1">
+          <i class="fas fa-walking me-1"></i>Voyager ici
+          <span class="ms-1" style="opacity:.65;font-size:.7rem">(ou double-clic)</span>
+        </a>`;
+      } else {
+        // Non adjacent : info discrète, pas de bouton travel
+        btns += `<p class="travel-note mt-2">
+          <i class="fas fa-route me-1"></i>Non accessible directement depuis votre position
+        </p>`;
+      }
+    } else {
+      btns = `<button class="btn btn-secondary btn-sm btn-block mt-3" disabled>
+        <i class="fas fa-lock me-1"></i>${z.why || 'Inaccessible'}
+      </button>`;
+    }
+
+    const typeIcon = {city:'city',cave:'mountain',forest:'tree',water:'water',building:'landmark',route:'road'};
+    pDetail.innerHTML = `
+      <div class="p-img-wrap">
+        <img src="${KD.static}img/mapSprites/Kanto/${z.img}" alt="${z.name}" class="p-img"
+             onerror="this.style.display='none'">
+        <div class="p-img-over">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <div class="fw-bold" style="font-size:.92rem;line-height:1.2">${z.name}</div>
+              <small class="text-white-50"><i class="fas fa-${typeIcon[z.type]||'map-pin'} me-1"></i>${typeLabel(z.type)}</small>
+            </div>
+            <span class="badge bg-dark ms-1" style="white-space:nowrap">Niv.${z.lmin}–${z.lmax}</span>
+          </div>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="mb-2">${badge}</div>
+        <p class="text-muted small mb-2">${z.desc}</p>
+        ${poi ? `<div class="mb-2">${poi}</div>` : ''}
+        ${dirHtml}
+        ${btns}
+      </div>`;
+  }
+
+  // ── Boussole direction ────────────────────────────────────────────────────
+  function buildDir(z) {
+    const src = POS[KD.curName], dst = POS[z.name];
+    if (!src || !dst || z.id === KD.curId) return '';
+    const dx = dst.x - src.x, dy = dst.y - src.y;
+    const a  = Math.atan2(dy, dx) * 180 / Math.PI;
+    let dir = 'Ouest';
+    if      (a > -22.5  && a <=  22.5)  dir = 'Est';
+    else if (a >  22.5  && a <=  67.5)  dir = 'Sud-Est';
+    else if (a >  67.5  && a <= 112.5)  dir = 'Sud';
+    else if (a > 112.5  && a <= 157.5)  dir = 'Sud-Ouest';
+    else if (a > -157.5 && a <= -112.5) dir = 'Nord-Ouest';
+    else if (a > -112.5 && a <=  -67.5) dir = 'Nord';
+    else if (a >  -67.5 && a <=  -22.5) dir = 'Nord-Est';
+
+    return `<div class="dir-badge mb-2">
+      <svg width="18" height="18" viewBox="-9 -9 18 18" style="flex-shrink:0">
+        <circle r="8" fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+        <polygon points="0,-6 -2.5,0 0,-3 2.5,0" fill="#ef5350" transform="rotate(${a+90})"/>
+        <polygon points="0,6 -2.5,0 0,3 2.5,0"   fill="rgba(255,255,255,0.28)" transform="rotate(${a+90})"/>
+      </svg>
+      <span><strong>${dir}</strong> de votre position</span>
+    </div>`;
+  }
+
+  function typeLabel(t) {
+    return {city:'Ville',route:'Route',cave:'Grotte',forest:'Forêt',water:'Mer',building:'Bâtiment'}[t]||t;
+  }
+
+  // ── Helpers SVG ───────────────────────────────────────────────────────────
+  function ns(tag)       { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+  function attrs(el, kv) { Object.entries(kv).forEach(([k,v]) => el.setAttribute(k, v)); }
+  function mkText(x, y, txt, fill, size) {
+    const e = ns('text'); attrs(e,{x,y,'font-size':size,fill}); e.textContent=txt; return e;
+  }
+  function mkRect(x, y, fill) {
+    const e = ns('rect'); attrs(e,{x,y,width:6,height:6,fill,rx:1}); return e;
+  }
+  // POI enrichis : cercle fond + symbole
+  function mkPoiCenter(cx, cy) {
+    const g = ns('g');
+    // Fond
+    const bg = ns('circle');
+    attrs(bg, { cx, cy, r: 5.5, fill:'#c62828', stroke:'#fff', 'stroke-width':'1' });
+    g.appendChild(bg);
+    // Croix
+    const h = ns('line'); attrs(h, {x1:cx-2.5,y1:cy,x2:cx+2.5,y2:cy,stroke:'#fff','stroke-width':'1.5','stroke-linecap':'round'});
+    const v = ns('line'); attrs(v, {x1:cx,y1:cy-2.5,x2:cx,y2:cy+2.5,stroke:'#fff','stroke-width':'1.5','stroke-linecap':'round'});
+    g.appendChild(h); g.appendChild(v);
+    return g;
+  }
+  function mkPoiShop(cx, cy) {
+    const g = ns('g');
+    const bg = ns('circle');
+    attrs(bg, { cx, cy, r: 5.5, fill:'#7b1fa2', stroke:'#fff', 'stroke-width':'1' });
+    g.appendChild(bg);
+    // $ sign simplifié : losange
+    const d = ns('polygon');
+    attrs(d, { points:`${cx},${cy-3} ${cx+2.5},${cy} ${cx},${cy+3} ${cx-2.5},${cy}`, fill:'#fff' });
+    g.appendChild(d);
+    return g;
+  }
+
+  // ── Pan & Zoom ────────────────────────────────────────────────────────────
+  let vb = {x:70, y:10, w:900, h:660};
+  const RATIO = 660/900, MIN_W = 160, MAX_W = 1000;
+  const VB0 = {x:70, y:10, w:900, h:660}; // vue initiale rognée
+
+  function setVB() {
+    svg.setAttribute('viewBox',`${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`);
+  }
+  function clamp() {
+    vb.x = Math.max(0, Math.min(1000-vb.w, vb.x));
+    vb.y = Math.max(0, Math.min(707 -vb.h, vb.y));
+  }
+
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const sc = e.deltaY > 0 ? 1.1 : 0.91;
+    const nw = Math.max(MIN_W, Math.min(MAX_W, vb.w*sc));
+    if (nw === vb.w) return;
+    const rect = svg.getBoundingClientRect();
+    const mx = (e.clientX-rect.left)/rect.width  * vb.w + vb.x;
+    const my = (e.clientY-rect.top) /rect.height * vb.h + vb.y;
+    vb.w = nw; vb.h = nw*RATIO;
+    vb.x = mx - (e.clientX-rect.left)/rect.width  * vb.w;
+    vb.y = my - (e.clientY-rect.top) /rect.height * vb.h;
+    clamp(); setVB();
+  }, {passive:false});
+
+  let drag=null, hasDragged=false;
+  svg.addEventListener('mousedown', e => {
+    if (e.target.closest('.zn')) return;
+    svg.style.cursor='grabbing';
+    hasDragged = false;
+    drag={sx:e.clientX, sy:e.clientY, vx:vb.x, vy:vb.y};
+  });
+  window.addEventListener('mousemove', e => {
+    if (!drag) return;
+    const dx = Math.abs(e.clientX - drag.sx), dy = Math.abs(e.clientY - drag.sy);
+    if (dx > 4 || dy > 4) hasDragged = true;
+    const r = svg.getBoundingClientRect();
+    vb.x = drag.vx - (e.clientX-drag.sx)*vb.w/r.width;
+    vb.y = drag.vy - (e.clientY-drag.sy)*vb.h/r.height;
+    clamp(); setVB();
+  });
+  window.addEventListener('mouseup', ()=>{ drag=null; svg.style.cursor='grab'; });
+
+  let t0=null;
+  svg.addEventListener('touchstart', e=>{
+    if(e.touches.length===1) t0={x:e.touches[0].clientX,y:e.touches[0].clientY,vx:vb.x,vy:vb.y};
+  },{passive:true});
+  svg.addEventListener('touchmove', e=>{
+    if(!t0||e.touches.length!==1) return;
+    const r=svg.getBoundingClientRect();
+    vb.x=t0.vx-(e.touches[0].clientX-t0.x)*vb.w/r.width;
+    vb.y=t0.vy-(e.touches[0].clientY-t0.y)*vb.h/r.height;
+    clamp(); setVB();
+  },{passive:true});
+
+  function focusCurrent() {
+    const p = POS[KD.curName]; if (!p) return resetView();
+    vb.w=360; vb.h=vb.w*RATIO;
+    vb.x = Math.max(0, Math.min(1000-vb.w, p.x-vb.w/2));
+    vb.y = Math.max(0, Math.min(707 -vb.h, p.y-vb.h/2));
+    setVB();
+    const z = KD.zones.find(z=>z.id===KD.curId); if(z) openPanel(z);
+  }
+  function resetView() { vb={...VB0}; setVB(); }
+
+  function init() {
+    buildConnections();
+    buildNodes();
+    setTimeout(focusCurrent, 120);
+  }
+  return { init, focusCurrent, resetView };
+})();
+
+document.addEventListener('DOMContentLoaded', MapUI.init);
+</script>
+{% endblock %}

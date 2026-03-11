@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+{% load static %} {% load custom_filters %}
+
+{% block title %}<title>Combat #{{ battle.id }} — Détails</title>{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'BattleListView' %}">Combats</a></li>
+    <li class="breadcrumb-item active">Combat #{{ battle.id }}</li>
+  </ol>
+</nav>
+
+
+<!-- =========================================================
+     HERO BANNER — Résultat
+     ========================================================= -->
+<div class="card shadow-lg border-0 mb-4 overflow-hidden">
+  <div class="card-body p-0">
+    <div class="d-flex align-items-stretch"
+         style="background: linear-gradient(135deg,
+                {% if player_won %}#1a7a3c, #28a745{% elif player_won == False %}#a71d2a, #dc3545{% else %}#495057, #6c757d{% endif %});
+                min-height: 140px;">
+
+      <!-- Icône résultat -->
+      <div class="d-flex align-items-center justify-content-center px-4"
+           style="background: rgba(0,0,0,0.15); min-width: 120px;">
+        {% if player_won %}
+          <i class="fas fa-trophy fa-4x" style="color:#ffd700;"></i>
+        {% elif player_won == False %}
+          <i class="fas fa-times-circle fa-4x text-white-50"></i>
+        {% else %}
+          <i class="fas fa-hourglass-half fa-4x text-white-50"></i>
+        {% endif %}
+      </div>
+
+      <!-- Infos principales -->
+      <div class="d-flex flex-column justify-content-center px-4 py-3 text-white flex-grow-1">
+        <h2 class="mb-1 fw-bold">
+          {% if player_won %}
+            Victoire !
+          {% elif player_won == False %}
+            Défaite
+          {% elif battle.is_active %}
+            Combat en cours
+          {% else %}
+            Combat terminé
+          {% endif %}
+        </h2>
+
+        <h5 class="mb-2 text-white-50">
+          {% if battle.battle_type == 'wild' %}
+            <i class="fas fa-leaf"></i> Pokémon Sauvage
+          {% elif battle.battle_type == 'trainer' %}
+            <i class="fas fa-user"></i> Combat de Dresseur —
+            {% if battle.opponent_trainer %}{{ battle.opponent_trainer.get_full_title }}{% endif %}
+          {% elif battle.battle_type == 'gym' %}
+            <i class="fas fa-medal"></i> Combat d'Arène —
+            {% if battle.opponent_trainer %}{{ battle.opponent_trainer.get_full_title }}{% endif %}
+          {% else %}
+            {{ battle.get_battle_type_display }}
+          {% endif %}
+        </h5>
+
+        <div class="d-flex flex-wrap" style="gap:16px; font-size:0.9em;">
+          <span><i class="far fa-calendar-alt"></i> {{ battle.created_at|date:"d/m/Y à H:i" }}</span>
+          <span><i class="fas fa-sync-alt"></i> {{ battle.current_turn }} tours</span>
+          {% if money_earned > 0 %}
+          <span class="text-warning fw-bold">
+            <i class="fas fa-coins"></i> +{{ money_earned }}₽
+          </span>
+          {% endif %}
+          {% if battle.is_active %}
+          <span class="badge bg-warning align-self-center">En cours</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Bouton continuer si en cours -->
+      {% if battle.is_active and battle.player_trainer == viewer %}
+      <div class="d-flex align-items-center px-4" style="background:rgba(0,0,0,0.1);">
+        <a href="{% url 'BattleGameView' battle.id %}" class="btn btn-light btn-lg">
+          <i class="fas fa-gamepad"></i><br>
+          <small>Continuer</small>
+        </a>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+
+<!-- =========================================================
+     CONFRONTATION DES ÉQUIPES
+     ========================================================= -->
+<div class="row mb-4">
+
+  <!-- ===== CÔTÉ JOUEUR ===== -->
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow h-100"
+         style="border-top: 4px solid {% if player_won %}#28a745{% else %}#4e73df{% endif %};">
+      <div class="card-header py-3 d-flex align-items-center"
+           style="background: {% if player_won %}#d4edda{% else %}#eef0fb{% endif %};">
+        <i class="fas fa-user me-2 text-primary"></i>
+        <h6 class="m-0 fw-bold text-primary flex-grow-1">
+          {{ battle.player_trainer.username }}
+        </h6>
+        <small class="text-muted ms-2" style="font-size:.65rem;" title="HP enregistrés à la fin du combat">
+          <i class="fas fa-camera"></i> fin du combat
+        </small>
+        {% if player_won %}
+        <i class="fas fa-crown text-warning"></i>
+        {% endif %}
+      </div>
+
+      <div class="card-body p-0">
+        {% for poke in player_team %}
+        <div class="d-flex align-items-center px-3 py-2
+                    {% if not forloop.last %}border-bottom{% endif %}
+                    {% if poke.is_last_active %}bg-light{% endif %}">
+
+          <!-- Sprite -->
+          <div class="me-3" style="width:64px;flex-shrink:0;text-align:center;">
+            <img src="{% static 'img/sprites_gen5/' %}{% if poke.is_shiny %}shiny{% else %}normal{% endif %}/{{ poke.species.name|lowerPokemonFileNames }}.png"
+                 alt="{{ poke.species.name }}"
+                 style="width:56px;height:56px;object-fit:contain;"
+                 onerror="this.src='{% static 'img/pokeball.png' %}'">
+          </div>
+
+          <!-- Infos Pokémon -->
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center mb-1 flex-wrap" style="gap:4px;">
+              <strong>{{ poke.nickname|default:poke.species.name }}</strong>
+              {% if poke.nickname %}<small class="text-muted">({{ poke.species.name }})</small>{% endif %}
+              <span class="badge bg-secondary ms-1">Niv.{{ poke.level }}</span>
+              {% if poke.is_last_active %}
+              <span class="badge bg-primary ms-1"><i class="fas fa-star"></i> Actif</span>
+              {% endif %}
+              <!-- Types -->
+              <span class="badge badge-type-{{ poke.species.primary_type.name }}">
+                {{ poke.species.primary_type.name|upper }}
+              </span>
+              {% if poke.species.secondary_type %}
+              <span class="badge badge-type-{{ poke.species.secondary_type.name }}">
+                {{ poke.species.secondary_type.name|upper }}
+              </span>
+              {% endif %}
+            </div>
+
+            <!-- HP bar (depuis battle_snapshot) -->
+            {% if poke.max_hp %}
+              {% widthratio poke.current_hp poke.max_hp 100 as hp_p %}
+              <div class="d-flex align-items-center" style="gap:8px;">
+                <div class="progress flex-grow-1" style="height:8px;">
+                  <div class="progress-bar
+                              {% if poke.ko %}bg-secondary
+                              {% elif hp_p|add:0 > 50 %}bg-success
+                              {% elif hp_p|add:0 > 20 %}bg-warning
+                              {% else %}bg-danger{% endif %}"
+                       style="width:{% if poke.ko %}100{% else %}{{ hp_p }}{% endif %}%;
+                              {% if poke.ko %}opacity:.35{% endif %}"></div>
+                </div>
+                <small class="text-muted" style="white-space:nowrap;">
+                  {% if poke.ko %}
+                    <span class="text-danger fw-bold">K.O.</span>
+                  {% else %}
+                    {{ poke.current_hp }}/{{ poke.max_hp }}
+                  {% endif %}
+                </small>
+              </div>
+            {% else %}
+              <small class="text-muted"><i class="fas fa-question-circle"></i> HP non enregistrés</small>
+            {% endif %}
+
+            <!-- Status -->
+            {% if poke.status_condition %}
+            <span class="badge bg-warning mt-1">
+              <i class="fas fa-exclamation-triangle"></i>
+              {{ poke.get_status_condition_display }}
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Stats compactes -->
+          {% if poke.attack %}
+          <div class="ms-3 text-center d-none d-xl-block" style="min-width:90px;">
+            <div class="row g-0 text-center" style="font-size:0.75em;">
+              <div class="col-4 p-1 bg-light rounded-start">
+                <div class="fw-bold">{{ poke.attack }}</div>
+                <div class="text-muted">ATK</div>
+              </div>
+              <div class="col-4 p-1 bg-light">
+                <div class="fw-bold">{{ poke.defense }}</div>
+                <div class="text-muted">DEF</div>
+              </div>
+              <div class="col-4 p-1 bg-light rounded-end">
+                <div class="fw-bold">{{ poke.speed }}</div>
+                <div class="text-muted">VIT</div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+        {% empty %}
+        <div class="p-3 text-center text-muted">Aucun Pokémon</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CÔTÉ ADVERSAIRE ===== -->
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow h-100"
+         style="border-top: 4px solid {% if not player_won and player_won != None %}#28a745{% else %}#e74a3b{% endif %};">
+      <div class="card-header py-3 d-flex align-items-center"
+           style="background: {% if not player_won and player_won != None %}#d4edda{% else %}#fde8e6{% endif %};">
+        <i class="fas fa-user-ninja me-2 text-danger"></i>
+        <h6 class="m-0 fw-bold text-danger flex-grow-1">
+          {% if battle.opponent_trainer %}
+            {{ battle.opponent_trainer.get_full_title }}
+          {% else %}
+            Pokémon Sauvage
+          {% endif %}
+        </h6>
+        {% if not player_won and player_won != None %}
+        <i class="fas fa-crown text-warning"></i>
+        {% endif %}
+      </div>
+
+      <div class="card-body p-0">
+        {% for poke in opponent_team %}
+        <div class="d-flex align-items-center px-3 py-2
+                    {% if not forloop.last %}border-bottom{% endif %}
+                    {% if poke.is_last_active %}bg-light{% endif %}">
+
+          <!-- Sprite -->
+          <div class="me-3" style="width:64px;flex-shrink:0;text-align:center;">
+            <img src="{% static 'img/sprites_gen5/' %}{% if poke.is_shiny %}shiny{% else %}normal{% endif %}/{{ poke.species.name|lowerPokemonFileNames }}.png"
+                 alt="{{ poke.species.name }}"
+                 style="width:56px;height:56px;object-fit:contain;{% if poke.current_hp == 0 %}opacity:0.35;filter:grayscale(1);{% endif %}"
+                 onerror="this.src='{% static 'img/pokeball.png' %}'">
+          </div>
+
+          <!-- Infos Pokémon -->
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center mb-1 flex-wrap" style="gap:4px;">
+              <strong>{{ poke.nickname|default:poke.species.name }}</strong>
+              {% if poke.nickname %}<small class="text-muted">({{ poke.species.name }})</small>{% endif %}
+              <span class="badge bg-secondary ms-1">Niv.{{ poke.level }}</span>
+              {% if poke.is_last_active %}
+              <span class="badge bg-danger ms-1"><i class="fas fa-star"></i> Dernier actif</span>
+              {% endif %}
+              <span class="badge badge-type-{{ poke.species.primary_type.name }}">
+                {{ poke.species.primary_type.name|upper }}
+              </span>
+              {% if poke.species.secondary_type %}
+              <span class="badge badge-type-{{ poke.species.secondary_type.name }}">
+                {{ poke.species.secondary_type.name|upper }}
+              </span>
+              {% endif %}
+            </div>
+
+            <!-- HP bar (depuis battle_snapshot) -->
+            {% if poke.max_hp %}
+              {% widthratio poke.current_hp poke.max_hp 100 as hp_p %}
+              <div class="d-flex align-items-center" style="gap:8px;">
+                <div class="progress flex-grow-1" style="height:8px;">
+                  <div class="progress-bar
+                              {% if poke.ko %}bg-secondary
+                              {% elif hp_p|add:0 > 50 %}bg-success
+                              {% elif hp_p|add:0 > 20 %}bg-warning
+                              {% else %}bg-danger{% endif %}"
+                       style="width:{% if poke.ko %}100{% else %}{{ hp_p }}{% endif %}%;
+                              {% if poke.ko %}opacity:.35{% endif %}"></div>
+                </div>
+                <small class="text-muted" style="white-space:nowrap;">
+                  {% if poke.ko %}
+                    <span class="text-danger fw-bold">K.O.</span>
+                  {% else %}
+                    {{ poke.current_hp }}/{{ poke.max_hp }}
+                  {% endif %}
+                </small>
+              </div>
+            {% else %}
+              <small class="text-muted"><i class="fas fa-question-circle"></i> HP non enregistrés</small>
+            {% endif %}
+
+            {% if poke.status_condition %}
+            <span class="badge bg-warning mt-1">
+              <i class="fas fa-exclamation-triangle"></i>
+              {{ poke.get_status_condition_display }}
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Stats compactes -->
+          {% if poke.attack %}
+          <div class="ms-3 text-center d-none d-xl-block" style="min-width:90px;">
+            <div class="row g-0 text-center" style="font-size:0.75em;">
+              <div class="col-4 p-1 bg-light rounded-start">
+                <div class="fw-bold">{{ poke.attack }}</div>
+                <div class="text-muted">ATK</div>
+              </div>
+              <div class="col-4 p-1 bg-light">
+                <div class="fw-bold">{{ poke.defense }}</div>
+                <div class="text-muted">DEF</div>
+              </div>
+              <div class="col-4 p-1 bg-light rounded-end">
+                <div class="fw-bold">{{ poke.speed }}</div>
+                <div class="text-muted">VIT</div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+        {% empty %}
+        <div class="p-3 text-center text-muted">Aucun Pokémon</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- =========================================================
+     LOG + INFOS
+     ========================================================= -->
+<div class="row">
+
+  <!-- Battle Log -->
+  <div class="col-lg-8 mb-4">
+    <div class="card shadow">
+      <div class="card-header py-3 d-flex align-items-center">
+        <h6 class="m-0 fw-bold text-primary flex-grow-1">
+          <i class="fas fa-scroll"></i> Journal de Combat
+          <small class="text-muted fw-normal">({{ battle.current_turn }} tours)</small>
+        </h6>
+        {% if battle.battle_log %}
+        <small class="text-muted">{{ battle.battle_log|length }} entrées</small>
+        {% endif %}
+      </div>
+      <div class="card-body p-0" style="max-height: 420px; overflow-y: auto;" id="battle-log-container">
+        {% if battle.battle_log %}
+        <div class="list-group list-group-flush">
+          {% for entry in battle.battle_log reversed %}
+          <div class="list-group-item list-group-item-action py-2 px-3"
+               style="border-left: 3px solid
+                      {% if 'critique' in entry.message|lower %}#ffc107
+                      {% elif 'super efficace' in entry.message|lower %}#28a745
+                      {% elif 'aucun effet' in entry.message|lower %}#6c757d
+                      {% elif 'pas très efficace' in entry.message|lower %}#fd7e14
+                      {% elif 'fuite' in entry.message|lower or 'captur' in entry.message|lower %}#17a2b8
+                      {% else %}#dee2e6{% endif %};">
+            <div class="d-flex justify-content-between align-items-start">
+              <span style="font-size:0.9em;">{{ entry.message }}</span>
+              <span class="badge bg-light text-muted ms-2" style="flex-shrink:0;">T{{ entry.turn }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted">
+          <i class="fas fa-scroll fa-2x mb-2"></i>
+          <p>Aucune action enregistrée</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Infos + Chronologie -->
+  <div class="col-lg-4 mb-4">
+
+    <!-- Informations -->
+    <div class="card shadow mb-3">
+      <div class="card-header py-3">
+        <h6 class="m-0 fw-bold text-info">
+          <i class="fas fa-info-circle"></i> Informations
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr>
+              <td class="text-muted ps-3">Type</td>
+              <td class="fw-bold pe-3">{{ battle.get_battle_type_display }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted ps-3">Statut</td>
+              <td class="pe-3">
+                {% if battle.is_active %}
+                  <span class="badge bg-warning">En cours</span>
+                {% else %}
+                  <span class="badge bg-secondary">Terminé</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% if battle.winner %}
+            <tr>
+              <td class="text-muted ps-3">Vainqueur</td>
+              <td class="fw-bold pe-3">
+                {{ battle.winner.username }}
+                {% if battle.winner == battle.player_trainer %}
+                <i class="fas fa-trophy text-warning"></i>
+                {% endif %}
+              </td>
+            </tr>
+            {% endif %}
+            {% if money_earned > 0 %}
+            <tr>
+              <td class="text-muted ps-3">Récompense</td>
+              <td class="fw-bold text-warning pe-3">
+                <i class="fas fa-coins"></i> {{ money_earned }}₽
+              </td>
+            </tr>
+            {% endif %}
+            {% if battle.weather %}
+            <tr>
+              <td class="text-muted ps-3">Météo</td>
+              <td class="pe-3">{{ battle.weather }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Chronologie -->
+    <div class="card shadow">
+      <div class="card-header py-3">
+        <h6 class="m-0 fw-bold text-success">
+          <i class="fas fa-clock"></i> Chronologie
+        </h6>
+      </div>
+      <div class="card-body">
+        <ul class="list-unstyled mb-0">
+          <li class="mb-2 d-flex align-items-start">
+            <i class="fas fa-play-circle text-primary mt-1 me-2" style="width:16px;"></i>
+            <div>
+              <div class="fw-bold" style="font-size:0.85em;">Début</div>
+              <div class="text-muted" style="font-size:0.8em;">{{ battle.created_at|date:"d/m/Y H:i:s" }}</div>
+            </div>
+          </li>
+          {% if battle.ended_at %}
+          <li class="mb-2 d-flex align-items-start">
+            <i class="fas fa-flag-checkered text-success mt-1 me-2" style="width:16px;"></i>
+            <div>
+              <div class="fw-bold" style="font-size:0.85em;">Fin</div>
+              <div class="text-muted" style="font-size:0.8em;">{{ battle.ended_at|date:"d/m/Y H:i:s" }}</div>
+            </div>
+          </li>
+          {% endif %}
+          <li class="d-flex align-items-start">
+            <i class="fas fa-sync text-info mt-1 me-2" style="width:16px;"></i>
+            <div>
+              <div class="fw-bold" style="font-size:0.85em;">Durée</div>
+              <div class="text-muted" style="font-size:0.8em;">{{ battle.current_turn }} tours</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Actions -->
+<div class="mb-4">
+  <a href="{% url 'BattleListView' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Retour
+  </a>
+  {% if battle.is_active and battle.player_trainer == viewer %}
+  <a href="{% url 'BattleGameView' battle.id %}" class="btn btn-primary ms-2">
+    <i class="fas fa-gamepad"></i> Continuer le Combat
+  </a>
+  {% endif %}
+</div>
+
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Auto-scroll du log vers le bas (entrées les plus récentes)
+  var logContainer = document.getElementById('battle-log-container');
+  if (logContainer) {
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
+});
+</script>
+{% endblock js %}

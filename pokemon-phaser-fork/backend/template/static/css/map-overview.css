@@ -1,0 +1,150 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   map-overview.css  –  Carte de Kanto interactive
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.kanto-map-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 122px);
+  min-height: 520px;
+}
+.map-title {
+  font-family: 'Courier New', monospace;
+  font-size: 1.3rem;
+  letter-spacing: .04em;
+}
+.map-body { flex: 1; display: flex; gap: 10px; min-height: 0; }
+
+/* ── Canvas ───────────────────────────────────────────────────────────────── */
+.map-canvas-wrap {
+  flex: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,.4);
+  cursor: grab;
+  min-height: 0;
+  position: relative;
+  box-shadow: 0 4px 24px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06);
+  background-color: #0f1b29;
+}
+.map-canvas-wrap:active { cursor: grabbing; }
+#kantoSvg { width: 100%; height: 100%; display: block; user-select: none; }
+
+/* ── Légende overlay ──────────────────────────────────────────────────────── */
+.map-legend-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 10;
+  background: rgba(5,12,22,.82);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: .7rem;
+  color: #cfd8dc;
+  pointer-events: none;
+  box-shadow: 0 2px 12px rgba(0,0,0,.6);
+}
+.map-legend-overlay .leg       { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.map-legend-overlay .leg-hint  { color: #78909c; font-size: .65rem; }
+.map-legend-overlay .leg-sep   { height: 1px; background: rgba(255,255,255,.08); margin: 1px 0; }
+.map-legend-overlay .dot       { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.map-legend-overlay .poi-star  { font-size: 11px; color: #ffd600; line-height: 1; width: 9px; text-align: center; }
+.map-legend-overlay .poi-sq    { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(255,255,255,.4); }
+
+/* ── Pulse halo ───────────────────────────────────────────────────────────── */
+@keyframes map-pulse {
+  0%, 100% { opacity: .55; }
+  50%       { opacity: .1; }
+}
+.pulse { animation: map-pulse 2.5s ease-in-out infinite; }
+
+/* ── Hover nœud ───────────────────────────────────────────────────────────── */
+.zn:hover { filter: brightness(1.2); }
+
+/* ── Panneau latéral ──────────────────────────────────────────────────────── */
+.map-panel {
+  width: 380px;
+  flex-shrink: 0;
+  background: #0f1b29;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.07);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+}
+.panel-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.panel-scroll::-webkit-scrollbar       { width: 3px; }
+.panel-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+.p-img-wrap {
+  position: relative;
+  height: 120px;
+  background: #08121e;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.p-img { width: 100%; height: 100%; object-fit: cover; opacity: .6; transition: opacity .25s; }
+.p-img-wrap:hover .p-img { opacity: .82; }
+.p-img-over {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 7px 10px;
+  background: linear-gradient(transparent, rgba(0,0,0,.85));
+  color: #fff;
+}
+.p-body { padding: 10px 12px; flex: 1; font-size: .82rem; }
+
+.dir-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,.04);
+  border-radius: 6px;
+  border-left: 3px solid #ef5350;
+  font-size: .74rem;
+  color: #b0bec5;
+}
+.travel-note {
+  font-size: .73rem;
+  color: #78909c;
+  padding: 5px 8px;
+  margin-top: 6px;
+  background: rgba(255,255,255,.03);
+  border-radius: 4px;
+  border-left: 3px solid #37474f;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .map-body         { flex-direction: column; }
+  .map-canvas-wrap  { height: 50vw; min-height: 280px; }
+  .map-panel        { width: 100%; max-height: 36vh; }
+  .kanto-map-page   { height: auto; }
+  .map-legend-overlay { font-size: .62rem; padding: 6px 8px; }
+}

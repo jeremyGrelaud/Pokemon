@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}<title>Objets</title>{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0"><i class="fas fa-shopping-bag me-2"></i>Objets</h1>
+  <span class="badge bg-secondary fs-6">{{ paginator.count }} objet{{ paginator.count|pluralize }}</span>
+</div>
+
+<!-- Filtres — soumis en GET pour être compatibles avec la pagination -->
+<div class="card shadow mb-4">
+  <div class="card-body py-3">
+    <form method="GET" id="filterForm">
+      <div class="row g-2 align-items-center">
+
+        <!-- Recherche par nom -->
+        <div class="col-md-4">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+            <input type="text" name="q" class="form-control"
+                   placeholder="Rechercher un objet…"
+                   value="{{ search_query }}">
+            <button class="btn btn-outline-secondary" type="submit">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtre par type (boutons GET) -->
+        <div class="col-md-7">
+          <div class="d-flex flex-wrap gap-1">
+            <a href="?q={{ search_query }}"
+               class="btn btn-sm {% if not selected_type %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+              Tous
+            </a>
+            {% for value, label in item_types %}
+            <a href="?itemType={{ value }}&q={{ search_query }}"
+               class="btn btn-sm item-type-btn item-type-btn-{{ value }}
+                      {% if selected_type == value %}active{% else %}btn-outline-secondary{% endif %}">
+              {{ label }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Reset -->
+        <div class="col-md-1 text-end">
+          {% if selected_type or search_query %}
+          <a href="{% url 'ItemListView' %}" class="btn btn-sm btn-light" title="Réinitialiser les filtres">
+            <i class="fas fa-times"></i>
+          </a>
+          {% endif %}
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tableau -->
+<div class="card shadow mb-4">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" id="itemTable">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3" style="width:56px;"></th>
+            <th>Nom</th>
+            <th>Type</th>
+            <th>Prix</th>
+            <th>Effet</th>
+            <th class="text-center">Consommable</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <!-- Sprite -->
+            <td class="text-center ps-3">
+              {% with sprite=item|item_sprite_path %}
+                {% if sprite %}
+                  <img src="{% static 'img/items_sprites/' %}{{ sprite }}"
+                       alt="{{ item.name }}"
+                       style="width:40px;height:40px;object-fit:contain;"
+                       onerror="this.replaceWith(document.createElementNS('http://www.w3.org/2000/svg','svg'))">
+                {% else %}
+                  <span class="d-inline-flex align-items-center justify-content-center rounded"
+                        style="width:40px;height:40px;background:#f0f0f0;">
+                    <i class="fas fa-box text-secondary"></i>
+                  </span>
+                {% endif %}
+              {% endwith %}
+            </td>
+
+            <!-- Nom -->
+            <td><span class="fw-semibold">{{ item.name }}</span></td>
+
+            <!-- Type -->
+            <td>
+              <span class="badge item-type-badge item-type-{{ item.item_type }}">
+                {{ item.get_item_type_display }}
+              </span>
+            </td>
+
+            <!-- Prix -->
+            <td class="text-nowrap">
+              {% if item.price > 0 %}
+                <i class="fas fa-coins text-warning me-1" style="font-size:.8rem;"></i>{{ item.price }}₽
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Effet condensé -->
+            <td class="small">
+              {% if item.heal_amount > 0 %}
+                <span class="text-success"><i class="fas fa-heart me-1"></i>+{{ item.heal_amount }} HP</span>
+              {% elif item.heal_percentage > 0 %}
+                <span class="text-success"><i class="fas fa-heart me-1"></i>+{{ item.heal_percentage }}% HP</span>
+              {% elif item.cures_status %}
+                <span class="text-info">
+                  <i class="fas fa-plus-circle me-1"></i>
+                  Soigne {% if item.specific_status %}{{ item.specific_status }}{% else %}statut{% endif %}
+                </span>
+              {% elif item.item_type == 'pokeball' %}
+                <span class="text-primary">
+                  <i class="fas fa-circle me-1"></i>x{{ item.catch_rate_modifier }} capture
+                </span>
+              {% elif item.item_type == 'evolution' %}
+                <span class="text-purple">
+                  <i class="fas fa-star me-1"></i>Évolution
+                  {% if item.evolves_pokemon %}<em>({{ item.evolves_pokemon }})</em>{% endif %}
+                </span>
+              {% elif item.held_effect %}
+                <span class="text-secondary"><i class="fas fa-shield-alt me-1"></i>{{ item.held_effect|truncatewords:4 }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Consommable -->
+            <td class="text-center">
+              {% if item.is_consumable %}
+                <i class="fas fa-check-circle text-success" title="Consommable"></i>
+              {% else %}
+                <i class="fas fa-infinity text-secondary" title="Réutilisable"></i>
+              {% endif %}
+            </td>
+
+            <!-- Description -->
+            <td class="text-muted small">{{ item.description|truncatewords:12 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
+              Aucun objet trouvé
+              {% if search_query %}pour « <strong>{{ search_query }}</strong> »{% endif %}
+              {% if selected_type %}dans cette catégorie{% endif %}.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Pagination ──────────────────────────────────────────────────────── -->
+  {% if is_paginated %}
+  <div class="card-footer bg-white border-top py-2 px-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap:.5rem;">
+
+      <small class="text-muted">
+        Page <strong>{{ page_obj.number }}</strong> / <strong>{{ paginator.num_pages }}</strong>
+        &mdash; <strong>{{ paginator.count }}</strong> objet{{ paginator.count|pluralize }}
+        {% if selected_type or search_query %}trouvé{{ paginator.count|pluralize }}{% endif %}
+      </small>
+
+      <ul class="pagination pagination-sm mb-0">
+
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="{% url_replace_page 1 %}" title="Première page">
+            <i class="fas fa-angle-double-left"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="{% url_replace_page page_obj.previous_page_number %}">
+            <i class="fas fa-angle-left"></i>
+          </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-left"></i></span></li>
+        <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-left"></i></span></li>
+        {% endif %}
+
+        {% for p in page_obj|table_page_range:paginator %}
+          {% if p == '...' %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% elif p == page_obj.number %}
+          <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+          {% else %}
+          <li class="page-item">
+            <a class="page-link" href="{% url_replace_page p %}">{{ p }}</a>
+          </li>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="{% url_replace_page page_obj.next_page_number %}">
+            <i class="fas fa-angle-right"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="{% url_replace_page paginator.num_pages %}" title="Dernière page">
+            <i class="fas fa-angle-double-right"></i>
+          </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-right"></i></span></li>
+        <li class="page-item disabled"><span class="page-link"><i class="fas fa-angle-double-right"></i></span></li>
+        {% endif %}
+
+      </ul>
+    </div>
+  </div>
+  {% else %}
+  <div class="card-footer bg-white border-top py-2 px-3">
+    <small class="text-muted">{{ paginator.count }} objet{{ paginator.count|pluralize }}</small>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+  /* Couleurs des badges de type d'objet */
+  .item-type-potion    { background: #198754; color: #fff; }
+  .item-type-pokeball  { background: #e63946; color: #fff; }
+  .item-type-evolution { background: #6f42c1; color: #fff; }
+  .item-type-status    { background: #0dcaf0; color: #212529; }
+  .item-type-battle    { background: #fd7e14; color: #fff; }
+  .item-type-held      { background: #6c757d; color: #fff; }
+  .item-type-key       { background: #ffc107; color: #212529; }
+  .item-type-tm        { background: #7c3aed; color: #fff; }
+  .item-type-cs        { background: #0f766e; color: #fff; }
+
+  /* Boutons de filtre par type — couleurs cohérentes avec les badges */
+  .item-type-btn-potion.active    { background: #198754; border-color: #198754; color: #fff; }
+  .item-type-btn-pokeball.active  { background: #e63946; border-color: #e63946; color: #fff; }
+  .item-type-btn-evolution.active { background: #6f42c1; border-color: #6f42c1; color: #fff; }
+  .item-type-btn-status.active    { background: #0dcaf0; border-color: #0dcaf0; color: #212529; }
+  .item-type-btn-battle.active    { background: #fd7e14; border-color: #fd7e14; color: #fff; }
+  .item-type-btn-held.active      { background: #6c757d; border-color: #6c757d; color: #fff; }
+  .item-type-btn-key.active       { background: #ffc107; border-color: #ffc107; color: #212529; }
+  .item-type-btn-tm.active        { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+  .item-type-btn-cs.active        { background: #0f766e; border-color: #0f766e; color: #fff; }
+</style>
+{% endblock %}

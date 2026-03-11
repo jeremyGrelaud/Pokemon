@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}<title>Choisissez votre Pokémon de départ !</title>{% endblock title %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-11">
+
+      <!-- Header -->
+      <div class="text-center mb-5">
+        <img src="{% static 'img/pokedex_transparent.png' %}" style="width:56px;" alt="Pokédex" class="mb-3">
+        <h1 class="h2 fw-bold text-dark">Bienvenue, {{ trainer.username }} !</h1>
+        <p class="lead text-muted">
+          Professeur Chen vous attend. Choisissez votre Pokémon de départ pour commencer votre aventure !
+        </p>
+        <small class="text-muted"><i class="fas fa-sync-alt fa-xs me-1"></i>Survolez une carte pour voir les stats</small>
+        <hr>
+      </div>
+
+      <!-- Starters -->
+      <form method="post" id="starter-form">
+        {% csrf_token %}
+        <div class="row justify-content-center">
+
+          {% for starter, is_shiny in starters_with_shiny %}
+          <div class="col-md-4 mb-4 d-flex justify-content-center">
+
+            <div class="flip-wrapper {% if is_shiny %}is-shiny{% endif %}"
+                 data-starter-id="{{ starter.id }}">
+
+              <!-- ══ FACE AVANT ══════════════════════════════════════════════ -->
+              <div class="flip-card__face flip-card__face--front">
+
+                {% if is_shiny %}
+                <div class="shiny-ribbon"><i class="fas fa-star fa-xs me-1"></i>Chromatique !</div>
+                {% endif %}
+
+                <div class="pokemon-number">#{{ starter.pokedex_number|stringformat:"03d" }}</div>
+
+                <div class="sprite-area">
+                  <img class="pokemon-sprite"
+                       src="{% static 'img/sprites_gen5/' %}{% if is_shiny %}shiny{% else %}normal{% endif %}/{{ starter.name|lowerPokemonFileNames }}.png"
+                       alt="{{ starter.name }}{% if is_shiny %} ✨{% endif %}"
+                       onerror="this.src='{% static 'img/pokeball.png' %}'">
+                </div>
+
+                <h4 class="pokemon-name">
+                  {{ starter.name }}{% if is_shiny %} <span class="shiny-star">✨</span>{% endif %}
+                </h4>
+
+                <!-- Types -->
+                <div class="type-badges mb-3">
+                  <span class="type-badge badge-type-{{ starter.primary_type.name|lower }}">
+                    {{ starter.primary_type.name|upper }}
+                  </span>
+                  {% if starter.secondary_type %}
+                  <span class="type-badge badge-type-{{ starter.secondary_type.name|lower }}">
+                    {{ starter.secondary_type.name|upper }}
+                  </span>
+                  {% endif %}
+                </div>
+
+                <!-- Stats résumé (aperçu) -->
+                <div class="stats-preview">
+                  <div class="stat-preview-row">
+                    <span class="stat-label">PV</span>
+                    <div class="stat-bar-mini"><div class="stat-bar-fill stat-hp" style="width:{% widthratio starter.base_hp 160 100 %}%"></div></div>
+                    <span class="stat-val">{{ starter.base_hp }}</span>
+                  </div>
+                  <div class="stat-preview-row">
+                    <span class="stat-label">ATK</span>
+                    <div class="stat-bar-mini"><div class="stat-bar-fill stat-atk" style="width:{% widthratio starter.base_attack 160 100 %}%"></div></div>
+                    <span class="stat-val">{{ starter.base_attack }}</span>
+                  </div>
+                  <div class="stat-preview-row">
+                    <span class="stat-label">VIT</span>
+                    <div class="stat-bar-mini"><div class="stat-bar-fill stat-spd" style="width:{% widthratio starter.base_speed 160 100 %}%"></div></div>
+                    <span class="stat-val">{{ starter.base_speed }}</span>
+                  </div>
+                </div>
+
+                <div class="flip-hint">
+                  <i class="fas fa-info-circle me-1"></i>Survolez pour les stats complètes
+                </div>
+              </div>
+
+              <!-- ══ FACE ARRIÈRE ════════════════════════════════════════════ -->
+              <div class="flip-card__face flip-card__face--back">
+
+                {% if is_shiny %}
+                <div class="shiny-ribbon"><i class="fas fa-star fa-xs me-1"></i>Chromatique !</div>
+                {% endif %}
+
+                <div class="back-header">
+                  <img class="back-sprite"
+                       src="{% static 'img/sprites_gen5/' %}{% if is_shiny %}shiny{% else %}normal{% endif %}/{{ starter.name|lowerPokemonFileNames }}.png"
+                       alt="{{ starter.name }}"
+                       onerror="this.src='{% static 'img/pokeball.png' %}'">
+                  <div>
+                    <div class="pokemon-name-back">{{ starter.name }}</div>
+                    <div class="type-badges">
+                      <span class="type-badge badge-type-{{ starter.primary_type.name|lower }}">
+                        {{ starter.primary_type.name|upper }}
+                      </span>
+                      {% if starter.secondary_type %}
+                      <span class="type-badge badge-type-{{ starter.secondary_type.name|lower }}">
+                        {{ starter.secondary_type.name|upper }}
+                      </span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="stats-section">
+                  <div class="stats-title">STATISTIQUES DE BASE</div>
+
+                  <!-- HP -->
+                  <div class="stat-row">
+                    <span class="stat-name stat-name-hp">PV</span>
+                    <div class="stat-bar-wrap">
+                      <div class="stat-bar-full stat-hp" style="width:{% widthratio starter.base_hp 255 100 %}%"></div>
+                    </div>
+                    <span class="stat-number">{{ starter.base_hp }}</span>
+                  </div>
+
+                  <!-- ATK -->
+                  <div class="stat-row">
+                    <span class="stat-name stat-name-atk">ATK</span>
+                    <div class="stat-bar-wrap">
+                      <div class="stat-bar-full stat-atk" style="width:{% widthratio starter.base_attack 255 100 %}%"></div>
+                    </div>
+                    <span class="stat-number">{{ starter.base_attack }}</span>
+                  </div>
+
+                  <!-- DEF -->
+                  <div class="stat-row">
+                    <span class="stat-name stat-name-def">DEF</span>
+                    <div class="stat-bar-wrap">
+                      <div class="stat-bar-full stat-def" style="width:{% widthratio starter.base_defense 255 100 %}%"></div>
+                    </div>
+                    <span class="stat-number">{{ starter.base_defense }}</span>
+                  </div>
+
+                  <!-- SP. ATK -->
+                  <div class="stat-row">
+                    <span class="stat-name stat-name-spa">SP.ATK</span>
+                    <div class="stat-bar-wrap">
+                      <div class="stat-bar-full stat-spa" style="width:{% widthratio starter.base_special_attack 255 100 %}%"></div>
+                    </div>
+                    <span class="stat-number">{{ starter.base_special_attack }}</span>
+                  </div>
+
+                  <!-- SP. DEF -->
+                  <div class="stat-row">
+                    <span class="stat-name stat-name-spd-def">SP.DEF</span>
+                    <div class="stat-bar-wrap">
+                      <div class="stat-bar-full stat-spdef" style="width:{% widthratio starter.base_special_defense 255 100 %}%"></div>
+                    </div>
+                    <span class="stat-number">{{ starter.base_special_defense }}</span>
+                  </div>
+
+                  <!-- SPEED -->
+                  <div class="stat-row">
+                    <span class="stat-name stat-name-spd">VIT</span>
+                    <div class="stat-bar-wrap">
+                      <div class="stat-bar-full stat-spd" style="width:{% widthratio starter.base_speed 255 100 %}%"></div>
+                    </div>
+                    <span class="stat-number">{{ starter.base_speed }}</span>
+                  </div>
+
+                  <!-- Total -->
+                  <div class="stat-total">
+                    <span>TOTAL</span>
+                    <span class="stat-total-val">
+                      {{ starter.base_hp|add:starter.base_attack|add:starter.base_defense|add:starter.base_special_attack|add:starter.base_special_defense|add:starter.base_speed }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Bouton de sélection -->
+                <button type="submit" name="starter_id" value="{{ starter.id }}"
+                        class="btn-choose {% if is_shiny %}btn-choose-shiny{% endif %}">
+                  <i class="fas fa-hand-pointer me-2"></i>
+                  Choisir {{ starter.name }}{% if is_shiny %} ✨{% endif %}
+                </button>
+              </div>
+
+            </div><!-- /flip-wrapper -->
+          </div>
+          {% empty %}
+          <div class="col-12 text-center text-danger">
+            <p>Aucun Pokémon de départ n'est configuré dans la base de données.<br>
+               Demandez à votre administrateur d'initialiser la base.</p>
+          </div>
+          {% endfor %}
+
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════ SCRIPT ═══ -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const wrappers = document.querySelectorAll('.flip-wrapper');
+
+  wrappers.forEach(wrapper => {
+    // Clic sur toute la carte → sélection + soumission
+    wrapper.addEventListener('click', function (e) {
+      // Ne pas déclencher si l'utilisateur clique directement sur le bouton
+      // (laisse le submit natif faire son travail)
+      if (e.target.closest('.btn-choose')) return;
+
+      // Sélection visuelle
+      wrappers.forEach(w => w.classList.remove('selected'));
+      this.classList.add('selected');
+
+      // Trouver le bouton submit dans ce wrapper et le déclencher
+      const btn = this.querySelector('.btn-choose');
+      if (btn) {
+        // Courte pause pour que le flip soit visible avant la navigation
+        setTimeout(() => btn.click(), 400);
+      }
+    });
+  });
+
+});
+</script>
+{% block css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/choose-starter.css' %}">
+{% endblock css %}
+{% endblock content %}

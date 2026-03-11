@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% load static %}
+{% block css %}
+{{ block.super }}
+<link href="{% static 'css/history.css' %}" rel="stylesheet" />
+{% endblock css %}
+
+{% block title %}
+<title>Historique Centres Pokémon - Pokémon Gen 1</title>
+{% endblock title %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0 text-dark">
+    <i class="fas fa-history text-danger"></i> Historique des Centres Pokémon
+  </h1>
+</div>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'home' %}">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'PokemonCenterListView' %}">Centres Pokémon</a></li>
+    <li class="breadcrumb-item active">Historique</li>
+  </ol>
+</nav>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+  <!-- Total Visits -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-primary shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+              Visites Totales
+            </div>
+            <div class="h5 mb-0 fw-bold text-dark">{{ total_visits }}</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-hospital fa-2x text-dark"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Healed -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-success shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-success text-uppercase mb-1">
+              Pokémon Soignés
+            </div>
+            <div class="h5 mb-0 fw-bold text-dark">{{ total_healed }}</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-heart fa-2x text-dark"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Spent -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-warning shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+              Argent Dépensé
+            </div>
+            <div class="h5 mb-0 fw-bold text-dark">{{ total_spent }}₽</div>
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-coins fa-2x text-dark"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Favorite Center -->
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card border-left-info shadow h-100 py-2">
+      <div class="card-body">
+        <div class="row g-0 align-items-center">
+          <div class="col me-2">
+            <div class="text-xs fw-bold text-info text-uppercase mb-1">
+              Centre Favori
+            </div>
+            <div class="h6 mb-0 fw-bold text-dark">
+              {% if favorite_center %}
+                {{ favorite_center.center__name|truncatewords:3 }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            {% if favorite_center %}
+            <small class="text-muted">{{ favorite_center.visit_count }} visites</small>
+            {% endif %}
+          </div>
+          <div class="col-auto">
+            <i class="fas fa-star fa-2x text-dark"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Visits Timeline -->
+<div class="card shadow mb-4">
+  <div class="card-header py-3 d-flex justify-content-between align-items-center">
+    <h6 class="m-0 fw-bold text-primary">
+      <i class="fas fa-calendar-alt"></i> Historique des Visites
+    </h6>
+    
+    <!-- Filter/Sort Options -->
+    <div class="btn-group btn-group-sm" role="group">
+      <button type="button" class="btn btn-outline-primary active" data-filter="all">
+        Tout
+      </button>
+      <button type="button" class="btn btn-outline-primary" data-filter="today">
+        Aujourd'hui
+      </button>
+      <button type="button" class="btn btn-outline-primary" data-filter="week">
+        Cette Semaine
+      </button>
+    </div>
+  </div>
+  
+  <div class="card-body">
+    {% if visits %}
+    <!-- Timeline -->
+    <div class="timeline">
+      {% for visit in visits %}
+      <div class="timeline-item" data-date="{{ visit.visited_at|date:'Y-m-d' }}">
+        <div class="timeline-marker bg-danger">
+          <i class="fas fa-plus"></i>
+        </div>
+        <div class="timeline-content">
+          <div class="card mb-3 border-left-danger">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <!-- Date & Time -->
+                <div class="col-md-2">
+                  <div class="text-center">
+                    <div class="h5 mb-0 text-danger">
+                      {{ visit.visited_at|date:"d" }}
+                    </div>
+                    <small class="text-muted">
+                      {{ visit.visited_at|date:"M Y" }}
+                    </small>
+                    <div class="mt-1">
+                      <small class="badge bg-secondary">
+                        {{ visit.visited_at|date:"H:i" }}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Center Info -->
+                <div class="col-md-4">
+                  <h6 class="mb-1">
+                    <img src="{% static 'img/mapSprites/Kanto/pokeCenter.png' %}" 
+                      alt="{{ battle.player_pokemon.species.name }}"
+                      style="width: 120px; height: 120px;">
+                    {{ visit.center.name }}
+                  </h6>
+                  <small class="text-muted">
+                    <i class="fas fa-map-marker-alt"></i>
+                    {{ visit.center.location }}
+                  </small>
+                </div>
+
+                <!-- Healing Stats -->
+                <div class="col-md-3">
+                  <div class="d-flex align-items-center">
+                    <i class="fas fa-users fa-2x text-success me-3"></i>
+                    <div>
+                      <div class="h5 mb-0 text-success">{{ visit.pokemon_healed }}</div>
+                      <small class="text-muted">Pokémon soignés</small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Cost -->
+                <div class="col-md-2">
+                  <div class="text-center">
+                    {% if visit.cost > 0 %}
+                    <div class="h5 mb-0 text-warning">{{ visit.cost }}₽</div>
+                    <small class="text-muted">Coût</small>
+                    {% else %}
+                    <span class="badge bg-success p-2">
+                      GRATUIT
+                    </span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!-- Action -->
+                <div class="col-md-1">
+                  <a href="{% url 'PokemonCenterDetailView' visit.center.id %}" 
+                     class="btn btn-sm btn-outline-danger"
+                     title="Revisiter ce centre">
+                    <i class="fas fa-redo"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Load More Button -->
+    {% if visits|length >= 50 %}
+    <div class="text-center mt-4">
+      <button class="btn btn-outline-primary">
+        <i class="fas fa-chevron-down"></i> Charger Plus
+      </button>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-5">
+      <i class="fas fa-clipboard-list fa-5x text-muted mb-3"></i>
+      <h4 class="text-muted">Aucune visite enregistrée</h4>
+      <p class="text-muted mb-4">
+        Vous n'avez pas encore visité de Centre Pokémon.
+      </p>
+      <a href="{% url 'PokemonCenterListView' %}" class="btn btn-danger">
+        <i class="fas fa-hospital"></i> Visiter un Centre
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Monthly Stats Chart -->
+{% if visits %}
+<div class="row">
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow">
+      <div class="card-header py-3">
+        <h6 class="m-0 fw-bold text-primary">
+          <i class="fas fa-chart-line"></i> Visites par Mois
+        </h6>
+      </div>
+      <div class="card-body">
+        <canvas id="visitsChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6 mb-4">
+    <div class="card shadow">
+      <div class="card-header py-3">
+        <h6 class="m-0 fw-bold text-primary">
+          <i class="fas fa-chart-pie"></i> Centres les Plus Visités
+        </h6>
+      </div>
+      <div class="card-body">
+        <canvas id="centersChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Back Button -->
+<div class="mb-4">
+  <a href="{% url 'PokemonCenterListView' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Retour aux Centres
+  </a>
+  <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-home"></i> Dashboard
+  </a>
+</div>
+
+{% endblock content %}
+
+{% block js %}
+{{ block.super }}
+
+<script>
+$(document).ready(function() {
+  // Filter buttons
+  $('.btn-group button[data-filter]').on('click', function() {
+    const filter = $(this).data('filter');
+    
+    // Update active state
+    $('.btn-group button').removeClass('active');
+    $(this).addClass('active');
+    
+    // Filter timeline items
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    $('.timeline-item').each(function() {
+      const itemDate = new Date($(this).data('date'));
+      let show = true;
+      
+      if (filter === 'today') {
+        show = itemDate.toDateString() === today.toDateString();
+      } else if (filter === 'week') {
+        show = itemDate >= weekAgo;
+      }
+      
+      $(this).toggle(show);
+    });
+  });
+
+  {% if visits %}
+  // ── Chart 1 : Visites par mois (données réelles) ──────────────────────
+  const visitsCtx = document.getElementById('visitsChart');
+  if (visitsCtx) {
+    new Chart(visitsCtx, {
+      type: 'line',
+      data: {
+        labels:   {{ chart_months_labels|safe }},
+        datasets: [{
+          label:           'Visites',
+          data:            {{ chart_months_data|safe }},
+          borderColor:     '#e74c3c',
+          backgroundColor: 'rgba(231, 76, 60, 0.1)',
+          borderWidth:     2,
+          pointRadius:     4,
+          pointBackgroundColor: '#e74c3c',
+          tension:         0.4,
+          fill:            true,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.parsed.y + ' visite(s)'
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1, precision: 0 }
+          }
+        }
+      }
+    });
+  }
+
+  // ── Chart 2 : Distribution par centre (données réelles) ───────────────
+  const centersCtx = document.getElementById('centersChart');
+  if (centersCtx) {
+    const centersData = {{ chart_centers_data|safe }};
+    if (centersData.length > 0) {
+      new Chart(centersCtx, {
+        type: 'doughnut',
+        data: {
+          labels:   {{ chart_centers_labels|safe }},
+          datasets: [{
+            data:            centersData,
+            backgroundColor: {{ chart_colors|safe }},
+            borderWidth:     2,
+            borderColor:     '#fff',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: ctx => ctx.label + ': ' + ctx.parsed + ' visite(s)'
+              }
+            }
+          }
+        }
+      });
+    } else {
+      centersCtx.closest('.card-body').innerHTML =
+        '<p class="text-muted text-center pt-4">Aucune donnée disponible.</p>';
+    }
+  }
+  {% endif %}
+});
+</script>
+{% endblock js %}
