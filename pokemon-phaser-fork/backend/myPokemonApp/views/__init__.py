@@ -153,3 +153,5 @@ from myPokemonApp.views.BattleApiViews import (
     GetTrainerTeam,
     GetTrainerItems,
 )
+
+from myPokemonApp.views.phaser_api import *

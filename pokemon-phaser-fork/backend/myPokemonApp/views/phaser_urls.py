@@ -21,5 +21,4 @@ urlpatterns = [
     path('map/travel/<int:zone_id>/',         phaser_travel,          name='phaser_travel'),
     path('map/encounter/<int:zone_id>/',      phaser_wild_encounter,  name='phaser_wild_encounter'),
     path('player/location/',                  phaser_player_location, name='phaser_player_location'),
-    path('battle/state/<int:battle_id>/',     phaser_battle_state,   name='phaser_battle_state'),
 ]
