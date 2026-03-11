@@ -86,6 +86,32 @@ export class BattleAnimator {
     })
   }
 
+  // ── Flash de hit sur le sprite cible ─────────────────────────────────────────
+  /**
+   * Fait clignoter un sprite 3 fois en alternant alpha 0/1 (style Gen 4/5 DS).
+   * Plus fidèle que le flash blanc opaque — le sprite reste reconnaissable.
+   */
+  flashHit(sprite: Phaser.GameObjects.Image, delay = 0): void {
+    if (!sprite || !sprite.active) return
+
+    const doFlash = () => {
+      let count = 0
+      const toggle = () => {
+        if (!sprite.active) return
+        sprite.setAlpha(count % 2 === 0 ? 0 : 1)
+        count++
+        if (count < 6) {
+          this.scene.time.delayedCall(80, toggle)
+        } else {
+          sprite.setAlpha(1)
+        }
+      }
+      toggle()
+    }
+
+    delay > 0 ? this.scene.time.delayedCall(delay, doFlash) : doFlash()
+  }
+
   // ── PS FX sprite ─────────────────────────────────────────────────────────────
 
   showEffect(

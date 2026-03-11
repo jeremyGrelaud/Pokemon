@@ -120,6 +120,8 @@ export class BattleScene extends Phaser.Scene {
   private playerIdleTween:   Phaser.Tweens.Tween | null = null
   private prevPlayerLevel   = 0
   private prevOpponentLevel = 0
+  private prevOpponentHp    = 0
+  private prevPlayerHp      = 0
 
   constructor() {
     super({ key: 'BattleScene' })
@@ -156,6 +158,8 @@ export class BattleScene extends Phaser.Scene {
     // Init niveaux et EXP AVANT renderState — évite le SFX exp_gain au chargement
     this.prevPlayerLevel   = this.state.player_pokemon.level
     this.prevOpponentLevel = this.state.opponent_pokemon.level
+    this.prevOpponentHp    = this.state.opponent_pokemon.current_hp
+    this.prevPlayerHp      = this.state.player_pokemon.current_hp
     this.animator.initExpPct(this.state.player_pokemon.exp_percent ?? 0)
 
     this.renderState()
@@ -864,6 +868,8 @@ export class BattleScene extends Phaser.Scene {
     try {
       // 1. Appel API d'abord — on a besoin du log pour savoir si l'attaque a raté
       const response = await battleApi.useMove(this.battleId, moveId)
+      this.prevOpponentHp = this.state.opponent_pokemon.current_hp
+      this.prevPlayerHp   = this.state.player_pokemon.current_hp
       this.state = response
 
       // 2. Trouver le point de split : où commence le tour adverse dans le log
@@ -1020,8 +1026,11 @@ export class BattleScene extends Phaser.Scene {
     const W  = this.cameras.main.width
     const ow = W * 0.38 - 20
     this.animator.animateHpBar(this.opponentHpBar, r.opponent_pokemon.current_hp, r.opponent_pokemon.max_hp, 20, 28, ow, false)
-    this.opponentHpText?.setText('')  // l'adversaire n'affiche pas son chiffre
-    // Faint dès que la barre descend à 0 — n'attend pas le log
+    this.opponentHpText?.setText('')
+    if (r.opponent_pokemon.current_hp < this.prevOpponentHp) {
+      this.animator.flashHit(this.opponentSprite)
+    }
+    this.prevOpponentHp = r.opponent_pokemon.current_hp
     if (r.opponent_pokemon.current_hp <= 0) this.animateHit()
   }
 
@@ -1039,7 +1048,10 @@ export class BattleScene extends Phaser.Scene {
       px, py, pw,
       () => AudioManager.instance?.playUiSfx('exp_gain'),
     )
-    // Faint dès que la barre descend à 0 — n'attend pas le log
+    if (r.player_pokemon.current_hp < this.prevPlayerHp) {
+      this.animator.flashHit(this.playerSprite)
+    }
+    this.prevPlayerHp = r.player_pokemon.current_hp
     if (r.player_pokemon.current_hp <= 0) this.animateHit()
   }
 
@@ -1212,6 +1224,8 @@ export class BattleScene extends Phaser.Scene {
 
     try {
       const response = await battleApi.flee(this.battleId)
+      this.prevOpponentHp = this.state.opponent_pokemon.current_hp
+      this.prevPlayerHp   = this.state.player_pokemon.current_hp
       this.state = response
 
       if (response.battle_ended) {
