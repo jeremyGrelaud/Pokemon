@@ -868,111 +868,109 @@ export class BattleScene extends Phaser.Scene {
   private async executeMove(moveId: number): Promise<void> {
     if (!this.waitingForInput) return
     this.waitingForInput = false
-    this.showLog('...')
 
     const moveData = this.state.player_pokemon.moves?.find(m => m.id === moveId)
     const W = this.cameras.main.width, H = this.cameras.main.height
-    const playerPos  = { x: W * 0.28, y: H * 0.57 }
+    const playerPos   = { x: W * 0.28, y: H * 0.57 }
     const opponentPos = { x: W * 0.75, y: H * 0.38 }
 
     try {
-      // 1. Appel API d'abord — on a besoin du log pour savoir si l'attaque a raté
+      // 1. Appel API
       const response = await battleApi.useMove(this.battleId, moveId)
       this.prevOpponentHp = this.state.opponent_pokemon.current_hp
       this.prevPlayerHp   = this.state.player_pokemon.current_hp
       this.state = response
 
-      // 2. Trouver le point de split : où commence le tour adverse dans le log
-      const splitIdx = this._findLogSplit(response.log)
+      // 2. Découper le log en phases
+      const splitIdx     = this._findLogSplit(response.log)
       const playerLogs   = response.log.slice(0, splitIdx)
       const opponentLogs = response.log.slice(splitIdx)
 
-      // 3. Détecter si l'attaque a raté (pas d'animation ni de SFX)
-      const playerMissed = playerLogs.some(l => l.includes("L'attaque a raté"))
+      // Séparer ligne d'action et lignes de détail pour chaque phase
+      const { actionLine: playerActionLine, detailLines: playerDetailLines } = this._splitActionFromDetails(playerLogs)
+      const { actionLine: oppActionLine,    detailLines: oppDetailLines }    = this._splitActionFromDetails(opponentLogs)
 
-      if (moveData && !playerMissed) {
-        this.animator.playMoveAnimation(
-          moveData.name,
-          playerPos, opponentPos,
-          this.playerSprite, this.opponentSprite,
-          true,
-          (moveData.type     ?? 'normal').toLowerCase(),
-          (moveData.category ?? '').toLowerCase(),
-          this.playerIdleTween, this.opponentIdleTween,
-        )
-        AudioManager.instance?.playMoveSfx(moveData.name)
-      }
+      // Lignes fin de tour : EXP, level-up, achievements (en queue des logs joueur)
+      const EOT_KEYWORDS = ['+', 'Level', '🏆', 'évolue', 'Bravo']
+      const eotLines    = playerDetailLines.filter(l => EOT_KEYWORDS.some(k => l.startsWith(k)))
+      const combatLines = playerDetailLines.filter(l => !EOT_KEYWORDS.some(k => l.startsWith(k)))
 
-      // 4. Barre HP adversaire — délai pour laisser l'animation d'attaque se terminer
-      await new Promise<void>(r => this.time.delayedCall(1200, r))
-      this._renderOpponentHp(response)
-
-      // Callback KO — déclenche faintAnim dès que la ligne apparaît dans le log
       const onKoLine = (line: string) => {
         if (line.toLowerCase().includes('k.o.') || line.toLowerCase().includes('est mis k')) {
           this.animateHit()
         }
       }
 
-      // 3. Log phase joueur
-      await this.showLogSequence(playerLogs, onKoLine)
+      // ── PHASE JOUEUR ──────────────────────────────────────────
+      // a. Afficher "X utilise Y !"
+      if (playerActionLine) await this.showLogSequence([playerActionLine])
 
-      // 5. Si l'adversaire attaque à son tour
+      // b. Animation attaque joueur
+      const playerMissed = playerLogs.some(l => l.includes("L'attaque a raté"))
+      if (moveData && !playerMissed) {
+        this.animator.playMoveAnimation(
+          moveData.name, playerPos, opponentPos,
+          this.playerSprite, this.opponentSprite, true,
+          (moveData.type ?? 'normal').toLowerCase(),
+          (moveData.category ?? '').toLowerCase(),
+          this.playerIdleTween, this.opponentIdleTween,
+        )
+        AudioManager.instance?.playMoveSfx(moveData.name)
+        await new Promise<void>(r => this.time.delayedCall(1200, r))
+      }
+
+      // c. Barre HP adversaire + détails du tour joueur
+      this._renderOpponentHp(response)
+      await this.showLogSequence(combatLines, onKoLine)
+
+      // ── PHASE ADVERSAIRE ──────────────────────────────────────
       if (!response.turn_info.second_skipped && opponentLogs.length > 0
           && response.player_pokemon.current_hp > 0) {
+
+        // a. Afficher "Adversaire utilise Z !"
+        if (oppActionLine) await this.showLogSequence([oppActionLine])
+
+        // b. Animation attaque adversaire
         const oppMissed = opponentLogs.some(l => l.includes("L'attaque a raté"))
         if (!oppMissed) {
-          // Détecter le move de l'adversaire dans le log pour l'animation
           const oppMove = this._extractOpponentMove(opponentLogs, response.opponent_pokemon.name)
           this.animator.playMoveAnimation(
-            oppMove.name,
-            opponentPos, playerPos,
-            this.opponentSprite, this.playerSprite,
-            false,
-            oppMove.type,
-            oppMove.category,
+            oppMove.name, opponentPos, playerPos,
+            this.opponentSprite, this.playerSprite, false,
+            oppMove.type, oppMove.category,
             this.opponentIdleTween, this.playerIdleTween,
           )
           if (oppMove.sfxName) AudioManager.instance?.playMoveSfx(oppMove.sfxName)
-
-          // Attendre la fin de l'animation avant de montrer le log adverse
-          await new Promise<void>(r => this.time.delayedCall(1100, r))
+          await new Promise<void>(r => this.time.delayedCall(1200, r))
         }
+
+        // c. Barre HP joueur + détails
+        this._renderPlayerHp(response)
+        await this.showLogSequence(oppDetailLines, onKoLine)
+      } else {
+        // Pas de tour adverse — mettre quand même à jour la barre joueur (soins, etc.)
+        this._renderPlayerHp(response)
       }
 
-      // 7. Barre HP joueur + EXP — délai pour laisser l'animation adverse se terminer
-      await new Promise<void>(r => this.time.delayedCall(1200, r))
-      this._renderPlayerHp(response)
-
-      // 6. Log adversaire
-      await this.showLogSequence(opponentLogs, onKoLine)
-
-
-
-      // 8. Textes nom/niveau/statut
+      // ── FIN DE TOUR : EXP, level-up, achievements ─────────────
       this._renderNames(response)
       this._renderStatuses(response)
-
-      // 9. Level-up détection
       this._checkLevelUp(response)
+      if (eotLines.length > 0) await this.showLogSequence(eotLines)
 
-      // 10. K.O. fallback — au cas où le pattern log n'a pas matché
+      // K.O. fallback
       this.animateHit()
-
-      // Laisser l'animation faint se terminer (~800ms) avant de continuer
       if (this.opponentFainted || this.playerFainted) {
         await new Promise<void>(r => this.time.delayedCall(850, r))
       }
 
       if (response.battle_ended) {
-        // Évolution possible juste avant la fin du combat (K.O. adversaire)
         const evo = (response as any).pending_evolution as PendingEvolution | undefined
         if (evo) await this._launchEvolution(evo)
         await this.handleBattleEnd()
       } else {
         const evo = (response as any).pending_evolution as PendingEvolution | undefined
         if (evo) await this._launchEvolution(evo)
-        // Switch forcé si le Pokémon joueur est K.O.
         if (response.player_pokemon.current_hp <= 0) {
           await this.showForcedSwitchPanel()
         } else {
@@ -984,6 +982,19 @@ export class BattleScene extends Phaser.Scene {
       this.showLog('Erreur — réessaie.')
       this.waitingForInput = true
     }
+  }
+
+  /**
+   * Sépare la ligne d'action ("X utilise Y !") des lignes de détail qui suivent.
+   */
+  private _splitActionFromDetails(lines: string[]): { actionLine: string | null; detailLines: string[] } {
+    if (!lines.length) return { actionLine: null, detailLines: [] }
+    const ACTION_KEYWORDS = ['utilise', 'lance', 'emploie']
+    const firstIsAction = ACTION_KEYWORDS.some(k => lines[0].toLowerCase().includes(k))
+    if (firstIsAction) {
+      return { actionLine: lines[0], detailLines: lines.slice(1) }
+    }
+    return { actionLine: null, detailLines: lines }
   }
 
   // ── Helpers séquençage ─────────────────────────────────────────
