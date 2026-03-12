@@ -670,6 +670,9 @@ export class BattleAnimator {
       const cy = sprite.y - sprite.displayHeight * 0.5
 
       const doAnim = () => {
+        // Stopper tout tween en cours sur le sprite (idle bounce inclus)
+        scene.tweens.killTweensOf(sprite)
+
         const ball = scene.add.image(cx, cy, ballKey)
           .setDepth(61).setOrigin(0.5)
         const TARGET_PX = 24

@@ -1982,6 +1982,8 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Animation sortie du Pokémon actuel ──────────────────────
     if (this.playerSprite && !this.playerFainted) {
+      this.playerIdleTween?.stop()
+      this.playerIdleTween = null
       AudioManager.instance?.playUiSfx('SFX_BALL_POOF')
       await this.animator.animateSwitchOut(this.playerSprite, ballUrl)
     }
