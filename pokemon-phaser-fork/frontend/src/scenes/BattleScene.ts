@@ -2067,9 +2067,13 @@ export class BattleScene extends Phaser.Scene {
     this.switchPanel.setVisible(false)
     this.showLog('Changement\nde Pokémon...')
 
-    const ballUrl = '/static/img/items_sprites/ball/poke.png'
+    const ballUrl     = '/static/img/items_sprites/ball/poke.png'
+    const W           = this.cameras.main.width
+    const H           = this.cameras.main.height
+    const playerPos   = { x: W * 0.28, y: H * 0.57 }
+    const opponentPos = { x: W * 0.75, y: H * 0.38 }
 
-    // ── Animation sortie du Pokémon actuel ──────────────────────
+    // ── 1. Animation switch-out AVANT l'appel API ─────────────────
     if (this.playerSprite && !this.playerFainted) {
       this.playerIdleTween?.stop()
       this.playerIdleTween = null
@@ -2079,27 +2083,86 @@ export class BattleScene extends Phaser.Scene {
 
     try {
       const response = await battleApi.switchPokemon(this.battleId, pokemonId)
+      this.prevPlayerHp = this.state.player_pokemon.current_hp
       this.state = response
-      await this.showLogSequence(response.log)
 
-      // Cri du Pokémon entrant
+      // ── 2. Séparer les logs : entrée du switch vs tour adverse ────
+      // Logs d'entrée = tout avant la première ligne d'action adverse ("utilise/lance")
+      // Logs adversaires = à partir de "Adversaire utilise X !"
+      const ACTION_KEYWORDS = ['utilise', 'lance', 'emploie']
+      const oppActionIdx = response.log.findIndex(l =>
+        ACTION_KEYWORDS.some(k => l.toLowerCase().includes(k))
+      )
+      const switchLogs = oppActionIdx === -1 ? response.log : response.log.slice(0, oppActionIdx)
+      const oppLogs    = oppActionIdx === -1 ? []            : response.log.slice(oppActionIdx)
+      const { actionLine: oppActionLine, detailLines: oppDetailLines } = this._splitActionFromDetails(oppLogs)
+
+      // ── 3. Switch-in : nouveau Pokémon entre AVANT l'attaque adverse
       const dex = response.player_pokemon.dex_number
       if (dex) AudioManager.instance?.playCry(dex)
-
-      // Recharger le sprite et animer l'entrée en pokeball
       this.playerFainted = false
       await this.reloadPlayerSprite()
+      // renderState() écrase prevPlayerHp via _renderPlayerHp — on le préserve pour le flash
+      const savedPrevPlayerHp = this.prevPlayerHp
       this.renderState()
+      this.prevPlayerHp = savedPrevPlayerHp
       this.rebuildMovesPanel()
+
+      // Afficher les logs d'entrée (picots, message entrée, etc.)
+      await this.showLogSequence(switchLogs)
+
+      // ── 4. Tour adverse (si présent) ──────────────────────────────
+      if (oppLogs.length > 0 && response.player_pokemon.current_hp > 0) {
+
+        // a. "Adversaire utilise X !"
+        if (oppActionLine) await this.showLogSequence([oppActionLine])
+
+        // b. Animation + SFX attaque adverse
+        const oppMissed = oppLogs.some(l => l.includes("L'attaque a raté"))
+        const oppCrit   = oppDetailLines.some(l => l.toLowerCase().includes('critique'))
+        if (!oppMissed) {
+          const oppMove = this._extractOpponentMove(oppLogs, response.opponent_pokemon.name)
+          this.animator.playMoveAnimation(
+            oppMove.name, opponentPos, playerPos,
+            this.opponentSprite, this.playerSprite, false,
+            oppMove.type, oppMove.category,
+            this.opponentIdleTween, this.playerIdleTween,
+          )
+          if (oppMove.sfxName) AudioManager.instance?.playMoveSfx(oppMove.sfxName)
+          await new Promise<void>(r => this.time.delayedCall(1200, r))
+          if (oppCrit) this.cameras.main.shake(220, 0.012)
+        }
+
+        // c. Barre HP joueur + logs dégâts
+        this._renderPlayerHp(response)
+        const onDetailLine = (line: string) => {
+          if (line.toLowerCase().includes('k.o.') || line.toLowerCase().includes('est mis k')) {
+            this.animateHit()
+          }
+        }
+        await this.showLogSequence(oppDetailLines, onDetailLine)
+
+      } else {
+        // Pas de tour adverse — mettre à jour la barre HP quand même
+        this._renderPlayerHp(response)
+      }
+
+      this._renderStatuses(response)
+
+      // K.O. fallback + pause
+      this.animateHit()
+      if (this.playerFainted) {
+        await new Promise<void>(r => this.time.delayedCall(850, r))
+      }
 
       if (response.battle_ended) {
         await this.handleBattleEnd()
       } else if (response.player_pokemon.current_hp <= 0) {
-        // Le Pokémon entrant est tombé KO sur ce tour (poison, picots…)
         await this.showForcedSwitchPanel()
       } else {
         this.showActionPanel()
       }
+
     } catch (err) {
       console.error('Erreur switch:', err)
       this.showLog('Erreur — réessaie.')
