@@ -134,6 +134,11 @@ export class BattleScene extends Phaser.Scene {
     this.moveButtons = []
     this.logHistory  = []
     this.logScrollOffset = 0
+    // Reset stat badge arrays — les containers du combat précédent sont détruits avec la scène
+    this.opponentStatBadges = []
+    this.playerStatBadges   = []
+    this.opponentFainted    = false
+    this.playerFainted      = false
   }
 
   // Trainer id depuis le registry
@@ -877,7 +882,7 @@ export class BattleScene extends Phaser.Scene {
     const panelY = H - panelH
     const startX = W * 0.36
 
-    const overlay = this.add.container(0, 0).setDepth(20)
+    const overlay = this.add.container(0, 0).setDepth(20).setAlpha(0)
 
     // Assombrissement du panel moves
     const dim = this.add.graphics()
@@ -892,10 +897,15 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5)
     overlay.add(dots)
 
-    // Tween pulse alpha
+    // Fondu entrant rapide (150ms), puis pulse alpha en boucle
     this.tweens.add({
-      targets: dots, alpha: 0.2, duration: 500,
-      ease: 'Sine.easeInOut', yoyo: true, repeat: -1,
+      targets: overlay, alpha: 1, duration: 150, ease: 'Linear',
+      onComplete: () => {
+        this.tweens.add({
+          targets: dots, alpha: 0.2, duration: 500,
+          ease: 'Sine.easeInOut', yoyo: true, repeat: -1,
+        })
+      }
     })
 
     this.loadingOverlay = overlay
@@ -2084,6 +2094,9 @@ export class BattleScene extends Phaser.Scene {
 
       if (response.battle_ended) {
         await this.handleBattleEnd()
+      } else if (response.player_pokemon.current_hp <= 0) {
+        // Le Pokémon entrant est tombé KO sur ce tour (poison, picots…)
+        await this.showForcedSwitchPanel()
       } else {
         this.showActionPanel()
       }

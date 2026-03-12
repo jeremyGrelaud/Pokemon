@@ -1712,6 +1712,9 @@ class Battle(models.Model):
         # ── Talent on_switch_out pour le Pokémon sortant ────────────────────────
         self._fire_switch_out_ability(trainer_pokemon)
 
+        # ── Reset des stages du Pokémon sortant (règle Gen 1+) ──────────────────
+        trainer_pokemon.reset_combat_stats()
+
         # ── Effectuer le changement ─────────────────────────────────────────────
         if trainer_pokemon == self.player_pokemon:
             self.player_pokemon = new_pokemon
