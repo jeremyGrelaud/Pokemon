@@ -51,6 +51,7 @@ export class GameScene extends Phaser.Scene {
     this.createPlayer()
     this.setupInput()
     this.setupOverlaps()
+    this.cameras.main.setZoom(2)  // tiles 16px → affichés en 32px
     this.setupCamera()
     this.createDebugUI()
 
@@ -69,6 +70,7 @@ export class GameScene extends Phaser.Scene {
 
   update(): void {
     this.handleMovement()
+    this.player.setDepth(this.player.y + this.player.height / 2)// Dynamic player depth use feet as reference
     this.updateDebug()
   }
 
@@ -76,20 +78,54 @@ export class GameScene extends Phaser.Scene {
   // TILEMAP
   // ─────────────────────────────────────────────────────────────
 
-  private buildTilemap(): void {
-    this.map = this.make.tilemap({ key: 'kanto' })
-    const tileset = this.map.addTilesetImage('tileset_test', 'tileset_test')!
+private buildTilemap(): void {
+    this.map = this.make.tilemap({ key: 'pallet_town' })
 
-    this.map.createLayer('Ground', tileset, 0, 0)!
-    this.map.createLayer('Grass', tileset, 0, 0)!
+    // ── Tilesets ───────────────────────────────────────────────
+    const tsKanto   = this.map.addTilesetImage('full_kanto',                          'full_kanto')!
+    const tsForever = this.map.addTilesetImage('style_forever',                       'style_forever')!
+    const tsLab     = this.map.addTilesetImage('../tilesets/pallet_lab.png',          'pallet_lab')!
+    const tsHouse1  = this.map.addTilesetImage('../tilesets/pallet_house_green1.png', 'pallet_house_green1')!
+    const tsHouse2  = this.map.addTilesetImage('../tilesets/pallet_house_green2.png', 'pallet_house_green2')!
+    const tsHouse3  = this.map.addTilesetImage('../tilesets/pallet_house_green3.png', 'pallet_house_green3')!
 
-    this.collisionLayer = this.map.createLayer('Collision', tileset, 0, 0)!
+    const allTilesets = [tsKanto, tsForever, tsLab, tsHouse1, tsHouse2, tsHouse3]
+
+    // ── Couches de tuiles ──────────────────────────────────────
+    this.map.createLayer('Ground',     allTilesets, 0, 0)
+    this.map.createLayer('Decoration', allTilesets, 0, 0)
+    this.map.createLayer('Grass',      allTilesets, 0, 0)
+
+    this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
     this.collisionLayer.setCollisionByProperty({ collides: true })
     this.collisionLayer.setAlpha(0)
 
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
 
-    // ── Herbes depuis la couche Grass ─────────────────────────
+    // ── Bâtiments (object layer — image collection tilesets) ───
+    // Tiled positionne les objets depuis le coin bas-gauche → setOrigin(0, 1)
+    // depth = y pour un rendu pseudo-3D correct (les bâtiments plus bas = devant)
+    const GID_TO_KEY: Record<number, string> = {
+      9747: 'pallet_lab',
+      9753: 'pallet_house_green1',
+      9754: 'pallet_house_green2',
+      9755: 'pallet_house_green3',
+    }
+
+    const buildingsLayer = this.map.getObjectLayer('Buildings')
+    buildingsLayer?.objects.forEach((obj) => {
+      const textureKey = obj.gid ? GID_TO_KEY[obj.gid] : undefined
+      if (!textureKey) return
+      // Après — depth = bas du bâtiment (obj.y) mais on soustrait une marge
+      // pour que le joueur passe devant quand il est sous le bâtiment
+      // La "ligne de sol" du bâtiment = bas du sprite - ~32px d'ombre
+      const groundLine = obj.y! - 32
+      this.add.image(obj.x!, obj.y!, textureKey)
+        .setOrigin(0, 1)
+        .setDepth(groundLine)
+    })
+
+    // ── Herbes depuis la couche Grass ──────────────────────────
     this.grassGroup = this.physics.add.staticGroup()
     const grassLayer = this.map.getLayer('Grass')
     if (grassLayer) {
@@ -109,10 +145,7 @@ export class GameScene extends Phaser.Scene {
       })
     }
 
-    // ── Portails depuis la couche Portals ─────────────────────
-    // Pour l'instant on utilise les portails de la tilemap de test.
-    // Quand tu auras la vraie carte Kanto, ils seront alignés avec
-    // les vrais zone_id Django.
+    // ── Portails depuis l'object layer Portals ─────────────────
     this.portalGroup = this.physics.add.staticGroup()
     const portalLayer = this.map.getObjectLayer('Portals')
     portalLayer?.objects.forEach((obj) => {
@@ -123,13 +156,80 @@ export class GameScene extends Phaser.Scene {
         0xffff00, 0.3
       )
       this.physics.add.existing(rect, true)
-      const zoneId = (obj.properties as Array<{name:string; value:unknown}>)
+      const zoneId = (obj.properties as Array<{name: string; value: unknown}>)
         ?.find(p => p.name === 'zone_id')?.value as number
       rect.setData('zoneId', zoneId)
       rect.setData('zoneName', obj.name)
       this.portalGroup.add(rect)
     })
   }
+  // private buildTilemap(): void {
+  //   this.map = this.make.tilemap({ key: 'pallet_town' })
+  //   const tileset = this.map.addTilesetImage('full_kanto', 'full_kanto')!
+
+  //   this.map.createLayer('Ground', tileset, 0, 0)
+  //   this.map.createLayer('Decoration', tileset, 0, 0)
+  //   this.map.createLayer('Grass', tileset, 0, 0)
+
+  //   this.collisionLayer = this.map.createLayer('Collision', tileset, 0, 0)!
+  //   this.collisionLayer.setCollisionByProperty({ collides: true })
+  //   this.collisionLayer.setAlpha(0)  // invisible en jeu
+
+  //   // this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
+
+  //   // this.map = this.make.tilemap({ key: 'kanto' })
+  //   // const tileset = this.map.addTilesetImage('tileset_test', 'tileset_test')!
+
+  //   // this.map.createLayer('Ground', tileset, 0, 0)!
+  //   // this.map.createLayer('Grass', tileset, 0, 0)!
+
+  //   // this.collisionLayer = this.map.createLayer('Collision', tileset, 0, 0)!
+  //   // this.collisionLayer.setCollisionByProperty({ collides: true })
+  //   // this.collisionLayer.setAlpha(0)
+
+  //   // this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
+
+  //   // ── Herbes depuis la couche Grass ─────────────────────────
+  //   this.grassGroup = this.physics.add.staticGroup()
+  //   const grassLayer = this.map.getLayer('Grass')
+  //   if (grassLayer) {
+  //     grassLayer.data.forEach((row) => {
+  //       row.forEach((tile) => {
+  //         if (tile.index > 0) {
+  //           const rect = this.add.rectangle(
+  //             tile.pixelX + TILE_SIZE / 2,
+  //             tile.pixelY + TILE_SIZE / 2,
+  //             TILE_SIZE, TILE_SIZE,
+  //             0x00ff00, 0
+  //           )
+  //           this.physics.add.existing(rect, true)
+  //           this.grassGroup.add(rect)
+  //         }
+  //       })
+  //     })
+  //   }
+
+  //   // ── Portails depuis la couche Portals ─────────────────────
+  //   // Pour l'instant on utilise les portails de la tilemap de test.
+  //   // Quand tu auras la vraie carte Kanto, ils seront alignés avec
+  //   // les vrais zone_id Django.
+  //   this.portalGroup = this.physics.add.staticGroup()
+  //   const portalLayer = this.map.getObjectLayer('Portals')
+  //   portalLayer?.objects.forEach((obj) => {
+  //     const rect = this.add.rectangle(
+  //       obj.x! + obj.width! / 2,
+  //       obj.y! + obj.height! / 2,
+  //       obj.width!, obj.height!,
+  //       0xffff00, 0.3
+  //     )
+  //     this.physics.add.existing(rect, true)
+  //     const zoneId = (obj.properties as Array<{name:string; value:unknown}>)
+  //       ?.find(p => p.name === 'zone_id')?.value as number
+  //     rect.setData('zoneId', zoneId)
+  //     rect.setData('zoneName', obj.name)
+  //     this.portalGroup.add(rect)
+  //   })
+  // }
 
   // ─────────────────────────────────────────────────────────────
   // JOUEUR
@@ -146,9 +246,10 @@ export class GameScene extends Phaser.Scene {
 
     this.player = this.physics.add.sprite(x, y, 'player', 0)
     this.player.setCollideWorldBounds(true)
-    this.player.setDepth(10)
-    this.player.body!.setSize(16, 12)
-    this.player.body!.setOffset(8, 20)
+    //this.player.setDepth(10)  // will be set dynamically
+    // hitbox centrée sur les pieds du sprite 20×32
+    this.player.body!.setSize(12, 10)
+    this.player.body!.setOffset(4, 22)
 
     this.physics.add.collider(this.player, this.collisionLayer)
     this.player.anims.play('idle-down')
@@ -317,9 +418,12 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────
 
   private setupCamera(): void {
+    this.cameras.main.setRoundPixels(true) // to avoid blacklines due to pixels chevauchement
     this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
-    this.cameras.main.startFollow(this.player, true, 0.12, 0.12)
-    this.cameras.main.setZoom(1.5)
+    // this.cameras.main.startFollow(this.player, true, 0.12, 0.12)
+    // Après — pas de lerp, ou lerp désactivé pour pixel art
+    this.cameras.main.startFollow(this.player, true, 1, 1)
+    this.cameras.main.setZoom(2)
   }
 
   private fadeOut(duration = 300): Promise<void> {

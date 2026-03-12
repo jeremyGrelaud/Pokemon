@@ -1,6 +1,5 @@
 // ============================================================
 // scenes/PreloadScene.ts
-// VERSION TEST — charge les assets minimalistes de test.
 // ============================================================
 
 import Phaser from 'phaser'
@@ -27,15 +26,24 @@ export class PreloadScene extends Phaser.Scene {
       )
     })
 
-    // ── Tilemap de test ───────────────────────────────────────
-    // Le JSON référence tileset_test.json qui doit être
-    // dans le même dossier que kanto_test.json
-    this.load.tilemapTiledJSON('kanto', '/assets/tilemaps/kanto_test.json')
-    this.load.image('tileset_test', '/assets/tilesets/tileset_test.png')
+    // ── Tilemap ───────────────────────────────────────────────
+    this.load.tilemapTiledJSON('pallet_town', '/assets/tilemaps/pallet_town.json')
 
-    // ── Spritesheet joueur (32×32, 3 cols × 4 rows) ───────────
-    this.load.spritesheet('player', '/assets/sprites/player_test.png', {
-      frameWidth:  32,
+    // ── Tilesets standard (grilles) ───────────────────────────
+    this.load.image('full_kanto',     '/assets/tilesets/full_kanto.png')
+    this.load.image('style_forever',  '/assets/tilesets/style_forever.png')
+
+    // ── Tilesets "image collection" ───────────────────────────
+    // pallet_lab.png tileset (1 seule image)
+    this.load.image('pallet_lab',          '/assets/tilesets/pallet_lab.png')
+    // pallet_house_orange.png tileset (3 images individuelles)
+    this.load.image('pallet_house_green1', '/assets/tilesets/pallet_house_green1.png')
+    this.load.image('pallet_house_green2', '/assets/tilesets/pallet_house_green2.png')
+    this.load.image('pallet_house_green3', '/assets/tilesets/pallet_house_green3.png')
+
+    // ── Spritesheet joueur (20×32) ───────────
+    this.load.spritesheet('player', '/assets/sprites/player.png', {
+      frameWidth:  20,
       frameHeight: 32,
     })
   }
@@ -46,7 +54,6 @@ export class PreloadScene extends Phaser.Scene {
 
     this.createAnimations()
 
-    // GameScene + UIScene en parallèle
     this.scene.start('GameScene')
     this.scene.launch('UIScene')
     this.scene.launch('AudioManager')
@@ -55,8 +62,6 @@ export class PreloadScene extends Phaser.Scene {
   private createAnimations(): void {
     const anims = this.anims
 
-    // Spritesheet : 3 frames × 4 directions
-    // Row 0 = bas, Row 1 = gauche, Row 2 = droite, Row 3 = haut
     const dirs: Array<{ key: string; row: number }> = [
       { key: 'down',  row: 0 },
       { key: 'left',  row: 1 },

@@ -13,9 +13,15 @@ import { UIScene }        from '@scenes/UIScene'
 import { DialogScene }  from '@scenes/DialogScene'
 import { AudioManager } from '@scenes/AudioManager'
 
-export const GAME_WIDTH  = 640   // 20 tuiles × 32px
-export const GAME_HEIGHT = 480   // 15 tuiles × 32px
-export const TILE_SIZE   = 32    // px par tuile (peut passer à 16 si nécessaire)
+export const GAME_WIDTH  = 960   // 30 tuiles × 16px × zoom 2
+export const GAME_HEIGHT = 640   // 20 tuiles × 16px × zoom 2
+
+// export const GAME_WIDTH  = 1280   // 40 tuiles × 16px × zoom 2
+// export const GAME_HEIGHT = 960   // 30 tuiles × 16px × zoom 2
+// export const GAME_WIDTH  = window.innerWidth
+// export const GAME_HEIGHT = window.innerHeight
+//export const TILE_SIZE   = 32    // px par tuile (peut passer à 16 si nécessaire)
+export const TILE_SIZE = 16  // était 32
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,             // WebGL si dispo, sinon Canvas
