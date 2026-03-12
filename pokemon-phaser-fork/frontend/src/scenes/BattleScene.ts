@@ -170,6 +170,10 @@ export class BattleScene extends Phaser.Scene {
     this.prevOpponentHp    = this.state.opponent_pokemon.current_hp
     this.prevPlayerHp      = this.state.player_pokemon.current_hp
     this.animator.initExpPct(this.state.player_pokemon.exp_percent ?? 0)
+    this.animator.resetHpRatios(
+      this.state.player_pokemon.current_hp   / this.state.player_pokemon.max_hp,
+      this.state.opponent_pokemon.current_hp / this.state.opponent_pokemon.max_hp,
+    )
 
     this.renderState()
     this.showActionPanel()
@@ -2102,6 +2106,10 @@ export class BattleScene extends Phaser.Scene {
       if (dex) AudioManager.instance?.playCry(dex)
       this.playerFainted = false
       await this.reloadPlayerSprite()
+      // Réinitialiser le ratio HP au niveau réel du nouveau Pokémon — évite la ghost bar
+      this.animator.resetHpRatios(
+        response.player_pokemon.current_hp / response.player_pokemon.max_hp,
+      )
       // renderState() écrase prevPlayerHp via _renderPlayerHp — on le préserve pour le flash
       const savedPrevPlayerHp = this.prevPlayerHp
       this.renderState()

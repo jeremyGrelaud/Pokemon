@@ -55,6 +55,12 @@ export class BattleAnimator {
     this.prevExpPct = pct
   }
 
+  /** Réinitialise les ratios HP visuels sans animation — à appeler au début du combat ou lors d'un switch. */
+  resetHpRatios(playerRatio?: number, opponentRatio?: number): void {
+    if (playerRatio   !== undefined) this.prevPlayerHpRatio   = playerRatio
+    if (opponentRatio !== undefined) this.prevOpponentHpRatio = opponentRatio
+  }
+
   // ── Idle bounce ─────────────────────────────────────────────────────────────
 
   startIdle(sprite: Phaser.GameObjects.Image, delay = 0): Phaser.Tweens.Tween {
