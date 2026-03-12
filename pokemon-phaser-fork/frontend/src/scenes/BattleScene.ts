@@ -130,8 +130,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   init(data: BattleSceneData): void {
-    this.battleId  = data.battleId
+    this.battleId    = data.battleId
     this.moveButtons = []
+    this.logHistory  = []
+    this.logScrollOffset = 0
   }
 
   // Trainer id depuis le registry
@@ -1378,54 +1380,39 @@ export class BattleScene extends Phaser.Scene {
 
     const W      = this.cameras.main.width
     const logW   = W * 0.33
-    const lineH  = 15   // hauteur par ligne visuelle (px)
     const logH   = 112 - 12
-    const total  = this.logHistory.length
 
-    // Partir du bas (offset 0 = dernier message en bas) et remplir vers le haut
-    // On crée les Text objects pour mesurer le nb de lignes visuelles de chaque entrée
-    const endIdx = total - this.logScrollOffset
-    const entries: { text: string }[] = []
-    let usedH = 0
+    // ── Style boîte de dialogue Pokémon DS ───────────────────────
+    // On affiche uniquement les 2 dernières lignes (+ scroll manuel)
+    const MAX_VISIBLE = 2
+    const total       = this.logHistory.length
+    const endIdx      = total - this.logScrollOffset
+    const startIdx    = Math.max(0, endIdx - MAX_VISIBLE)
+    const visible     = this.logHistory.slice(startIdx, endIdx)
 
-    for (let i = endIdx - 1; i >= 0; i--) {
-      // Estimer nb lignes visuelles via wrap approximatif (10px font, ~6.5px/char Inter)
-      const charsPerLine = Math.floor((logW - 18) / 6.5)
-      const words = this.logHistory[i].split(' ')
-      let lines = 1, cur = 0
-      for (const w of words) {
-        if (cur + w.length + 1 > charsPerLine && cur > 0) { lines++; cur = w.length }
-        else cur += w.length + 1
-      }
-      const entryH = lines * lineH
-      if (usedH + entryH > logH && entries.length > 0) break
-      usedH += entryH
-      entries.unshift({ text: this.logHistory[i] })
-    }
+    // Deux slots fixes en bas du log
+    const SLOT_H    = (logH - 4) / MAX_VISIBLE
+    visible.forEach((text, i) => {
+      const isLast   = (i === visible.length - 1)
+      const color    = isLast ? '#ffffff' : '#8899bb'  // ligne active en blanc, précédente atténuée
+      const yPos     = 4 + i * SLOT_H
 
-    // Rendre les entrées de haut en bas
-    let yPos = logH - usedH   // commencer pour que le dernier soit en bas
-    entries.forEach(({ text }) => {
-      const t = this.add.text(0, yPos, text, {
+      const t = this.add.text(6, yPos, text, {
         fontSize: '10px',
-        color: '#e0e8ff',
+        color,
         fontFamily: '"Inter", "Segoe UI", sans-serif',
-        wordWrap: { width: logW - 18 },
-        lineSpacing: 3,
+        wordWrap: { width: logW - 24 },
+        lineSpacing: 2,
       }).setDepth(10)
       this.logContainer.add(t)
       this.logTextObjects.push(t)
-      yPos += t.height + 2
     })
 
-    // Boutons scroll — visibles seulement si l'historique déborde
+    // Indicateur "▼ suite" si l'historique a plus de lignes (scroll disponible)
+    const canScrollUp = this.logScrollOffset < total - MAX_VISIBLE
     if (this.logScrollBtnUp && this.logScrollBtnDown) {
-      // Vérifier si le contenu total dépasse logH en estimant la hauteur totale
-      const hasMore = total > entries.length || this.logScrollOffset > 0
-      const canUp   = this.logScrollOffset < total - entries.length
-      const canDown = this.logScrollOffset > 0
-      this.logScrollBtnUp.setVisible(hasMore && canUp)
-      this.logScrollBtnDown.setVisible(hasMore && canDown)
+      this.logScrollBtnUp.setVisible(canScrollUp)
+      this.logScrollBtnDown.setVisible(this.logScrollOffset > 0)
     }
   }
 
@@ -1438,7 +1425,7 @@ export class BattleScene extends Phaser.Scene {
         const line = lines[i++]
         this.appendLog(line)
         onLine?.(line)
-        this.time.delayedCall(900, next)
+        this.time.delayedCall(1500, next)
       }
       next()
     })
