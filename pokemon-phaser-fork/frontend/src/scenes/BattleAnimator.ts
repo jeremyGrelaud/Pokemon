@@ -250,32 +250,76 @@ export class BattleAnimator {
     else          this.prevOpponentHpRatio = newRatio
 
     if (Math.abs(newRatio - oldRatio) < 0.001) {
-      this._drawHpRatio(g, newRatio, x, y, maxW)
+      this._drawHpRatio(g, newRatio, newRatio, x, y, maxW)
       return
     }
 
-    const proxy = { r: oldRatio }
-    this.scene.tweens.add({
-      targets: proxy, r: newRatio, duration: 700, ease: 'Cubic.easeOut',
-      onUpdate:  () => this._drawHpRatio(g, proxy.r, x, y, maxW),
-      onComplete: () => {
-        this._drawHpRatio(g, newRatio, x, y, maxW)
-        if (newRatio < oldRatio) this._hpShine(x, y, maxW * newRatio, 7)
-      },
-    })
+    // ── Style Gen 4/5 ────────────────────────────────────────────
+    // 1. La barre verte saute immédiatement à la nouvelle valeur
+    // 2. Une barre rouge fantôme part de l'ancienne valeur et suit lentement
+    //    avec une ease qui ralentit quand les PV sont bas (suspense)
+    const isDamage = newRatio < oldRatio
+
+    if (isDamage) {
+      // Durée proportionnelle à la chute ET inversement aux PV restants
+      // Plus les PV finaux sont bas, plus c'est long (max ~2s à 0 PV)
+      const drop      = oldRatio - newRatio
+      const lowFactor = 1 + (1 - newRatio) * 2.5   // 1× plein → 3.5× à 0 PV
+      const duration  = Math.round(Math.min(2200, 400 + drop * 800 * lowFactor))
+
+      const ghost = { r: oldRatio }
+      this.scene.tweens.add({
+        targets: ghost,
+        r: newRatio,
+        duration,
+        ease: 'Cubic.easeIn',   // accélère légèrement puis ralentit fortement en fin
+        onUpdate:  () => this._drawHpRatio(g, newRatio, ghost.r, x, y, maxW),
+        onComplete: () => {
+          this._drawHpRatio(g, newRatio, newRatio, x, y, maxW)
+          this._hpShine(x, y, maxW * newRatio, 7)
+        },
+      })
+
+      // Barre verte à sa position finale dès le 1er frame
+      this._drawHpRatio(g, newRatio, oldRatio, x, y, maxW)
+
+    } else {
+      // Soin : animation simple vers le haut, sans fantôme
+      const proxy = { r: oldRatio }
+      this.scene.tweens.add({
+        targets: proxy, r: newRatio, duration: 600, ease: 'Cubic.easeOut',
+        onUpdate:  () => this._drawHpRatio(g, proxy.r, proxy.r, x, y, maxW),
+        onComplete: () => this._drawHpRatio(g, newRatio, newRatio, x, y, maxW),
+      })
+    }
   }
 
-  private _drawHpRatio(g: Phaser.GameObjects.Graphics, ratio: number, x: number, y: number, maxW: number): void {
-    const color = ratio > 0.5 ? 0x2ecc71 : ratio > 0.25 ? 0xf39c12 : 0xe74c3c
+  private _drawHpRatio(
+    g: Phaser.GameObjects.Graphics,
+    greenRatio: number,  // valeur réelle (barre colorée)
+    ghostRatio: number,  // valeur fantôme rouge (toujours ≥ greenRatio en dégâts)
+    x: number, y: number, maxW: number,
+  ): void {
+    const color = greenRatio > 0.5 ? 0x2ecc71 : greenRatio > 0.25 ? 0xf39c12 : 0xe74c3c
+
     g.clear()
     // Fond
-    g.fillStyle(0x2c3e50);  g.fillRoundedRect(x, y, maxW, 7, 3)
-    // Barre colorée
-    g.fillStyle(color);     g.fillRoundedRect(x, y, maxW * ratio, 7, 3)
-    // Liseret brillant en haut de la barre
-    if (ratio > 0.02) {
+    g.fillStyle(0x2c3e50)
+    g.fillRoundedRect(x, y, maxW, 7, 3)
+
+    // Barre rouge fantôme (décrément en retard) — visible seulement si écart > 0
+    if (ghostRatio > greenRatio + 0.005) {
+      g.fillStyle(0xe74c3c, 0.75)
+      g.fillRoundedRect(x, y, maxW * ghostRatio, 7, 3)
+    }
+
+    // Barre colorée (verte / orange / rouge selon PV restants)
+    if (greenRatio > 0) {
+      g.fillStyle(color)
+      g.fillRoundedRect(x, y, maxW * greenRatio, 7, 3)
+      // Liseret brillant
       g.fillStyle(0xffffff, 0.18)
-      g.fillRect(x + 2, y + 1, maxW * ratio - 4, 2)
+      g.fillRect(x + 2, y + 1, maxW * greenRatio - 4, 2)
     }
   }
 
