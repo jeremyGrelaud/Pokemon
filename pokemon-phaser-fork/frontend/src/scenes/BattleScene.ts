@@ -1027,7 +1027,7 @@ export class BattleScene extends Phaser.Scene {
     const ow = W * 0.38 - 20
     this.animator.animateHpBar(this.opponentHpBar, r.opponent_pokemon.current_hp, r.opponent_pokemon.max_hp, 20, 28, ow, false)
     this.opponentHpText?.setText('')
-    if (r.opponent_pokemon.current_hp < this.prevOpponentHp) {
+    if (r.opponent_pokemon.current_hp < this.prevOpponentHp && r.opponent_pokemon.current_hp > 0) {
       this.animator.flashHit(this.opponentSprite)
     }
     this.prevOpponentHp = r.opponent_pokemon.current_hp
@@ -1048,7 +1048,7 @@ export class BattleScene extends Phaser.Scene {
       px, py, pw,
       () => AudioManager.instance?.playUiSfx('exp_gain'),
     )
-    if (r.player_pokemon.current_hp < this.prevPlayerHp) {
+    if (r.player_pokemon.current_hp < this.prevPlayerHp && r.player_pokemon.current_hp > 0) {
       this.animator.flashHit(this.playerSprite)
     }
     this.prevPlayerHp = r.player_pokemon.current_hp
