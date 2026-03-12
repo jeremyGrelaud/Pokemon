@@ -864,6 +864,51 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // INDICATEUR DE CHARGEMENT
+  // ─────────────────────────────────────────────────────────────
+
+  private loadingOverlay: Phaser.GameObjects.Container | null = null
+
+  private _showLoadingOverlay(): void {
+    if (this.loadingOverlay) return
+    const W = this.cameras.main.width
+    const H = this.cameras.main.height
+    const panelH = 112
+    const panelY = H - panelH
+    const startX = W * 0.36
+
+    const overlay = this.add.container(0, 0).setDepth(20)
+
+    // Assombrissement du panel moves
+    const dim = this.add.graphics()
+    dim.fillStyle(0x000000, 0.55)
+    dim.fillRect(startX, panelY, W - startX, panelH)
+    overlay.add(dim)
+
+    // Texte "..." pulsant au centre
+    const dots = this.add.text(startX + (W - startX) / 2, panelY + panelH / 2, '…', {
+      fontSize: '18px', color: '#ffffff',
+      fontFamily: '"Press Start 2P"',
+    }).setOrigin(0.5)
+    overlay.add(dots)
+
+    // Tween pulse alpha
+    this.tweens.add({
+      targets: dots, alpha: 0.2, duration: 500,
+      ease: 'Sine.easeInOut', yoyo: true, repeat: -1,
+    })
+
+    this.loadingOverlay = overlay
+  }
+
+  private _hideLoadingOverlay(): void {
+    if (!this.loadingOverlay) return
+    this.tweens.killTweensOf(this.loadingOverlay.getAll())
+    this.loadingOverlay.destroy()
+    this.loadingOverlay = null
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // ACTIONS
   // ─────────────────────────────────────────────────────────────
 
@@ -877,8 +922,10 @@ export class BattleScene extends Phaser.Scene {
     const opponentPos = { x: W * 0.75, y: H * 0.38 }
 
     try {
-      // 1. Appel API
+      // 1. Appel API — afficher l'overlay pendant l'attente
+      this._showLoadingOverlay()
       const response = await battleApi.useMove(this.battleId, moveId)
+      this._hideLoadingOverlay()
       this.prevOpponentHp = this.state.opponent_pokemon.current_hp
       this.prevPlayerHp   = this.state.player_pokemon.current_hp
       this.state = response
@@ -897,7 +944,7 @@ export class BattleScene extends Phaser.Scene {
       const eotLines    = playerDetailLines.filter(l => EOT_KEYWORDS.some(k => l.startsWith(k)))
       const combatLines = playerDetailLines.filter(l => !EOT_KEYWORDS.some(k => l.startsWith(k)))
 
-      const onKoLine = (line: string) => {
+      const onDetailLine = (line: string) => {
         if (line.toLowerCase().includes('k.o.') || line.toLowerCase().includes('est mis k')) {
           this.animateHit()
         }
@@ -909,6 +956,7 @@ export class BattleScene extends Phaser.Scene {
 
       // b. Animation attaque joueur
       const playerMissed = playerLogs.some(l => l.includes("L'attaque a raté"))
+      const playerCrit   = playerDetailLines.some(l => l.toLowerCase().includes('critique'))
       if (moveData && !playerMissed) {
         this.animator.playMoveAnimation(
           moveData.name, playerPos, opponentPos,
@@ -919,11 +967,13 @@ export class BattleScene extends Phaser.Scene {
         )
         AudioManager.instance?.playMoveSfx(moveData.name)
         await new Promise<void>(r => this.time.delayedCall(1200, r))
+        // Shake critique juste après l'impact, avant la baisse HP
+        if (playerCrit) this.cameras.main.shake(220, 0.012)
       }
 
       // c. Barre HP adversaire + détails du tour joueur
       this._renderOpponentHp(response)
-      await this.showLogSequence(combatLines, onKoLine)
+      await this.showLogSequence(combatLines, onDetailLine)
 
       // ── PHASE ADVERSAIRE ──────────────────────────────────────
       if (!response.turn_info.second_skipped && opponentLogs.length > 0
@@ -934,6 +984,7 @@ export class BattleScene extends Phaser.Scene {
 
         // b. Animation attaque adversaire
         const oppMissed = opponentLogs.some(l => l.includes("L'attaque a raté"))
+        const oppCrit   = oppDetailLines.some(l => l.toLowerCase().includes('critique'))
         if (!oppMissed) {
           const oppMove = this._extractOpponentMove(opponentLogs, response.opponent_pokemon.name)
           this.animator.playMoveAnimation(
@@ -944,11 +995,13 @@ export class BattleScene extends Phaser.Scene {
           )
           if (oppMove.sfxName) AudioManager.instance?.playMoveSfx(oppMove.sfxName)
           await new Promise<void>(r => this.time.delayedCall(1200, r))
+          // Shake critique adverse juste après l'impact
+          if (oppCrit) this.cameras.main.shake(220, 0.012)
         }
 
         // c. Barre HP joueur + détails
         this._renderPlayerHp(response)
-        await this.showLogSequence(oppDetailLines, onKoLine)
+        await this.showLogSequence(oppDetailLines, onDetailLine)
       } else {
         // Pas de tour adverse — mettre quand même à jour la barre joueur (soins, etc.)
         this._renderPlayerHp(response)
@@ -980,6 +1033,7 @@ export class BattleScene extends Phaser.Scene {
         }
       }
     } catch (err) {
+      this._hideLoadingOverlay()
       console.error('Erreur de combat:', err)
       this.showLog('Erreur — réessaie.')
       this.waitingForInput = true
