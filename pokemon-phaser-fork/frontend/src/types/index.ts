@@ -88,6 +88,7 @@ export interface PokemonData {
   status: string | null
   is_shiny: boolean
   types?: string[]
+  gender?: string
   dex_number?: number
   moves?: MoveData[]
   // Champs XP (présents dans build_battle_response)

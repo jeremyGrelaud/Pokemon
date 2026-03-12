@@ -34,6 +34,7 @@ def serialize_pokemon(pokemon, include_moves=False):
         'status':       pokemon.status_condition,
         'is_shiny':     pokemon.is_shiny,
         'types':        types,
+        'gender':       pokemon.gender,
     }
 
     if include_moves:

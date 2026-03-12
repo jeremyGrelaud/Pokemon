@@ -93,6 +93,8 @@ export class BattleScene extends Phaser.Scene {
   private playerNameText!:   Phaser.GameObjects.Text
   private opponentHpText!:   Phaser.GameObjects.Text
   private playerHpText!:     Phaser.GameObjects.Text
+  private opponentGenderText!: Phaser.GameObjects.Text
+  private playerGenderText!:   Phaser.GameObjects.Text
   private opponentStatusBadge!: Phaser.GameObjects.Container
   private playerStatusBadge!:   Phaser.GameObjects.Container
   private opponentStatBadges:  Phaser.GameObjects.Container[] = []
@@ -355,6 +357,10 @@ export class BattleScene extends Phaser.Scene {
       fontFamily: '"Press Start 2P"', fontStyle: 'bold',
     }).setDepth(10)
 
+    this.opponentGenderText = this.add.text(0, oy + 8, '', {
+      fontSize: '11px', fontFamily: '"Inter", "Segoe UI", sans-serif', fontStyle: 'bold',
+    }).setDepth(10)
+
     this.opponentHpBar = this.add.graphics().setDepth(10)
     this.opponentHpText = this.add.text(ox + 10, oy + 38, '', {
       fontSize: '9px', color: '#555', fontFamily: '"Inter", "Segoe UI", sans-serif',
@@ -368,6 +374,10 @@ export class BattleScene extends Phaser.Scene {
     this.playerNameText = this.add.text(px + 10, py + 8, '', {
       fontSize: '9px', color: '#1a1a1a',
       fontFamily: '"Press Start 2P"', fontStyle: 'bold',
+    }).setDepth(10)
+
+    this.playerGenderText = this.add.text(0, py + 8, '', {
+      fontSize: '11px', fontFamily: '"Inter", "Segoe UI", sans-serif', fontStyle: 'bold',
     }).setDepth(10)
 
     this.playerHpBar = this.add.graphics().setDepth(10)
@@ -1056,10 +1066,27 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private _renderNames(r: BattleResponse): void {
-    const opShiny = r.opponent_pokemon.is_shiny ? ' ✨' : ''
-    const ppShiny = r.player_pokemon.is_shiny   ? ' ✨' : ''
+    const genderSymbol = (g?: string) => g === 'M' ? '♂' : g === 'F' ? '♀' : ''
+    const genderColor  = (g?: string) => g === 'M' ? '#4a90d9' : g === 'F' ? '#d94a7a' : '#888'
+
+    const opShiny  = r.opponent_pokemon.is_shiny ? ' ✨' : ''
+    const ppShiny  = r.player_pokemon.is_shiny   ? ' ✨' : ''
+
     this.opponentNameText.setText(`${r.opponent_pokemon.name.toUpperCase()}${opShiny}  Nv.${r.opponent_pokemon.level}`)
     this.playerNameText.setText(`${r.player_pokemon.name.toUpperCase()}${ppShiny}  Nv.${r.player_pokemon.level}`)
+
+    // Symbole genre — positionné juste après le texte du nom (police système pour ♂/♀)
+    const opGender = genderSymbol(r.opponent_pokemon.gender)
+    this.opponentGenderText
+      .setText(opGender)
+      .setColor(genderColor(r.opponent_pokemon.gender))
+      .setX(this.opponentNameText.x + this.opponentNameText.width + 3)
+
+    const ppGender = genderSymbol(r.player_pokemon.gender)
+    this.playerGenderText
+      .setText(ppGender)
+      .setColor(genderColor(r.player_pokemon.gender))
+      .setX(this.playerNameText.x + this.playerNameText.width + 3)
   }
 
   private _renderStatuses(r: BattleResponse): void {
