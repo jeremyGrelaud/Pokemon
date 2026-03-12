@@ -64,6 +64,9 @@ db.sqlite3-journal
 *.sqlite3-wal
 *.sqlite3-shm
 
+node_modules/
+pokemon-phaser-fork/frontend/.vite/deps/
+
 # Flask stuff:
 instance/
 .webassets-cache
@@ -133,3 +136,5 @@ dmypy.json
 .pyre/
 
 .sqlite3
+.vscode/settings.json
+pokemon-phaser-fork/frontend/.vite/deps_temp_4d6a420c/package.json
