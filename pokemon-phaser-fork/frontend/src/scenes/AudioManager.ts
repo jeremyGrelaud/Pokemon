@@ -95,6 +95,7 @@ export class AudioManager extends Phaser.Scene {
 
   resumeZone(): void {
     if (!this.bgmZoneKey) return
+    this._isStopping = false  // force la reprise même si un fade était en cours
     this._stopBgm(false)
     this._playBgm(this.bgmZoneKey, undefined, true)
   }
@@ -146,8 +147,8 @@ export class AudioManager extends Phaser.Scene {
     this.activeSfx.clear()
   }
 
-  stopBgm(): void {
-    this._stopBgm(true)   // fondu court avant le silence
+  stopBgm(fade = false): void {
+    this._stopBgm(fade)
   }
 
   // ── Volume / Mute ──────────────────────────────────────────
@@ -170,14 +171,25 @@ export class AudioManager extends Phaser.Scene {
 
   // ── Internals ──────────────────────────────────────────────
 
+  private _isStopping = false  // garde contre les lancements concurrents
+
   private _playBgm(key: string, url?: string, fade = true): void {
     if (this.bgmCurrentKey === key && this.bgmCurrent?.isPlaying) return
+    if (this._isStopping) return  // attend la fin du stop en cours
 
     const startTrack = () => {
       if (!this.cache.audio.has(key)) {
         console.warn(`[AudioManager] Cache manquant: ${key}`)
         return
       }
+      // Détruire proprement un éventuel résidu
+      if (this.bgmCurrent) {
+        this.tweens.killTweensOf(this.bgmCurrent)
+        try { this.bgmCurrent.stop(); (this.bgmCurrent as Phaser.Sound.WebAudioSound).destroy?.() } catch { /* déjà détruit */ }
+        this.bgmCurrent = null
+        this.bgmCurrentKey = ''
+      }
+
       const track = this.sound.add(key, {
         loop:   true,
         volume: fade ? 0 : (this.muted ? 0 : this.masterVol),
@@ -207,17 +219,28 @@ export class AudioManager extends Phaser.Scene {
   private _stopBgm(fade: boolean): void {
     const prev = this.bgmCurrent
     if (!prev) return
-    if (fade) {
-      this.tweens.add({
-        targets: prev, volume: 0, duration: FADE_MS,
-        onComplete: () => { prev.stop(); prev.destroy() },
-      })
-    } else {
-      prev.stop()
-      prev.destroy()
-    }
+
+    // Nullifier immédiatement pour éviter double-play
     this.bgmCurrent    = null
     this.bgmCurrentKey = ''
+
+    // Stopper tous les tweens sur ce son AVANT de le détruire
+    // (évite le crash "currentConfig is null" quand le tween tente
+    // de modifier le volume d'un son déjà détruit)
+    this.tweens.killTweensOf(prev)
+
+    if (fade) {
+      this._isStopping = true
+      this.tweens.add({
+        targets: prev, volume: 0, duration: FADE_MS,
+        onComplete: () => {
+          try { prev.stop(); (prev as Phaser.Sound.WebAudioSound).destroy?.() } catch { /* déjà détruit */ }
+          this._isStopping = false
+        },
+      })
+    } else {
+      try { prev.stop(); (prev as Phaser.Sound.WebAudioSound).destroy?.() } catch { /* déjà détruit */ }
+    }
   }
 
   private _playSfxOnce(key: string, url: string): void {

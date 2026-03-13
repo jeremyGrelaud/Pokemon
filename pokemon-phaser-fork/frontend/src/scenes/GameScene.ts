@@ -410,10 +410,6 @@ export class GameScene extends Phaser.Scene {
 
       console.log(`[GameScene] Arrivée : ${result.zone.name} (id: ${result.zone.id})`)
 
-      if (result.zone.music) {
-        AudioManager.instance?.playZone(result.zone.music)
-      }
-
       // Charger la tilemap si nécessaire
       const mapKey = this.zoneNameToKey(result.zone.name)
       await this.loadMapIfNeeded(mapKey)
@@ -443,6 +439,11 @@ export class GameScene extends Phaser.Scene {
     // (pas sound.stopAll qui laisse bgmCurrent invalide → crash "currentConfig is null")
     AudioManager.instance?.stopBgm()
     AudioManager.instance?.stopAllSfx()
+
+    // Lancer la musique de la nouvelle zone immédiatement après le stop
+    if (zone.music) {
+      AudioManager.instance?.playZone(zone.music)
+    }
 
     // Détruire tous les game objects sauf joueur et debugText
     this.children.list
