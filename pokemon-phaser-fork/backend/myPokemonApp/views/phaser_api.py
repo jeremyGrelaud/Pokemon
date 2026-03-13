@@ -40,6 +40,21 @@ def _serialize_zone(zone: Zone) -> dict:
     }
 
 
+def _serialize_wild_spawns(zone: Zone) -> list:
+    """Sérialise les spawns sauvages d une zone."""
+    return [
+        {
+            'pokemon_name':   spawn.pokemon.name,
+            'pokemon_id':     spawn.pokemon.id,
+            'spawn_rate':     spawn.spawn_rate,
+            'level_min':      spawn.level_min,
+            'level_max':      spawn.level_max,
+            'encounter_type': spawn.encounter_type,
+        }
+        for spawn in zone.wild_spawns.select_related('pokemon').all()
+    ]
+
+
 def _serialize_connection(conn: ZoneConnection, trainer: Trainer, from_zone: Zone) -> dict:
     """Sérialise une ZoneConnection du point de vue du trainer."""
     # Résoudre la zone de destination (connexion peut être inversée)
@@ -270,8 +285,8 @@ def phaser_travel(request, zone_id: int):
         'success': True,
         'message': f'Arrivée à {target_zone.name}',
         'zone': _serialize_zone(target_zone) | {
-            'connections': [],  # simplifié, enrichir si besoin
-            'wild_spawns': [],
+            'connections': [],
+            'wild_spawns': _serialize_wild_spawns(target_zone),
             'can_access':  True,
             'access_reason': '',
             'is_current':  True,
@@ -321,7 +336,7 @@ def phaser_travel_by_name(request):
         'message': f'Arrivée à {target_zone.name}',
         'zone': _serialize_zone(target_zone) | {
             'connections': [],
-            'wild_spawns': [],
+            'wild_spawns': _serialize_wild_spawns(target_zone),
             'can_access':  True,
             'access_reason': '',
             'is_current':  True,

@@ -18,6 +18,7 @@ export class GameScene extends Phaser.Scene {
 
   private map!: Phaser.Tilemaps.Tilemap
   private collisionLayer!: Phaser.Tilemaps.TilemapLayer
+  private bumperLayer?: Phaser.Tilemaps.TilemapLayer
   private player!: Phaser.Physics.Arcade.Sprite
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
@@ -26,6 +27,7 @@ export class GameScene extends Phaser.Scene {
   private facingDirection: Direction = 'down'
   private isMoving = false
   private grassCooldown = false
+  private portalCooldown = false  // évite re-déclenchement immédiat après transition
 
   private grassGroup!: Phaser.Physics.Arcade.StaticGroup
   private portalGroup!: Phaser.Physics.Arcade.StaticGroup
@@ -79,7 +81,8 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Récupérer la zone chargée par BootScene (ou mise à jour par onPortalEnter)
     this.currentZone = this.registry.get('currentZone') as ZoneDetailData
-
+    console.log('[GameScene] create — zone:', this.currentZone.name, 'spawns:', this.currentZone.wild_spawns?.length)
+    
     this.buildTilemap()
     this.createPlayer()
     this.setupInput()
@@ -89,6 +92,10 @@ export class GameScene extends Phaser.Scene {
 
     // Fondu d'entrée à chaque (re)démarrage de scène
     this.cameras.main.fadeIn(300, 0, 0, 0)
+
+    // Cooldown portail au démarrage
+    this.portalCooldown = true
+    this.time.delayedCall(1000, () => { this.portalCooldown = false })
 
     // Notifier UIScene du nom de zone réel
     this.events.emit('zone-entered', this.currentZone)
@@ -105,6 +112,7 @@ export class GameScene extends Phaser.Scene {
 
   update(): void {
     this.handleMovement()
+    this.checkBumpers()
     this.player.setDepth(this.player.y + this.player.height / 2)
     this.updateDebug()
   }
@@ -114,6 +122,7 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────
 
   private buildTilemap(): void {
+    this.bumperLayer = undefined  // reset à chaque chargement de map
     const mapKey = this.zoneNameToKey(this.currentZone.name)
     this.map = this.make.tilemap({ key: mapKey })
 
@@ -122,32 +131,49 @@ export class GameScene extends Phaser.Scene {
     const tsForever   = this.map.addTilesetImage('style_forever', 'style_forever')!
     const tsCollision = this.map.addTilesetImage('collision',     'collision')!
 
-    // ── Tilesets image-collection (optionnels selon la map) ────
-    // addTilesetImage retourne null si le tileset n'existe pas dans cette map
-    const tsLab    = this.map.addTilesetImage('../tilesets/pallet_lab.png',          'pallet_lab')
-    const tsHouse1 = this.map.addTilesetImage('../tilesets/pallet_house_green1.png', 'pallet_house_green1')
-    const tsHouse2 = this.map.addTilesetImage('../tilesets/pallet_house_green2.png', 'pallet_house_green2')
-    const tsHouse3 = this.map.addTilesetImage('../tilesets/pallet_house_green3.png', 'pallet_house_green3')
+    // ── Tilesets optionnels — vérifiés avant ajout ─────────────
+    const mapTilesetNames = this.map.tilesets.map(ts => ts.name)
+
+    const tsBumper = mapTilesetNames.includes('bumper_down')
+      ? this.map.addTilesetImage('bumper_down', 'bumper_down') : null
+    const tsLab    = mapTilesetNames.includes('../tilesets/pallet_lab.png')
+      ? this.map.addTilesetImage('../tilesets/pallet_lab.png', 'pallet_lab') : null
+    const tsHouse1 = mapTilesetNames.includes('../tilesets/pallet_house_green1.png')
+      ? this.map.addTilesetImage('../tilesets/pallet_house_green1.png', 'pallet_house_green1') : null
+    const tsHouse2 = mapTilesetNames.includes('../tilesets/pallet_house_green2.png')
+      ? this.map.addTilesetImage('../tilesets/pallet_house_green2.png', 'pallet_house_green2') : null
+    const tsHouse3 = mapTilesetNames.includes('../tilesets/pallet_house_green3.png')
+      ? this.map.addTilesetImage('../tilesets/pallet_house_green3.png', 'pallet_house_green3') : null
 
     const allTilesets = [
       tsKanto, tsForever,
       tsLab, tsHouse1, tsHouse2, tsHouse3,
-      tsCollision,
+      tsCollision, tsBumper,
     ].filter(Boolean) as Phaser.Tilemaps.Tileset[]
 
-    // ── Couches de tuiles ──────────────────────────────────────
-    this.map.createLayer('Ground',     allTilesets, 0, 0)
-    this.map.createLayer('Decoration', allTilesets, 0, 0)
-    this.map.createLayer('Grass',      allTilesets, 0, 0)
-    this.map.createLayer('Trees',      allTilesets, 0, 0)
+    // ── Couches de tuiles — ordre = ordre de rendu ─────────────
+    this.map.createLayer('Ground',      allTilesets, 0, 0)
+    this.map.createLayer('Bumpers',     allTilesets, 0, 0)   // visuel falaises
+    this.map.createLayer('Decoration',  allTilesets, 0, 0)
+    this.map.createLayer('Decoration2', allTilesets, 0, 0)
+    this.map.createLayer('Grass',       allTilesets, 0, 0)
+    this.map.createLayer('Trees',       allTilesets, 0, 0)
 
+    // Collision
     this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
     this.collisionLayer.setCollisionByProperty({ collides: true })
     this.collisionLayer.setAlpha(0)
 
+    // Bumpers logique (invisible — sens unique vers le bas)
+    const bumperLogicLayer = this.map.createLayer('Bumpers_Logic', allTilesets, 0, 0)
+    if (bumperLogicLayer) {
+      this.bumperLayer = bumperLogicLayer
+      this.bumperLayer.setAlpha(0)
+    }
+
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
 
-    // ── Bâtiments (object layer — image collection tilesets) ───
+    // ── Bâtiments (object layer) ───────────────────────────────
     const GID_TO_KEY: Record<number, string> = {
       9747: 'pallet_lab',
       9753: 'pallet_house_green1',
@@ -207,26 +233,34 @@ export class GameScene extends Phaser.Scene {
   // JOUEUR
   // ─────────────────────────────────────────────────────────────
 
-  private createPlayer(): void {
-    // Cherche le spawn correspondant à la zone précédente (pour arriver du bon côté)
+  private findSpawnPoint(): { x: number; y: number } {
     const previousZoneName = this.registry.get('previousZoneName') as string | undefined
-    const spawnName = previousZoneName
-      ? `SpawnFrom${this.zoneNameToKey(previousZoneName)}`
-      : 'PlayerSpawn'
 
-    // Essaie le spawn directionnel, sinon spawn par défaut
-    let spawn = this.map.findObject('Spawns', (obj) => obj.name === spawnName) as
-      { x: number; y: number; width: number; height: number } | undefined
-
-    if (!spawn) {
-      spawn = this.map.findObject('Spawns', (obj) => obj.name === 'PlayerSpawn') as
-        { x: number; y: number; width: number; height: number } | undefined
+    // Essaie d'abord un spawn directionnel basé sur la zone précédente
+    if (previousZoneName) {
+      const key = this.zoneNameToKey(previousZoneName)
+      const directional = this.map.findObject('Spawns', obj =>
+        obj.name === `SpawnFrom_${key}` ||
+        obj.name === `SpawnFrom${key}`
+      ) as { x: number; y: number } | undefined
+      if (directional) return directional
     }
 
-    const x = spawn ? spawn.x : this.map.widthInPixels / 2
-    const y = spawn ? spawn.y : this.map.heightInPixels / 2
+    // Spawn par défaut — cherche 'Player', 'PlayerSpawn'
+    const defaultSpawn = this.map.findObject('Spawns', obj =>
+      obj.name === 'Player' || obj.name === 'PlayerSpawn'
+    ) as { x: number; y: number } | undefined
 
-    this.player = this.physics.add.sprite(x, y, 'player', 0)
+    if (defaultSpawn) return defaultSpawn
+
+    // Fallback : centre de la map
+    return { x: this.map.widthInPixels / 2, y: this.map.heightInPixels / 2 }
+  }
+
+  private createPlayer(): void {
+    const spawn = this.findSpawnPoint()
+
+    this.player = this.physics.add.sprite(spawn.x, spawn.y, 'player', 0)
     this.player.setCollideWorldBounds(true)
     this.player.body!.setSize(12, 10)
     this.player.body!.setOffset(4, 22)
@@ -280,6 +314,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // BUMPERS — sens unique vers le bas
+  // ─────────────────────────────────────────────────────────────
+
+  private checkBumpers(): void {
+    if (!this.bumperLayer) return
+
+    const tile = this.bumperLayer.getTileAtWorldXY(
+      this.player.x,
+      this.player.y + 4  // légèrement sous le centre pour les pieds
+    )
+
+    if (tile?.properties?.bumper_down) {
+      const body = this.player.body as Phaser.Physics.Arcade.Body
+      if (body.velocity.y < 0) this.player.setVelocityY(0)
+      if (body.velocity.x !== 0) this.player.setVelocityX(0)
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // OVERLAPS
   // ─────────────────────────────────────────────────────────────
 
@@ -295,6 +348,7 @@ export class GameScene extends Phaser.Scene {
       this.player,
       this.portalGroup,
       (_p, portal) => {
+        if (this.portalCooldown) return
         const rect = portal as Phaser.GameObjects.Rectangle
         void this.onPortalEnter(rect.getData('zoneName') as string)
       }
@@ -336,9 +390,9 @@ export class GameScene extends Phaser.Scene {
     try {
       const result = await mapApi.travelToByName(zoneName)
 
-      if (!result.success) {
+      if (!result.success || !result.zone) {
         this.scene.launch('DialogScene', {
-          text: result.message,
+          text: result.message ?? `Impossible d'accéder à ${zoneName}.`,
           autoClose: 2500,
         })
         await this.fadeIn()
@@ -349,24 +403,23 @@ export class GameScene extends Phaser.Scene {
       // Mémoriser la zone de provenance pour le spawn directionnel
       this.registry.set('previousZoneName', this.currentZone.name)
 
-      // Mettre à jour la zone courante
+      // Mettre à jour le registry
       this.registry.set('currentZone',     result.zone)
       this.registry.set('currentZoneId',   result.zone.id)
       this.registry.set('currentZoneName', result.zone.name)
 
       console.log(`[GameScene] Arrivée : ${result.zone.name} (id: ${result.zone.id})`)
 
-      // Musique
       if (result.zone.music) {
         AudioManager.instance?.playZone(result.zone.music)
       }
 
-      // Charger la tilemap si nécessaire puis redémarrer la scène
+      // Charger la tilemap si nécessaire
       const mapKey = this.zoneNameToKey(result.zone.name)
       await this.loadMapIfNeeded(mapKey)
 
-      // scene.restart() recrée la scène proprement — create() relit le registry
-      this.scene.restart()
+      // Reconstruire en place — sans scene.restart() qui relance BootScene
+      await this.rebuildForZone(result.zone)
 
     } catch (err) {
       console.error('[GameScene] Erreur portail:', err)
@@ -377,6 +430,64 @@ export class GameScene extends Phaser.Scene {
       await this.fadeIn()
       this.isMoving = false
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // RECONSTRUCTION EN PLACE (sans scene.restart)
+  // ─────────────────────────────────────────────────────────────
+
+  private async rebuildForZone(zone: ZoneDetailData): Promise<void> {
+    this.currentZone = zone
+
+    // Stopper proprement la BGM via AudioManager
+    // (pas sound.stopAll qui laisse bgmCurrent invalide → crash "currentConfig is null")
+    AudioManager.instance?.stopBgm()
+    AudioManager.instance?.stopAllSfx()
+
+    // Détruire tous les game objects sauf joueur et debugText
+    this.children.list
+      .filter(obj => obj !== this.player && obj !== this.debugText)
+      .forEach(obj => obj.destroy())
+
+    // Détruire groupes physics
+    this.grassGroup?.destroy(true)
+    this.portalGroup?.destroy(true)
+
+    // Détruire l'ancienne map
+    this.map?.destroy()
+
+    // Vider les colliders/overlaps
+    this.physics.world.colliders.destroy()
+
+    // Reconstruire tilemap + groupes
+    this.buildTilemap()
+
+    // Repositionner le joueur
+    const spawn = this.findSpawnPoint()
+    this.player.setPosition(spawn.x, spawn.y)
+    this.player.setVelocity(0, 0)
+
+    // Recréer collider joueur ↔ collision
+    this.physics.add.collider(this.player, this.collisionLayer)
+
+    // Recréer overlaps
+    this.setupOverlaps()
+
+    // Mettre à jour caméra
+    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
+    this.cameras.main.startFollow(this.player, true, 1, 1)
+
+    // Notifier UIScene
+    this.events.emit('zone-entered', zone)
+
+    // Fondu d'entrée
+    this.cameras.main.fadeIn(300, 0, 0, 0)
+
+    // Cooldown portail — évite re-déclenchement immédiat après transition
+    this.portalCooldown = true
+    this.time.delayedCall(1000, () => { this.portalCooldown = false })
+
+    this.isMoving = false
   }
 
   // ─────────────────────────────────────────────────────────────
