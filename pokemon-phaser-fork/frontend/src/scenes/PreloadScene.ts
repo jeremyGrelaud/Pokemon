@@ -41,6 +41,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('pallet_house_green2', '/assets/tilesets/pallet_house_green2.png')
     this.load.image('pallet_house_green3', '/assets/tilesets/pallet_house_green3.png')
 
+    this.load.image('collision', '/assets/tilesets/collision.png')
+
     // ── Spritesheet joueur (20×32) ───────────
     this.load.spritesheet('player', '/assets/sprites/player.png', {
       frameWidth:  20,

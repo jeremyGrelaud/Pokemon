@@ -88,13 +88,19 @@ private buildTilemap(): void {
     const tsHouse1  = this.map.addTilesetImage('../tilesets/pallet_house_green1.png', 'pallet_house_green1')!
     const tsHouse2  = this.map.addTilesetImage('../tilesets/pallet_house_green2.png', 'pallet_house_green2')!
     const tsHouse3  = this.map.addTilesetImage('../tilesets/pallet_house_green3.png', 'pallet_house_green3')!
+    const tsCollision = this.map.addTilesetImage('collision', 'collision')!
 
-    const allTilesets = [tsKanto, tsForever, tsLab, tsHouse1, tsHouse2, tsHouse3]
+    const allTilesets = [tsKanto, tsForever, tsLab, tsHouse1, tsHouse2, tsHouse3, tsCollision]
 
     // ── Couches de tuiles ──────────────────────────────────────
     this.map.createLayer('Ground',     allTilesets, 0, 0)
     this.map.createLayer('Decoration', allTilesets, 0, 0)
     this.map.createLayer('Grass',      allTilesets, 0, 0)
+    this.map.createLayer('Trees',      allTilesets, 0, 0)
+
+    // this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
+    // this.collisionLayer.setCollisionByProperty({ collides: true })
+    // this.collisionLayer.setAlpha(0)
 
     this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
     this.collisionLayer.setCollisionByProperty({ collides: true })
