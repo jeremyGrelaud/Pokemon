@@ -12,13 +12,15 @@ from .phaser_api import (
     phaser_player_location,
     phaser_battle_state,
     phaser_wild_encounter,
-    phaser_travel,   
+    phaser_travel,
+    phaser_travel_by_name,
 )
 
 urlpatterns = [
     path('map/',                              phaser_map_overview,    name='phaser_map_overview'),
     path('map/zone/<int:zone_id>/',           phaser_zone_detail,     name='phaser_zone_detail'),
     path('map/travel/<int:zone_id>/',         phaser_travel,          name='phaser_travel'),
+    path('map/travel/by-name/',               phaser_travel_by_name,  name='phaser_travel_by_name'),
     path('map/encounter/<int:zone_id>/',      phaser_wild_encounter,  name='phaser_wild_encounter'),
     path('player/location/',                  phaser_player_location, name='phaser_player_location'),
 ]

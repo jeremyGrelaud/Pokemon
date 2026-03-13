@@ -280,6 +280,55 @@ def phaser_travel(request, zone_id: int):
 
 
 # ─────────────────────────────────────────────────────────────
+# ENDPOINT : Travel → JSON
+# POST /api/phaser/map/travel/by-name/<zone_name>/
+# ─────────────────────────────────────────────────────────────
+
+@login_required
+def phaser_travel_by_name(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST requis'}, status=405)
+
+    import json
+    from myPokemonApp.questEngine import trigger_quest_event
+
+    try:
+        body = json.loads(request.body)
+        zone_name = body.get('zone_name', '').strip()
+    except Exception:
+        return JsonResponse({'error': 'JSON invalide'}, status=400)
+
+    if not zone_name:
+        return JsonResponse({'error': 'zone_name requis'}, status=400)
+
+    try:
+        target_zone = Zone.objects.get(name=zone_name)
+    except Zone.DoesNotExist:
+        return JsonResponse({'success': False, 'message': f'Zone "{zone_name}" introuvable.'})
+
+    trainer         = get_player_trainer(request.user)
+    player_location = get_player_location(trainer)
+
+    can_travel, reason = player_location.can_travel_to(target_zone)
+    if not can_travel:
+        return JsonResponse({'success': False, 'message': reason})
+
+    player_location.travel_to(target_zone)
+    trigger_quest_event(trainer, 'visit_zone', zone=target_zone)
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Arrivée à {target_zone.name}',
+        'zone': _serialize_zone(target_zone) | {
+            'connections': [],
+            'wild_spawns': [],
+            'can_access':  True,
+            'access_reason': '',
+            'is_current':  True,
+        },
+    })
+
+# ─────────────────────────────────────────────────────────────
 # ENDPOINT : État initial d'un combat
 # GET /api/battle/state/<battle_id>/
 # ─────────────────────────────────────────────────────────────

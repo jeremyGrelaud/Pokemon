@@ -98,10 +98,7 @@ private buildTilemap(): void {
     this.map.createLayer('Grass',      allTilesets, 0, 0)
     this.map.createLayer('Trees',      allTilesets, 0, 0)
 
-    // this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
-    // this.collisionLayer.setCollisionByProperty({ collides: true })
-    // this.collisionLayer.setAlpha(0)
-
+    // Collisions
     this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
     this.collisionLayer.setCollisionByProperty({ collides: true })
     this.collisionLayer.setAlpha(0)
@@ -162,80 +159,15 @@ private buildTilemap(): void {
         0xffff00, 0.3
       )
       this.physics.add.existing(rect, true)
-      const zoneId = (obj.properties as Array<{name: string; value: unknown}>)
-        ?.find(p => p.name === 'zone_id')?.value as number
-      rect.setData('zoneId', zoneId)
-      rect.setData('zoneName', obj.name)
+
+      // Zones with unique name
+      const zoneName = (obj.properties as Array<{name: string; value: unknown}>)
+        ?.find(p => p.name === 'zone_name')?.value as string
+      rect.setData('zoneName', zoneName)
+
       this.portalGroup.add(rect)
     })
   }
-  // private buildTilemap(): void {
-  //   this.map = this.make.tilemap({ key: 'pallet_town' })
-  //   const tileset = this.map.addTilesetImage('full_kanto', 'full_kanto')!
-
-  //   this.map.createLayer('Ground', tileset, 0, 0)
-  //   this.map.createLayer('Decoration', tileset, 0, 0)
-  //   this.map.createLayer('Grass', tileset, 0, 0)
-
-  //   this.collisionLayer = this.map.createLayer('Collision', tileset, 0, 0)!
-  //   this.collisionLayer.setCollisionByProperty({ collides: true })
-  //   this.collisionLayer.setAlpha(0)  // invisible en jeu
-
-  //   // this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
-
-  //   // this.map = this.make.tilemap({ key: 'kanto' })
-  //   // const tileset = this.map.addTilesetImage('tileset_test', 'tileset_test')!
-
-  //   // this.map.createLayer('Ground', tileset, 0, 0)!
-  //   // this.map.createLayer('Grass', tileset, 0, 0)!
-
-  //   // this.collisionLayer = this.map.createLayer('Collision', tileset, 0, 0)!
-  //   // this.collisionLayer.setCollisionByProperty({ collides: true })
-  //   // this.collisionLayer.setAlpha(0)
-
-  //   // this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
-
-  //   // ── Herbes depuis la couche Grass ─────────────────────────
-  //   this.grassGroup = this.physics.add.staticGroup()
-  //   const grassLayer = this.map.getLayer('Grass')
-  //   if (grassLayer) {
-  //     grassLayer.data.forEach((row) => {
-  //       row.forEach((tile) => {
-  //         if (tile.index > 0) {
-  //           const rect = this.add.rectangle(
-  //             tile.pixelX + TILE_SIZE / 2,
-  //             tile.pixelY + TILE_SIZE / 2,
-  //             TILE_SIZE, TILE_SIZE,
-  //             0x00ff00, 0
-  //           )
-  //           this.physics.add.existing(rect, true)
-  //           this.grassGroup.add(rect)
-  //         }
-  //       })
-  //     })
-  //   }
-
-  //   // ── Portails depuis la couche Portals ─────────────────────
-  //   // Pour l'instant on utilise les portails de la tilemap de test.
-  //   // Quand tu auras la vraie carte Kanto, ils seront alignés avec
-  //   // les vrais zone_id Django.
-  //   this.portalGroup = this.physics.add.staticGroup()
-  //   const portalLayer = this.map.getObjectLayer('Portals')
-  //   portalLayer?.objects.forEach((obj) => {
-  //     const rect = this.add.rectangle(
-  //       obj.x! + obj.width! / 2,
-  //       obj.y! + obj.height! / 2,
-  //       obj.width!, obj.height!,
-  //       0xffff00, 0.3
-  //     )
-  //     this.physics.add.existing(rect, true)
-  //     const zoneId = (obj.properties as Array<{name:string; value:unknown}>)
-  //       ?.find(p => p.name === 'zone_id')?.value as number
-  //     rect.setData('zoneId', zoneId)
-  //     rect.setData('zoneName', obj.name)
-  //     this.portalGroup.add(rect)
-  //   })
-  // }
 
   // ─────────────────────────────────────────────────────────────
   // JOUEUR
@@ -322,10 +254,7 @@ private buildTilemap(): void {
       this.portalGroup,
       (_p, portal) => {
         const rect = portal as Phaser.GameObjects.Rectangle
-        void this.onPortalEnter(
-          rect.getData('zoneId') as number,
-          rect.getData('zoneName') as string
-        )
+        void this.onPortalEnter(rect.getData('zoneName') as string)
       }
     )
   }
@@ -362,15 +291,15 @@ private buildTilemap(): void {
   // TRANSITION DE ZONE → Django
   // ─────────────────────────────────────────────────────────────
 
-  private async onPortalEnter(zoneId: number, zoneName: string): Promise<void> {
-    if (this.isMoving) return
+  private async onPortalEnter(zoneName: string): Promise<void> {
+    if (this.isMoving || !zoneName) return
     this.isMoving = true
 
     await this.fadeOut()
 
     try {
-      // Appel Django : déplace le joueur vers la zone
-      const result = await mapApi.travelTo(zoneId)
+      // Appel Django : déplace le joueur vers la zone identifié par son nom unique
+      const result = await mapApi.travelToByName(zoneName)
 
       if (!result.success) {
         // Django bloque le passage (badge manquant, CS requise, etc.)
