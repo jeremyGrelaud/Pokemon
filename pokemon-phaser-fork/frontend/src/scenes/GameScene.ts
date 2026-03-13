@@ -40,20 +40,55 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Convertit un nom de zone Django en clé tilemap Phaser.
+   * "Bourg Palette" → "bourg_palette"
+   * "Route 1"       → "route_1"
+   */
+  private zoneNameToKey(name: string): string {
+    return name
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // supprime accents
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '')
+  }
+
+  /**
+   * Charge une tilemap JSON dans le cache Phaser si elle n'y est pas encore.
+   */
+  private loadMapIfNeeded(key: string): Promise<void> {
+    if (this.cache.tilemap.has(key)) return Promise.resolve()
+    return new Promise<void>((resolve) => {
+      this.load.tilemapTiledJSON(key, `/assets/tilemaps/${key}.json`)
+      this.load.once('complete',   resolve)
+      this.load.once('loaderror', () => {
+        console.warn(`[GameScene] Tilemap introuvable : /assets/tilemaps/${key}.json`)
+        resolve()
+      })
+      this.load.start()
+    })
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // CREATE
   // ─────────────────────────────────────────────────────────────
 
   create(): void {
-    // Récupérer la zone chargée par BootScene
+    // Récupérer la zone chargée par BootScene (ou mise à jour par onPortalEnter)
     this.currentZone = this.registry.get('currentZone') as ZoneDetailData
 
     this.buildTilemap()
     this.createPlayer()
     this.setupInput()
     this.setupOverlaps()
-    this.cameras.main.setZoom(2)  // tiles 16px → affichés en 32px
     this.setupCamera()
     this.createDebugUI()
+
+    // Fondu d'entrée à chaque (re)démarrage de scène
+    this.cameras.main.fadeIn(300, 0, 0, 0)
 
     // Notifier UIScene du nom de zone réel
     this.events.emit('zone-entered', this.currentZone)
@@ -70,7 +105,7 @@ export class GameScene extends Phaser.Scene {
 
   update(): void {
     this.handleMovement()
-    this.player.setDepth(this.player.y + this.player.height / 2)// Dynamic player depth use feet as reference
+    this.player.setDepth(this.player.y + this.player.height / 2)
     this.updateDebug()
   }
 
@@ -78,19 +113,27 @@ export class GameScene extends Phaser.Scene {
   // TILEMAP
   // ─────────────────────────────────────────────────────────────
 
-private buildTilemap(): void {
-    this.map = this.make.tilemap({ key: 'pallet_town' })
+  private buildTilemap(): void {
+    const mapKey = this.zoneNameToKey(this.currentZone.name)
+    this.map = this.make.tilemap({ key: mapKey })
 
-    // ── Tilesets ───────────────────────────────────────────────
-    const tsKanto   = this.map.addTilesetImage('full_kanto',                          'full_kanto')!
-    const tsForever = this.map.addTilesetImage('style_forever',                       'style_forever')!
-    const tsLab     = this.map.addTilesetImage('../tilesets/pallet_lab.png',          'pallet_lab')!
-    const tsHouse1  = this.map.addTilesetImage('../tilesets/pallet_house_green1.png', 'pallet_house_green1')!
-    const tsHouse2  = this.map.addTilesetImage('../tilesets/pallet_house_green2.png', 'pallet_house_green2')!
-    const tsHouse3  = this.map.addTilesetImage('../tilesets/pallet_house_green3.png', 'pallet_house_green3')!
-    const tsCollision = this.map.addTilesetImage('collision', 'collision')!
+    // ── Tilesets toujours présents ─────────────────────────────
+    const tsKanto     = this.map.addTilesetImage('full_kanto',    'full_kanto')!
+    const tsForever   = this.map.addTilesetImage('style_forever', 'style_forever')!
+    const tsCollision = this.map.addTilesetImage('collision',     'collision')!
 
-    const allTilesets = [tsKanto, tsForever, tsLab, tsHouse1, tsHouse2, tsHouse3, tsCollision]
+    // ── Tilesets image-collection (optionnels selon la map) ────
+    // addTilesetImage retourne null si le tileset n'existe pas dans cette map
+    const tsLab    = this.map.addTilesetImage('../tilesets/pallet_lab.png',          'pallet_lab')
+    const tsHouse1 = this.map.addTilesetImage('../tilesets/pallet_house_green1.png', 'pallet_house_green1')
+    const tsHouse2 = this.map.addTilesetImage('../tilesets/pallet_house_green2.png', 'pallet_house_green2')
+    const tsHouse3 = this.map.addTilesetImage('../tilesets/pallet_house_green3.png', 'pallet_house_green3')
+
+    const allTilesets = [
+      tsKanto, tsForever,
+      tsLab, tsHouse1, tsHouse2, tsHouse3,
+      tsCollision,
+    ].filter(Boolean) as Phaser.Tilemaps.Tileset[]
 
     // ── Couches de tuiles ──────────────────────────────────────
     this.map.createLayer('Ground',     allTilesets, 0, 0)
@@ -98,7 +141,6 @@ private buildTilemap(): void {
     this.map.createLayer('Grass',      allTilesets, 0, 0)
     this.map.createLayer('Trees',      allTilesets, 0, 0)
 
-    // Collisions
     this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
     this.collisionLayer.setCollisionByProperty({ collides: true })
     this.collisionLayer.setAlpha(0)
@@ -106,8 +148,6 @@ private buildTilemap(): void {
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
 
     // ── Bâtiments (object layer — image collection tilesets) ───
-    // Tiled positionne les objets depuis le coin bas-gauche → setOrigin(0, 1)
-    // depth = y pour un rendu pseudo-3D correct (les bâtiments plus bas = devant)
     const GID_TO_KEY: Record<number, string> = {
       9747: 'pallet_lab',
       9753: 'pallet_house_green1',
@@ -119,9 +159,6 @@ private buildTilemap(): void {
     buildingsLayer?.objects.forEach((obj) => {
       const textureKey = obj.gid ? GID_TO_KEY[obj.gid] : undefined
       if (!textureKey) return
-      // Après — depth = bas du bâtiment (obj.y) mais on soustrait une marge
-      // pour que le joueur passe devant quand il est sous le bâtiment
-      // La "ligne de sol" du bâtiment = bas du sprite - ~32px d'ombre
       const groundLine = obj.y! - 32
       this.add.image(obj.x!, obj.y!, textureKey)
         .setOrigin(0, 1)
@@ -159,12 +196,9 @@ private buildTilemap(): void {
         0xffff00, 0.3
       )
       this.physics.add.existing(rect, true)
-
-      // Zones with unique name
       const zoneName = (obj.properties as Array<{name: string; value: unknown}>)
         ?.find(p => p.name === 'zone_name')?.value as string
       rect.setData('zoneName', zoneName)
-
       this.portalGroup.add(rect)
     })
   }
@@ -174,18 +208,26 @@ private buildTilemap(): void {
   // ─────────────────────────────────────────────────────────────
 
   private createPlayer(): void {
-    const spawn = this.map.findObject(
-      'Spawns',
-      (obj) => obj.name === 'PlayerSpawn'
-    ) as { x: number; y: number; width: number; height: number } | undefined
+    // Cherche le spawn correspondant à la zone précédente (pour arriver du bon côté)
+    const previousZoneName = this.registry.get('previousZoneName') as string | undefined
+    const spawnName = previousZoneName
+      ? `SpawnFrom${this.zoneNameToKey(previousZoneName)}`
+      : 'PlayerSpawn'
 
-    const x = spawn ? spawn.x + spawn.width / 2  : this.map.widthInPixels / 2
-    const y = spawn ? spawn.y + spawn.height / 2 : this.map.heightInPixels / 2
+    // Essaie le spawn directionnel, sinon spawn par défaut
+    let spawn = this.map.findObject('Spawns', (obj) => obj.name === spawnName) as
+      { x: number; y: number; width: number; height: number } | undefined
+
+    if (!spawn) {
+      spawn = this.map.findObject('Spawns', (obj) => obj.name === 'PlayerSpawn') as
+        { x: number; y: number; width: number; height: number } | undefined
+    }
+
+    const x = spawn ? spawn.x : this.map.widthInPixels / 2
+    const y = spawn ? spawn.y : this.map.heightInPixels / 2
 
     this.player = this.physics.add.sprite(x, y, 'player', 0)
     this.player.setCollideWorldBounds(true)
-    //this.player.setDepth(10)  // will be set dynamically
-    // hitbox centrée sur les pieds du sprite 20×32
     this.player.body!.setSize(12, 10)
     this.player.body!.setOffset(4, 22)
 
@@ -268,18 +310,12 @@ private buildTilemap(): void {
     this.cameras.main.flash(200, 255, 255, 255)
 
     try {
-      // Appel Django : crée le combat et renvoie battle_id
       const result = await mapApi.wildEncounter(this.currentZone.id)
-
       console.log(`[GameScene] Combat créé — battle_id: ${result.battle_id}`)
-
-      // Suspendre GameScene et lancer BattleScene
       this.scene.pause('GameScene')
       this.scene.launch('BattleScene', { battleId: result.battle_id })
-
     } catch (err) {
       console.error('[GameScene] Erreur rencontre:', err)
-      // En cas d'erreur (zone sans spawns, etc.) on affiche un message
       this.scene.launch('DialogScene', {
         text: `Aucun Pokémon dans cette zone.`,
         autoClose: 1500,
@@ -298,11 +334,9 @@ private buildTilemap(): void {
     await this.fadeOut()
 
     try {
-      // Appel Django : déplace le joueur vers la zone identifié par son nom unique
       const result = await mapApi.travelToByName(zoneName)
 
       if (!result.success) {
-        // Django bloque le passage (badge manquant, CS requise, etc.)
         this.scene.launch('DialogScene', {
           text: result.message,
           autoClose: 2500,
@@ -312,29 +346,27 @@ private buildTilemap(): void {
         return
       }
 
+      // Mémoriser la zone de provenance pour le spawn directionnel
+      this.registry.set('previousZoneName', this.currentZone.name)
+
       // Mettre à jour la zone courante
-      this.currentZone = result.zone
-      this.registry.set('currentZone', result.zone)
-      this.registry.set('currentZoneId', result.zone.id)
+      this.registry.set('currentZone',     result.zone)
+      this.registry.set('currentZoneId',   result.zone.id)
       this.registry.set('currentZoneName', result.zone.name)
 
       console.log(`[GameScene] Arrivée : ${result.zone.name} (id: ${result.zone.id})`)
 
-      // Nouvelle musique de zone (fondu enchaîné)
+      // Musique
       if (result.zone.music) {
         AudioManager.instance?.playZone(result.zone.music)
       }
 
-      // Notifier UIScene
-      this.events.emit('zone-changed', this.currentZone)
+      // Charger la tilemap si nécessaire puis redémarrer la scène
+      const mapKey = this.zoneNameToKey(result.zone.name)
+      await this.loadMapIfNeeded(mapKey)
 
-      // Afficher le nom de la nouvelle zone
-      this.scene.launch('DialogScene', {
-        text: `📍 ${result.zone.name}`,
-        autoClose: 1500,
-      })
-
-      await this.fadeIn()
+      // scene.restart() recrée la scène proprement — create() relit le registry
+      this.scene.restart()
 
     } catch (err) {
       console.error('[GameScene] Erreur portail:', err)
@@ -343,9 +375,8 @@ private buildTilemap(): void {
         autoClose: 2000,
       })
       await this.fadeIn()
+      this.isMoving = false
     }
-
-    this.isMoving = false
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -353,10 +384,8 @@ private buildTilemap(): void {
   // ─────────────────────────────────────────────────────────────
 
   private setupCamera(): void {
-    this.cameras.main.setRoundPixels(true) // to avoid blacklines due to pixels chevauchement
+    this.cameras.main.setRoundPixels(true)
     this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
-    // this.cameras.main.startFollow(this.player, true, 0.12, 0.12)
-    // Après — pas de lerp, ou lerp désactivé pour pixel art
     this.cameras.main.startFollow(this.player, true, 1, 1)
     this.cameras.main.setZoom(2)
   }
@@ -406,7 +435,6 @@ private buildTilemap(): void {
   resumeFromBattle(): void {
     this.isMoving = false
     this.scene.resume('GameScene')
-    // Délai avant de réarmer — évite une rencontre immédiate au retour du combat
     this.time.delayedCall(2500, () => {
       this.grassCooldown = false
     })

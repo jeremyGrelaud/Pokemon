@@ -27,7 +27,7 @@ export class PreloadScene extends Phaser.Scene {
     })
 
     // ── Tilemap ───────────────────────────────────────────────
-    this.load.tilemapTiledJSON('pallet_town', '/assets/tilemaps/pallet_town.json')
+    this.load.tilemapTiledJSON('bourg_palette', '/assets/tilemaps/bourg_palette.json')
 
     // ── Tilesets standard (grilles) ───────────────────────────
     this.load.image('full_kanto',     '/assets/tilesets/full_kanto.png')
