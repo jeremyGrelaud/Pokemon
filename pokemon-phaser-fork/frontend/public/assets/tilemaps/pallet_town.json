@@ -271,8 +271,8 @@
                  "type":"",
                  "visible":true,
                  "width":160,
-                 "x":351.5,
-                 "y":458
+                 "x":354.833333333333,
+                 "y":420.666666666667
                 }, 
                 {
                  "gid":9755,
@@ -469,15 +469,15 @@
          "name":"pallet_lab.png",
          "spacing":0,
          "tilecount":1,
-         "tileheight":254,
+         "tileheight":209,
          "tiles":[
                 {
                  "id":0,
                  "image":"..\/tilesets\/pallet_lab.png",
-                 "imageheight":254,
-                 "imagewidth":173
+                 "imageheight":209,
+                 "imagewidth":155
                 }],
-         "tilewidth":173
+         "tilewidth":155
         }, 
         {
          "columns":0,
@@ -503,8 +503,8 @@
                 {
                  "id":6,
                  "image":"..\/tilesets\/pallet_house_green2.png",
-                 "imageheight":130,
-                 "imagewidth":96
+                 "imageheight":109,
+                 "imagewidth":87
                 }, 
                 {
                  "id":7,
