@@ -10,7 +10,9 @@ import type { ZoneDetailData } from '@/types'
 import { AudioManager } from './AudioManager'
 
 const PLAYER_SPEED   = 160
-const ENCOUNTER_RATE = 0.02  // ~2% par frame soit ~1 rencontre/3s en marchant
+// probabilité de déclencher un wild combat
+const ENCOUNTER_RATE    = 10   // % de chance par pas (comme dans les vrais jeux : ~10-15%)
+const TILE_STEP_PX      = 16   // distance en px = 1 pas (1 tile)
 
 type Direction = 'up' | 'down' | 'left' | 'right'
 
@@ -36,6 +38,9 @@ export class GameScene extends Phaser.Scene {
 
   // Zone courante (chargée depuis le registry au démarrage)
   private currentZone!: ZoneDetailData
+
+  private lastStepX = 0
+  private lastStepY = 0
 
   constructor() {
     super({ key: 'GameScene' })
@@ -113,6 +118,7 @@ export class GameScene extends Phaser.Scene {
   update(): void {
     this.handleMovement()
     this.checkBumpers()
+    this.checkGrassEncounter()
     this.player.setDepth(this.player.y + this.player.height / 2)
     this.updateDebug()
   }
@@ -267,6 +273,9 @@ export class GameScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, this.collisionLayer)
     this.player.anims.play('idle-down')
+
+    this.lastStepX = spawn.x
+    this.lastStepY = spawn.y
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -337,12 +346,7 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────
 
   private setupOverlaps(): void {
-    this.physics.add.overlap(this.player, this.grassGroup, () => {
-      if (this.grassCooldown || this.isMoving) return
-      if (Math.random() < ENCOUNTER_RATE) {
-        void this.onGrassEncounter()
-      }
-    })
+    this.physics.add.overlap(this.player, this.grassGroup)
 
     this.physics.add.overlap(
       this.player,
@@ -353,6 +357,43 @@ export class GameScene extends Phaser.Scene {
         void this.onPortalEnter(rect.getData('zoneName') as string)
       }
     )
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Probabilité de RENCONTRE SAUVAGE → TYpeScript
+  // ─────────────────────────────────────────────────────────────
+
+  private checkGrassEncounter(): void {
+    if (this.grassCooldown || this.isMoving) return
+
+    // Calculer la distance parcourue depuis le dernier pas
+    const dx = Math.abs(this.player.x - this.lastStepX)
+    const dy = Math.abs(this.player.y - this.lastStepY)
+
+    // Un "pas" = 1 tile traversée
+    if (dx + dy < TILE_STEP_PX) return
+
+    // Mettre à jour la position du dernier pas
+    this.lastStepX = this.player.x
+    this.lastStepY = this.player.y
+
+    // Vérifier si le joueur est sur une herbe haute
+    const grassLayer = this.map.getLayer('Grass')
+    if (!grassLayer) return
+
+    const tile = this.map.getTileAtWorldXY(
+      this.player.x,
+      this.player.y,
+      false,
+      undefined,
+      'Grass'
+    )
+    if (!tile || tile.index <= 0) return
+
+    // Lancer le dé — ~10% par pas
+    if (Math.random() * 100 < ENCOUNTER_RATE) {
+      void this.onGrassEncounter()
+    }
   }
 
   // ─────────────────────────────────────────────────────────────
