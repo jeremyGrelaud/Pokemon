@@ -14,7 +14,7 @@ const PLAYER_SPEED   = 160
 const ENCOUNTER_RATE    = 10   // % de chance par pas (comme dans les vrais jeux : ~10-15%)
 const TILE_STEP_PX      = 16   // distance en px = 1 pas (1 tile)
 
-const SFX_GRASS     = 'SFX_RUN'
+const SFX_GRASS     = 'SFX_RUN' // need to find a real grass sfx
 const SFX_BUMPER    = 'SFX_LEDGE'
 const SFX_COLLISION = 'SFX_COLLISION'
 
@@ -378,14 +378,20 @@ export class GameScene extends Phaser.Scene {
     if (this.collisionSoundCooldown) return
 
     const body = this.player.body as Phaser.Physics.Arcade.Body
-    const isMovingInput =
-      this.cursors.up.isDown    || this.wasd.up.isDown    ||
-      this.cursors.down.isDown  || this.wasd.down.isDown  ||
-      this.cursors.left.isDown  || this.wasd.left.isDown  ||
-      this.cursors.right.isDown || this.wasd.right.isDown
 
-    if (isMovingInput && !body.blocked.none &&
-        Math.abs(body.velocity.x) < 5 && Math.abs(body.velocity.y) < 5) {
+    const pressingUp    = this.cursors.up.isDown    || this.wasd.up.isDown
+    const pressingDown  = this.cursors.down.isDown  || this.wasd.down.isDown
+    const pressingLeft  = this.cursors.left.isDown  || this.wasd.left.isDown
+    const pressingRight = this.cursors.right.isDown || this.wasd.right.isDown
+
+    // Vérifier si le joueur pousse contre un mur dans la direction où il appuie
+    const blocked =
+      (pressingUp    && body.blocked.up)    ||
+      (pressingDown  && body.blocked.down)  ||
+      (pressingLeft  && body.blocked.left)  ||
+      (pressingRight && body.blocked.right)
+
+    if (blocked) {
       this.playSfx(SFX_COLLISION)
       this.collisionSoundCooldown = true
       this.time.delayedCall(400, () => { this.collisionSoundCooldown = false })
