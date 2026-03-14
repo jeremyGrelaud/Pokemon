@@ -54,6 +54,10 @@ export class GameScene extends Phaser.Scene {
   private npcGroup!:    Phaser.Physics.Arcade.StaticGroup
   private trainerGroup!: Phaser.Physics.Arcade.StaticGroup
 
+  private interactKey!: Phaser.Input.Keyboard.Key
+  private npcInRange:   Phaser.GameObjects.GameObject | null = null
+  private interactCooldown = false
+
   constructor() {
     super({ key: 'GameScene' })
   }
@@ -132,13 +136,20 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────
 
   update(): void {
+    this.npcInRange = null  // reset chaque frame — rempli par l'overlap si toujours proche
     this.handleMovement()
     this.checkBumpers()
     this.checkGrassEncounter()
     this.checkCollisionSound()
+    this.checkTrainerLineOfSight()
     this.player.setDepth(this.player.y + this.player.height / 2)
     this.updateDebug()
-    this.lastPlayerY = this.player.y  // mémoriser Y après t
+    this.lastPlayerY = this.player.y
+
+    // Touche interaction
+    if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+      void this.tryInteract()
+    }
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -296,18 +307,17 @@ export class GameScene extends Phaser.Scene {
     this.npcGroup = this.physics.add.staticGroup()
     const npcsLayer = this.map.getObjectLayer('NPCs')
     npcsLayer?.objects.forEach((obj) => {
-      const props    = obj.properties as Array<{name: string; value: unknown}> ?? []
-      const npcName  = props.find(p => p.name === 'npc_name')?.value  as string
-      const dialog   = props.find(p => p.name === 'dialog')?.value    as string
-      const npcId    = props.find(p => p.name === 'npc_id')?.value    as number
+      const props   = obj.properties as Array<{name: string; value: unknown}> ?? []
+      const npcCode = props.find(p => p.name === 'npc_code')?.value  as string
+      const npcName = props.find(p => p.name === 'npc_name')?.value  as string
+      const dialog  = props.find(p => p.name === 'dialog')?.value    as string
 
-      // Placeholder visuel — remplacer 'npc_default' par le vrai sprite quand disponible
-      const sprite = this.add.image(obj.x!, obj.y!, 'player')
+      const sprite = this.add.sprite(obj.x!, obj.y!, 'player')
         .setDepth(obj.y!)
       this.physics.add.existing(sprite, true)
+      sprite.setData('npcCode', npcCode)
       sprite.setData('npcName', npcName)
       sprite.setData('dialog',  dialog)
-      sprite.setData('npcId',   npcId)
       this.npcGroup.add(sprite)
     })
 
@@ -316,15 +326,15 @@ export class GameScene extends Phaser.Scene {
     const trainersLayer = this.map.getObjectLayer('Trainers')
     trainersLayer?.objects.forEach((obj) => {
       const props      = obj.properties as Array<{name: string; value: unknown}> ?? []
-      const trainerId  = props.find(p => p.name === 'trainer_id')?.value  as number
+      const npcCode    = props.find(p => p.name === 'npc_code')?.value    as string
       const direction  = (props.find(p => p.name === 'direction')?.value  as string) ?? 'down'
       const sightRange = (props.find(p => p.name === 'sight_range')?.value as number) ?? 3
 
-      const sprite = this.add.image(obj.x!, obj.y!, 'player')
+      const sprite = this.add.sprite(obj.x!, obj.y!, 'player')
         .setDepth(obj.y!)
-        .setTint(0xff8800)  // teinte orange pour distinguer en debug
+        .setTint(0xff8800)
       this.physics.add.existing(sprite, true)
-      sprite.setData('trainerId',  trainerId)
+      sprite.setData('npcCode',    npcCode)
       sprite.setData('direction',  direction)
       sprite.setData('sightRange', sightRange)
       sprite.setData('defeated',   false)
@@ -386,6 +396,12 @@ export class GameScene extends Phaser.Scene {
       left:  this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
       right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     }
+
+    // Touche interaction : A (AZERTY) ou clic gauche
+    this.interactKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A)
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (p.leftButtonDown()) void this.tryInteract()
+    })
   }
 
   private handleMovement(): void {
@@ -497,6 +513,16 @@ export class GameScene extends Phaser.Scene {
         void this.onPortalEnter(rect.getData('zoneName') as string)
       }
     )
+
+    // NPCs — détecter la proximité pour afficher indicateur interaction
+    this.physics.add.overlap(
+      this.player,
+      this.npcGroup,
+      (_p, npc) => {
+        this.npcInRange = npc as Phaser.GameObjects.GameObject
+      }
+    )
+
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -540,6 +566,259 @@ export class GameScene extends Phaser.Scene {
     // Lancer le dé — ~10% par pas
     if (Math.random() * 100 < ENCOUNTER_RATE) {
       void this.onGrassEncounter()
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // INTERACTION (touche A / clic gauche)
+  // ─────────────────────────────────────────────────────────────
+
+  private async tryInteract(): Promise<void> {
+    if (this.interactCooldown || this.isMoving) return
+
+    if (this.scene.isActive('DialogScene')) {
+      this.scene.stop('DialogScene')
+      return
+    }
+
+    const REACH = 28
+
+    // ── Chercher un item proche ────────────────────────────────
+    let closestItem: Phaser.GameObjects.Sprite | null = null
+    let closestItemDist = REACH
+
+    this.itemGroup.getChildren().forEach((obj) => {
+      const item = obj as Phaser.GameObjects.Sprite
+      if (!item.active) return
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y)
+      if (dist < closestItemDist) {
+        closestItemDist = dist
+        closestItem = item
+      }
+    })
+
+    if (closestItem) {
+      void this.onItemPickup(closestItem)
+      return
+    }
+
+    // ── Chercher un NPC proche ─────────────────────────────────
+    if (this.npcInRange) {
+      const npc = this.npcInRange
+      this.npcInRange = null
+      void this.onNpcDialog(npc as Phaser.GameObjects.Sprite)
+      return
+    }
+
+    let closestNpc: Phaser.GameObjects.Sprite | null = null
+    let closestNpcDist = REACH
+
+    this.npcGroup.getChildren().forEach((obj) => {
+      const npc = obj as Phaser.GameObjects.Sprite
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, npc.x, npc.y)
+      if (dist < closestNpcDist) {
+        closestNpcDist = dist
+        closestNpc = npc
+      }
+    })
+
+    if (closestNpc) {
+      void this.onNpcDialog(closestNpc)
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // RAMASSAGE ITEM
+  // ─────────────────────────────────────────────────────────────
+
+  private async onItemPickup(item: Phaser.GameObjects.Sprite): Promise<void> {
+    if (!item.active) return
+
+    // ⚠️  Lire les data AVANT de détruire le sprite
+    const itemName = item.getData('itemName') as string
+    const quantity = item.getData('quantity') as number
+    const objId    = item.getData('objId')    as number
+    const tileX    = item.getData('tileX')    as number
+    const tileY    = item.getData('tileY')    as number
+
+    console.log(`[Pickup] itemName=${itemName} objId=${objId} zone=${this.currentZone.id}`)
+
+    // Détruire le sprite
+    item.setActive(false).setVisible(false)
+    this.tweens.killTweensOf(item)
+    this.itemGroup.remove(item, true, true)
+
+    // Retirer la tile de collision à cet emplacement
+    if (this.collisionLayer && tileX !== undefined && tileY !== undefined) {
+      this.collisionLayer.removeTileAt(tileX, tileY)
+    }
+
+    // Flash + son
+    this.cameras.main.flash(120, 255, 255, 200)
+    AudioManager.instance?.playSfx('ui', 'SFX_GET_ITEM_1')
+
+    // Afficher message
+    this.scene.launch('DialogScene', {
+      text: `Vous avez obtenu\n${itemName ?? '?'} ×${quantity} !`,
+      autoClose: 1800,
+    })
+
+    // Appel Django
+    try {
+      await mapApi.pickupItem(this.currentZone.id, objId)
+      console.log(`[Pickup] OK — zone=${this.currentZone.id} tiled_obj_id=${objId}`)
+    } catch (err) {
+      console.error('[Pickup] Erreur API:', err)
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // DIALOGUE NPC
+  // ─────────────────────────────────────────────────────────────
+
+  private async onNpcDialog(npc: Phaser.GameObjects.Sprite): Promise<void> {
+    if (this.interactCooldown) return
+    this.interactCooldown = true
+
+    const npcCode = npc.getData('npcCode') as string | undefined
+
+    if (npcCode) {
+      // Charger le dialogue depuis Django
+      try {
+        const result = await mapApi.getNpcDialog(npcCode)
+        this.scene.launch('DialogScene', {
+          text: `${result.name}:\n${result.dialog}`,
+          autoClose: 0,  // attendre input joueur
+        })
+      } catch (err) {
+        console.error('[GameScene] Erreur dialogue NPC:', err)
+      }
+    } else {
+      // Fallback — dialog hardcodé dans Tiled
+      const dialog = npc.getData('dialog') as string
+      const npcName = npc.getData('npcName') as string
+      if (dialog) {
+        this.scene.launch('DialogScene', {
+          text: npcName ? `${npcName}:\n${dialog}` : dialog,
+          autoClose: 0,
+        })
+      }
+    }
+
+    this.time.delayedCall(500, () => { this.interactCooldown = false })
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // LINE OF SIGHT — Dresseurs adverses
+  // ─────────────────────────────────────────────────────────────
+
+  private trainerAggroCooldown = false
+
+  private checkTrainerLineOfSight(): void {
+    if (this.trainerAggroCooldown || this.isMoving || this.grassCooldown) return
+
+    this.trainerGroup.getChildren().forEach((obj) => {
+      const trainer = obj as Phaser.GameObjects.Sprite
+      if (!trainer.active || trainer.getData('defeated')) return
+
+      const direction  = trainer.getData('direction')  as string ?? 'down'
+      const sightRange = (trainer.getData('sightRange') as number ?? 3) * TILE_SIZE
+
+      // Calculer la zone de vision selon la direction du dresseur
+      let inSight = false
+
+      const dx = this.player.x - trainer.x
+      const dy = this.player.y - trainer.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      if (dist > sightRange) return
+
+      // Vérifier alignement axial selon la direction
+      const TOLERANCE = TILE_SIZE * 0.8  // tolérance latérale d'1 tile
+
+      switch (direction) {
+        case 'down':
+          inSight = dy > 0 && Math.abs(dx) < TOLERANCE
+          break
+        case 'up':
+          inSight = dy < 0 && Math.abs(dx) < TOLERANCE
+          break
+        case 'left':
+          inSight = dx < 0 && Math.abs(dy) < TOLERANCE
+          break
+        case 'right':
+          inSight = dx > 0 && Math.abs(dy) < TOLERANCE
+          break
+      }
+
+      if (inSight) {
+        void this.onTrainerAggro(trainer)
+      }
+    })
+  }
+
+  private async onTrainerAggro(trainer: Phaser.GameObjects.Sprite): Promise<void> {
+    if (this.trainerAggroCooldown) return
+    this.trainerAggroCooldown = true
+    this.isMoving = true
+
+    const npcCode = trainer.getData('npcCode') as string
+
+    // Exclamation mark au-dessus du dresseur
+    const excl = this.add.text(trainer.x, trainer.y - 20, '!', {
+      fontSize: '16px', color: '#ff0000',
+      fontFamily: '"Press Start 2P"',
+    }).setDepth(999).setOrigin(0.5)
+
+    AudioManager.instance?.playSfx('ui', 'SFX_MEET_01')
+
+    await new Promise<void>(r => this.time.delayedCall(800, r))
+    excl.destroy()
+
+    await this.fadeOut()
+
+    try {
+      const result = await mapApi.trainerBattle(npcCode)
+      if (!result.success) {
+        this.scene.launch('DialogScene', { text: result.message ?? 'Combat impossible.', autoClose: 2000 })
+        await this.fadeIn()
+        this.isMoving = false
+        this.trainerAggroCooldown = false
+        return
+      }
+
+      // Afficher intro_text du dresseur si présent
+      if (result.intro_text) {
+        await this.fadeIn()
+        this.scene.launch('DialogScene', { text: result.intro_text, autoClose: 0 })
+        // Attendre que le DialogScene soit fermé
+        await new Promise<void>(resolve => {
+          const check = setInterval(() => {
+            if (!this.scene.isActive('DialogScene')) {
+              clearInterval(check)
+              resolve()
+            }
+          }, 100)
+        })
+        await this.fadeOut()
+      }
+
+      // Snapshot avant combat
+      await new Promise<void>((resolve) => {
+        this.game.renderer.snapshot((image: HTMLImageElement | Phaser.Display.Color) => {
+          if (image instanceof HTMLImageElement) this.registry.set('overworldSnapshot', image.src)
+          resolve()
+        })
+      })
+
+      this.scene.pause('GameScene')
+      this.scene.launch('BattleScene', { battleId: result.battle_id })
+
+    } catch (err) {
+      console.error('[GameScene] Erreur aggro dresseur:', err)
+      await this.fadeIn()
+      this.isMoving = false
+      this.trainerAggroCooldown = false
     }
   }
 

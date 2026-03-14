@@ -110,6 +110,22 @@ export const mapApi = {
   getPlayerLocation(): Promise<PlayerLocationData> {
     return request<PlayerLocationData>('/api/phaser/player/location/')
   },
+
+  pickupItem(zoneId: number, tiledObjId: number): Promise<{ success: boolean; message: string }> {
+    return request('/api/phaser/map/pickup-item/', {
+      method: 'POST',
+      body: JSON.stringify({ zone_id: zoneId, tiled_obj_id: tiledObjId }),
+    })
+  },
+
+  getNpcDialog(npcCode: string): Promise<{ name: string; dialog: string; can_battle: boolean }> {
+    return request(`/api/phaser/npc/${npcCode}/dialog/`)
+  },
+
+  trainerBattle(npcCode: string): Promise<{ success: boolean; battle_id: number; intro_text: string; message?: string }> {
+    return request(`/api/phaser/trainer/${npcCode}/battle/`, { method: 'POST' })
+  },
+
 }
 
 // ── API Battle ────────────────────────────────────────────────
