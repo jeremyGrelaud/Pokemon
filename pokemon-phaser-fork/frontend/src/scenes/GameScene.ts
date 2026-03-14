@@ -103,12 +103,13 @@ export class GameScene extends Phaser.Scene {
   // CREATE
   // ─────────────────────────────────────────────────────────────
 
-  create(): void {
+  async create(): Promise<void> {
     // Récupérer la zone chargée par BootScene (ou mise à jour par onPortalEnter)
     this.currentZone = this.registry.get('currentZone') as ZoneDetailData
     console.log('[GameScene] create — zone:', this.currentZone.name, 'spawns:', this.currentZone.wild_spawns?.length)
     
     this.buildTilemap()
+    await this.hidePickedItems()
     this.createPlayer()
     this.setupInput()
     this.setupOverlaps()
@@ -136,6 +137,9 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────
 
   update(): void {
+    // Guard — create() est async, on attend qu'il soit terminé
+    if (!this.cursors || !this.player) return
+
     this.npcInRange = null  // reset chaque frame — rempli par l'overlap si toujours proche
     this.handleMovement()
     this.checkBumpers()
@@ -196,7 +200,9 @@ export class GameScene extends Phaser.Scene {
     this.map.createLayer('Decoration2',  allTilesets, 0, 0)
     this.map.createLayer('Grass',        allTilesets, 0, 0)
     this.map.createLayer('Trees',        allTilesets, 0, 0)
-    this.map.createLayer('Trees2',       allTilesets, 0, 0)
+    if (this.map.getLayer('Trees2')) {
+      this.map.createLayer('Trees2', allTilesets, 0, 0)
+    }
 
     // ── Collision ──────────────────────────────────────────────
     this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
@@ -628,6 +634,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // ITEMS DÉJÀ RAMASSÉS — masquer au chargement
+  // ─────────────────────────────────────────────────────────────
+
+  private async hidePickedItems(): Promise<void> {
+    try {
+      const { picked_tiled_obj_ids } = await mapApi.getPickedItems(this.currentZone.id)
+      if (!picked_tiled_obj_ids?.length) return
+
+      const pickedSet = new Set<number>(picked_tiled_obj_ids)
+
+      this.itemGroup.getChildren().forEach((obj) => {
+        const sprite = obj as Phaser.GameObjects.Sprite
+        const objId  = sprite.getData('objId') as number
+        if (pickedSet.has(objId)) {
+          // Masquer + retirer collision
+          sprite.setActive(false).setVisible(false)
+          this.tweens.killTweensOf(sprite)
+          this.itemGroup.remove(sprite, false, false)
+          const tileX = sprite.getData('tileX') as number
+          const tileY = sprite.getData('tileY') as number
+          if (this.collisionLayer && tileX !== undefined && tileY !== undefined) {
+            this.collisionLayer.removeTileAt(tileX, tileY)
+          }
+        }
+      })
+
+      console.log(`[Items] ${pickedSet.size} item(s) déjà ramassés masqués`)
+    } catch (err) {
+      console.warn('[Items] Impossible de charger les items ramassés:', err)
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // RAMASSAGE ITEM
   // ─────────────────────────────────────────────────────────────
 
@@ -932,6 +971,7 @@ export class GameScene extends Phaser.Scene {
 
     // Reconstruire tilemap + groupes
     this.buildTilemap()
+    await this.hidePickedItems()
 
     // Repositionner le joueur
     const spawn = this.findSpawnPoint()

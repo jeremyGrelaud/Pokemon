@@ -118,6 +118,10 @@ export const mapApi = {
     })
   },
 
+  getPickedItems(zoneId: number): Promise<{ picked_tiled_obj_ids: number[] }> {
+    return request(`/api/phaser/map/picked-items/?zone_id=${zoneId}`)
+  },
+
   getNpcDialog(npcCode: string): Promise<{ name: string; dialog: string; can_battle: boolean }> {
     return request(`/api/phaser/npc/${npcCode}/dialog/`)
   },
