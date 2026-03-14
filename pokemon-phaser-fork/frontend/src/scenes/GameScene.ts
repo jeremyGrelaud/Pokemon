@@ -14,7 +14,7 @@ const PLAYER_SPEED   = 160
 const ENCOUNTER_RATE    = 10   // % de chance par pas (comme dans les vrais jeux : ~10-15%)
 const TILE_STEP_PX      = 16   // distance en px = 1 pas (1 tile)
 
-const SFX_GRASS     = 'SFX_RUN' // need to find a real grass sfx
+const SFX_GRASS     = 'SFX_TALL_GRASS'
 const SFX_BUMPER    = 'SFX_LEDGE'
 const SFX_COLLISION = 'SFX_COLLISION'
 
@@ -451,7 +451,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.grassStepCooldown) {
       this.playSfx(SFX_GRASS)
       this.grassStepCooldown = true
-      this.time.delayedCall(1000, () => { this.grassStepCooldown = false })
+      this.time.delayedCall(300, () => { this.grassStepCooldown = false })
     }
 
     // Lancer le dé — ~10% par pas
