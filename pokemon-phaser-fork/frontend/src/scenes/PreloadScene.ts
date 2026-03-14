@@ -1,6 +1,5 @@
 // ============================================================
 // scenes/PreloadScene.ts
-// VERSION TEST — charge les assets minimalistes de test.
 // ============================================================
 
 import Phaser from 'phaser'
@@ -27,15 +26,40 @@ export class PreloadScene extends Phaser.Scene {
       )
     })
 
-    // ── Tilemap de test ───────────────────────────────────────
-    // Le JSON référence tileset_test.json qui doit être
-    // dans le même dossier que kanto_test.json
-    this.load.tilemapTiledJSON('kanto', '/assets/tilemaps/kanto_test.json')
-    this.load.image('tileset_test', '/assets/tilesets/tileset_test.png')
+    // ── Tilemap de la zone courante (chargée dynamiquement) ───
+    // Le joueur peut démarrer sur n'importe quelle zone (Django)
+    // On charge toujours la map de la zone courante + bourg_palette par défaut
+    const currentZoneName: string = this.registry.get('currentZoneName') ?? 'Bourg Palette'
+    const currentMapKey = this.zoneNameToKey(currentZoneName)
 
-    // ── Spritesheet joueur (32×32, 3 cols × 4 rows) ───────────
-    this.load.spritesheet('player', '/assets/sprites/player_test.png', {
-      frameWidth:  32,
+    this.load.tilemapTiledJSON(currentMapKey, `/assets/tilemaps/${currentMapKey}.json`)
+
+    // Charger aussi bourg_palette si ce n'est pas déjà la zone courante
+    if (currentMapKey !== 'bourg_palette') {
+      this.load.tilemapTiledJSON('bourg_palette', '/assets/tilemaps/bourg_palette.json')
+    }
+
+    // ── Tilesets standard (grilles) ───────────────────────────
+    this.load.image('full_kanto',    '/assets/tilesets/full_kanto.png')
+    this.load.image('style_forever', '/assets/tilesets/style_forever.png')
+
+    // ── Tilesets "image collection" ───────────────────────────
+    this.load.image('pallet_lab',          '/assets/tilesets/pallet_lab.png')
+    this.load.image('pallet_house_green1', '/assets/tilesets/pallet_house_green1.png')
+    this.load.image('pallet_house_green2', '/assets/tilesets/pallet_house_green2.png')
+    this.load.image('pallet_house_green3', '/assets/tilesets/pallet_house_green3.png')
+
+    this.load.spritesheet('pokeballs_pickup', '/assets/tilesets/pokeballs_pickup.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    })
+
+    this.load.image('collision',   '/assets/tilesets/collision.png')
+    this.load.image('bumper_down', '/assets/tilesets/bumper_down.png')
+
+    // ── Spritesheet joueur (20×32) ────────────────────────────
+    this.load.spritesheet('player', '/assets/sprites/player.png', {
+      frameWidth:  20,
       frameHeight: 32,
     })
   }
@@ -46,17 +70,24 @@ export class PreloadScene extends Phaser.Scene {
 
     this.createAnimations()
 
-    // GameScene + UIScene en parallèle
     this.scene.start('GameScene')
     this.scene.launch('UIScene')
     this.scene.launch('AudioManager')
   }
 
+  // Même logique que GameScene.zoneNameToKey — dupliquée ici
+  // pour éviter une dépendance circulaire
+  private zoneNameToKey(name: string): string {
+    return name
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '')
+  }
+
   private createAnimations(): void {
     const anims = this.anims
 
-    // Spritesheet : 3 frames × 4 directions
-    // Row 0 = bas, Row 1 = gauche, Row 2 = droite, Row 3 = haut
     const dirs: Array<{ key: string; row: number }> = [
       { key: 'down',  row: 0 },
       { key: 'left',  row: 1 },

@@ -7,6 +7,7 @@ pour l'application Pokémon — tous les modèles enregistrés.
 from django.contrib import admin
 from django.contrib import messages
 from django.utils.html import format_html
+from django.db.models import Count, Q
 from .models.Achievements import Achievement, TrainerAchievement
 from .models.Battle import Battle
 from .models.CaptureSystem import CaptureAttempt, CaptureJournal, PokeballItem
@@ -23,6 +24,7 @@ from .models.PokemonType import PokemonType
 from .models.ShopModel import Shop, ShopInventory, Transaction
 from .models.Trainer import GymLeader, Trainer, TrainerInventory
 from .models.Zone import PlayerLocation, WildPokemonSpawn, Zone, ZoneConnection
+from .models.FieldItem import FieldItem, PickedUpItem
 
 
 # ============================================================================
@@ -278,9 +280,9 @@ class PokemonMoveInstanceAdmin(QuietModelAdmin):
 
 @admin.register(Trainer)
 class TrainerAdmin(QuietModelAdmin):
-    list_display  = ('username', 'user', 'trainer_type', 'npc_class', 'money', 'badges', 'pokemon_count', 'location', 'is_npc')
+    list_display  = ('username', 'user', 'trainer_type', 'npc_class', 'money', 'badges', 'pokemon_count', 'location', 'is_npc', 'npc_code')
     list_filter   = ('trainer_type', 'is_npc', 'is_defeated', 'can_rebattle')
-    search_fields = ('username', 'location', 'npc_class')
+    search_fields = ('username', 'location', 'npc_class', 'npc_code')
     inlines       = [PlayablePokemonInline, TrainerInventoryInline]
 
     fieldsets = (
@@ -370,6 +372,133 @@ class PokeballItemAdmin(QuietModelAdmin):
     list_display  = ('item', 'guaranteed_capture', 'bonus_on_type', 'bonus_on_status')
     search_fields = ('item__name',)
 
+
+# ─────────────────────────────────────────────────────────────
+# INLINE — items ramassés directement depuis un FieldItem
+# ─────────────────────────────────────────────────────────────
+
+class PickedUpItemInline(admin.TabularInline):
+    model       = PickedUpItem
+    extra       = 0
+    readonly_fields = ('trainer', 'picked_at')
+    fields          = ('trainer', 'picked_at')
+    verbose_name        = "Ramassé par"
+    verbose_name_plural = "Ramassé par"
+    can_delete  = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+# ─────────────────────────────────────────────────────────────
+# FIELD ITEM
+# ─────────────────────────────────────────────────────────────
+
+@admin.register(FieldItem)
+class FieldItemAdmin(admin.ModelAdmin):
+    list_display  = (
+        'id',
+        'item',
+        'quantity',
+        'zone',
+        'tiled_obj_id',
+        'pickup_count',
+        'pickup_badge',
+    )
+    list_filter   = ('zone', 'item')
+    search_fields = ('item__name', 'zone__name', 'tiled_obj_id')
+    ordering      = ('zone', 'item__name')
+    readonly_fields = ('tiled_obj_id',)
+
+    inlines = [PickedUpItemInline]
+
+    # Annoter le queryset pour le comptage
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(_pickup_count=Count('picked_up_by'))
+
+    @admin.display(description='# ramassages', ordering='_pickup_count')
+    def pickup_count(self, obj):
+        return obj._pickup_count
+
+    @admin.display(description='Statut')
+    def pickup_badge(self, obj):
+        count = obj._pickup_count
+        if count == 0:
+            return format_html('<span style="color:#aaa;">Jamais ramassé</span>')
+        return format_html(
+            '<span style="color:#2a9d2a;font-weight:bold;">✔ {} joueur(s)</span>',
+            count,
+        )
+
+
+# ─────────────────────────────────────────────────────────────
+# PICKED UP ITEM
+# ─────────────────────────────────────────────────────────────
+
+class ZoneFilter(admin.SimpleListFilter):
+    """Filtre par zone via le FieldItem lié."""
+    title        = 'Zone'
+    parameter_name = 'zone'
+
+    def lookups(self, request, model_admin):
+        from myPokemonApp.models import Zone
+        return [(z.id, z.name) for z in Zone.objects.order_by('name')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(field_item__zone_id=self.value())
+        return queryset
+
+
+@admin.register(PickedUpItem)
+class PickedUpItemAdmin(admin.ModelAdmin):
+    list_display  = (
+        'id',
+        'trainer',
+        'item_name',
+        'item_quantity',
+        'zone_name',
+        'tiled_obj_id',
+        'picked_at',
+    )
+    list_filter   = (ZoneFilter, 'picked_at')
+    search_fields = (
+        'trainer__username',
+        'field_item__item__name',
+        'field_item__zone__name',
+    )
+    ordering      = ('-picked_at',)
+    readonly_fields = (
+        'trainer', 'field_item',
+        'item_name', 'item_quantity',
+        'zone_name', 'tiled_obj_id',
+        'picked_at',
+    )
+    date_hierarchy = 'picked_at'
+
+    # Pas de création manuelle — créé uniquement par l'API
+    def has_add_permission(self, request):
+        return False
+
+    # ── Colonnes dénormalisées ─────────────────────────────────
+
+    @admin.display(description='Objet', ordering='field_item__item__name')
+    def item_name(self, obj):
+        return obj.field_item.item.name
+
+    @admin.display(description='Qté', ordering='field_item__quantity')
+    def item_quantity(self, obj):
+        return obj.field_item.quantity
+
+    @admin.display(description='Zone', ordering='field_item__zone__name')
+    def zone_name(self, obj):
+        return obj.field_item.zone.name
+
+    @admin.display(description='Tiled ID', ordering='field_item__tiled_obj_id')
+    def tiled_obj_id(self, obj):
+        return obj.field_item.tiled_obj_id
+    
 
 # ============================================================================
 # COMBATS

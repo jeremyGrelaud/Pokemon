@@ -25,3 +25,4 @@ from .Achievements import *
 from .Quest import *
 from .Ability import Ability
 from .MoveEffects import *
+from .FieldItem import FieldItem, PickedUpItem

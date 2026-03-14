@@ -93,6 +93,14 @@ export const mapApi = {
     return request(`/api/phaser/map/travel/${zoneId}/`, { method: 'POST' })
   },
 
+  /** Déplace le joueur vers une zone identifiée par son nom — endpoint Phaser JSON */
+  travelToByName(zoneName: string): Promise<{ success: boolean; message: string; zone: ZoneDetailData }> {
+    return request(`/api/phaser/map/travel/by-name/`, {
+      method: 'POST',
+      body: JSON.stringify({ zone_name: zoneName }),
+    })
+  },
+
   /** Déclenche une rencontre sauvage — endpoint Phaser JSON */
   wildEncounter(zoneId: number, type: string = 'grass'): Promise<{ battle_id: number; pokemon_name?: string; level?: number }> {
     return request(`/api/phaser/map/encounter/${zoneId}/?type=${type}`, { method: 'POST' })
@@ -102,6 +110,26 @@ export const mapApi = {
   getPlayerLocation(): Promise<PlayerLocationData> {
     return request<PlayerLocationData>('/api/phaser/player/location/')
   },
+
+  pickupItem(zoneId: number, tiledObjId: number): Promise<{ success: boolean; message: string }> {
+    return request('/api/phaser/map/pickup-item/', {
+      method: 'POST',
+      body: JSON.stringify({ zone_id: zoneId, tiled_obj_id: tiledObjId }),
+    })
+  },
+
+  getPickedItems(zoneId: number): Promise<{ picked_tiled_obj_ids: number[] }> {
+    return request(`/api/phaser/map/picked-items/?zone_id=${zoneId}`)
+  },
+
+  getNpcDialog(npcCode: string): Promise<{ name: string; dialog: string; can_battle: boolean }> {
+    return request(`/api/phaser/npc/${npcCode}/dialog/`)
+  },
+
+  trainerBattle(npcCode: string): Promise<{ success: boolean; battle_id: number; intro_text: string; message?: string }> {
+    return request(`/api/phaser/trainer/${npcCode}/battle/`, { method: 'POST' })
+  },
+
 }
 
 // ── API Battle ────────────────────────────────────────────────

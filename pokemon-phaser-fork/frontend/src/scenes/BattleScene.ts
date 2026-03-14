@@ -151,6 +151,14 @@ export class BattleScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────
 
   async create(): Promise<void> {
+    // ── Fenêtre battle 640×480 centrée sur le canvas overworld ──
+    const BW = 640, BH = 480
+    const offsetX = Math.floor((this.scale.width  - BW) / 2)
+    const offsetY = Math.floor((this.scale.height - BH) / 2)
+
+    // Recadrer la caméra principale sur 640×480 centré
+    this.cameras.main.setViewport(offsetX, offsetY, BW, BH)
+
     this.state = await battleApi.getState(this.battleId)
     this.animator = new BattleAnimator(this)
 

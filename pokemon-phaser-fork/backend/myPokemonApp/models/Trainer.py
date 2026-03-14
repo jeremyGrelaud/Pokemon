@@ -58,6 +58,14 @@ class Trainer(models.Model):
     npc_class = models.CharField(max_length=50, blank=True)  # "Gamin", "Scout", etc.
     sprite_name = models.CharField(max_length=100, blank=True)
 
+    # Code stable pour les NPCs — utilisé par Tiled au lieu de l'ID auto-incrémental
+    # Format : "{zone_slug}_{username_slug}" ex: "route_1_youngster_ben"
+    # Unique, nullable (NULL pour les joueurs humains)
+    npc_code = models.CharField(
+        max_length=80, blank=True, null=True, unique=True,
+        help_text="Code stable ex: 'route_1_youngster_ben' — utilisé dans Tiled"
+    )
+
     # ── IA adversaire — flags Gen 4 (pokeplatinum) ────────────────────────────
     # Valeurs possibles : "basic", "evaluate_attack", "expert", "setup_first_turn",
     #                     "risky", "prioritize_damage"
