@@ -298,9 +298,9 @@ export class GameScene extends Phaser.Scene {
   private setupInput(): void {
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.wasd = {
-      up:    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      up:    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z),
       down:  this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      left:  this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      left:  this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
       right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     }
   }
