@@ -14,6 +14,10 @@ const PLAYER_SPEED   = 160
 const ENCOUNTER_RATE    = 10   // % de chance par pas (comme dans les vrais jeux : ~10-15%)
 const TILE_STEP_PX      = 16   // distance en px = 1 pas (1 tile)
 
+const SFX_GRASS     = 'SFX_RUN'
+const SFX_BUMPER    = 'SFX_LEDGE'
+const SFX_COLLISION = 'SFX_COLLISION'
+
 type Direction = 'up' | 'down' | 'left' | 'right'
 
 export class GameScene extends Phaser.Scene {
@@ -41,6 +45,10 @@ export class GameScene extends Phaser.Scene {
 
   private lastStepX = 0
   private lastStepY = 0
+  private lastPlayerY = 0
+  private grassStepCooldown = false
+  private collisionSoundCooldown = false
+  private bumperActive = false
 
   constructor() {
     super({ key: 'GameScene' })
@@ -77,6 +85,10 @@ export class GameScene extends Phaser.Scene {
       })
       this.load.start()
     })
+  }
+
+  private playSfx(name: string): void {
+    AudioManager.instance?.playSfx('ui', name)
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -119,8 +131,10 @@ export class GameScene extends Phaser.Scene {
     this.handleMovement()
     this.checkBumpers()
     this.checkGrassEncounter()
+    this.checkCollisionSound()
     this.player.setDepth(this.player.y + this.player.height / 2)
     this.updateDebug()
+    this.lastPlayerY = this.player.y  // mémoriser Y après t
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -246,8 +260,7 @@ export class GameScene extends Phaser.Scene {
     if (previousZoneName) {
       const key = this.zoneNameToKey(previousZoneName)
       const directional = this.map.findObject('Spawns', obj =>
-        obj.name === `from_${key}` ||
-        obj.name === `from${key}`
+        obj.name === `from_${key}` || obj.name === `from${key}`
       ) as { x: number; y: number } | undefined
       if (directional) return directional
     }
@@ -323,7 +336,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // BUMPERS — sens unique vers le bas
+  // BUMPERS — sens unique vers le bas + SFX_LEDGE
   // ─────────────────────────────────────────────────────────────
 
   private checkBumpers(): void {
@@ -331,13 +344,51 @@ export class GameScene extends Phaser.Scene {
 
     const tile = this.bumperLayer.getTileAtWorldXY(
       this.player.x,
-      this.player.y + 4  // légèrement sous le centre pour les pieds
+      this.player.y + 4
     )
 
     if (tile?.properties?.bumper_down) {
       const body = this.player.body as Phaser.Physics.Arcade.Body
+
+      // Son uniquement si le joueur vient d'entrer sur le bumper depuis le haut
+      // = était au-dessus du bumper la frame précédente (lastPlayerY < tile.pixelY)
+      const tileTopY = tile.pixelY
+      const wasAbove = this.lastPlayerY + 4 < tileTopY
+      
+      if (!this.bumperActive && wasAbove && body.velocity.y > 0) {
+        this.bumperActive = true
+        this.playSfx(SFX_BUMPER)
+      }
+
       if (body.velocity.y < 0) this.player.setVelocityY(0)
       if (body.velocity.x !== 0) this.player.setVelocityX(0)
+
+    } else {
+      this.bumperActive = false
+    }
+  }
+
+
+
+  // ─────────────────────────────────────────────────────────────
+  // SON COLLISION MUR — SFX_COLLISION
+  // ─────────────────────────────────────────────────────────────
+
+  private checkCollisionSound(): void {
+    if (this.collisionSoundCooldown) return
+
+    const body = this.player.body as Phaser.Physics.Arcade.Body
+    const isMovingInput =
+      this.cursors.up.isDown    || this.wasd.up.isDown    ||
+      this.cursors.down.isDown  || this.wasd.down.isDown  ||
+      this.cursors.left.isDown  || this.wasd.left.isDown  ||
+      this.cursors.right.isDown || this.wasd.right.isDown
+
+    if (isMovingInput && !body.blocked.none &&
+        Math.abs(body.velocity.x) < 5 && Math.abs(body.velocity.y) < 5) {
+      this.playSfx(SFX_COLLISION)
+      this.collisionSoundCooldown = true
+      this.time.delayedCall(400, () => { this.collisionSoundCooldown = false })
     }
   }
 
@@ -360,7 +411,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Probabilité de RENCONTRE SAUVAGE → TYpeScript
+  // RENCONTRE SAUVAGE — par pas + SFX_RUN dans l'herbe
   // ─────────────────────────────────────────────────────────────
 
   private checkGrassEncounter(): void {
@@ -389,6 +440,13 @@ export class GameScene extends Phaser.Scene {
       'Grass'
     )
     if (!tile || tile.index <= 0) return
+
+    // Son de pas dans l'herbe (1 fois tous les 2 pas)
+    if (!this.grassStepCooldown) {
+      this.playSfx(SFX_GRASS)
+      this.grassStepCooldown = true
+      this.time.delayedCall(1000, () => { this.grassStepCooldown = false })
+    }
 
     // Lancer le dé — ~10% par pas
     if (Math.random() * 100 < ENCOUNTER_RATE) {
@@ -508,6 +566,8 @@ export class GameScene extends Phaser.Scene {
     const spawn = this.findSpawnPoint()
     this.player.setPosition(spawn.x, spawn.y)
     this.player.setVelocity(0, 0)
+    this.lastStepX = spawn.x
+    this.lastStepY = spawn.y
 
     // Recréer collider joueur ↔ collision
     this.physics.add.collider(this.player, this.collisionLayer)
