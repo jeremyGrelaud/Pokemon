@@ -271,8 +271,8 @@
                  "type":"",
                  "visible":true,
                  "width":160,
-                 "x":354.833333333333,
-                 "y":420.666666666667
+                 "x":354.833,
+                 "y":420.667
                 }, 
                 {
                  "gid":9755,
@@ -310,7 +310,7 @@
          "name":"Portals",
          "objects":[
                 {
-                 "height":47.3333333333333,
+                 "height":47.3333,
                  "id":28,
                  "name":"",
                  "properties":[
@@ -322,12 +322,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":34.6666666666667,
-                 "x":185.333333333333,
-                 "y":183.333333333333
+                 "width":34.6667,
+                 "x":185.333,
+                 "y":183.333
                 }, 
                 {
-                 "height":56.6666666666667,
+                 "height":56.6667,
                  "id":30,
                  "name":"",
                  "properties":[
@@ -339,9 +339,9 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":30.6666666666667,
-                 "x":423.333333333333,
-                 "y":173.333333333333
+                 "width":30.6667,
+                 "x":423.333,
+                 "y":173.333
                 }, 
                 {
                  "height":39.3333,
@@ -357,11 +357,11 @@
                  "type":"",
                  "visible":true,
                  "width":34.6667,
-                 "x":389.333316666667,
-                 "y":381.000016666667
+                 "x":389.333,
+                 "y":381
                 }, 
                 {
-                 "height":6.66666666666666,
+                 "height":6.66667,
                  "id":32,
                  "name":"",
                  "properties":[
@@ -373,12 +373,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":64.6666666666666,
+                 "width":64.6667,
                  "x":336,
-                 "y":0.666666666666666
+                 "y":0.666667
                 }, 
                 {
-                 "height":6.66666666666663,
+                 "height":6.66667,
                  "id":33,
                  "name":"",
                  "properties":[
@@ -392,7 +392,7 @@
                  "visible":true,
                  "width":66,
                  "x":208,
-                 "y":633.333333333333
+                 "y":633.333
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -408,14 +408,74 @@
                 {
                  "height":0,
                  "id":1,
+                 "name":"from_route_1",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":365.333666666667,
+                 "y":32.667
+                }, 
+                {
+                 "height":0,
+                 "id":35,
                  "name":"Player",
                  "point":true,
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":314.667,
-                 "y":294.667
+                 "x":312.666666666667,
+                 "y":292
+                }, 
+                {
+                 "height":0,
+                 "id":36,
+                 "name":"from_route_21",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":241.333333333333,
+                 "y":626
+                }, 
+                {
+                 "height":0,
+                 "id":37,
+                 "name":"from_laboratoire_professeur_chene",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":407.333333333333,
+                 "y":443.333333333333
+                }, 
+                {
+                 "height":0,
+                 "id":38,
+                 "name":"from_bourg_palette_maison_1",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":201.333333333333,
+                 "y":250.666666666667
+                }, 
+                {
+                 "height":0,
+                 "id":39,
+                 "name":"from_bourg_palette_maison_2",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":439.333333333333,
+                 "y":250.666666666667
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -424,7 +484,7 @@
          "y":0
         }],
  "nextlayerid":13,
- "nextobjectid":35,
+ "nextobjectid":40,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

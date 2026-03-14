@@ -667,7 +667,7 @@
          "name":"Portals",
          "objects":[
                 {
-                 "height":6.33333333333326,
+                 "height":6.33333,
                  "id":4,
                  "name":"",
                  "properties":[
@@ -679,8 +679,8 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":41.6666666666667,
-                 "x":218.666666666667,
+                 "width":41.6667,
+                 "x":218.667,
                  "y":1113
                 }, 
                 {
@@ -696,9 +696,9 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":122.6667,
-                 "x":162.499983333333,
-                 "y":0.500001666666776
+                 "width":122.667,
+                 "x":162.5,
+                 "y":0.500002
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -714,14 +714,26 @@
                 {
                  "height":0,
                  "id":3,
-                 "name":"Player",
+                 "name":"from_bourg_palette",
                  "point":true,
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":0,
-                 "x":240.666666666667,
+                 "x":240.667,
                  "y":1101
+                }, 
+                {
+                 "height":0,
+                 "id":7,
+                 "name":"from_jadielle",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":226.666666666667,
+                 "y":35.9999999999999
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -730,7 +742,7 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":7,
+ "nextobjectid":8,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

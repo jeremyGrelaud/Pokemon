@@ -236,17 +236,17 @@ export class GameScene extends Phaser.Scene {
   private findSpawnPoint(): { x: number; y: number } {
     const previousZoneName = this.registry.get('previousZoneName') as string | undefined
 
-    // Essaie d'abord un spawn directionnel basé sur la zone précédente
+    // Essaie d'abord un spawn directionnel basé sur la zone précédente :  from_zone_name, exemple from_bourg_palette
     if (previousZoneName) {
       const key = this.zoneNameToKey(previousZoneName)
       const directional = this.map.findObject('Spawns', obj =>
-        obj.name === `SpawnFrom_${key}` ||
-        obj.name === `SpawnFrom${key}`
+        obj.name === `from_${key}` ||
+        obj.name === `from${key}`
       ) as { x: number; y: number } | undefined
       if (directional) return directional
     }
 
-    // Spawn par défaut — cherche 'Player', 'PlayerSpawn'
+    // Spawn par défaut — cherche 'Player' ou 'PlayerSpawn'
     const defaultSpawn = this.map.findObject('Spawns', obj =>
       obj.name === 'Player' || obj.name === 'PlayerSpawn'
     ) as { x: number; y: number } | undefined
