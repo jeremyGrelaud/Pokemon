@@ -296,6 +296,9 @@ export class GameScene extends Phaser.Scene {
       sprite.setData('quantity', quantity)
       sprite.setData('itemId',   itemId)
       sprite.setData('objId',    obj.id)
+      // Position tile pour retirer la collision au ramassage
+      sprite.setData('tileX', Math.floor(obj.x! / TILE_SIZE))
+      sprite.setData('tileY', Math.floor(obj.y! / TILE_SIZE))
       this.itemGroup.add(sprite)
 
       // Bob vertical pour attirer l'attention
@@ -633,9 +636,45 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // ITEMS DÉJÀ RAMASSÉS — masquer au chargement
-  // ─────────────────────────────────────────────────────────────
+  /**
+   * Retire la collision d'une tile et force la mise à jour du physics world.
+   */
+  private removeItemCollision(tileX: number, tileY: number): void {
+    if (!this.collisionLayer) return
+    const tile = this.collisionLayer.getTileAt(tileX, tileY)
+    if (!tile) {
+      console.warn(`[Collision] Pas de tile en (${tileX}, ${tileY})`)
+      return
+    }
+
+    // 1. Désactiver les flags de collision sur la tile
+    tile.collideLeft   = false
+    tile.collideRight  = false
+    tile.collideUp     = false
+    tile.collideDown   = false
+    tile.faceLeft      = false
+    tile.faceRight     = false
+    tile.faceTop       = false
+    tile.faceBottom    = false
+
+    // 2. Supprimer et recréer le collider joueur ↔ collisionLayer
+    //    C'est la seule façon fiable de forcer Phaser Arcade à relire les tiles
+    //    Guard : this.player peut être undefined si appelé depuis hidePickedItems()
+    //    avant createPlayer() (ordre dans create())
+    this.physics.world.colliders.getActive()
+      .filter(c => c.object2 === this.collisionLayer || c.object1 === this.collisionLayer)
+      .forEach(c => c.destroy())
+
+    if (this.player) {
+      this.physics.add.collider(this.player, this.collisionLayer)
+    }
+
+    // 3. Recalculer les faces voisines
+    this.collisionLayer.calculateFacesWithin(tileX - 1, tileY - 1, 3, 3)
+
+    tile.setAlpha(0)
+    console.log(`[Collision] Tile (${tileX}, ${tileY}) désactivée`)
+  }
 
   private async hidePickedItems(): Promise<void> {
     try {
@@ -654,9 +693,7 @@ export class GameScene extends Phaser.Scene {
           this.itemGroup.remove(sprite, false, false)
           const tileX = sprite.getData('tileX') as number
           const tileY = sprite.getData('tileY') as number
-          if (this.collisionLayer && tileX !== undefined && tileY !== undefined) {
-            this.collisionLayer.removeTileAt(tileX, tileY)
-          }
+          this.removeItemCollision(tileX, tileY)
         }
       })
 
@@ -673,7 +710,7 @@ export class GameScene extends Phaser.Scene {
   private async onItemPickup(item: Phaser.GameObjects.Sprite): Promise<void> {
     if (!item.active) return
 
-    // ⚠️  Lire les data AVANT de détruire le sprite
+    // !  Lire les data AVANT de détruire le sprite
     const itemName = item.getData('itemName') as string
     const quantity = item.getData('quantity') as number
     const objId    = item.getData('objId')    as number
@@ -687,10 +724,8 @@ export class GameScene extends Phaser.Scene {
     this.tweens.killTweensOf(item)
     this.itemGroup.remove(item, true, true)
 
-    // Retirer la tile de collision à cet emplacement
-    if (this.collisionLayer && tileX !== undefined && tileY !== undefined) {
-      this.collisionLayer.removeTileAt(tileX, tileY)
-    }
+    // Retirer la tile de collision
+    this.removeItemCollision(tileX, tileY)
 
     // Flash + son
     this.cameras.main.flash(120, 255, 255, 200)
