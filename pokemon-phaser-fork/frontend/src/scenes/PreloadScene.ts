@@ -49,6 +49,11 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('pallet_house_green2', '/assets/tilesets/pallet_house_green2.png')
     this.load.image('pallet_house_green3', '/assets/tilesets/pallet_house_green3.png')
 
+    this.load.spritesheet('pokeballs_pickup', '/assets/tilesets/pokeballs_pickup.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    })
+
     this.load.image('collision',   '/assets/tilesets/collision.png')
     this.load.image('bumper_down', '/assets/tilesets/bumper_down.png')
 

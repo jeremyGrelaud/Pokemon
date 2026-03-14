@@ -368,3 +368,185 @@ def phaser_battle_state(request, battle_id: int):
         return JsonResponse({'error': 'Combat introuvable'}, status=404)
 
     return JsonResponse(build_battle_response(battle))
+
+# ─────────────────────────────────────────────────────────────
+# ENDPOINT : Dialogue NPC
+# GET /api/phaser/npc/<npc_code>/dialog/
+# ─────────────────────────────────────────────────────────────
+
+@login_required
+@require_GET
+def phaser_npc_dialog(request, npc_code: str):
+    """
+    Retourne les textes de dialogue d'un NPC identifié par son npc_code stable.
+    Le NPC peut être un simple PNJ (pas d'équipe) ou un dresseur non encore battu.
+    """
+    from myPokemonApp.models.Trainer import Trainer
+    from myPokemonApp.models.DefeatedTrainer import DefeatedTrainer
+    from myPokemonApp.models.GameSave import GameSave
+
+    try:
+        npc = Trainer.objects.get(npc_code=npc_code, is_npc=True)
+    except Trainer.DoesNotExist:
+        return JsonResponse({'error': f'NPC "{npc_code}" introuvable.'}, status=404)
+
+    trainer = get_player_trainer(request.user)
+
+    # Vérifier si ce dresseur a déjà été battu par ce joueur
+    game_save = GameSave.objects.filter(trainer=trainer, is_active=True).only('id').first()
+    is_defeated = npc.is_defeated_by_player(trainer, game_save=game_save)
+
+    # Choisir le bon texte selon l'état
+    if is_defeated and npc.defeat_text:
+        dialog_text = npc.defeat_text
+    else:
+        dialog_text = npc.intro_text or f"{npc.get_full_title()} n'a rien à dire."
+
+    return JsonResponse({
+        'npc_code':    npc_code,
+        'name':        npc.get_full_title(),
+        'npc_class':   npc.npc_class,
+        'sprite_name': npc.sprite_name,
+        'dialog':      dialog_text,
+        'is_defeated': is_defeated,
+        'can_battle':  npc.has_available_pokemon() and not is_defeated,
+    })
+
+
+# ─────────────────────────────────────────────────────────────
+# ENDPOINT : Ramasser un objet au sol
+# POST /api/phaser/map/pickup-item/
+# Body : { "zone_id": int, "tiled_obj_id": int }
+# ─────────────────────────────────────────────────────────────
+
+@login_required
+def phaser_pickup_item(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST requis'}, status=405)
+
+    import json
+    from myPokemonApp.models.FieldItem import FieldItem, PickedUpItem
+    from myPokemonApp.models.Trainer import TrainerInventory
+
+    try:
+        body = json.loads(request.body)
+        zone_id      = int(body['zone_id'])
+        tiled_obj_id = int(body['tiled_obj_id'])
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return JsonResponse({'error': 'zone_id et tiled_obj_id requis'}, status=400)
+
+    try:
+        field_item = FieldItem.objects.select_related('item').get(
+            zone_id=zone_id, tiled_obj_id=tiled_obj_id
+        )
+    except FieldItem.DoesNotExist:
+        return JsonResponse({'error': 'Objet introuvable sur cette map.'}, status=404)
+
+    trainer = get_player_trainer(request.user)
+
+    # Idempotent — impossible de ramasser deux fois
+    _, created = PickedUpItem.objects.get_or_create(
+        trainer=trainer,
+        field_item=field_item,
+    )
+    if not created:
+        return JsonResponse({'success': False, 'message': 'Objet déjà ramassé.'})
+
+    # Ajouter à l'inventaire du joueur
+    inv, _ = TrainerInventory.objects.get_or_create(
+        trainer=trainer,
+        item=field_item.item,
+        defaults={'quantity': 0},
+    )
+    inv.quantity += field_item.quantity
+    inv.save(update_fields=['quantity'])
+
+    return JsonResponse({
+        'success':   True,
+        'item_name': field_item.item.name,
+        'quantity':  field_item.quantity,
+        'message':   f"Vous avez obtenu {field_item.item.name} ×{field_item.quantity} !",
+    })
+
+
+# ─────────────────────────────────────────────────────────────
+# ENDPOINT : Démarrer un combat dresseur
+# POST /api/phaser/trainer/<npc_code>/battle/
+# ─────────────────────────────────────────────────────────────
+
+@login_required
+def phaser_trainer_battle(request, npc_code: str):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST requis'}, status=405)
+
+    from myPokemonApp.models.Trainer import Trainer
+    from myPokemonApp.models.Battle import Battle
+    from myPokemonApp.models.DefeatedTrainer import DefeatedTrainer
+    from myPokemonApp.models.GameSave import GameSave
+    from myPokemonApp.gameUtils import get_first_alive_pokemon, start_battle
+
+    try:
+        npc = Trainer.objects.get(npc_code=npc_code, is_npc=True)
+    except Trainer.DoesNotExist:
+        return JsonResponse({'error': f'Dresseur "{npc_code}" introuvable.'}, status=404)
+
+    trainer = get_player_trainer(request.user)
+
+    # Vérifier si déjà battu
+    game_save = GameSave.objects.filter(trainer=trainer, is_active=True).only('id').first()
+    if npc.is_defeated_by_player(trainer, game_save=game_save):
+        return JsonResponse({'success': False, 'message': f'{npc.get_full_title()} a déjà été battu.'})
+
+    # Vérifier combat déjà actif
+    active_battle = Battle.objects.filter(player_trainer=trainer, is_active=True).first()
+    if active_battle:
+        return JsonResponse({'battle_id': active_battle.id, 'success': True})
+
+    # Vérifier que le dresseur a des Pokémon
+    if not npc.has_available_pokemon():
+        return JsonResponse({'error': 'Ce dresseur n\'a aucun Pokémon.'}, status=400)
+
+    # Vérifier que le joueur a des Pokémon
+    player_pokemon = get_first_alive_pokemon(trainer)
+    if not player_pokemon:
+        return JsonResponse({'error': 'Aucun Pokémon en état de combattre.'}, status=400)
+
+    # Démarrer le combat
+    battle, msg = start_battle(trainer, opponent_trainer=npc)
+    if not battle:
+        return JsonResponse({'error': msg}, status=400)
+
+    return JsonResponse({
+        'success':    True,
+        'battle_id':  battle.id,
+        'trainer_name': npc.get_full_title(),
+        'intro_text': npc.intro_text or '',
+    })
+
+
+# ─────────────────────────────────────────────────────────────
+# ENDPOINT : Items déjà ramassés dans une zone
+# GET /api/phaser/map/picked-items/?zone_id=<id>
+# Utilisé par GameScene pour masquer les items déjà pris au chargement
+# ─────────────────────────────────────────────────────────────
+
+@login_required
+@require_GET
+def phaser_picked_items(request):
+    """Retourne les tiled_obj_id des items déjà ramassés par le joueur dans une zone."""
+    from myPokemonApp.models.FieldItem import PickedUpItem
+
+    zone_id = request.GET.get('zone_id')
+    if not zone_id:
+        return JsonResponse({'error': 'zone_id requis'}, status=400)
+
+    trainer = get_player_trainer(request.user)
+
+    picked_ids = list(
+        PickedUpItem.objects.filter(
+            trainer=trainer,
+            field_item__zone_id=zone_id,
+        ).values_list('field_item__tiled_obj_id', flat=True)
+    )
+
+    return JsonResponse({'picked_tiled_obj_ids': picked_ids})

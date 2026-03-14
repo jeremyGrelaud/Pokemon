@@ -50,6 +50,10 @@ export class GameScene extends Phaser.Scene {
   private collisionSoundCooldown = false
   private bumperActive = false
 
+  private itemGroup!:   Phaser.Physics.Arcade.StaticGroup
+  private npcGroup!:    Phaser.Physics.Arcade.StaticGroup
+  private trainerGroup!: Phaser.Physics.Arcade.StaticGroup
+
   constructor() {
     super({ key: 'GameScene' })
   }
@@ -142,7 +146,7 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────
 
   private buildTilemap(): void {
-    this.bumperLayer = undefined  // reset à chaque chargement de map
+    this.bumperLayer = undefined
     const mapKey = this.zoneNameToKey(this.currentZone.name)
     this.map = this.make.tilemap({ key: mapKey })
 
@@ -164,27 +168,31 @@ export class GameScene extends Phaser.Scene {
       ? this.map.addTilesetImage('../tilesets/pallet_house_green2.png', 'pallet_house_green2') : null
     const tsHouse3 = mapTilesetNames.includes('../tilesets/pallet_house_green3.png')
       ? this.map.addTilesetImage('../tilesets/pallet_house_green3.png', 'pallet_house_green3') : null
+    const tsPokeballsPickup = mapTilesetNames.includes('../tilesets/pokeballs_pickup.png')
+      ? this.map.addTilesetImage('../tilesets/pokeballs_pickup.png', 'pokeballs_pickup') : null
+
 
     const allTilesets = [
       tsKanto, tsForever,
-      tsLab, tsHouse1, tsHouse2, tsHouse3,
+      tsLab, tsHouse1, tsHouse2, tsHouse3, tsPokeballsPickup,
       tsCollision, tsBumper,
     ].filter(Boolean) as Phaser.Tilemaps.Tileset[]
 
-    // ── Couches de tuiles — ordre = ordre de rendu ─────────────
-    this.map.createLayer('Ground',      allTilesets, 0, 0)
-    this.map.createLayer('Bumpers',     allTilesets, 0, 0)   // visuel falaises
-    this.map.createLayer('Decoration',  allTilesets, 0, 0)
-    this.map.createLayer('Decoration2', allTilesets, 0, 0)
-    this.map.createLayer('Grass',       allTilesets, 0, 0)
-    this.map.createLayer('Trees',       allTilesets, 0, 0)
+    // ── Couches de tuiles — ordre de rendu ─────────────────────
+    this.map.createLayer('Ground',       allTilesets, 0, 0)
+    this.map.createLayer('Bumpers',      allTilesets, 0, 0)  // visuel falaises
+    this.map.createLayer('Decoration',   allTilesets, 0, 0)
+    this.map.createLayer('Decoration2',  allTilesets, 0, 0)
+    this.map.createLayer('Grass',        allTilesets, 0, 0)
+    this.map.createLayer('Trees',        allTilesets, 0, 0)
+    this.map.createLayer('Trees2',       allTilesets, 0, 0)
 
-    // Collision
+    // ── Collision ──────────────────────────────────────────────
     this.collisionLayer = this.map.createLayer('Collision', allTilesets, 0, 0)!
     this.collisionLayer.setCollisionByProperty({ collides: true })
-    this.collisionLayer.setAlpha(0)
+    this.collisionLayer.setAlpha(import.meta.env.DEV ? 0.25 : 0) // visible à 25% en mode DEV pour faciliter le debug
 
-    // Bumpers logique (invisible — sens unique vers le bas)
+    // ── Bumpers logique (invisible — sens unique vers le bas) ──
     const bumperLogicLayer = this.map.createLayer('Bumpers_Logic', allTilesets, 0, 0)
     if (bumperLogicLayer) {
       this.bumperLayer = bumperLogicLayer
@@ -193,25 +201,23 @@ export class GameScene extends Phaser.Scene {
 
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
 
-    // ── Bâtiments (object layer) ───────────────────────────────
+    // ── Bâtiments (object layer — image collection tilesets) ───
     const GID_TO_KEY: Record<number, string> = {
       9747: 'pallet_lab',
       9753: 'pallet_house_green1',
       9754: 'pallet_house_green2',
       9755: 'pallet_house_green3',
     }
-
     const buildingsLayer = this.map.getObjectLayer('Buildings')
     buildingsLayer?.objects.forEach((obj) => {
       const textureKey = obj.gid ? GID_TO_KEY[obj.gid] : undefined
       if (!textureKey) return
-      const groundLine = obj.y! - 32
       this.add.image(obj.x!, obj.y!, textureKey)
         .setOrigin(0, 1)
-        .setDepth(groundLine)
+        .setDepth(obj.y! - 32)
     })
 
-    // ── Herbes depuis la couche Grass ──────────────────────────
+    // ── Herbes haute (Grass → physics group) ───────────────────
     this.grassGroup = this.physics.add.staticGroup()
     const grassLayer = this.map.getLayer('Grass')
     if (grassLayer) {
@@ -231,15 +237,15 @@ export class GameScene extends Phaser.Scene {
       })
     }
 
-    // ── Portails depuis l'object layer Portals ─────────────────
+    // ── Portails ───────────────────────────────────────────────
     this.portalGroup = this.physics.add.staticGroup()
     const portalLayer = this.map.getObjectLayer('Portals')
     portalLayer?.objects.forEach((obj) => {
       const rect = this.add.rectangle(
-        obj.x! + obj.width! / 2,
+        obj.x! + obj.width!  / 2,
         obj.y! + obj.height! / 2,
         obj.width!, obj.height!,
-        0xffff00, 0.3
+        0xffff00, import.meta.env.DEV ? 0.2 : 0 // légèrement visibles en DEV (0.2 alpha) — invisible en prod
       )
       this.physics.add.existing(rect, true)
       const zoneName = (obj.properties as Array<{name: string; value: unknown}>)
@@ -247,8 +253,85 @@ export class GameScene extends Phaser.Scene {
       rect.setData('zoneName', zoneName)
       this.portalGroup.add(rect)
     })
-  }
 
+    // ── Items au sol ────────────────────────────────────────────
+    this.itemGroup = this.physics.add.staticGroup()
+    const itemsLayer = this.map.getObjectLayer('Items')
+
+    // firstgid du tileset pokeballs_pickup — lu dynamiquement depuis la map
+    const pokeballsFirstGid = this.map.tilesets.find(ts => ts.name === 'pokeballs_pickup')?.firstgid ?? 9749
+
+    itemsLayer?.objects.forEach((obj) => {
+      const props    = obj.properties as Array<{name: string; value: unknown}> ?? []
+      const itemName = props.find(p => p.name === 'item_name')?.value as string
+      const quantity = (props.find(p => p.name === 'quantity')?.value as number) ?? 1
+      const itemId   = (props.find(p => p.name === 'item_id')?.value as number) ?? null
+
+      // Calculer le frame depuis le GID (gid - firstgid = index dans le spritesheet)
+      const frame = obj.gid ? obj.gid - pokeballsFirstGid : 0
+
+      // obj.y pointe vers le bas de l'objet dans Tiled — on remonte de 8px pour centrer
+      const sprite = this.add.sprite(obj.x! + 8, obj.y! - 8, 'pokeballs_pickup', frame)
+        .setDepth(obj.y!)
+        .setScale(0.5)  // 32px → 16px pour correspondre à la grille 16px
+      this.physics.add.existing(sprite, true)
+      sprite.setData('itemName', itemName)
+      sprite.setData('quantity', quantity)
+      sprite.setData('itemId',   itemId)
+      sprite.setData('objId',    obj.id)
+      this.itemGroup.add(sprite)
+
+      // Bob vertical pour attirer l'attention
+      this.tweens.add({
+        targets: sprite,
+        y: obj.y! - 11,
+        duration: 800,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      })
+    })
+
+    // ── NPCs ────────────────────────────────────────────────────
+    this.npcGroup = this.physics.add.staticGroup()
+    const npcsLayer = this.map.getObjectLayer('NPCs')
+    npcsLayer?.objects.forEach((obj) => {
+      const props    = obj.properties as Array<{name: string; value: unknown}> ?? []
+      const npcName  = props.find(p => p.name === 'npc_name')?.value  as string
+      const dialog   = props.find(p => p.name === 'dialog')?.value    as string
+      const npcId    = props.find(p => p.name === 'npc_id')?.value    as number
+
+      // Placeholder visuel — remplacer 'npc_default' par le vrai sprite quand disponible
+      const sprite = this.add.image(obj.x!, obj.y!, 'player')
+        .setDepth(obj.y!)
+      this.physics.add.existing(sprite, true)
+      sprite.setData('npcName', npcName)
+      sprite.setData('dialog',  dialog)
+      sprite.setData('npcId',   npcId)
+      this.npcGroup.add(sprite)
+    })
+
+    // ── Dresseurs ───────────────────────────────────────────────
+    this.trainerGroup = this.physics.add.staticGroup()
+    const trainersLayer = this.map.getObjectLayer('Trainers')
+    trainersLayer?.objects.forEach((obj) => {
+      const props      = obj.properties as Array<{name: string; value: unknown}> ?? []
+      const trainerId  = props.find(p => p.name === 'trainer_id')?.value  as number
+      const direction  = (props.find(p => p.name === 'direction')?.value  as string) ?? 'down'
+      const sightRange = (props.find(p => p.name === 'sight_range')?.value as number) ?? 3
+
+      const sprite = this.add.image(obj.x!, obj.y!, 'player')
+        .setDepth(obj.y!)
+        .setTint(0xff8800)  // teinte orange pour distinguer en debug
+      this.physics.add.existing(sprite, true)
+      sprite.setData('trainerId',  trainerId)
+      sprite.setData('direction',  direction)
+      sprite.setData('sightRange', sightRange)
+      sprite.setData('defeated',   false)
+      this.trainerGroup.add(sprite)
+    })
+  }
+  
   // ─────────────────────────────────────────────────────────────
   // JOUEUR
   // ─────────────────────────────────────────────────────────────
@@ -558,6 +641,9 @@ export class GameScene extends Phaser.Scene {
     // Détruire groupes physics
     this.grassGroup?.destroy(true)
     this.portalGroup?.destroy(true)
+    this.itemGroup?.destroy(true)
+    this.npcGroup?.destroy(true)
+    this.trainerGroup?.destroy(true)
 
     // Détruire l'ancienne map
     this.map?.destroy()

@@ -400,29 +400,38 @@ def create_npc_trainer(username, trainer_type, location, team_data,
                        is_battle_required=False,
                        fixed_ivs=None, fixed_nature=None,
                        iv_min=0, iv_max=20,
-                       ai_flags=None):
+                       ai_flags=None,
+                       npc_code=None):
     """
-    Crée un dresseur NPC générique avec son équipe. Idempotent (get_or_create).
-    La clé d'idempotence est (username, location).
+    Crée un dresseur NPC générique avec son équipe. Idempotent via npc_code.
 
-    Args additionnels pour les combats scriptés :
-        fixed_ivs    : dict IVs fixes appliqués à TOUS les Pokémon de l'équipe.
-        fixed_nature : str nature fixée (ex: 'Hardy') — bypasse le tirage aléatoire.
-        iv_min/iv_max: plage IVs aléatoires si fixed_ivs est None (défaut 0-20).
-        ai_flags     : list de flags IA Gen 4 (ex: ['basic', 'evaluate_attack', 'expert']).
-                       Si None, get_ai_flags() utilisera les defaults selon trainer_type.
+    npc_code : clé stable et lisible utilisée par Tiled (ex: 'route_1_youngster_ben').
+               Si non fourni, auto-généré depuis location + username.
+               C'est la clé d'idempotence — remplace (username, location).
     """
+    import unicodedata, re
+
+    def slugify(s):
+        s = unicodedata.normalize('NFD', (s or '').lower())
+        s = s.encode('ascii', 'ignore').decode()
+        return re.sub(r'[^a-z0-9]+', '_', s).strip('_')
+
+    # Générer npc_code si non fourni
+    if not npc_code:
+        npc_code = f"{slugify(location)}_{slugify(username)}"
+
     from myPokemonApp.models.Trainer import Trainer
 
     final_intro   = intro_text   or f"{username} veut combattre !"
     final_defeat  = defeat_text  or "J'ai perdu..."
     final_victory = victory_text or "J'ai gagné !"
 
-    trainer, created = Trainer.objects.get_or_create(
-        username=username,
-        location=location,
+    trainer, created = Trainer.objects.update_or_create(
+        npc_code=npc_code,
         defaults={
+            'username':           username,
             'trainer_type':       trainer_type,
+            'location':           location,
             'intro_text':         final_intro,
             'defeat_text':        final_defeat,
             'victory_text':       final_victory,
@@ -437,7 +446,7 @@ def create_npc_trainer(username, trainer_type, location, team_data,
     )
 
     if not created:
-        logger.info("  [skip] NPC '%s' @ '%s' existe déjà", username, location)
+        logger.info("  [skip] NPC '%s' (code: %s) existe déjà", username, npc_code)
         return trainer
 
     for i, poke_data in enumerate(team_data, 1):
