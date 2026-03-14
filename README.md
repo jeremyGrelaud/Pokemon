@@ -1,3 +1,11 @@
+# Propriété intellectuelle et sources
+
+Les assets graphiques utilisés dans ce projet sont la propriété exclusive de **Nintendo Co., Ltd.** et sont utilisés ici à des fins de démonstration ou d'archivage personnel uniquement. Toute utilisation commerciale ou redistribution de ces assets est strictement interdite sans l'autorisation expresse de Nintendo.
+
+Pour les autres ressources utilisées (sprites, musiques, etc.) non produites par Nintendo, référez vous au paragraphe Credits ci-dessous.
+
+
+
 # Credits
 
 - https://play.pokemonshowdown.com/sprites/trainers/?filter=credited (for trainer sprites)
